@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Alabama Deer Hunting App v1.24 - Water Gauge & Topographic Weather Portal</title>
+  <title>Alabama Deer Hunting App v1.28 - Water Gauge & Topographic Weather Portal</title>
 
   <!-- Leaflet.js Interactive Mapping CDN -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
@@ -92,16 +92,33 @@
     .badge.open { background: var(--green); color: white; }
     .badge.refuge { background: var(--blue-refuge); color: white; }
 
-    /* Custom Spots Form */
-    .form-row { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 10px; }
-    .form-control { background: var(--panel-light); border: 1px solid var(--border); border-radius: 6px; padding: 10px; color: var(--ink); font-size: 13px; outline: none; width: 100%; }
-    .form-control:focus { border-color: var(--accent); }
-    .form-btn { background: var(--green); color: white; border: none; border-radius: 6px; padding: 10px 14px; font-weight: bold; cursor: pointer; font-size: 13px; }
-    .form-btn:hover { background: var(--green-hover); }
-
     /* Map Widget */
     .map-wrapper { margin-top: 15px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); position: relative; }
     #leaflet-map { height: 440px; width: 100%; background: #e5e3df; }
+
+    /* Fullscreen map styles */
+    .map-wrapper.fullscreen {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      z-index: 99999 !important;
+      margin-top: 0 !important;
+      border-radius: 0 !important;
+    }
+    .map-wrapper.fullscreen #leaflet-map {
+      height: 100% !important;
+    }
+    .map-wrapper .detection-toast {
+      position: absolute !important;
+      bottom: 70px !important;
+      left: 20px !important;
+      z-index: 10002 !important;
+      max-width: 320px !important;
+      margin-top: 0 !important;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.6) !important;
+    }
 
     /* Detection Toast Alert */
     .detection-toast { background: var(--panel-light); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-top: 10px; display: none; border-left: 5px solid var(--accent); }
@@ -156,13 +173,19 @@
     /* Loading Spinner */
     .loader { border: 4px solid var(--panel-light); border-top: 4px solid var(--accent); border-radius: 50%; width: 35px; height: 35px; animation: spin 1s linear infinite; margin: 30px auto; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    @keyframes pulse {
+      0% { transform: scale(0.9); opacity: 0.8; }
+      50% { transform: scale(1.1); opacity: 1; }
+      100% { transform: scale(0.9); opacity: 0.8; }
+    }
   </style>
 </head>
 <body>
 
   <header>
     <div>
-      <h1>Southeastern Deer Season & Scent Planner (v1.24)</h1>
+      <h1>Southeastern Deer Season & Scent Planner (v1.28)</h1>
       <p>Alabama public and private land boundaries, USGS water level gauges, topographic terrain, and microclimate wind matrices.</p>
     </div>
     <div style="font-size: 12px; color: var(--muted);">
@@ -277,8 +300,34 @@
         </div>
 
         <!-- Interactive Map Widget -->
-        <span class="step-title" style="font-size: 11px;">Legible Reference Map: Roads, USGS Water Gauges & Topography</span>
+        <span class="step-title" style="font-size: 11px;">Legible Reference Map: Alabama Map & Bordering States (MS, TN, GA, FL)</span>
         <div class="map-wrapper">
+          <button id="map-maximize-btn" onclick="toggleMapFullscreen()" style="position: absolute; top: 10px; right: 10px; z-index: 10000; background: var(--panel); border: 1px solid var(--border); color: var(--accent); border-radius: 6px; padding: 6px 12px; font-weight: bold; cursor: pointer; font-size: 11px; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">Full Screen</button>
+          <button id="map-minimize-btn" onclick="toggleMapFullscreen()" style="position: absolute; top: 10px; right: 10px; z-index: 10000; background: var(--panel); border: 1px solid var(--border); color: var(--accent); border-radius: 6px; padding: 6px 12px; font-weight: bold; cursor: pointer; font-size: 11px; display: none; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">Minimize</button>
+
+          <button id="gps-snap-btn" onclick="snapToGPS()" style="position: absolute; bottom: 20px; left: 20px; z-index: 10000; background: var(--green); color: white; border: none; border-radius: 6px; padding: 8px 12px; font-weight: bold; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.5);">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align: middle;"><path d="M12 2a8 8 0 00-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 00-8-8z"/><circle cx="12" cy="10" r="3" fill="currentColor"/></svg>
+            Current Location
+          </button>
+
+          <!-- Floating Weather Overlay for Fullscreen Mode -->
+          <div id="map-weather-overlay" style="display: none; position: absolute; bottom: 20px; right: 20px; z-index: 10001; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 15px; width: 300px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); max-height: 80vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+              <strong id="mwo-title" style="font-size: 14px; color: #fff;">Weather</strong>
+              <button onclick="document.getElementById('map-weather-overlay').style.display='none'" style="background: none; border: none; color: var(--muted); cursor: pointer; font-weight: bold; font-size: 14px; padding: 0 4px;">&times;</button>
+            </div>
+            <div id="mwo-body" style="font-size: 12px; color: var(--ink);">Select a pin to inspect weather...</div>
+          </div>
+
+          <!-- Automatic Boundary/Zone Detection Toast inside map wrapper context -->
+          <div class="detection-toast" id="detection-toast">
+            <strong id="dt-name" style="color: #fff; font-size:13px;">Boundary Detected</strong><br>
+            <span id="dt-zone" style="font-size:11px; font-weight: bold; color: var(--accent);">State Zone: A</span><br>
+            <p id="dt-desc" style="font-size:12px; color: var(--muted); margin: 4px 0 0;">Area specifics parsed.</p>
+            <button id="dt-button" style="margin-top: 8px; padding: 4px 10px; font-weight: bold; background-color: var(--green); color: white; border: none; border-radius: 4px; cursor: pointer; font-size:11px; width: 100%;">Get Local Weather</button>
+            <button id="dt-add-btn" style="margin-top: 6px; padding: 4px 10px; font-weight: bold; background-color: var(--accent); color: black; border: none; border-radius: 4px; cursor: pointer; font-size:11px; width: 100%;">Add Custom Lease / Stand Spot</button>
+          </div>
+
           <div id="leaflet-map"></div>
         </div>
 
@@ -288,27 +337,6 @@
           <div><span class="legend-indicator" style="background: rgba(30, 130, 76, 0.4); border: 2px solid #1e824c;"></span>Bankhead National Forest</div>
           <div><span class="legend-indicator" style="background: rgba(39, 174, 96, 0.4); border: 2px solid #27ae60;"></span>Skyline WMA</div>
           <div><span class="legend-indicator" style="background: rgba(0, 188, 212, 0.8); border: 2px solid #00bcd4; border-radius: 50%;"></span>USGS River Water Gauge</div>
-        </div>
-
-        <!-- Automatic Boundary/Zone Detection Toast -->
-        <div class="detection-toast" id="detection-toast">
-          <strong id="dt-name" style="color: #fff; font-size:13px;">Boundary Detected</strong><br>
-          <span id="dt-zone" style="font-size:11px; font-weight: bold; color: var(--accent);">State Zone: A</span><br>
-          <p id="dt-desc" style="font-size:12px; color: var(--muted); margin: 4px 0 0;">Area specifics parsed.</p>
-          <button id="dt-button" style="margin-top: 8px; padding: 4px 10px; font-weight: bold; background-color: var(--green); color: white; border: none; border-radius: 4px; cursor: pointer; font-size:11px;">Load Weather and Regulations</button>
-        </div>
-
-        <!-- Custom Lease / Area Builder -->
-        <div style="margin-top: 15px; border-top: 1px solid var(--border); padding-top: 15px;">
-          <span class="step-title" style="font-size: 11px;">Add Custom Lease / Stand Spot</span>
-          <div class="form-row">
-            <input type="text" id="cust-name" class="form-control" placeholder="e.g. Piney Ridge Lease">
-            <input type="text" id="cust-coords" class="form-control" placeholder="Coordinates Lat, Lon (or click map to populate)">
-          </div>
-          <div style="margin-top: 8px; display: flex; gap: 8px;">
-            <button class="form-btn" style="flex:1;" onclick="addCustomSpot()">Add Location and Detect Zone</button>
-            <button class="form-btn" style="flex:1; background-color: var(--accent);" id="add-map-stand-btn" onclick="addStandFromMapClick()" disabled>Add Last Map Click as Stand</button>
-          </div>
         </div>
       </div>
 
@@ -454,6 +482,8 @@
     let viewFilterMode = 'all'; 
     let currentSelectedColor = '#e59a18'; 
     let editingEventId = null; 
+    let userLat = null;
+    let userLng = null;
 
     // Track user-scheduled calendar events and hunting trips
     const calendarEvents = {
@@ -540,7 +570,7 @@
 
     // HAVERSINE DISTANCE CALCULATOR (Miles)
     function getDistanceMiles(lat1, lon1, lat2, lon2) {
-      const R = 3958.8; // Radius of Earth in miles
+      const R = 3958.8; 
       const dLat = (lat2 - lat1) * Math.PI / 180;
       const dLon = (lon2 - lon1) * Math.PI / 180;
       const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -550,26 +580,107 @@
       return R * c;
     }
 
-    // HELPER TO EXTRACT LATEST VALID RECORD (Solves sensor array indexing & multi-sensor sorting mismatches)
-    function getLatestUSGSValue(valArray) {
-      if (!valArray || valArray.length === 0) return null;
-      let latestEntry = null;
-      let latestTime = new Date(0);
-      for (let i = 0; i < valArray.length; i++) {
-        const entry = valArray[i];
-        const val = parseFloat(entry.value);
-        const time = new Date(entry.dateTime);
-        if (!isNaN(val) && val > -900) {
-          if (time >= latestTime) {
-            latestTime = time;
-            latestEntry = val;
-          }
-        }
+    // ASTRONOMICAL SUNRISE/SUNSET SOLVER (100% Offline, true to any selected past, present, or future dates)
+    function getJulianDate(year, month, day) {
+      if (month <= 2) {
+        year -= 1;
+        month += 12;
       }
-      return latestEntry;
+      const A = Math.floor(year / 100);
+      const B = Math.floor(A / 4);
+      const C = 2 - A + B;
+      const E = Math.floor(365.25 * (year + 4716));
+      const F = Math.floor(30.6001 * (month + 1));
+      return C + day + E + F - 1524.5;
     }
 
-    // USGS Live Water API Fetcher with Fallback Simulation (v1.24 Fixes stream series tracking)
+    function calculateAstronomicalSunriseSunset(lat, lng, date, timezoneOffset) {
+      const rad = Math.PI / 180;
+      const deg = 180 / Math.PI;
+
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+
+      const jd = getJulianDate(year, month, day);
+      const t = (jd - 2451545.0) / 36525.0;
+
+      let L0 = 280.46646 + t * (36000.76983 + t * 0.0003032);
+      L0 = L0 % 360;
+      if (L0 < 0) L0 += 360;
+
+      let M = 357.52911 + t * (35999.05029 - 0.0001537 * t);
+      M = M % 360;
+      if (M < 0) M += 360;
+
+      const e = 0.016708634 - t * (0.000042037 + 0.0000001267 * t);
+
+      const C = Math.sin(M * rad) * (1.914602 - t * (0.004817 + 0.000014 * t)) +
+                Math.sin(2 * M * rad) * (0.019993 - 0.000101 * t) +
+                Math.sin(3 * M * rad) * 0.000289;
+
+      const O = L0 + C;
+      const omega = 125.04 - 1934.136 * t;
+      const lambda = O - 0.00569 - 0.00478 * Math.sin(omega * rad);
+
+      const meanObliq = 23 + (26 + (21.448 - t * (46.815 + t * (0.00059 - t * 0.001813))) / 60) / 60;
+      const obliqCorr = meanObliq + 0.00256 * Math.cos(omega * rad);
+
+      const dec = Math.asin(Math.sin(obliqCorr * rad) * Math.sin(lambda * rad)) * deg;
+
+      const y = Math.pow(Math.tan((obliqCorr / 2) * rad), 2);
+      const eqTime = 4 * (y * Math.sin(2 * L0 * rad) - 2 * e * Math.sin(M * rad) + 4 * e * y * Math.sin(M * rad) * Math.cos(2 * L0 * rad) - 0.5 * Math.pow(y, 2) * Math.sin(4 * L0 * rad) - 1.25 * Math.pow(e, 2) * Math.sin(2 * M * rad)) * deg;
+
+      const cosHA = (Math.cos(90.833 * rad) - Math.sin(lat * rad) * Math.sin(dec * rad)) / (Math.cos(lat * rad) * Math.cos(dec * rad));
+
+      if (cosHA > 1) return { sunrise: "Polar Night", sunset: "Polar Night", solarNoonMin: null };
+      if (cosHA < -1) return { sunrise: "Midnight Sun", sunset: "Midnight Sun", solarNoonMin: null };
+
+      const HA = Math.acos(cosHA) * deg;
+
+      const solarNoon = 720 - 4 * lng - eqTime + timezoneOffset * 60;
+      const sunriseTime = solarNoon - 4 * HA;
+      const sunsetTime = solarNoon + 4 * HA;
+
+      const formatMinutes = (minutes) => {
+        let m = Math.round(minutes);
+        if (m < 0) m += 1440;
+        m = m % 1440;
+        let hours = Math.floor(m / 60);
+        let mins = Math.floor(m % 60);
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        if (hours === 0) hours = 12;
+        return `${hours}:${mins.toString().padStart(2, '0')} ${ampm}`;
+      };
+
+      return {
+        sunrise: formatMinutes(sunriseTime),
+        sunset: formatMinutes(sunsetTime),
+        solarNoonMin: solarNoon
+      };
+    }
+
+    // Dynamic Central Time Zone offset detection for Alabama across historical / future dates
+    function getAlabamaTimezoneOffset(date) {
+      try {
+        const formatter = new Intl.DateTimeFormat("en-US", {
+          timeZone: "America/Chicago",
+          timeZoneName: "longOffset"
+        });
+        const parts = formatter.formatToParts(date);
+        const offsetPart = parts.find(part => part.type === "timeZoneName");
+        if (offsetPart) {
+          const match = offsetPart.value.match(/GMT([-+]\d+)/);
+          if (match) return parseInt(match[1]);
+        }
+      } catch (e) {}
+      const month = date.getMonth();
+      if (month > 2 && month < 11) return -5; // DST Central Time
+      return -6; // Standard Central Time
+    }
+
+    // USGS Live Water API Fetcher with Fallback Simulation
     async function fetchWaterDataForStation(station) {
       const url = `https://waterservices.usgs.gov/nwis/iv/?format=json&sites=${station.id}&parameterCd=00065,00060`;
       try {
@@ -586,12 +697,9 @@
             const paramCode = ts.variable.variableCode[0].value;
             if (ts.values && ts.values[0] && ts.values[0].value && ts.values[0].value.length > 0) {
               const valArray = ts.values[0].value;
-              const latestVal = getLatestUSGSValue(valArray);
-
-              if (latestVal !== null) {
-                if (paramCode === "00065") gageHeight = latestVal;
-                if (paramCode === "00060") dischargeCfs = latestVal;
-              }
+              const latestVal = parseFloat(valArray[valArray.length - 1].value);
+              if (paramCode === "00065" && !isNaN(latestVal) && latestVal > -900) gageHeight = latestVal;
+              if (paramCode === "00060" && !isNaN(latestVal) && latestVal > -900) dischargeCfs = latestVal;
             }
           });
         }
@@ -608,7 +716,6 @@
           isRealTime: true
         };
       } catch (e) {
-        // Fallback baseline cached values + error state flag
         return {
           height: station.baseHeight,
           cfs: station.cfs,
@@ -619,7 +726,7 @@
       }
     }
 
-    // Dynamic Live Fetching of All Water Gauges on Map (v1.24 Precise scanner)
+    // Dynamic Live Fetching of All Water Gauges on Map
     async function fetchRealTimeGauges() {
       const siteIds = waterGauges.map(g => g.id).join(',');
       const url = `https://waterservices.usgs.gov/nwis/iv/?format=json&sites=${siteIds}&parameterCd=00065,00060`;
@@ -628,17 +735,16 @@
         if (!res.ok) throw new Error("Batch USGS failure");
         const data = await res.json();
         const timeSeries = data.value.timeSeries;
-
         if (timeSeries && timeSeries.length > 0) {
           timeSeries.forEach(ts => {
             const siteId = ts.sourceInfo.siteCode[0].value;
             const paramCode = ts.variable.variableCode[0].value;
             if (ts.values && ts.values[0] && ts.values[0].value && ts.values[0].value.length > 0) {
               const valArray = ts.values[0].value;
-              const latestVal = getLatestUSGSValue(valArray);
+              const latestVal = parseFloat(valArray[valArray.length - 1].value);
 
               const gauge = waterGauges.find(g => g.id === siteId);
-              if (gauge && latestVal !== null) {
+              if (gauge && !isNaN(latestVal) && latestVal > -900) {
                 if (paramCode === "00065") {
                   gauge.baseHeight = latestVal;
                 } else if (paramCode === "00060") {
@@ -743,7 +849,7 @@
       return { id: 10, name: "Statewide Zone A", type: "Statewide", zone: "A", desc: "North, Central, and Southeast Alabama." };
     }
 
-    // Initialize Map with USGS Water Gauge Layer
+    // Initialize Map with USGS Water Gauge Layer and strictly bound to Alabama + Bordering States
     function initMap() {
       if (typeof L === 'undefined') return;
 
@@ -758,10 +864,14 @@
         attribution: 'Tiles courtesy of the U.S. Geological Survey'
       });
 
+      // Strict boundaries: Alabama and bordering states (MS, TN, GA, FL)
       map = L.map('leaflet-map', {
-        center: [34.3411, -86.9500],
-        zoom: 8,
-        layers: [googleStyleStreet]
+        center: [32.7794, -86.8287],
+        zoom: 7,
+        layers: [googleStyleStreet],
+        maxBounds: [[24.0, -92.5], [37.0, -79.5]],
+        maxBoundsViscosity: 1.0,
+        minZoom: 6
       });
 
       const basemaps = {
@@ -770,15 +880,32 @@
       };
       L.control.layers(basemaps, null, { collapsed: false }).addTo(map);
 
+      // Draw the dark semi-transparent polygon mask over everything outside of active states
+      const outerBoundary = [
+        [-90, -180],
+        [-90, 180],
+        [90, 180],
+        [-90, -180]
+      ];
+      const activeStatesBox = [
+        [24.0, -92.5], // Southwest
+        [37.0, -92.5], // Northwest
+        [37.0, -79.5], // Northeast
+        [24.0, -79.5]  // Southeast
+      ];
+      L.polygon([outerBoundary, activeStatesBox], {
+        color: 'none',
+        fillColor: '#050704',
+        fillOpacity: 0.65,
+        interactive: false
+      }).addTo(map);
+
       drawBoundaries();
       drawWaterGaugesOnMap();
 
       map.on('click', function(e) {
         clickLat = e.latlng.lat;
         clickLng = e.latlng.lng;
-
-        document.getElementById('cust-coords').value = `${clickLat.toFixed(5)}, ${clickLng.toFixed(5)}`;
-        document.getElementById('add-map-stand-btn').disabled = false;
 
         if (tempClickMarker) {
           tempClickMarker.setLatLng(e.latlng);
@@ -803,28 +930,98 @@
 
         toast.classList.add('active');
 
+        // Get local weather for precise spot clicked!
         document.getElementById('dt-button').onclick = () => {
           let matchedLoc = locations.find(l => l.id === detected.id);
-          if (!matchedLoc) {
-            matchedLoc = {
-              id: detected.id,
-              name: detected.name,
-              type: detected.type,
+          
+          let clickLoc = {
+            id: detected.id,
+            name: `${detected.name} (Selected Spot)`,
+            type: detected.type,
+            zone: detected.zone,
+            lat: clickLat, 
+            lng: clickLng, 
+            subSections: matchedLoc ? matchedLoc.subSections : []
+          };
+
+          const dateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+          let openRule = rules.find(r => r.locId === detected.id && dateStr >= r.start && dateStr <= r.end);
+          if (!openRule) {
+            const templateId = detected.zone === 'A' ? 10 : 11;
+            openRule = rules.find(r => r.locId === templateId && dateStr >= r.start && dateStr <= r.end) || { weapon: "General", target: "Statewide Rules", limit: "Statewide Limit", notes: "Check regulations." };
+          }
+          
+          selectLocation(clickLoc, openRule);
+          toast.classList.remove('active');
+        };
+
+        // Add as Custom Lease/Stand Spot
+        document.getElementById('dt-add-btn').onclick = () => {
+          let menuText = "How would you like to save this coordinate?\n\n";
+          menuText += "Type '1' to add as a new Custom Lease / Hunting Spot\n";
+          if (selectedLocationId) {
+            const locName = locations.find(l => l.id === selectedLocationId)?.name || "selected area";
+            menuText += `Type '2' to add as a Stand inside "${locName}"`;
+          } else {
+            menuText += "Type '2' to add as a Stand (Please select a main location on the left first!)";
+          }
+          
+          const opt = prompt(menuText);
+          if (opt === '1') {
+            const name = prompt("Enter Name for this Custom Lease / Spot (e.g. Oak Ridge Lease):");
+            if (!name || name.trim() === "") return;
+
+            const newId = locations.length + 300;
+            const newLoc = {
+              id: newId,
+              name: `${name.trim()} (${detected.name})`,
+              type: "Custom Spot",
               zone: detected.zone,
               lat: clickLat,
               lng: clickLng,
               subSections: []
             };
-            locations.push(matchedLoc);
-          }
-          const dateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-          let openRule = rules.find(r => r.locId === matchedLoc.id && dateStr >= r.start && dateStr <= r.end);
-          if (!openRule) {
+
+            locations.push(newLoc);
+
             const templateId = detected.zone === 'A' ? 10 : 11;
-            openRule = rules.find(r => r.locId === templateId && dateStr >= r.start && dateStr <= r.end) || { weapon: "General", target: "Statewide Rules", limit: "Statewide Limit", notes: "Check regulations." };
+            rules.forEach(r => {
+              if (r.locId === templateId) {
+                rules.push({ ...r, locId: newId });
+              }
+            });
+
+            updateAvailableList();
+            
+            const dateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+            const rule = rules.find(r => r.locId === newId && dateStr >= r.start && dateStr <= r.end) || rules[22];
+            selectLocation(newLoc, rule);
+            
+            toast.classList.remove('active');
+            alert(`"${name}" added successfully in Zone ${detected.zone}!`);
+          } else if (opt === '2') {
+            if (!selectedLocationId) {
+              alert("Please select a main hunt location on the left first to add this stand to!");
+              return;
+            }
+            const standName = prompt("Enter Name for this Stand (e.g., Ridge Oak Stand):");
+            if (!standName || standName.trim() === "") return;
+
+            const loc = locations.find(l => l.id === selectedLocationId);
+            if (loc) {
+              if (!loc.subSections) loc.subSections = [];
+              loc.subSections.push({
+                name: standName.trim(),
+                lat: clickLat,
+                lng: clickLng
+              });
+              const activeRule = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand).find(m => m.location.id === selectedLocationId).rule;
+              renderSubsections(loc, activeRule);
+              plotSubsections(loc, activeRule);
+              toast.classList.remove('active');
+              alert(`Stand "${standName}" successfully saved to ${loc.name}!`);
+            }
           }
-          selectLocation(matchedLoc, openRule);
-          toast.classList.remove('active');
         };
       });
     }
@@ -857,6 +1054,22 @@
             <a href="https://waterdata.usgs.gov/nwis/uv?site_no=${st.id}" target="_blank" style="font-size:10px; color:#00838f;">View USGS Station Page</a>
           </div>
         `);
+
+        marker.on('click', function() {
+          const detected = detectBoundaryAndZone(st.lat, st.lng);
+          const fakeLoc = {
+            id: st.id,
+            name: st.name,
+            type: "Water Station",
+            zone: detected.zone,
+            lat: st.lat,
+            lng: st.lng,
+            subSections: []
+          };
+          const dateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+          const rule = rules.find(r => r.locId === 10 && dateStr >= r.start && dateStr <= r.end) || rules[22];
+          selectLocation(fakeLoc, rule);
+        });
 
         gaugeMarkers.push(marker);
       });
@@ -1421,78 +1634,6 @@
       });
     }
 
-    function addCustomSpot() {
-      const name = document.getElementById('cust-name').value.trim();
-      const coordsInput = document.getElementById('cust-coords').value.trim();
-
-      const parsed = extractCoordinates(coordsInput);
-
-      if (!name || !parsed) {
-        alert("Enter a Spot Name and paste valid coordinates (e.g., 34.3411, -87.3386).");
-        return;
-      }
-
-      const detected = detectBoundaryAndZone(parsed.lat, parsed.lng);
-
-      const newId = locations.length + 300;
-      const newLoc = {
-        id: newId,
-        name: `${name} (${detected.name})`,
-        type: "Custom Spot",
-        zone: detected.zone,
-        lat: parsed.lat,
-        lng: parsed.lng,
-        subSections: []
-      };
-
-      locations.push(newLoc);
-
-      const templateId = detected.zone === 'A' ? 10 : 11;
-      rules.forEach(r => {
-        if (r.locId === templateId) {
-          rules.push({ ...r, locId: newId });
-        }
-      });
-
-      document.getElementById('cust-name').value = '';
-      document.getElementById('cust-coords').value = '';
-      if (tempClickMarker) {
-        map.removeLayer(tempClickMarker);
-        tempClickMarker = null;
-      }
-
-      updateAvailableList();
-      alert(`"${name}" added successfully in Zone ${detected.zone}!`);
-    }
-
-    // Dynamic stand placement
-    function addStandFromMapClick() {
-      if (clickLat === null || clickLng === null) {
-        alert("Click on the map first to mark your stand!");
-        return;
-      }
-      if (!selectedLocationId) {
-        alert("Please select a main hunt location on the left first to add this stand to!");
-        return;
-      }
-      const standName = prompt("Enter Name for this Map-Clicked Stand (e.g., Ridge Oak Stand):");
-      if (!standName || standName.trim() === "") return;
-
-      const loc = locations.find(l => l.id === selectedLocationId);
-      if (loc) {
-        if (!loc.subSections) loc.subSections = [];
-        loc.subSections.push({
-          name: standName.trim(),
-          lat: clickLat,
-          lng: clickLng
-        });
-        const activeRule = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand).find(m => m.location.id === selectedLocationId).rule;
-        renderSubsections(loc, activeRule);
-        plotSubsections(loc, activeRule);
-        alert(`Stand "${standName}" successfully saved!`);
-      }
-    }
-
     async function selectLocation(location, rule) {
       selectedLocationId = location.id;
       selectedSubsectionIndex = null;
@@ -1690,7 +1831,6 @@
       return { phase: phaseName, illumination: Math.round(illumination) };
     }
 
-    // Translate degrees to compass cardinals
     function getCardinal(deg) {
       const cardinals = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
       return cardinals[Math.round(((deg % 360) / 22.5)) % 16];
@@ -1700,6 +1840,9 @@
     function displayDashboard(location, rule, weather, subsection = null, waterData = null) {
       document.getElementById('db-loading').style.display = 'none';
       document.getElementById('db-content').style.display = 'block';
+
+      const targetLat = subsection ? subsection.lat : location.lat;
+      const targetLng = subsection ? subsection.lng : location.lng;
 
       if (subsection) {
         document.getElementById('db-title').innerText = `${location.name} - ${subsection.name}`;
@@ -1720,7 +1863,7 @@
 
         let stationLabelHTML = waterData.station.name;
         if (waterData.isRealTime === false) {
-          stationLabelHTML += ` <span style="color: var(--danger); font-size: 11px; font-weight: bold; display: block; margin-top: 4px;">?? Unable to retrieve current data. Showing last known baseline data below:</span>`;
+          stationLabelHTML += ` <span style="color: var(--danger); font-size: 11px; font-weight: bold; display: block; margin-top: 4px;">?? Unable to retrieve current data (showing last known baseline data)</span>`;
         }
         document.getElementById('water-station-name').innerHTML = stationLabelHTML;
 
@@ -1767,26 +1910,38 @@
         sourceBadge.innerText = "Source: Live Open-Meteo & USGS River APIs";
       }
 
-      const rawSunrise = weather.daily.sunrise[0];
-      const rawSunset = weather.daily.sunset[0];
+      // Dynamic Astronomical calculations for precise Sunrise & Sunset true to any past/present/future date
+      const selDate = selectedDate ? selectedDate : new Date();
+      const timezoneOffset = getAlabamaTimezoneOffset(selDate);
+      const sunTimes = calculateAstronomicalSunriseSunset(targetLat, targetLng, selDate, timezoneOffset);
 
-      const parseTimeString = (isoStr) => {
-        if (!isoStr) return "--:--";
-        return new Date(isoStr).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-      };
+      document.getElementById('sol-sunrise').innerText = sunTimes.sunrise;
+      document.getElementById('sol-sunset').innerText = sunTimes.sunset;
 
-      document.getElementById('sol-sunrise').innerText = parseTimeString(rawSunrise);
-      document.getElementById('sol-sunset').innerText = parseTimeString(rawSunset);
-
-      if (rawSunrise && rawSunset) {
-        const rise = new Date(rawSunrise);
-        const set = new Date(rawSunset);
-        rise.setMinutes(rise.getMinutes() - 30);
-        set.setMinutes(set.getMinutes() + 30);
-        document.getElementById('sol-shooting').innerText = `${rise.toLocaleTimeString('en-US', {hour: 'numeric', minute:'2-digit'}).replace(" ", "").toLowerCase()} to ${set.toLocaleTimeString('en-US', {hour: 'numeric', minute:'2-digit'}).replace(" ", "").toLowerCase()}`;
+      if (sunTimes.solarNoonMin !== null) {
+        const formatOffsetTime = (timeStr, offsetMins) => {
+          const [time, ampm] = timeStr.split(' ');
+          let [h, m] = time.split(':').map(Number);
+          if (ampm === 'PM' && h !== 12) h += 12;
+          if (ampm === 'AM' && h === 12) h = 0;
+          let totalMins = h * 60 + m + offsetMins;
+          if (totalMins < 0) totalMins += 1440;
+          totalMins = totalMins % 1440;
+          let hours = Math.floor(totalMins / 60);
+          let mins = totalMins % 60;
+          const newAmpm = hours >= 12 ? 'pm' : 'am';
+          hours = hours % 12;
+          if (hours === 0) hours = 12;
+          return `${hours}:${mins.toString().padStart(2, '0')}${newAmpm}`;
+        };
+        const legalStart = formatOffsetTime(sunTimes.sunrise, -30);
+        const legalEnd = formatOffsetTime(sunTimes.sunset, 30);
+        document.getElementById('sol-shooting').innerText = `${legalStart} to ${legalEnd}`;
+      } else {
+        document.getElementById('sol-shooting').innerText = "--:-- to --:--";
       }
 
-      const moon = calculateMoonPhase(selectedDate ? selectedDate : new Date());
+      const moon = calculateMoonPhase(selDate);
       document.getElementById('db-moon-text').innerText = `${moon.phase} (${moon.illumination}% lit)`;
 
       const morningIndex = 7; 
@@ -1822,6 +1977,37 @@
         `;
         tbody.appendChild(row);
       }
+
+      // Also dynamically update the floating mini weather overlay
+      const mwo = document.getElementById('map-weather-overlay');
+      const titleText = subsection ? `${location.name} - ${subsection.name}` : location.name;
+      document.getElementById('mwo-title').innerText = titleText;
+
+      let mwoHTML = `
+        <div style="font-weight: bold; color: var(--accent); margin-bottom: 6px;">${rule.weapon} (${rule.target || 'State limits'})</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px;">
+          <div>Sunrise: <strong>${sunTimes.sunrise}</strong></div>
+          <div>Sunset: <strong>${sunTimes.sunset}</strong></div>
+        </div>
+        <div style="font-size: 11px; font-weight: bold; color: var(--accent); margin-bottom: 4px;">7 AM Wind / Drift:</div>
+        <div style="background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; margin-bottom: 8px;">
+          Morning Wind: ${Math.round(windSpeed)} MPH from ${getCardinal(windDir)}<br>
+          <span style="color: var(--accent); font-weight: bold;">Scent Drift: towards ${getCardinal(scentDir)}</span>
+        </div>
+      `;
+      if (waterData) {
+        mwoHTML += `
+          <div style="font-size: 11px; font-weight: bold; color: var(--water-cyan); margin-bottom: 4px;">Water Levels:</div>
+          <div style="background: rgba(0, 188, 212, 0.08); border: 1px solid var(--water-cyan); padding: 8px; border-radius: 6px;">
+            Gage Height: <strong>${waterData.height.toFixed(2)} ft</strong> (${waterData.trend})<br>
+            Flow: <strong>${Math.round(waterData.cfs)} cfs</strong>
+          </div>
+        `;
+      }
+      document.getElementById('mwo-body').innerHTML = mwoHTML;
+      if (document.querySelector('.map-wrapper').classList.contains('fullscreen')) {
+        mwo.style.display = 'block';
+      }
     }
 
     function renderSubsections(location, rule) {
@@ -1856,7 +2042,7 @@
       const subName = prompt("Enter Name of hunting stand, blind, or ridge plot:");
       if (!subName || subName.trim() === "") return;
 
-      const coordsInput = prompt("Enter specific coordinates for this stand:", document.getElementById('cust-coords').value);
+      const coordsInput = prompt("Enter specific coordinates for this stand:", clickLat && clickLng ? `${clickLat.toFixed(5)}, ${clickLng.toFixed(5)}` : "");
       const parsed = extractCoordinates(coordsInput);
 
       const loc = locations.find(l => l.id === selectedLocationId);
@@ -1893,6 +2079,91 @@
       }
     }
 
+    // Fullscreen toggler
+    function toggleMapFullscreen() {
+      const wrapper = document.querySelector('.map-wrapper');
+      const isFullscreen = wrapper.classList.toggle('fullscreen');
+      const maxBtn = document.getElementById('map-maximize-btn');
+      const minBtn = document.getElementById('map-minimize-btn');
+      const weatherOverlay = document.getElementById('map-weather-overlay');
+
+      if (isFullscreen) {
+        maxBtn.style.display = 'none';
+        minBtn.style.display = 'block';
+        if (selectedLocationId) {
+          weatherOverlay.style.display = 'block';
+        }
+      } else {
+        maxBtn.style.display = 'block';
+        minBtn.style.display = 'none';
+        weatherOverlay.style.display = 'none';
+      }
+
+      setTimeout(() => {
+        if (map) map.invalidateSize();
+      }, 300);
+    }
+
+    // Geolocation Snapping Mechanism
+    function snapToGPS() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            userLat = position.coords.latitude;
+            userLng = position.coords.longitude;
+
+            const detected = detectBoundaryAndZone(userLat, userLng);
+            const userLocation = {
+              id: 9999,
+              name: `My Location (${detected.name})`,
+              type: "Current Location",
+              zone: detected.zone,
+              lat: userLat,
+              lng: userLng,
+              subSections: []
+            };
+
+            if (!locations.some(l => l.id === 9999)) {
+              locations.push(userLocation);
+            }
+
+            if (map) {
+              map.setView([userLat, userLng], 12);
+              L.marker([userLat, userLng], {
+                icon: L.divIcon({
+                  className: 'user-loc-icon',
+                  html: `<div style="background-color: #3498db; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px #3498db; animation: pulse 1.5s infinite;"></div>`,
+                  iconSize: [16, 16],
+                  iconAnchor: [8, 8]
+                })
+              }).addTo(map).bindPopup("You are here").openPopup();
+            }
+
+            const dateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+            const templateId = detected.zone === 'A' ? 10 : 11;
+            const openRule = rules.find(r => r.locId === templateId && dateStr >= r.start && dateStr <= r.end) || { weapon: "General", target: "Statewide Rules", limit: "Statewide Limit", notes: "Check regulations." };
+
+            selectLocation(userLocation, openRule);
+          },
+          (error) => {
+            alert("Geolocation failed or was denied: " + error.message);
+          }
+        );
+      } else {
+        alert("Geolocation is not supported by your browser.");
+      }
+    }
+
+    // Default Fallback Initializer
+    function initializeFallbackLocation(lat, lng) {
+      const detected = detectBoundaryAndZone(lat, lng);
+      const defaultLoc = locations.find(l => l.id === detected.id) || locations[10]; 
+      selectDateStep(selectedDate.getDate());
+      const dateStr = selectedDate.toISOString().split('T')[0];
+      const rule = rules.find(r => r.locId === defaultLoc.id && dateStr >= r.start && dateStr <= r.end) || rules[22];
+      selectLocation(defaultLoc, rule);
+    }
+
     window.onload = function() {
       calendarTargetDate = new Date();
       selectedDate = new Date();
@@ -1900,7 +2171,48 @@
       initMap();
       setLand('Public');
       fetchRealTimeGauges(); 
-      selectDateStep(selectedDate.getDate());
+
+      // Attempt browser geolocation startup sequence
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            userLat = position.coords.latitude;
+            userLng = position.coords.longitude;
+
+            const detected = detectBoundaryAndZone(userLat, userLng);
+            const userLocation = {
+              id: 9999, 
+              name: `My Location (${detected.name})`,
+              type: "Current Location",
+              zone: detected.zone,
+              lat: userLat,
+              lng: userLng,
+              subSections: []
+            };
+
+            if (!locations.some(l => l.id === 9999)) {
+              locations.push(userLocation);
+            }
+
+            if (map) {
+              map.setView([userLat, userLng], 9);
+            }
+
+            selectDateStep(selectedDate.getDate());
+            const dateStr = selectedDate.toISOString().split('T')[0];
+            const templateId = detected.zone === 'A' ? 10 : 11;
+            const openRule = rules.find(r => r.locId === templateId && dateStr >= r.start && dateStr <= r.end) || { weapon: "General", target: "Statewide Rules", limit: "Statewide Limit", notes: "Check regulations." };
+
+            selectLocation(userLocation, openRule);
+          },
+          (error) => {
+            console.warn("Geolocation blocked/failed. Initializing default Alabama center.", error);
+            initializeFallbackLocation(32.7794, -86.8287);
+          }
+        );
+      } else {
+        initializeFallbackLocation(32.7794, -86.8287);
+      }
     };
   </script>
 </body>
