@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Alabama Deer Hunting App v1.28 - Water Gauge & Topographic Weather Portal</title>
+  <title>Alabama Deer Hunting App v1.32 - Water Gauge & Topographic Weather Portal</title>
 
   <!-- Leaflet.js Interactive Mapping CDN -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
@@ -125,6 +125,20 @@
     .detection-toast.active { display: block; animation: fadeIn 0.3s; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
+    /* Form control inside toast overrides */
+    .toast-form-control {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--ink);
+      border-radius: 4px;
+      padding: 6px;
+      font-size: 11px;
+      width: 100%;
+      outline: none;
+      margin-top: 4px;
+    }
+    .toast-form-control:focus { border-color: var(--accent); }
+
     /* Dashboard UI */
     .dashboard-grid { display: flex; flex-direction: column; gap: 18px; }
     .solunar-panel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; background: var(--panel-light); padding: 16px; border-radius: 10px; border: 1px solid var(--border); }
@@ -185,7 +199,7 @@
 
   <header>
     <div>
-      <h1>Southeastern Deer Season & Scent Planner (v1.28)</h1>
+      <h1>Southeastern Deer Season & Scent Planner (v1.32)</h1>
       <p>Alabama public and private land boundaries, USGS water level gauges, topographic terrain, and microclimate wind matrices.</p>
     </div>
     <div style="font-size: 12px; color: var(--muted);">
@@ -300,7 +314,16 @@
         </div>
 
         <!-- Interactive Map Widget -->
-        <span class="step-title" style="font-size: 11px;">Legible Reference Map: Alabama Map & Bordering States (MS, TN, GA, FL)</span>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+          <span class="step-title" style="font-size: 11px;">Legible Reference Map: Alabama Map & Bordering States</span>
+
+          <!-- Show/Hide Historical Hunts Layer Trigger -->
+          <div style="display: flex; align-items: center; gap: 5px;">
+            <input type="checkbox" id="toggle-prev-hunts-chk" onchange="drawHuntsOnMap()" checked style="cursor: pointer;">
+            <label for="toggle-prev-hunts-chk" style="font-size: 10px; font-weight: bold; color: var(--accent); cursor: pointer; text-transform: uppercase;">Show Past Hunts</label>
+          </div>
+        </div>
+
         <div class="map-wrapper">
           <button id="map-maximize-btn" onclick="toggleMapFullscreen()" style="position: absolute; top: 10px; right: 10px; z-index: 10000; background: var(--panel); border: 1px solid var(--border); color: var(--accent); border-radius: 6px; padding: 6px 12px; font-weight: bold; cursor: pointer; font-size: 11px; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">Full Screen</button>
           <button id="map-minimize-btn" onclick="toggleMapFullscreen()" style="position: absolute; top: 10px; right: 10px; z-index: 10000; background: var(--panel); border: 1px solid var(--border); color: var(--accent); border-radius: 6px; padding: 6px 12px; font-weight: bold; cursor: pointer; font-size: 11px; display: none; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">Minimize</button>
@@ -324,19 +347,63 @@
             <strong id="dt-name" style="color: #fff; font-size:13px;">Boundary Detected</strong><br>
             <span id="dt-zone" style="font-size:11px; font-weight: bold; color: var(--accent);">State Zone: A</span><br>
             <p id="dt-desc" style="font-size:12px; color: var(--muted); margin: 4px 0 0;">Area specifics parsed.</p>
-            <button id="dt-button" style="margin-top: 8px; padding: 4px 10px; font-weight: bold; background-color: var(--green); color: white; border: none; border-radius: 4px; cursor: pointer; font-size:11px; width: 100%;">Get Local Weather</button>
-            <button id="dt-add-btn" style="margin-top: 6px; padding: 4px 10px; font-weight: bold; background-color: var(--accent); color: black; border: none; border-radius: 4px; cursor: pointer; font-size:11px; width: 100%;">Add Custom Lease / Stand Spot</button>
+
+            <!-- Standard Map Interaction Action Triggers -->
+            <div id="dt-main-actions" style="margin-top: 8px; display: flex; flex-direction: column; gap: 6px;">
+              <button id="dt-button" style="padding: 6px 10px; font-weight: bold; background-color: var(--green); color: white; border: none; border-radius: 4px; cursor: pointer; font-size:11px; width: 100%;">Get Local Weather</button>
+              <div style="display: flex; gap: 6px; width: 100%;">
+                <button id="dt-add-pin-btn" style="flex: 1; padding: 6px 10px; font-weight: bold; background-color: var(--accent); color: black; border: none; border-radius: 4px; cursor: pointer; font-size:11px;">Add Pin</button>
+                <button id="dt-add-hunt-btn" style="flex: 1; padding: 6px 10px; font-weight: bold; background-color: var(--blue-refuge); color: white; border: none; border-radius: 4px; cursor: pointer; font-size:11px;">Add Hunt</button>
+              </div>
+            </div>
+
+            <!-- PIN ADDITION FORM OVERLAY -->
+            <div id="dt-pin-form" style="display: none; margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px;">
+              <span style="font-size: 11px; font-weight: bold; color: var(--accent); text-transform: uppercase;">Save Spot as Pin</span>
+              <input type="text" id="pin-name-input" class="toast-form-control" placeholder="Pin Name (e.g. Back Ridge Oak)...">
+              <div style="display: flex; gap: 6px; align-items: center; margin-top: 6px;">
+                <span style="font-size: 11px; color: var(--muted);">Color:</span>
+                <button class="color-dot-btn selected" style="background-color: #e59a18;" onclick="selectPinColor('#e59a18', this)"></button>
+                <button class="color-dot-btn" style="background-color: #486a2f;" onclick="selectPinColor('#486a2f', this)"></button>
+                <button class="color-dot-btn" style="background-color: #3498db;" onclick="selectPinColor('#3498db', this)"></button>
+                <button class="color-dot-btn" style="background-color: #d94136;" onclick="selectPinColor('#d94136', this)"></button>
+              </div>
+              <textarea id="pin-notes-input" class="toast-form-control" placeholder="Notes about this stand/area..." style="height: 50px; resize: none;"></textarea>
+              <div style="display: flex; gap: 4px; margin-top: 6px;">
+                <button onclick="savePinFromMap()" style="flex: 1; background: var(--green); color: white; border: none; padding: 4px; font-size: 11px; font-weight: bold; border-radius: 4px; cursor: pointer;">Save Pin</button>
+                <button onclick="cancelToastForm()" style="flex: 1; background: var(--panel); border: 1px solid var(--border); color: var(--muted); padding: 4px; font-size: 11px; border-radius: 4px; cursor: pointer;">Cancel</button>
+              </div>
+            </div>
+
+            <!-- HUNT ADDITION FORM OVERLAY -->
+            <div id="dt-hunt-form" style="display: none; margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px;">
+              <span style="font-size: 11px; font-weight: bold; color: var(--blue-refuge); text-transform: uppercase;">Log Past Hunt Details</span>
+              <input type="text" id="hunt-name-input" class="toast-form-control" placeholder="Hunt Title (e.g. Opening Day Sit)...">
+              <input type="date" id="hunt-date-input" class="toast-form-control">
+              <div style="display: flex; gap: 6px; align-items: center; margin-top: 6px;">
+                <span style="font-size: 11px; color: var(--muted);">Color:</span>
+                <button class="color-dot-btn selected" style="background-color: #e59a18;" onclick="selectHuntColor('#e59a18', this)"></button>
+                <button class="color-dot-btn" style="background-color: #486a2f;" onclick="selectHuntColor('#486a2f', this)"></button>
+                <button class="color-dot-btn" style="background-color: #3498db;" onclick="selectHuntColor('#3498db', this)"></button>
+                <button class="color-dot-btn" style="background-color: #d94136;" onclick="selectHuntColor('#d94136', this)"></button>
+              </div>
+              <textarea id="hunt-notes-input" class="toast-form-control" placeholder="Sightings, buck details, activity..." style="height: 50px; resize: none;"></textarea>
+              <div style="display: flex; gap: 4px; margin-top: 6px;">
+                <button onclick="saveHuntFromMap()" style="flex: 1; background: var(--green); color: white; border: none; padding: 4px; font-size: 11px; font-weight: bold; border-radius: 4px; cursor: pointer;">Save Hunt</button>
+                <button onclick="cancelToastForm()" style="flex: 1; background: var(--panel); border: 1px solid var(--border); color: var(--muted); padding: 4px; font-size: 11px; border-radius: 4px; cursor: pointer;">Cancel</button>
+              </div>
+            </div>
+
           </div>
 
           <div id="leaflet-map"></div>
         </div>
 
-        <!-- Map Boundary Outlining Legend -->
+        <!-- Map Boundary Outlining Legend (Streamlined) -->
         <div class="map-legend">
-          <div><span class="legend-indicator" style="background: rgba(52, 152, 219, 0.4); border: 2px solid #3498db;"></span>Wheeler NWR (Federal)</div>
-          <div><span class="legend-indicator" style="background: rgba(30, 130, 76, 0.4); border: 2px solid #1e824c;"></span>Bankhead National Forest</div>
-          <div><span class="legend-indicator" style="background: rgba(39, 174, 96, 0.4); border: 2px solid #27ae60;"></span>Skyline WMA</div>
           <div><span class="legend-indicator" style="background: rgba(0, 188, 212, 0.8); border: 2px solid #00bcd4; border-radius: 50%;"></span>USGS River Water Gauge</div>
+          <div><span class="legend-indicator" style="background: #e59a18; border: 2px solid white; border-radius: 50%;"></span>Custom Pin Spot</div>
+          <div><span class="legend-indicator" style="background: #d94136; border: 2px solid white; border-radius: 50%;"></span>Logged Past Hunt (??)</div>
         </div>
       </div>
 
@@ -485,6 +552,10 @@
     let userLat = null;
     let userLng = null;
 
+    // Pin and Hunt Creation selections
+    let selectedPinColor = '#e59a18';
+    let selectedHuntColor = '#e59a18';
+
     // Track user-scheduled calendar events and hunting trips
     const calendarEvents = {
       "2026-11-14": [
@@ -505,6 +576,8 @@
     let mapMarkers = [];
     let standMarkers = [];
     let gaugeMarkers = [];
+    let huntMarkers = [];
+    let pinMarkers = [];
     let tempClickMarker = null;
     let clickLat = null;
     let clickLng = null;
@@ -540,6 +613,9 @@
       { id: 14, name: "Statewide Zone E", type: "Statewide", zone: "E", lat: 31.3323, lng: -88.1754, subSections: [] }
     ];
 
+    // Historical Hunts database loaded from localStorage
+    let historicalHunts = JSON.parse(localStorage.getItem('alabama_hunt_historical_hunts')) || [];
+
     // Official Deer Hunting Rules
     const rules = [
       { locId: 5, weapon: "Archery", land: "Either", start: "2026-10-01", end: "2027-01-15", target: "Hunter's Choice", limit: "1/day", notes: "Pre-Rut: Nov 10-23 - Peak Rut: Nov 24-Dec 8. Bankhead Stalk Land. No dog deer hunting." },
@@ -567,6 +643,10 @@
       { locId: 10, weapon: "Archery", land: "Either", start: "2026-10-15", end: "2027-02-10", target: "Hunter's Choice", limit: "Statewide limits" },
       { locId: 10, weapon: "Gun", land: "Private", start: "2026-11-21", end: "2027-02-10", target: "Hunter's Choice", limit: "Statewide limits" }
     ];
+
+    // Load saved custom pins from localStorage & push to locations on startup
+    const loadedPins = JSON.parse(localStorage.getItem('alabama_hunt_custom_pins')) || [];
+    locations.push(...loadedPins);
 
     // HAVERSINE DISTANCE CALCULATOR (Miles)
     function getDistanceMiles(lat1, lon1, lat2, lon2) {
@@ -676,8 +756,8 @@
         }
       } catch (e) {}
       const month = date.getMonth();
-      if (month > 2 && month < 11) return -5; // DST Central Time
-      return -6; // Standard Central Time
+      if (month > 2 && month < 11) return -5; 
+      return -6; 
     }
 
     // USGS Live Water API Fetcher with Fallback Simulation
@@ -880,28 +960,42 @@
       };
       L.control.layers(basemaps, null, { collapsed: false }).addTo(map);
 
-      // Draw the dark semi-transparent polygon mask over everything outside of active states
+      // Custom Simplified Alabama state boundary path for the contrast mask
+      const alabamaBoundary = [
+        [35.008, -88.200], // Northwest corner with TN
+        [35.008, -85.605], // Northeast corner with TN/GA
+        [34.500, -85.500], // GA border
+        [32.300, -84.892], // East border bend near Columbus
+        [32.000, -85.000], // Chattahoochee River
+        [30.250, -85.190], // Southeast corner near FL
+        [31.000, -85.190], // FL line corner
+        [31.000, -87.600], // FL line west
+        [30.220, -87.600], // Gulf Shore East
+        [30.220, -88.400], // Gulf Shore West
+        [31.000, -88.473], // Southwest corner
+        [32.000, -88.450], // West border midway
+        [35.008, -88.200]  // Back to Northwest corner
+      ];
+
+      // Draw the dark semi-transparent polygon mask over everything outside of Alabama
       const outerBoundary = [
         [-90, -180],
         [-90, 180],
         [90, 180],
         [-90, -180]
       ];
-      const activeStatesBox = [
-        [24.0, -92.5], // Southwest
-        [37.0, -92.5], // Northwest
-        [37.0, -79.5], // Northeast
-        [24.0, -79.5]  // Southeast
-      ];
-      L.polygon([outerBoundary, activeStatesBox], {
-        color: 'none',
+      L.polygon([outerBoundary, alabamaBoundary], {
+        color: '#28321a',
+        weight: 2,
         fillColor: '#050704',
-        fillOpacity: 0.65,
+        fillOpacity: 0.75,
         interactive: false
       }).addTo(map);
 
       drawBoundaries();
       drawWaterGaugesOnMap();
+      drawHuntsOnMap();
+      drawPinsOnMap(); // Persistent Pins layer loaded directly on startup
 
       map.on('click', function(e) {
         clickLat = e.latlng.lat;
@@ -928,12 +1022,14 @@
         document.getElementById('dt-zone').innerText = `State Season Zone: ${detected.zone} (${detected.type})`;
         document.getElementById('dt-desc').innerText = detected.desc;
 
+        // Reset overlays
+        cancelToastForm();
         toast.classList.add('active');
 
         // Get local weather for precise spot clicked!
         document.getElementById('dt-button').onclick = () => {
           let matchedLoc = locations.find(l => l.id === detected.id);
-          
+
           let clickLoc = {
             id: detected.id,
             name: `${detected.name} (Selected Spot)`,
@@ -950,80 +1046,249 @@
             const templateId = detected.zone === 'A' ? 10 : 11;
             openRule = rules.find(r => r.locId === templateId && dateStr >= r.start && dateStr <= r.end) || { weapon: "General", target: "Statewide Rules", limit: "Statewide Limit", notes: "Check regulations." };
           }
-          
+
           selectLocation(clickLoc, openRule);
           toast.classList.remove('active');
         };
 
-        // Add as Custom Lease/Stand Spot
-        document.getElementById('dt-add-btn').onclick = () => {
-          let menuText = "How would you like to save this coordinate?\n\n";
-          menuText += "Type '1' to add as a new Custom Lease / Hunting Spot\n";
-          if (selectedLocationId) {
-            const locName = locations.find(l => l.id === selectedLocationId)?.name || "selected area";
-            menuText += `Type '2' to add as a Stand inside "${locName}"`;
-          } else {
-            menuText += "Type '2' to add as a Stand (Please select a main location on the left first!)";
-          }
-          
-          const opt = prompt(menuText);
-          if (opt === '1') {
-            const name = prompt("Enter Name for this Custom Lease / Spot (e.g. Oak Ridge Lease):");
-            if (!name || name.trim() === "") return;
+        // Button Triggers for Pin / Hunt creation
+        document.getElementById('dt-add-pin-btn').onclick = () => {
+          document.getElementById('dt-main-actions').style.display = 'none';
+          document.getElementById('dt-pin-form').style.display = 'block';
+          document.getElementById('pin-name-input').focus();
+        };
 
-            const newId = locations.length + 300;
-            const newLoc = {
-              id: newId,
-              name: `${name.trim()} (${detected.name})`,
-              type: "Custom Spot",
-              zone: detected.zone,
-              lat: clickLat,
-              lng: clickLng,
-              subSections: []
-            };
+        document.getElementById('dt-add-hunt-btn').onclick = () => {
+          document.getElementById('dt-main-actions').style.display = 'none';
+          document.getElementById('dt-hunt-form').style.display = 'block';
 
-            locations.push(newLoc);
-
-            const templateId = detected.zone === 'A' ? 10 : 11;
-            rules.forEach(r => {
-              if (r.locId === templateId) {
-                rules.push({ ...r, locId: newId });
-              }
-            });
-
-            updateAvailableList();
-            
-            const dateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-            const rule = rules.find(r => r.locId === newId && dateStr >= r.start && dateStr <= r.end) || rules[22];
-            selectLocation(newLoc, rule);
-            
-            toast.classList.remove('active');
-            alert(`"${name}" added successfully in Zone ${detected.zone}!`);
-          } else if (opt === '2') {
-            if (!selectedLocationId) {
-              alert("Please select a main hunt location on the left first to add this stand to!");
-              return;
-            }
-            const standName = prompt("Enter Name for this Stand (e.g., Ridge Oak Stand):");
-            if (!standName || standName.trim() === "") return;
-
-            const loc = locations.find(l => l.id === selectedLocationId);
-            if (loc) {
-              if (!loc.subSections) loc.subSections = [];
-              loc.subSections.push({
-                name: standName.trim(),
-                lat: clickLat,
-                lng: clickLng
-              });
-              const activeRule = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand).find(m => m.location.id === selectedLocationId).rule;
-              renderSubsections(loc, activeRule);
-              plotSubsections(loc, activeRule);
-              toast.classList.remove('active');
-              alert(`Stand "${standName}" successfully saved to ${loc.name}!`);
-            }
-          }
+          // Auto-fill selected calendar date
+          const dateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+          document.getElementById('hunt-date-input').value = dateStr;
+          document.getElementById('hunt-name-input').focus();
         };
       });
+    }
+
+    // Interactive custom form helper transitions
+    function cancelToastForm() {
+      document.getElementById('dt-pin-form').style.display = 'none';
+      document.getElementById('dt-hunt-form').style.display = 'none';
+      document.getElementById('dt-main-actions').style.display = 'flex';
+    }
+
+    function selectPinColor(color, element) {
+      selectedPinColor = color;
+      element.parentNode.querySelectorAll('.color-dot-btn').forEach(btn => btn.classList.remove('selected'));
+      element.classList.add('selected');
+    }
+
+    function selectHuntColor(color, element) {
+      selectedHuntColor = color;
+      element.parentNode.querySelectorAll('.color-dot-btn').forEach(btn => btn.classList.remove('selected'));
+      element.classList.add('selected');
+    }
+
+    // Save Map Clicks as Permanent Area Pins
+    function savePinFromMap() {
+      const name = document.getElementById('pin-name-input').value.trim();
+      const notes = document.getElementById('pin-notes-input').value.trim();
+      if (!name) {
+        alert("Please enter a name for the Pin.");
+        return;
+      }
+
+      const detected = detectBoundaryAndZone(clickLat, clickLng);
+      const newId = 'pin_' + Date.now();
+      const newLoc = {
+        id: newId,
+        name: `${name} (Pin - ${detected.name})`,
+        type: "Custom Pin",
+        zone: detected.zone,
+        lat: clickLat,
+        lng: clickLng,
+        color: selectedPinColor,
+        notes: notes,
+        isPin: true,
+        parentId: detected.id,
+        subSections: []
+      };
+
+      // Push custom spot to locations stack
+      locations.push(newLoc);
+
+      // Persist to local custom pins
+      const customPins = JSON.parse(localStorage.getItem('alabama_hunt_custom_pins')) || [];
+      customPins.push(newLoc);
+      localStorage.setItem('alabama_hunt_custom_pins', JSON.stringify(customPins));
+
+      // Reset
+      document.getElementById('pin-name-input').value = '';
+      document.getElementById('pin-notes-input').value = '';
+      cancelToastForm();
+      document.getElementById('detection-toast').classList.remove('active');
+      if (tempClickMarker) {
+        map.removeLayer(tempClickMarker);
+        tempClickMarker = null;
+      }
+
+      updateAvailableList();
+      drawPinsOnMap(); // Ensure pin is rendered permanently on map right away
+
+      // Retrieve underlying active regulations
+      const templateId = detected.zone === 'A' ? 10 : 11;
+      const rule = rules.find(r => r.locId === templateId) || rules[22];
+      selectLocation(newLoc, rule);
+
+      alert(`Pin "${name}" saved successfully!`);
+    }
+
+    // Log Past Sits/Hunts
+    function saveHuntFromMap() {
+      const name = document.getElementById('hunt-name-input').value.trim();
+      const notes = document.getElementById('hunt-notes-input').value.trim();
+      const dateStr = document.getElementById('hunt-date-input').value;
+      if (!name || !dateStr) {
+        alert("Please enter a hunt title and select a date.");
+        return;
+      }
+
+      // Pre-calculate meteorological variables for chosen sit date
+      const selectedDateVal = new Date(dateStr + "T12:00:00");
+      const weather = generateSimulatedWeather(clickLat, clickLng, selectedDateVal);
+      const temp = weather.hourly.temperature_2m[7]; // 7 AM weather
+      const windSpeed = weather.hourly.wind_speed_10m[7];
+      const windDir = weather.hourly.wind_direction_10m[7];
+
+      const newHunt = {
+        id: 'hunt_' + Date.now(),
+        name: name,
+        date: dateStr,
+        lat: clickLat,
+        lng: clickLng,
+        color: selectedHuntColor,
+        notes: notes,
+        temp: temp,
+        windSpeed: windSpeed,
+        windDir: windDir
+      };
+
+      historicalHunts.push(newHunt);
+      localStorage.setItem('alabama_hunt_historical_hunts', JSON.stringify(historicalHunts));
+
+      // Reset
+      document.getElementById('hunt-name-input').value = '';
+      document.getElementById('hunt-notes-input').value = '';
+      cancelToastForm();
+      document.getElementById('detection-toast').classList.remove('active');
+      if (tempClickMarker) {
+        map.removeLayer(tempClickMarker);
+        tempClickMarker = null;
+      }
+
+      drawHuntsOnMap();
+      alert(`Hunt "${name}" logged successfully!`);
+    }
+
+    // DRAW PERMANENT CUSTOM PINS
+    function drawPinsOnMap() {
+      if (!map) return;
+      pinMarkers.forEach(m => map.removeLayer(m));
+      pinMarkers = [];
+
+      const customPins = locations.filter(l => l.isPin);
+      customPins.forEach(loc => {
+        const marker = L.marker([loc.lat, loc.lng], {
+          icon: L.divIcon({
+            className: 'custom-pin-icon',
+            html: `<div style="background-color: ${loc.color || 'var(--accent)'}; width: 18px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 6px rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; font-weight: bold;">??</div>`,
+            iconSize: [18, 16],
+            iconAnchor: [9, 8]
+          })
+        }).addTo(map);
+
+        marker.bindPopup(`
+          <div style="color: #111; font-family: sans-serif; min-width: 150px;">
+            <strong style="font-size:13px; color: #3498db;">Custom Spot Pin</strong><br>
+            <strong style="font-size:13px;">${loc.name}</strong><br>
+            <span style="font-size:11px; color:#555;">Zone ${loc.zone}</span><br>
+            ${loc.notes ? `<span style="font-size:11px; color:#333; display:block; margin-top:4px;"><i>${loc.notes}</i></span><br>` : ''}
+            <button onclick="selectLocationById('${loc.id}')" style="margin-top:8px; padding:4px 8px; font-weight:bold; background-color: #486a2f; color:white; border:none; border-radius:4px; cursor:pointer; font-size:10px; width:100%;">Select Spot</button>
+            <button onclick="deletePin('${loc.id}')" style="margin-top:4px; padding:4px 8px; font-weight:bold; background-color: var(--danger); color:white; border:none; border-radius:4px; cursor:pointer; font-size:10px; width: 100%;">Delete Pin</button>
+          </div>
+        `);
+
+        // Force regulatory selection on direct pin clicks
+        marker.on('click', function() {
+          selectLocationById(loc.id);
+        });
+
+        pinMarkers.push(marker);
+      });
+    }
+
+    // DRAW HISTORICAL HUNTS LAYER
+    function drawHuntsOnMap() {
+      if (!map) return;
+      huntMarkers.forEach(m => map.removeLayer(m));
+      huntMarkers = [];
+
+      const showHunts = document.getElementById('toggle-prev-hunts-chk').checked;
+      if (!showHunts) return;
+
+      historicalHunts.forEach(hunt => {
+        const marker = L.marker([hunt.lat, hunt.lng], {
+          icon: L.divIcon({
+            className: 'historical-hunt-icon',
+            html: `<div style="background-color: ${hunt.color}; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 6px rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; font-size: 9px; color: #fff; font-weight: bold;">??</div>`,
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
+          })
+        }).addTo(map);
+
+        marker.bindPopup(`
+          <div style="color: #111; font-family: sans-serif; min-width: 180px;">
+            <strong style="font-size:13px; color: var(--accent);">${hunt.name}</strong><br>
+            <span style="font-size:11px; color:#555;">Date: <strong>${hunt.date}</strong></span><br>
+            <span style="font-size:11px; color:#333;">Temp: <strong>${hunt.temp} �F</strong></span><br>
+            <span style="font-size:11px; color:#333;">Wind: <strong>${hunt.windSpeed} mph from ${getCardinal(hunt.windDir)}</strong></span><br>
+            <span style="font-size:11px; color:#333;">Notes: <i>${hunt.notes || 'None'}</i></span><br>
+            <button onclick="deleteHunt('${hunt.id}')" style="margin-top:8px; padding:4px 8px; font-weight:bold; background-color: var(--danger); color:white; border:none; border-radius:4px; cursor:pointer; font-size:10px; width:100%;">Delete Hunt</button>
+          </div>
+        `);
+
+        huntMarkers.push(marker);
+      });
+    }
+
+    // Delete custom items
+    function deleteHunt(id) {
+      historicalHunts = historicalHunts.filter(h => h.id !== id);
+      localStorage.setItem('alabama_hunt_historical_hunts', JSON.stringify(historicalHunts));
+      drawHuntsOnMap();
+    }
+
+    function deletePin(id) {
+      if (confirm("Are you sure you want to delete this custom Pin?")) {
+        // Remove from memory
+        const locIdx = locations.findIndex(l => l.id === id);
+        if (locIdx !== -1) {
+          locations.splice(locIdx, 1);
+        }
+
+        // Remove from storage
+        let customPins = JSON.parse(localStorage.getItem('alabama_hunt_custom_pins')) || [];
+        customPins = customPins.filter(p => p.id !== id);
+        localStorage.setItem('alabama_hunt_custom_pins', JSON.stringify(customPins));
+
+        if (selectedLocationId === id) {
+          resetDashboard();
+          selectedLocationId = null;
+        }
+
+        updateAvailableList();
+        drawPinsOnMap(); // Re-plot remaining custom pins
+      }
     }
 
     // DRAW WATER GAUGES ON MAP
@@ -1075,24 +1340,9 @@
       });
     }
 
-    // Outlining Boundaries on Map
+    // Outlining Boundaries on Map (Visually removed per user request)
     function drawBoundaries() {
-      if (!map) return;
-
-      L.polygon([[34.68, -87.12], [34.68, -86.68], [34.45, -86.68], [34.45, -87.12]], 
-        {color: '#3498db', fillColor: '#3498db', fillOpacity: 0.12, weight: 3}).addTo(map).bindTooltip("Wheeler National Wildlife Refuge Boundary", {sticky: true});
-
-      L.polygon([[34.48, -87.62], [34.48, -87.12], [34.12, -87.12], [34.12, -87.62]], 
-        {color: '#1e824c', fillColor: '#1e824c', fillOpacity: 0.12, weight: 3}).addTo(map).bindTooltip("Bankhead National Forest and Black Warrior WMA", {sticky: true});
-
-      L.polygon([[35.02, -86.38], [35.02, -85.92], [34.78, -85.92], [34.78, -86.38]], 
-        {color: '#27ae60', fillColor: '#27ae60', fillOpacity: 0.12, weight: 3}).addTo(map).bindTooltip("James D. Martin - Skyline WMA Boundary", {sticky: true});
-
-      L.polygon([[33.98, -85.95], [33.85, -85.45], [33.12, -85.95], [33.20, -86.25]], 
-        {color: '#8b4513', fillColor: '#8b4513', fillOpacity: 0.12, weight: 3}).addTo(map).bindTooltip("Talladega National Forest (Shoal Creek and Talladega)", {sticky: true});
-
-      L.polygon([[33.18, -87.55], [33.18, -87.12], [32.78, -87.12], [32.78, -87.55]], 
-        {color: '#6e3f19', fillColor: '#6e3f19', fillOpacity: 0.12, weight: 3}).addTo(map).bindTooltip("Talladega National Forest (Oakmulgee)", {sticky: true});
+      // Inaccurate polygons deactivated visually. Coordinates algorithm continues working inside background code.
     }
 
     // Redraw markers
@@ -1105,11 +1355,15 @@
         const loc = match.location;
         const marker = L.marker([loc.lat, loc.lng]).addTo(map);
 
+        const deleteMapPopupBtn = loc.isPin ? 
+          `<button onclick="deletePin('${loc.id}')" style="margin-top:8px; padding:4px 8px; font-weight:bold; background-color: var(--danger); color:white; border:none; border-radius:4px; cursor:pointer; font-size:10px; width: 100%;">Delete Pin</button>` : 
+          `<button onclick="selectLocationById('${loc.id}')" style="margin-top:8px; padding:4px 8px; font-weight:bold; background-color: #486a2f; color:white; border:none; border-radius:4px; cursor:pointer; font-size:10px; width:100%;">Select Area</button>`;
+
         marker.bindPopup(`
           <div style="color: #111; font-family: sans-serif; min-width: 140px;">
             <strong style="font-size:13px;">${loc.name}</strong><br>
             <span style="font-size:11px; color:#555;">Zone ${loc.zone} - ${match.rule.weapon}</span><br>
-            <button onclick="selectLocationById(${loc.id})" style="margin-top:8px; padding:4px 8px; font-weight:bold; background-color: #486a2f; color:white; border:none; border-radius:4px; cursor:pointer; font-size:10px;">Select Area</button>
+            ${deleteMapPopupBtn}
           </div>
         `);
 
@@ -1147,7 +1401,7 @@
             <div style="color: #111; font-family: sans-serif; font-size: 12px; min-width: 140px;">
               <strong>Stand: ${sub.name}</strong><br>
               <span style="font-size:10px; color:#555;">Lat: ${sub.lat.toFixed(5)}, Lon: ${sub.lng.toFixed(5)}</span><br>
-              <button onclick="selectSubsection(${location.id}, ${index})" style="margin-top:6px; padding:4px 8px; font-weight:bold; background-color: #e59a18; color:black; border:none; border-radius:4px; cursor:pointer; font-size:10px;">Select and Load Weather</button>
+              <button onclick="selectSubsection(${location.id}, ${index})" style="margin-top:6px; padding:4px 8px; font-weight:bold; background-color: #e59a18; color:black; border:none; border-radius:4px; cursor:pointer; font-size:10px; width: 100%;">Select and Load Weather</button>
             </div>
           `);
 
@@ -1161,13 +1415,17 @@
     }
 
     function selectLocationById(id) {
-      const loc = locations.find(l => l.id === id);
+      const loc = locations.find(l => l.id == id);
       if (!loc) return;
-      const openMatches = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand);
-      const match = openMatches.find(m => m.location.id === id);
-      if (match) {
-        selectLocation(loc, match.rule);
+
+      const dateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+      const ruleCheckId = loc.isPin ? loc.parentId : loc.id;
+      let rule = rules.find(r => r.locId === ruleCheckId && dateStr >= r.start && dateStr <= r.end);
+      if (!rule) {
+        const templateId = loc.zone === 'A' ? 10 : 11;
+        rule = rules.find(r => r.locId === templateId && dateStr >= r.start && dateStr <= r.end) || { weapon: "General", target: "Statewide Rules", limit: "Statewide Limit", notes: "Check regulations." };
       }
+      selectLocation(loc, rule);
     }
 
     function hideLocation(id) {
@@ -1179,6 +1437,7 @@
       }
     }
 
+    // Restores default locations list states
     function restoreAllHidden() {
       hiddenLocationIds.clear();
       updateAvailableList();
@@ -1308,13 +1567,13 @@
       }
 
       const dateStr = selectedDate.toISOString().split('T')[0];
-      const linkState = document.getElementById('link-hunt-state-chk').checked;
+      const MathState = document.getElementById('link-hunt-state-chk').checked;
 
       let linkedLoc = null;
       let linkedWeapon = null;
       let linkedLand = null;
 
-      if (linkState && selectedLocationId) {
+      if (MathState && selectedLocationId) {
         linkedLoc = selectedLocationId;
         linkedWeapon = selectedWeapon;
         linkedLand = selectedLand;
@@ -1397,11 +1656,11 @@
 
       updateAvailableList();
 
-      const matchedLoc = locations.find(l => l.id === ev.locationId);
+      const matchedLoc = locations.find(l => l.id == ev.locationId);
       if (matchedLoc) {
         const openMatches = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand);
-        let matchRule = openMatches.find(m => m.location.id === ev.locationId);
-        const rule = matchRule ? matchRule.rule : rules.find(r => r.locId === ev.locationId);
+        let matchRule = openMatches.find(m => m.location.id == ev.locationId);
+        const rule = matchRule ? matchRule.rule : rules.find(r => r.locId == ev.locationId);
 
         selectLocation(matchedLoc, rule);
       }
@@ -1441,7 +1700,7 @@
         list.innerHTML = dayEvents.map((ev, idx) => `
           <div style="margin-bottom: 6px; background: var(--panel); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); border-left: 4px solid ${ev.color};">
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-              <span>[Trip] <strong>${ev.text}</strong></span>
+              <span>?? <strong>${ev.text}</strong></span>
               <div style="display:flex; gap: 4px;">
                 <button onclick="startEditEvent('${dateStr}', ${idx})" style="background: none; border: none; color: var(--accent); cursor: pointer; font-size: 11px; padding: 2px;">Edit</button>
                 <button onclick="deleteEvent('${dateStr}', ${idx})" style="background: none; border: none; color: var(--danger); cursor: pointer; font-size: 11px; padding: 2px;">Delete</button>
@@ -1449,7 +1708,7 @@
             </div>
             ${ev.locationId ? `
               <div style="margin-top:6px; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 4px 6px; border-radius: 4px;">
-                <span style="font-size: 10px; color: var(--muted);">Linked to ${locations.find(l => l.id === ev.locationId)?.name || 'Custom Area'}</span>
+                <span style="font-size: 10px; color: var(--muted);">Linked to ${locations.find(l => l.id == ev.locationId)?.name || 'Custom Area'}</span>
                 <button onclick="loadSavedEventHuntData('${dateStr}', ${idx})" style="background: var(--green); border: none; color: white; border-radius: 3px; font-size: 9px; padding: 2px 6px; cursor: pointer; font-weight: bold;">Quick Load Hunt</button>
               </div>
             ` : ''}
@@ -1538,17 +1797,20 @@
       const results = [];
 
       locations.forEach(loc => {
-        if ((loc.id === 3 || loc.id === 4) && date.getDay() === 0) return;
+        // Since a Pin represents a new spot within an already huntable parent area, match rule check to parent boundaries
+        const ruleCheckId = loc.isPin ? loc.parentId : loc.id;
+
+        if ((ruleCheckId === 3 || ruleCheckId === 4) && date.getDay() === 0) return;
 
         if (weapon === 'Archery' && loc.type === 'WMA') {
           const closedByConflict = rules.some(r => 
-            r.locId === loc.id && r.weapon === 'Youth' && dateString >= r.start && dateString <= r.end
+            r.locId === ruleCheckId && r.weapon === 'Youth' && dateString >= r.start && dateString <= r.end
           );
           if (closedByConflict) return;
         }
 
         const matched = rules.filter(r => {
-          if (r.locId !== loc.id) return false;
+          if (r.locId !== ruleCheckId) return false;
           if (dateString < r.start || dateString > r.end) return false;
           if (r.land !== 'Either' && r.land !== land) return false;
 
@@ -1611,6 +1873,10 @@
           item.classList.add('selected');
         }
 
+        const deleteButton = match.location.isPin ? 
+          `<button onclick="event.stopPropagation(); deletePin('${match.location.id}')" style="background: rgba(217,65,54,0.15); border: 1px solid var(--danger); color: var(--danger); border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 10px;" title="Delete pin">Delete</button>` : 
+          `<button onclick="event.stopPropagation(); hideLocation(${match.location.id})" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 10px;" title="Minimize area">Hide</button>`;
+
         item.innerHTML = `
           <div style="flex: 1; display: flex; justify-content: space-between; align-items: center;">
             <div>
@@ -1620,8 +1886,8 @@
               </div>
             </div>
             <div style="display: flex; align-items: center; gap: 8px;">
-              <span class="badge ${match.location.type === 'Refuge' ? 'refuge' : 'open'}">${match.location.type}</span>
-              <button onclick="event.stopPropagation(); hideLocation(${match.location.id})" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 10px;" title="Minimize area">Hide</button>
+              <span class="badge ${match.location.type === 'Refuge' ? 'refuge' : 'open'}" style="${match.location.isPin ? 'background: ' + match.location.color + '; color:#000;' : ''}">${match.location.type}</span>
+              ${deleteButton}
             </div>
           </div>
         `;
@@ -1653,7 +1919,7 @@
     async function selectSubsection(locId, subIdx) {
       selectedSubsectionIndex = subIdx;
 
-      const loc = locations.find(l => l.id === locId);
+      const loc = locations.find(l => l.id == locId);
       const sub = loc.subSections[subIdx];
 
       document.querySelectorAll('.subsection-item').forEach((el, index) => {
@@ -1666,7 +1932,7 @@
       }
 
       const openMatches = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand);
-      const match = openMatches.find(m => m.location.id === locId);
+      const match = openMatches.find(m => m.location.id == locId);
       const rule = match ? match.rule : { weapon: "General", target: "State limits", limit: "1/day" };
 
       loadWeatherAndRender(loc, rule, sub);
@@ -2028,7 +2294,7 @@
 
         div.innerHTML = `
           <div style="flex: 1;" onclick="selectSubsection(${location.id}, ${index})">
-            [Stand] <strong>${sub.name}</strong> 
+            Stand <strong>${sub.name}</strong> 
             <span style="font-size:11px; color:var(--muted); margin-left:8px;">(${sub.lat.toFixed(5)}, ${sub.lng.toFixed(5)})</span>
           </div>
           <button onclick="event.stopPropagation(); removeSubsection(${location.id}, ${index})">Remove</button>
@@ -2045,7 +2311,7 @@
       const coordsInput = prompt("Enter specific coordinates for this stand:", clickLat && clickLng ? `${clickLat.toFixed(5)}, ${clickLng.toFixed(5)}` : "");
       const parsed = extractCoordinates(coordsInput);
 
-      const loc = locations.find(l => l.id === selectedLocationId);
+      const loc = locations.find(l => l.id == selectedLocationId);
       if (loc) {
         if (!loc.subSections) loc.subSections = [];
 
@@ -2057,7 +2323,7 @@
           lng: finalCoords.lng
         });
 
-        const activeRule = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand).find(m => m.location.id === selectedLocationId).rule;
+        const activeRule = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand).find(m => m.location.id == selectedLocationId).rule;
         renderSubsections(loc, activeRule);
         plotSubsections(loc, activeRule);
         alert(`Stand "${subName}" was added!`);
@@ -2065,12 +2331,12 @@
     }
 
     function removeSubsection(locId, index) {
-      const loc = locations.find(l => l.id === locId);
+      const loc = locations.find(l => l.id == locId);
       if (loc && loc.subSections) {
         loc.subSections.splice(index, 1);
         selectedSubsectionIndex = null;
         const openMatches = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand);
-        const match = openMatches.find(m => m.location.id === locId);
+        const match = openMatches.find(m => m.location.id == locId);
         const rule = match ? match.rule : { weapon: "General", target: "State limits", limit: "1/day" };
 
         renderSubsections(loc, rule);
@@ -2157,10 +2423,10 @@
     // Default Fallback Initializer
     function initializeFallbackLocation(lat, lng) {
       const detected = detectBoundaryAndZone(lat, lng);
-      const defaultLoc = locations.find(l => l.id === detected.id) || locations[10]; 
+      const defaultLoc = locations.find(l => l.id == detected.id) || locations[10]; 
       selectDateStep(selectedDate.getDate());
       const dateStr = selectedDate.toISOString().split('T')[0];
-      const rule = rules.find(r => r.locId === defaultLoc.id && dateStr >= r.start && dateStr <= r.end) || rules[22];
+      const rule = rules.find(r => r.locId == defaultLoc.id && dateStr >= r.start && dateStr <= r.end) || rules[22];
       selectLocation(defaultLoc, rule);
     }
 
