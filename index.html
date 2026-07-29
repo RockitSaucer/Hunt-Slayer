@@ -1,0 +1,1907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alabama Deer Hunting App v1.24 - Water Gauge & Topographic Weather Portal</title>
+
+  <!-- Leaflet.js Interactive Mapping CDN -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <style>
+    :root {
+      --bg: #0d0f0c;
+      --panel: #161a12;
+      --panel-light: #20261a;
+      --accent: #e59a18;
+      --accent-hover: #fcae2a;
+      --green: #486a2f;
+      --green-hover: #5d8e3d;
+      --ink: #f0f4ee;
+      --muted: #8d9c84;
+      --border: #28321a;
+      --danger: #d94136;
+      --blue-refuge: #3498db;
+      --water-cyan: #00bcd4;
+    }
+
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--ink); margin: 0; padding: 20px; line-height: 1.5; }
+    .container { max-width: 1250px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1.3fr; gap: 20px; }
+
+    @media (max-width: 950px) {
+      .container { grid-template-columns: 1fr; }
+    }
+
+    h1, h2, h3, h4 { margin-top: 0; color: #fff; letter-spacing: -0.01em; }
+    header { grid-column: 1 / -1; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-end; }
+    header p { margin: 5px 0 0; color: var(--muted); font-size: 14px; }
+    header a { color: var(--accent); text-decoration: none; }
+    header a:hover { text-decoration: underline; }
+
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+
+    /* Sequential Step Styling */
+    .step-section { margin-bottom: 25px; transition: all 0.3s ease; }
+    .step-section.locked { opacity: 0.15; pointer-events: none; filter: grayscale(90%); }
+    .step-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .step-num { background: var(--border); color: var(--muted); width: 24px; height: 24px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 12px; font-weight: bold; }
+    .active .step-num { background: var(--accent); color: #000; }
+    .step-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+    .active .step-title { color: #fff; }
+
+    /* Calendar Element */
+    .calendar-container { background: var(--panel-light); border-radius: 10px; padding: 15px; border: 1px solid var(--border); }
+    .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .calendar-header button { background: var(--green); color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; }
+    .calendar-header button:hover { background: var(--green-hover); }
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; }
+    .cal-day-name { font-weight: 700; color: var(--muted); font-size: 11px; padding: 5px 0; text-transform: uppercase; }
+    .cal-cell { padding: 8px 4px; border-radius: 6px; cursor: pointer; background: var(--panel); font-size: 13px; border: 1px solid transparent; transition: all 0.15s; font-variant-numeric: tabular-nums; display: flex; flex-direction: column; justify-content: space-between; align-items: center; min-height: 52px; position: relative; }
+    .cal-cell:hover { background: var(--border); }
+    .cal-cell.selected { background: var(--accent); color: #000; font-weight: bold; transform: scale(1.05); }
+    .cal-cell.empty { background: transparent; cursor: default; }
+
+    /* Event dots on calendar cells */
+    .cal-dots-container { display: flex; gap: 3px; justify-content: center; align-items: center; margin-top: 4px; width: 100%; height: 8px; }
+    .cal-event-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+
+    /* Calendar Events Box */
+    .events-box { background: var(--panel-light); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-top: 12px; display: none; }
+    .event-form-row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; background: rgba(0,0,0,0.15); padding: 10px; border-radius: 8px; border: 1px solid var(--border); }
+    .event-color-selector { display: flex; gap: 6px; align-items: center; }
+    .color-dot-btn { width: 18px; height: 18px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; position: relative; }
+    .color-dot-btn.selected { border-color: #fff; transform: scale(1.1); }
+
+    /* Filters and Buttons */
+    .btn-group { display: flex; gap: 8px; }
+    .filter-btn { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel-light); color: var(--ink); cursor: pointer; font-size: 13px; font-weight: 600; text-align: center; transition: all 0.25s ease; }
+    .filter-btn:hover { border-color: var(--muted); }
+    .filter-btn.active { background: var(--green); border-color: var(--green-hover); color: white; }
+
+    /* Dynamic Land Tab Sizing & Ordering */
+    .land-btn-group { display: flex; align-items: center; gap: 8px; transition: all 0.25s ease; }
+
+    /* Locations List */
+    .location-list { display: flex; flex-direction: column; gap: 10px; max-height: 250px; overflow-y: auto; padding-right: 5px; margin-bottom: 15px; }
+    .location-item { padding: 12px; border-radius: 8px; background: var(--panel-light); border: 1px solid var(--border); cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.15s; }
+    .location-item:hover { border-color: var(--muted); transform: translateX(3px); }
+    .location-item.selected { border-left: 5px solid var(--accent); background: rgba(229, 154, 24, 0.08); }
+    .location-item .badge { font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; }
+    .badge.open { background: var(--green); color: white; }
+    .badge.refuge { background: var(--blue-refuge); color: white; }
+
+    /* Custom Spots Form */
+    .form-row { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 10px; }
+    .form-control { background: var(--panel-light); border: 1px solid var(--border); border-radius: 6px; padding: 10px; color: var(--ink); font-size: 13px; outline: none; width: 100%; }
+    .form-control:focus { border-color: var(--accent); }
+    .form-btn { background: var(--green); color: white; border: none; border-radius: 6px; padding: 10px 14px; font-weight: bold; cursor: pointer; font-size: 13px; }
+    .form-btn:hover { background: var(--green-hover); }
+
+    /* Map Widget */
+    .map-wrapper { margin-top: 15px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); position: relative; }
+    #leaflet-map { height: 440px; width: 100%; background: #e5e3df; }
+
+    /* Detection Toast Alert */
+    .detection-toast { background: var(--panel-light); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-top: 10px; display: none; border-left: 5px solid var(--accent); }
+    .detection-toast.active { display: block; animation: fadeIn 0.3s; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Dashboard UI */
+    .dashboard-grid { display: flex; flex-direction: column; gap: 18px; }
+    .solunar-panel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; background: var(--panel-light); padding: 16px; border-radius: 10px; border: 1px solid var(--border); }
+    .solunar-item { font-size: 13px; color: var(--muted); }
+    .solunar-item strong { display: block; color: #fff; font-size: 16px; margin-top: 4px; }
+
+    /* Water Level Panel */
+    .water-panel { background: rgba(0, 188, 212, 0.08); border: 1px solid var(--water-cyan); border-radius: 10px; padding: 14px; }
+    .water-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 8px; text-align: center; }
+    .water-card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+    .water-card span { font-size: 11px; color: var(--muted); display: block; text-transform: uppercase; }
+    .water-card strong { font-size: 15px; color: #fff; display: block; margin-top: 2px; }
+    .flooding-tag { color: var(--danger) !important; font-weight: 900 !important; font-size: 16px !important; animation: blink 1.2s infinite; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    /* Compass Element */
+    .compass-container { display: flex; align-items: center; gap: 20px; background: var(--panel-light); padding: 16px; border-radius: 10px; border: 1px solid var(--border); }
+    .compass { width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--border); position: relative; display: flex; justify-content: center; align-items: center; font-weight: bold; background: var(--panel); flex-shrink: 0; }
+    .compass::before { content: 'N'; position: absolute; top: 4px; font-size: 10px; color: var(--danger); }
+    .compass::after { content: 'S'; position: absolute; bottom: 4px; font-size: 10px; color: var(--muted); }
+    .compass-needle { width: 4px; height: 70px; background: linear-gradient(to bottom, var(--accent) 50%, var(--muted) 50%); position: absolute; transform-origin: 50% 50%; transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .compass-label { flex: 1; }
+    .scent-warn { color: var(--accent); font-weight: bold; margin-top: 4px; font-size: 14px; }
+
+    /* Hourly Forecast */
+    .hourly-table-container { overflow-x: auto; margin-top: 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-light); }
+    .hourly-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; min-width: 480px; }
+    .hourly-table th, .hourly-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .hourly-table th { background: rgba(0,0,0,0.2); color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .hourly-table tr:last-child td { border-bottom: 0; }
+    .hourly-table tr:hover { background: rgba(255,255,255,0.02); }
+
+    /* Subsections list */
+    .subsections-box { background: var(--panel-light); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-top: 10px; }
+    .subsections-title { font-weight: bold; font-size: 13px; color: var(--muted); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .subsection-item { background: var(--panel); border: 1px solid var(--border); padding: 8px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s; }
+    .subsection-item:hover { border-color: var(--accent); background: rgba(255,255,255,0.03); }
+    .subsection-item.selected { border-color: var(--accent); background: rgba(229, 154, 24, 0.05); }
+    .subsection-item button { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 11px; padding: 5px; }
+    .subsection-item button:hover { text-decoration: underline; }
+
+    /* Legend elements for the Map */
+    .map-legend { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-size: 11px; color: var(--ink); line-height: 1.4; display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 10px; }
+    .legend-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+
+    /* Loading Spinner */
+    .loader { border: 4px solid var(--panel-light); border-top: 4px solid var(--accent); border-radius: 50%; width: 35px; height: 35px; animation: spin 1s linear infinite; margin: 30px auto; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div>
+      <h1>Southeastern Deer Season & Scent Planner (v1.24)</h1>
+      <p>Alabama public and private land boundaries, USGS water level gauges, topographic terrain, and microclimate wind matrices.</p>
+    </div>
+    <div style="font-size: 12px; color: var(--muted);">
+      Source Data: <a href="https://waterdata.usgs.gov/state/Alabama/" target="_blank">USGS Water Data for Alabama</a> | <a href="https://www.outdooralabama.com/seasons-and-bag-limits/deer-season" target="_blank">Alabama Outdoor Regulations</a>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- LEFT BAR: CALENDAR AND SEQUENTIAL PLANNING FLOW -->
+    <div class="card">
+
+      <!-- STEP 1: CALENDAR (Always Active) -->
+      <div class="step-section active" id="step-1-section">
+        <div class="step-header">
+          <div class="step-num">1</div>
+          <span class="step-title">Select Hunt Date</span>
+        </div>
+        <div class="calendar-container">
+          <div class="calendar-header">
+            <button onclick="changeMonth(-1)">&lt; Prev</button>
+            <h3 id="calendar-month-year" style="margin:0; font-size: 15px;">November 2026</h3>
+            <button onclick="changeMonth(1)">Next &gt;</button>
+          </div>
+          <div class="calendar-grid" id="calendar-grid">
+            <!-- Calendar Injection -->
+          </div>
+        </div>
+
+        <!-- Trips and Events Logging Box -->
+        <div class="events-box" id="calendar-events-section">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span id="events-title-date" style="font-size: 11px; font-weight: bold; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em;">Trips and Events</span>
+            <button id="add-event-tab-btn" onclick="setEventFormVisibility(true)" style="background: var(--panel); border: 1px solid var(--border); color: var(--accent); padding: 3px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px; transition: all 0.2s;">
+              + Add Event
+            </button>
+          </div>
+
+          <!-- Add / Edit Event Form -->
+          <div class="event-form-row" id="event-form-container" style="display: none;">
+            <input type="text" id="event-title-input" class="form-control" placeholder="Trip Detail (e.g. Piney stand, Ridge cabin)..." style="padding: 6px 10px; font-size: 12px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+              <!-- Color picker chips -->
+              <div class="event-color-selector">
+                <span style="font-size: 11px; color: var(--muted); margin-right: 4px;">Color Code:</span>
+                <button class="color-dot-btn selected" style="background-color: #e59a18;" onclick="selectEventColor('#e59a18', this)" title="Orange"></button>
+                <button class="color-dot-btn" style="background-color: #486a2f;" onclick="selectEventColor('#486a2f', this)" title="Green"></button>
+                <button class="color-dot-btn" style="background-color: #3498db;" onclick="selectEventColor('#3498db', this)" title="Blue"></button>
+                <button class="color-dot-btn" style="background-color: #d94136;" onclick="selectEventColor('#d94136', this)" title="Red"></button>
+              </div>
+
+              <!-- Link state option -->
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <input type="checkbox" id="link-hunt-state-chk" checked style="cursor:pointer;">
+                <label for="link-hunt-state-chk" style="font-size: 11px; color: var(--muted); cursor:pointer;" title="Saves your selected land area, weapons, and rules along with this trip for quick reloading">Link Current Hunt State</label>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 6px; margin-top: 6px;">
+              <button id="save-event-btn" onclick="saveEvent()" style="flex: 1; background: var(--accent); border: none; color: #000; font-weight: bold; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;">Add Event</button>
+              <button id="cancel-edit-btn" onclick="clearEventForm()" style="background: var(--panel); border: 1px solid var(--border); color: var(--muted); padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; display: none;">Cancel</button>
+            </div>
+          </div>
+
+          <div id="calendar-events-list" style="font-size: 12px; color: var(--ink);">
+
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: WEAPON SELECTION -->
+      <div class="step-section locked" id="step-2-section">
+        <div class="step-header">
+          <div class="step-num">2</div>
+          <span class="step-title">Choose Your Weapon</span>
+        </div>
+        <div class="btn-group">
+          <button class="filter-btn" id="wpn-either" onclick="setWeapon('Either')">Either weapon</button>
+          <button class="filter-btn" id="wpn-archery" onclick="setWeapon('Archery')">Archery</button>
+          <button class="filter-btn" id="wpn-gun" onclick="setWeapon('Gun')">Gun</button>
+          <button class="filter-btn" id="wpn-primitive" onclick="setWeapon('Primitive')">Primitive</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: AVAILABLE HUNTING AREAS -->
+      <div class="step-section locked" id="step-3-section">
+        <div class="step-header">
+          <div class="step-num">3</div>
+          <span class="step-title" id="list-label">Available Hunt Locations</span>
+        </div>
+
+        <div class="filter-group" style="margin-bottom: 12px;">
+          <div class="land-btn-group" id="land-btn-group">
+            <button class="filter-btn active" id="land-public" style="order: 1; flex: 1; font-size: 13px; padding: 10px; opacity: 1;" onclick="setLand('Public')">Public Land</button>
+            <button class="filter-btn" id="land-private" style="order: 2; flex: 0 0 auto; font-size: 10px; padding: 4px 10px; opacity: 0.6;" onclick="setLand('Private')">Private Land</button>
+          </div>
+        </div>
+
+        <!-- Visibility / Minimization Filters -->
+        <div style="display: flex; gap: 8px; justify-content: space-between; align-items: center; margin-bottom: 10px; background: rgba(255,255,255,0.02); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);">
+          <div style="display: flex; gap: 6px;">
+            <button class="filter-btn active" id="v-toggle-all" style="padding: 4px 8px; font-size: 11px;" onclick="setViewFilterMode('all')">Show All</button>
+            <button class="filter-btn" id="v-toggle-sel" style="padding: 4px 8px; font-size: 11px;" onclick="setViewFilterMode('selected')">Selected Only</button>
+          </div>
+          <button id="restore-hidden-btn" onclick="restoreAllHidden()" style="background: var(--green); border: none; color: #fff; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; display: none;">Restore Hidden</button>
+          <span id="hidden-count-label" style="font-size: 11px; color: var(--muted);"></span>
+        </div>
+
+        <div class="location-list" id="location-list">
+          <!-- Locations Injection -->
+        </div>
+
+        <!-- Interactive Map Widget -->
+        <span class="step-title" style="font-size: 11px;">Legible Reference Map: Roads, USGS Water Gauges & Topography</span>
+        <div class="map-wrapper">
+          <div id="leaflet-map"></div>
+        </div>
+
+        <!-- Map Boundary Outlining Legend -->
+        <div class="map-legend">
+          <div><span class="legend-indicator" style="background: rgba(52, 152, 219, 0.4); border: 2px solid #3498db;"></span>Wheeler NWR (Federal)</div>
+          <div><span class="legend-indicator" style="background: rgba(30, 130, 76, 0.4); border: 2px solid #1e824c;"></span>Bankhead National Forest</div>
+          <div><span class="legend-indicator" style="background: rgba(39, 174, 96, 0.4); border: 2px solid #27ae60;"></span>Skyline WMA</div>
+          <div><span class="legend-indicator" style="background: rgba(0, 188, 212, 0.8); border: 2px solid #00bcd4; border-radius: 50%;"></span>USGS River Water Gauge</div>
+        </div>
+
+        <!-- Automatic Boundary/Zone Detection Toast -->
+        <div class="detection-toast" id="detection-toast">
+          <strong id="dt-name" style="color: #fff; font-size:13px;">Boundary Detected</strong><br>
+          <span id="dt-zone" style="font-size:11px; font-weight: bold; color: var(--accent);">State Zone: A</span><br>
+          <p id="dt-desc" style="font-size:12px; color: var(--muted); margin: 4px 0 0;">Area specifics parsed.</p>
+          <button id="dt-button" style="margin-top: 8px; padding: 4px 10px; font-weight: bold; background-color: var(--green); color: white; border: none; border-radius: 4px; cursor: pointer; font-size:11px;">Load Weather and Regulations</button>
+        </div>
+
+        <!-- Custom Lease / Area Builder -->
+        <div style="margin-top: 15px; border-top: 1px solid var(--border); padding-top: 15px;">
+          <span class="step-title" style="font-size: 11px;">Add Custom Lease / Stand Spot</span>
+          <div class="form-row">
+            <input type="text" id="cust-name" class="form-control" placeholder="e.g. Piney Ridge Lease">
+            <input type="text" id="cust-coords" class="form-control" placeholder="Coordinates Lat, Lon (or click map to populate)">
+          </div>
+          <div style="margin-top: 8px; display: flex; gap: 8px;">
+            <button class="form-btn" style="flex:1;" onclick="addCustomSpot()">Add Location and Detect Zone</button>
+            <button class="form-btn" style="flex:1; background-color: var(--accent);" id="add-map-stand-btn" onclick="addStandFromMapClick()" disabled>Add Last Map Click as Stand</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT BAR: LIVE WEATHER & SOLAR MAP DASHBOARD -->
+    <div class="card" style="min-height: 500px;" id="dashboard-container">
+      <div id="db-blank" style="text-align:center; padding:120px 0; color:var(--muted);">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:15px; color: var(--border);">
+          <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m11.314 11.314l.707.707M12 8a4 4 0 100 8 4 4 0 000-8z" stroke-linecap="round"/>
+        </svg>
+        <h3>Step 4: Weather & Water Dashboard</h3>
+        <p>Follow the steps on the left. Once you choose an open hunting area, click a map pin, or select a saved event, live coordinates, weather forecasts, USGS river water levels, sunrise/sunset, and scent vectors will generate here.</p>
+      </div>
+
+      <div id="db-loading" style="display:none; text-align:center; padding:120px 0;">
+        <div class="loader"></div>
+        <p>Syncing microclimate forecasts & USGS river stream gauges...</p>
+      </div>
+
+      <div id="db-content" style="display:none;" class="dashboard-grid">
+        <div>
+          <h2 id="db-title" style="margin-bottom:2px;">Location Name</h2>
+          <span id="db-reg-summary" style="font-weight:bold; color:var(--accent);">Season Open Rules</span>
+          <p id="db-subtitle" style="color:var(--muted); font-size:12.5px; margin: 5px 0 0;">Area specifics</p>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 0;">
+
+        <!-- Bulletins/Directives Box -->
+        <div id="db-rules-box" style="background: rgba(229, 154, 24, 0.08); border-left:4px solid var(--accent); padding:12px; border-radius:6px; font-size:13px;">
+          <strong>Field Directives:</strong> <span id="db-rules-text">Active regulations info.</span>
+        </div>
+
+        <!-- Custom Subsections Module -->
+        <div class="subsections-box">
+          <div class="subsections-title">
+            <span>LOCATION SUBSECTIONS and STANDS</span>
+            <span style="color:var(--accent); cursor:pointer; font-weight: bold;" onclick="promptAddSubsection()">+ Add Stand / Subsection</span>
+          </div>
+          <div id="subsections-list-container">
+            <!-- Subsections dynamic list -->
+          </div>
+          <div style="font-size: 11px; color: var(--muted); margin-top: 6px; border-top: 1px dashed var(--border); padding-top: 6px;">
+            Click a stand above or click its orange pin directly on the map to inspect weather/solunar data for that coordinate.
+          </div>
+        </div>
+
+        <!-- Dedicated Water Level Panel -->
+        <div id="water-gauge-container" class="water-panel" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <strong style="color: var(--water-cyan); font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;">
+              USGS Water Level & River Streamflow (<span id="water-dist-label">&lt; 2 miles</span>)
+            </strong>
+            <a id="usgs-link-btn" href="https://waterdata.usgs.gov/state/Alabama/" target="_blank" style="color: var(--water-cyan); font-size: 11px; text-decoration: underline;">USGS Station Portal</a>
+          </div>
+          <div style="font-size: 12px; color: #fff; margin-top: 4px; font-weight: bold;" id="water-station-name">Station Name</div>
+
+          <!-- Warning Display Bar -->
+          <div id="water-date-warning" style="color: var(--danger); font-weight: bold; font-size: 11px; margin-top: 4px; display: none;"></div>
+
+          <div class="water-grid">
+            <div class="water-card">
+              <span>Gage Height</span>
+              <strong id="water-height-val">-- ft</strong>
+            </div>
+            <div class="water-card">
+              <span>Water Trend</span>
+              <strong id="water-trend-val">Steady</strong>
+            </div>
+            <div class="water-card">
+              <span>Flood Stage</span>
+              <strong id="water-flood-status">Normal</strong>
+            </div>
+            <div class="water-card">
+              <span>Discharge Flow</span>
+              <strong id="water-flow-val">-- cfs</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Solunar Astronomy Panel -->
+        <div>
+          <span class="step-title" style="font-size: 11px;">Solunar Metrics and Legal Time Limits</span>
+          <div class="solunar-panel">
+            <div class="solunar-item">Sunrise AM<strong id="sol-sunrise">--:--</strong></div>
+            <div class="solunar-item">Sunset PM<strong id="sol-sunset">--:--</strong></div>
+            <div class="solunar-item">Legal Shooting Hours<strong id="sol-shooting">--:--</strong></div>
+            <div class="solunar-item" style="grid-column: span 3; background: var(--panel); border: 1px solid var(--border); padding: 10px; border-radius: 6px; margin-top: 5px;">
+              Moon Phase Index: <strong id="db-moon-text" style="display:inline; margin-left:5px; font-size:14px; color:var(--accent);">Unknown</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scent Drift Graphics -->
+        <div>
+          <span class="step-title" style="font-size: 11px;">Scent Drift Vector Analysis</span>
+          <div class="compass-container">
+            <div class="compass">
+              <div class="compass-needle" id="compass-needle"></div>
+            </div>
+            <div class="compass-label">
+              <div style="font-size:16px; font-weight:bold;" id="wind-speed-text">Checking vectors...</div>
+              <div class="scent-warn" id="scent-drift-text">Scent drift direction calculated.</div>
+              <div id="weather-source-badge" style="font-size: 10px; color: var(--muted); margin-top: 3px;">Source: Open-Meteo</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hourly Forecast Grid -->
+        <div>
+          <span class="step-title" style="font-size: 11px;">Hourly Meteorological Forecast (Daylight Hours)</span>
+          <div class="hourly-table-container">
+            <table class="hourly-table">
+              <thead>
+                <tr>
+                  <th>Hour</th>
+                  <th>Temp</th>
+                  <th>Rain%</th>
+                  <th>Precip Depth</th>
+                  <th>Wind Matrix</th>
+                </tr>
+              </thead>
+              <tbody id="hourly-rows">
+                <!-- Data injection point -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // State Tracking variables for multi-step flow
+    let selectedDate = null;
+    let selectedWeapon = null;
+    let selectedLand = 'Public';
+    let selectedLocationId = null;
+    let selectedSubsectionIndex = null;
+    let viewFilterMode = 'all'; 
+    let currentSelectedColor = '#e59a18'; 
+    let editingEventId = null; 
+
+    // Track user-scheduled calendar events and hunting trips
+    const calendarEvents = {
+      "2026-11-14": [
+        { id: "e1", text: "Bankhead Camp Opening", color: "#e59a18", locationId: 5, weapon: "Primitive", land: "Public" }
+      ],
+      "2026-11-21": [
+        { id: "e2", text: "Talladega Gun Hunt Trip", color: "#d94136", locationId: 6, weapon: "Gun", land: "Public" }
+      ]
+    };
+
+    // Track minimized/hidden locations (User preference)
+    const hiddenLocationIds = new Set();
+
+    let calendarTargetDate = new Date(); 
+
+    // Leaflet Map Object and Markers
+    let map = null;
+    let mapMarkers = [];
+    let standMarkers = [];
+    let gaugeMarkers = [];
+    let tempClickMarker = null;
+    let clickLat = null;
+    let clickLng = null;
+
+    // Real-time USGS Alabama Water Stations Database
+    const waterGauges = [
+      { id: "02450250", name: "Sipsey Fork near Jasper (Bankhead)", lat: 34.2386, lng: -87.3012, floodStage: 12.0, baseHeight: 4.8, cfs: 320, trend: "Rising" },
+      { id: "02465000", name: "Black Warrior River at Tuscaloosa", lat: 33.2111, lng: -87.5689, floodStage: 46.0, baseHeight: 18.2, cfs: 4200, trend: "Steady" },
+      { id: "03575500", name: "Tennessee River at Decatur (Wheeler Refuge)", lat: 34.6150, lng: -86.9780, floodStage: 18.0, baseHeight: 11.4, cfs: 18500, trend: "Falling" },
+      { id: "03574500", name: "Paint Rock River near Woodville (Skyline WMA)", lat: 34.6225, lng: -86.2736, floodStage: 16.0, baseHeight: 2.2, cfs: 227, trend: "Steady" },
+      { id: "02404400", name: "Choccolocco Creek near Jenifer (Talladega Forest)", lat: 33.5786, lng: -85.9328, floodStage: 11.0, baseHeight: 3.2, cfs: 210, trend: "Steady" },
+      { id: "02424000", name: "Cahaba River at Centreville (Oakmulgee District)", lat: 32.9431, lng: -87.1422, floodStage: 23.0, baseHeight: 6.1, cfs: 890, trend: "Falling" },
+      { id: "03575100", name: "Flint River near Brownsboro", lat: 34.7483, lng: -86.4453, floodStage: 15.0, baseHeight: 3.2, cfs: 350, trend: "Steady" }, 
+      { id: "02450000", name: "Mulberry Fork near Garden City", lat: 34.0153, lng: -86.7514, floodStage: 11.0, baseHeight: 2.8, cfs: 280, trend: "Steady" }
+    ];
+
+    // Alabama Hunting Locations Database
+    const locations = [
+      { id: 1, name: "Black Warrior WMA", type: "WMA", zone: "B", lat: 34.3411, lng: -87.3386, subSections: [{ name: "Northeast Ridge Clear", lat: 34.3551, lng: -87.3186 }, { name: "Turkey Creek Bottom", lat: 34.3221, lng: -87.3512 }] },
+      { id: 2, name: "James D. Martin - Skyline WMA", type: "WMA", zone: "A", lat: 34.9189, lng: -86.1364, subSections: [{ name: "Coon Dog Hollow Stand", lat: 34.9250, lng: -86.1200 }, { name: "Mill Creek Gate", lat: 34.9010, lng: -86.1550 }] },
+      { id: 3, name: "Wheeler North Wildlife Refuge", type: "Refuge", zone: "A", lat: 34.6200, lng: -86.8500, subSections: [{ name: "Swancott Blind", lat: 34.6231, lng: -86.8710 }] },
+      { id: 4, name: "Wheeler South Wildlife Refuge", type: "Refuge", zone: "C", lat: 34.4800, lng: -87.0500, subSections: [{ name: "Flint Creek Stand 1", lat: 34.4821, lng: -87.0710 }] },
+      { id: 5, name: "Bankhead National Forest (Stalk Land)", type: "Forest", zone: "D", lat: 34.3021, lng: -87.3511, subSections: [{ name: "Double Springs Stand", lat: 34.2900, lng: -87.3800 }] },
+      { id: 6, name: "Talladega National Forest (Talladega)", type: "Forest", zone: "A", lat: 33.6111, lng: -85.8211, subSections: [{ name: "Shoal Creek Stand", lat: 33.6800, lng: -85.7500 }] },
+      { id: 7, name: "Talladega National Forest (Oakmulgee)", type: "Forest", zone: "A", lat: 32.9411, lng: -87.3511, subSections: [{ name: "Oakmulgee Creek Ridge", lat: 32.9800, lng: -87.3000 }] },
+      { id: 8, name: "Smith Lake / Club (Public)", type: "Club", zone: "C", lat: 34.1500, lng: -87.2000, subSections: [] },
+      { id: 9, name: "Smith Lake / Club (Private)", type: "Club", zone: "C", lat: 34.1200, lng: -87.1500, subSections: [] },
+      { id: 15, name: "Flint Tract Public Land", type: "Public", zone: "A", lat: 34.5100, lng: -86.9100, subSections: [] },
+      { id: 10, name: "Statewide Zone A", type: "Statewide", zone: "A", lat: 32.7794, lng: -86.8287, subSections: [] },
+      { id: 11, name: "Statewide Zone B", type: "Statewide", zone: "B", lat: 31.9564, lng: -86.1264, subSections: [] },
+      { id: 12, name: "Statewide Zone C", type: "Statewide", zone: "C", lat: 31.8152, lng: -85.1661, subSections: [] },
+      { id: 13, name: "Statewide Zone D", type: "Statewide", zone: "D", lat: 34.1865, lng: -87.8931, subSections: [] },
+      { id: 14, name: "Statewide Zone E", type: "Statewide", zone: "E", lat: 31.3323, lng: -88.1754, subSections: [] }
+    ];
+
+    // Official Deer Hunting Rules
+    const rules = [
+      { locId: 5, weapon: "Archery", land: "Either", start: "2026-10-01", end: "2027-01-15", target: "Hunter's Choice", limit: "1/day", notes: "Pre-Rut: Nov 10-23 - Peak Rut: Nov 24-Dec 8. Bankhead Stalk Land. No dog deer hunting." },
+      { locId: 5, weapon: "Archery", land: "Either", start: "2027-01-16", end: "2027-01-27", target: "Antlered Bucks Only", limit: "1 Buck/day" },
+      { locId: 5, weapon: "Gun", land: "Either", start: "2026-11-21", end: "2027-01-27", target: "Bucks Only", limit: "1/day", notes: "Stalk Hunting Only. For Lawrence county portion (Zone C), gun season runs until Feb 10." },
+      { locId: 5, weapon: "Primitive", land: "Either", start: "2026-11-16", end: "2026-11-20", target: "Hunter's Choice", limit: "1/day" },
+      { locId: 1, weapon: "Archery", land: "Either", start: "2026-10-01", end: "2027-01-15", target: "Hunter's Choice", limit: "1/day", notes: "Zone B antler restriction: 4+ points on one side. Closed to regular hunting on youth gun days." },
+      { locId: 1, weapon: "Archery", land: "Either", start: "2027-01-16", end: "2027-01-27", target: "Antlered Bucks Only", limit: "1 Buck/day" },
+      { locId: 1, weapon: "Youth", land: "Either", start: "2026-10-31", end: "2026-11-01", target: "Hunter's Choice", limit: "1/day", check: true, notes: "Youth Gun Hunt. Mandatory check-in. Note: WMA archery closed." },
+      { locId: 1, weapon: "Primitive", land: "Either", start: "2026-11-02", end: "2026-11-06", target: "Hunter's Choice", limit: "1/day" },
+      { locId: 1, weapon: "Gun", land: "Either", start: "2026-11-07", end: "2026-11-08", target: "Hunter's Choice", limit: "1/day", check: true, notes: "Gun Doe Hunt split. Mandatory check station." },
+      { locId: 1, weapon: "Gun", land: "Either", start: "2026-11-19", end: "2026-11-22", target: "Bucks Only", limit: "1/day", notes: "Zone B Gun Bucks hunt. Zone B antler rule applies." },
+      { locId: 2, weapon: "Archery", land: "Either", start: "2026-10-15", end: "2027-02-10", target: "Hunter's Choice", limit: "1/day", notes: "Antler restriction: 3+ points on one side." },
+      { locId: 2, weapon: "Youth", land: "Either", start: "2026-11-14", end: "2026-11-15", target: "Hunter's Choice", limit: "1/day" },
+      { locId: 2, weapon: "Primitive", land: "Either", start: "2026-11-16", end: "2026-11-20", target: "Hunter's Choice", limit: "1/day" },
+      { locId: 2, weapon: "Gun", land: "Either", start: "2026-12-10", end: "2026-12-13", target: "Bucks Only", limit: "1/day" },
+      { locId: 3, weapon: "Archery", land: "Either", start: "2026-10-15", end: "2027-02-15", target: "Either Sex", limit: "State limits", notes: "Wheeler North Wildlife Refuge. Archery Only. NO SUNDAY HUNTING." },
+      { locId: 4, weapon: "Archery", land: "Either", start: "2026-10-15", end: "2027-02-10", target: "Either Sex", limit: "State limits", notes: "Wheeler South Wildlife Refuge. Archery Only. NO SUNDAY HUNTING." },
+      { locId: 6, weapon: "Archery", land: "Either", start: "2026-10-15", end: "2027-02-10", target: "Hunter's Choice", limit: "State limits" },
+      { locId: 6, weapon: "Gun", land: "Either", start: "2026-11-21", end: "2027-02-10", target: "Bucks Only", limit: "1/day" },
+      { locId: 7, weapon: "Archery", land: "Either", start: "2026-10-15", end: "2027-02-10", target: "Hunter's Choice", limit: "State limits" },
+      { locId: 7, weapon: "Gun", land: "Either", start: "2026-11-21", end: "2027-02-10", target: "Bucks Only", limit: "1/day" },
+      { locId: 8, weapon: "Gun", land: "Public", start: "2026-11-21", end: "2027-02-10", target: "Bucks Only", limit: "1/day" },
+      { locId: 9, weapon: "Gun", land: "Private", start: "2026-11-21", end: "2027-02-10", target: "Bucks Only", limit: "1/day" },
+      { locId: 10, weapon: "Archery", land: "Either", start: "2026-10-15", end: "2027-02-10", target: "Hunter's Choice", limit: "Statewide limits" },
+      { locId: 10, weapon: "Gun", land: "Private", start: "2026-11-21", end: "2027-02-10", target: "Hunter's Choice", limit: "Statewide limits" }
+    ];
+
+    // HAVERSINE DISTANCE CALCULATOR (Miles)
+    function getDistanceMiles(lat1, lon1, lat2, lon2) {
+      const R = 3958.8; // Radius of Earth in miles
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    }
+
+    // HELPER TO EXTRACT LATEST VALID RECORD (Solves sensor array indexing & multi-sensor sorting mismatches)
+    function getLatestUSGSValue(valArray) {
+      if (!valArray || valArray.length === 0) return null;
+      let latestEntry = null;
+      let latestTime = new Date(0);
+      for (let i = 0; i < valArray.length; i++) {
+        const entry = valArray[i];
+        const val = parseFloat(entry.value);
+        const time = new Date(entry.dateTime);
+        if (!isNaN(val) && val > -900) {
+          if (time >= latestTime) {
+            latestTime = time;
+            latestEntry = val;
+          }
+        }
+      }
+      return latestEntry;
+    }
+
+    // USGS Live Water API Fetcher with Fallback Simulation (v1.24 Fixes stream series tracking)
+    async function fetchWaterDataForStation(station) {
+      const url = `https://waterservices.usgs.gov/nwis/iv/?format=json&sites=${station.id}&parameterCd=00065,00060`;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("USGS API error");
+        const data = await res.json();
+        const timeSeries = data.value.timeSeries;
+
+        let gageHeight = null;
+        let dischargeCfs = null;
+
+        if (timeSeries && timeSeries.length > 0) {
+          timeSeries.forEach(ts => {
+            const paramCode = ts.variable.variableCode[0].value;
+            if (ts.values && ts.values[0] && ts.values[0].value && ts.values[0].value.length > 0) {
+              const valArray = ts.values[0].value;
+              const latestVal = getLatestUSGSValue(valArray);
+
+              if (latestVal !== null) {
+                if (paramCode === "00065") gageHeight = latestVal;
+                if (paramCode === "00060") dischargeCfs = latestVal;
+              }
+            }
+          });
+        }
+
+        if (gageHeight === null) {
+          throw new Error("Missing gage height in stream dataset");
+        }
+
+        return {
+          height: gageHeight,
+          cfs: dischargeCfs !== null ? dischargeCfs : station.cfs,
+          trend: station.trend,
+          isFlooding: gageHeight >= station.floodStage,
+          isRealTime: true
+        };
+      } catch (e) {
+        // Fallback baseline cached values + error state flag
+        return {
+          height: station.baseHeight,
+          cfs: station.cfs,
+          trend: station.trend,
+          isFlooding: station.baseHeight >= station.floodStage,
+          isRealTime: false
+        };
+      }
+    }
+
+    // Dynamic Live Fetching of All Water Gauges on Map (v1.24 Precise scanner)
+    async function fetchRealTimeGauges() {
+      const siteIds = waterGauges.map(g => g.id).join(',');
+      const url = `https://waterservices.usgs.gov/nwis/iv/?format=json&sites=${siteIds}&parameterCd=00065,00060`;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Batch USGS failure");
+        const data = await res.json();
+        const timeSeries = data.value.timeSeries;
+
+        if (timeSeries && timeSeries.length > 0) {
+          timeSeries.forEach(ts => {
+            const siteId = ts.sourceInfo.siteCode[0].value;
+            const paramCode = ts.variable.variableCode[0].value;
+            if (ts.values && ts.values[0] && ts.values[0].value && ts.values[0].value.length > 0) {
+              const valArray = ts.values[0].value;
+              const latestVal = getLatestUSGSValue(valArray);
+
+              const gauge = waterGauges.find(g => g.id === siteId);
+              if (gauge && latestVal !== null) {
+                if (paramCode === "00065") {
+                  gauge.baseHeight = latestVal;
+                } else if (paramCode === "00060") {
+                  gauge.cfs = latestVal;
+                }
+              }
+            }
+          });
+        }
+      } catch (e) {
+        console.warn("Using baseline fallback water gauges due to fetch error:", e);
+      }
+      drawWaterGaugesOnMap();
+    }
+
+    // Dynamic Historical/Simulated Past Water Level Generator
+    function generateSimulatedWaterData(station, date) {
+      const seed = date.getDate() + date.getMonth() * 31;
+      const offsetHeight = (seed % 5) - 2.5; 
+      const offsetCfs = (seed % 200) - 100;
+      const finalHeight = Math.max(0.5, station.baseHeight + offsetHeight);
+      const finalCfs = Math.max(10, station.cfs + offsetCfs);
+
+      let trend = "Steady";
+      if (seed % 3 === 0) trend = "Rising";
+      else if (seed % 3 === 1) trend = "Falling";
+
+      return {
+        height: finalHeight,
+        cfs: finalCfs,
+        trend: trend,
+        isFlooding: finalHeight >= station.floodStage,
+        isRealTime: true 
+      };
+    }
+
+    // Coordinate paste helper
+    function extractCoordinates(inputStr) {
+      if (!inputStr) return null;
+      const regex = /(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/;
+      const match = inputStr.match(regex);
+      if (match) {
+        return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+      }
+      return null;
+    }
+
+    // Auto-detect Hunting Zone
+    function detectBoundaryAndZone(lat, lng) {
+      if (lat >= 34.45 && lat <= 34.68 && lng >= -87.12 && lng <= -86.68) {
+        const isNorth = lat >= 34.56;
+        return {
+          id: isNorth ? 3 : 4,
+          name: isNorth ? "Wheeler North Wildlife Refuge" : "Wheeler South Wildlife Refuge",
+          type: "Refuge",
+          zone: isNorth ? "A" : "C",
+          desc: "Federal Wildlife Refuge. Archery-only area. Strict: Mon-Sat only. NO SUNDAY HUNTING."
+        };
+      }
+      if (lat >= 34.12 && lat <= 34.48 && lng >= -87.62 && lng <= -87.12) {
+        const distToWMA = Math.sqrt(Math.pow(lat - 34.3411, 2) + Math.pow(lng - 87.3386, 2));
+        if (distToWMA < 0.12) {
+          return {
+            id: 1,
+            name: "Black Warrior WMA (Bankhead)",
+            type: "WMA",
+            zone: "B",
+            desc: "Winston/Lawrence Counties. Zone B antler restrictions: 4+ points on one side."
+          };
+        }
+        return {
+          id: 5,
+          name: "William B. Bankhead National Forest (General Stalk)",
+          type: "Forest",
+          zone: "D",
+          desc: "National Forest Stalk-Only Land. Winston County portion is Zone D. Lawrence County portion is Zone C."
+        };
+      }
+      if (lat >= 34.78 && lat <= 35.02 && lng >= -86.38 && lng <= -85.92) {
+        return { id: 2, name: "James D. Martin - Skyline WMA", type: "WMA", zone: "A", desc: "Jackson County. Antler restriction: 3+ points on one side." };
+      }
+      if (lat >= 33.12 && lat <= 33.98 && lng >= -86.25 && lng <= -85.45) {
+        return { id: 6, name: "Talladega National Forest (Talladega District)", type: "Forest", zone: "A", desc: "Stalk hunting rules apply." };
+      }
+      if (lat >= 32.78 && lat <= 33.18 && lng >= -87.55 && lng <= -87.12) {
+        return { id: 7, name: "Talladega National Forest (Oakmulgee District)", type: "Forest", zone: "A", desc: "Stalk hunting rules apply." };
+      }
+
+      if (lat >= 34.0 && lat <= 34.5 && lng >= -87.6 && lng <= -86.8) {
+        return { id: 13, name: "Statewide Zone D", type: "Statewide", zone: "D", desc: "Northwest Alabama." };
+      }
+      if ((lat >= 33.5 && lat <= 34.3 && lng >= -85.8 && lng <= -85.0) || (lat >= 31.8 && lat <= 32.4 && lng >= -85.4 && lng <= -85.0)) {
+        return { id: 14, name: "Statewide Zone E", type: "Statewide", zone: "E", desc: "East Alabama Counties." };
+      }
+      if (lat >= 33.8 && lat <= 34.6 && lng >= -87.0 && lng <= -85.8) {
+        return { id: 12, name: "Statewide Zone C", type: "Statewide", zone: "C", desc: "North-Central Alabama." };
+      }
+      if (lat <= 32.5 && lng <= -86.2) {
+        return { id: 11, name: "Statewide Zone B", type: "Statewide", zone: "B", desc: "South Alabama." };
+      }
+
+      return { id: 10, name: "Statewide Zone A", type: "Statewide", zone: "A", desc: "North, Central, and Southeast Alabama." };
+    }
+
+    // Initialize Map with USGS Water Gauge Layer
+    function initMap() {
+      if (typeof L === 'undefined') return;
+
+      const googleStyleStreet = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20
+      });
+
+      const topoLayer = L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 16,
+        attribution: 'Tiles courtesy of the U.S. Geological Survey'
+      });
+
+      map = L.map('leaflet-map', {
+        center: [34.3411, -86.9500],
+        zoom: 8,
+        layers: [googleStyleStreet]
+      });
+
+      const basemaps = {
+        "Roads and Waterways": googleStyleStreet,
+        "USGS Topography and Elevation": topoLayer
+      };
+      L.control.layers(basemaps, null, { collapsed: false }).addTo(map);
+
+      drawBoundaries();
+      drawWaterGaugesOnMap();
+
+      map.on('click', function(e) {
+        clickLat = e.latlng.lat;
+        clickLng = e.latlng.lng;
+
+        document.getElementById('cust-coords').value = `${clickLat.toFixed(5)}, ${clickLng.toFixed(5)}`;
+        document.getElementById('add-map-stand-btn').disabled = false;
+
+        if (tempClickMarker) {
+          tempClickMarker.setLatLng(e.latlng);
+        } else {
+          tempClickMarker = L.marker(e.latlng, {
+            icon: L.divIcon({
+              className: 'custom-div-icon',
+              html: "<div style='background-color: var(--accent); width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.5);'></div>",
+              iconSize: [14, 14],
+              iconAnchor: [7, 7]
+            })
+          }).addTo(map);
+        }
+
+        const detected = detectBoundaryAndZone(clickLat, clickLng);
+        tempClickMarker.bindPopup(`<strong>Point Picked</strong><br>Lat: ${clickLat.toFixed(4)}<br>Lon: ${clickLng.toFixed(4)}<br>Detected Zone: ${detected.zone}`).openPopup();
+
+        const toast = document.getElementById('detection-toast');
+        document.getElementById('dt-name').innerText = detected.name;
+        document.getElementById('dt-zone').innerText = `State Season Zone: ${detected.zone} (${detected.type})`;
+        document.getElementById('dt-desc').innerText = detected.desc;
+
+        toast.classList.add('active');
+
+        document.getElementById('dt-button').onclick = () => {
+          let matchedLoc = locations.find(l => l.id === detected.id);
+          if (!matchedLoc) {
+            matchedLoc = {
+              id: detected.id,
+              name: detected.name,
+              type: detected.type,
+              zone: detected.zone,
+              lat: clickLat,
+              lng: clickLng,
+              subSections: []
+            };
+            locations.push(matchedLoc);
+          }
+          const dateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+          let openRule = rules.find(r => r.locId === matchedLoc.id && dateStr >= r.start && dateStr <= r.end);
+          if (!openRule) {
+            const templateId = detected.zone === 'A' ? 10 : 11;
+            openRule = rules.find(r => r.locId === templateId && dateStr >= r.start && dateStr <= r.end) || { weapon: "General", target: "Statewide Rules", limit: "Statewide Limit", notes: "Check regulations." };
+          }
+          selectLocation(matchedLoc, openRule);
+          toast.classList.remove('active');
+        };
+      });
+    }
+
+    // DRAW WATER GAUGES ON MAP
+    function drawWaterGaugesOnMap() {
+      if (!map) return;
+      gaugeMarkers.forEach(m => map.removeLayer(m));
+      gaugeMarkers = [];
+
+      waterGauges.forEach(st => {
+        const isFlood = st.baseHeight >= st.floodStage;
+        const marker = L.marker([st.lat, st.lng], {
+          icon: L.divIcon({
+            className: 'water-gauge-icon',
+            html: `<div style="background-color: ${isFlood ? 'var(--danger)' : 'var(--water-cyan)'}; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 6px rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; font-size: 9px; color: #000; font-weight: bold;">~</div>`,
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
+          })
+        }).addTo(map);
+
+        marker.bindPopup(`
+          <div style="color: #111; font-family: sans-serif; min-width: 170px;">
+            <strong style="font-size:12px; color: #00838f;">USGS Stream Gauge</strong><br>
+            <strong style="font-size:13px;">${st.name}</strong><br>
+            <span style="font-size:11px; color:#333;">Gage Height: <strong>${st.baseHeight.toFixed(2)} ft</strong></span><br>
+            <span style="font-size:11px; color:#333;">Discharge Flow: <strong>${Math.round(st.cfs)} cfs</strong></span><br>
+            <span style="font-size:11px; color:#333;">Trend: <strong>${st.trend}</strong></span><br>
+            ${isFlood ? '<span style="color:red; font-weight:bold; font-size:13px;">Flooding!</span><br>' : ''}
+            <a href="https://waterdata.usgs.gov/nwis/uv?site_no=${st.id}" target="_blank" style="font-size:10px; color:#00838f;">View USGS Station Page</a>
+          </div>
+        `);
+
+        gaugeMarkers.push(marker);
+      });
+    }
+
+    // Outlining Boundaries on Map
+    function drawBoundaries() {
+      if (!map) return;
+
+      L.polygon([[34.68, -87.12], [34.68, -86.68], [34.45, -86.68], [34.45, -87.12]], 
+        {color: '#3498db', fillColor: '#3498db', fillOpacity: 0.12, weight: 3}).addTo(map).bindTooltip("Wheeler National Wildlife Refuge Boundary", {sticky: true});
+
+      L.polygon([[34.48, -87.62], [34.48, -87.12], [34.12, -87.12], [34.12, -87.62]], 
+        {color: '#1e824c', fillColor: '#1e824c', fillOpacity: 0.12, weight: 3}).addTo(map).bindTooltip("Bankhead National Forest and Black Warrior WMA", {sticky: true});
+
+      L.polygon([[35.02, -86.38], [35.02, -85.92], [34.78, -85.92], [34.78, -86.38]], 
+        {color: '#27ae60', fillColor: '#27ae60', fillOpacity: 0.12, weight: 3}).addTo(map).bindTooltip("James D. Martin - Skyline WMA Boundary", {sticky: true});
+
+      L.polygon([[33.98, -85.95], [33.85, -85.45], [33.12, -85.95], [33.20, -86.25]], 
+        {color: '#8b4513', fillColor: '#8b4513', fillOpacity: 0.12, weight: 3}).addTo(map).bindTooltip("Talladega National Forest (Shoal Creek and Talladega)", {sticky: true});
+
+      L.polygon([[33.18, -87.55], [33.18, -87.12], [32.78, -87.12], [32.78, -87.55]], 
+        {color: '#6e3f19', fillColor: '#6e3f19', fillOpacity: 0.12, weight: 3}).addTo(map).bindTooltip("Talladega National Forest (Oakmulgee)", {sticky: true});
+    }
+
+    // Redraw markers
+    function updateMapMarkers(visibleMatches) {
+      if (!map) return;
+      mapMarkers.forEach(m => map.removeLayer(m));
+      mapMarkers = [];
+
+      visibleMatches.forEach(match => {
+        const loc = match.location;
+        const marker = L.marker([loc.lat, loc.lng]).addTo(map);
+
+        marker.bindPopup(`
+          <div style="color: #111; font-family: sans-serif; min-width: 140px;">
+            <strong style="font-size:13px;">${loc.name}</strong><br>
+            <span style="font-size:11px; color:#555;">Zone ${loc.zone} - ${match.rule.weapon}</span><br>
+            <button onclick="selectLocationById(${loc.id})" style="margin-top:8px; padding:4px 8px; font-weight:bold; background-color: #486a2f; color:white; border:none; border-radius:4px; cursor:pointer; font-size:10px;">Select Area</button>
+          </div>
+        `);
+
+        marker.on('click', function() {
+          selectLocation(loc, match.rule);
+        });
+
+        mapMarkers.push(marker);
+      });
+
+      if (mapMarkers.length > 0 && selectedLocationId === null) {
+        const group = new L.featureGroup(mapMarkers);
+        map.fitBounds(group.getBounds().pad(0.15));
+      }
+    }
+
+    // Dynamic Stand Pins
+    function plotSubsections(location, rule) {
+      if (!map) return;
+      standMarkers.forEach(m => map.removeLayer(m));
+      standMarkers = [];
+
+      if (location.subSections && location.subSections.length > 0) {
+        location.subSections.forEach((sub, index) => {
+          const standMarker = L.marker([sub.lat, sub.lng], {
+            icon: L.divIcon({
+              className: 'stand-div-icon',
+              html: `<div style="background-color: #e59a18; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.7);"></div>`,
+              iconSize: [14, 14],
+              iconAnchor: [7, 7]
+            })
+          }).addTo(map);
+
+          standMarker.bindPopup(`
+            <div style="color: #111; font-family: sans-serif; font-size: 12px; min-width: 140px;">
+              <strong>Stand: ${sub.name}</strong><br>
+              <span style="font-size:10px; color:#555;">Lat: ${sub.lat.toFixed(5)}, Lon: ${sub.lng.toFixed(5)}</span><br>
+              <button onclick="selectSubsection(${location.id}, ${index})" style="margin-top:6px; padding:4px 8px; font-weight:bold; background-color: #e59a18; color:black; border:none; border-radius:4px; cursor:pointer; font-size:10px;">Select and Load Weather</button>
+            </div>
+          `);
+
+          standMarker.on('click', function() {
+            selectSubsection(location.id, index);
+          });
+
+          standMarkers.push(standMarker);
+        });
+      }
+    }
+
+    function selectLocationById(id) {
+      const loc = locations.find(l => l.id === id);
+      if (!loc) return;
+      const openMatches = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand);
+      const match = openMatches.find(m => m.location.id === id);
+      if (match) {
+        selectLocation(loc, match.rule);
+      }
+    }
+
+    function hideLocation(id) {
+      hiddenLocationIds.add(id);
+      updateAvailableList();
+      if (selectedLocationId === id) {
+        resetDashboard();
+        selectedLocationId = null;
+      }
+    }
+
+    function restoreAllHidden() {
+      hiddenLocationIds.clear();
+      updateAvailableList();
+    }
+
+    function setViewFilterMode(mode) {
+      viewFilterMode = mode;
+      document.getElementById('v-toggle-all').classList.toggle('active', mode === 'all');
+      document.getElementById('v-toggle-sel').classList.toggle('active', mode === 'selected');
+      updateAvailableList();
+    }
+
+    // STEP 1: Render Calendar Grid
+    function renderCalendar() {
+      const year = calendarTargetDate.getFullYear();
+      const month = calendarTargetDate.getMonth();
+
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      document.getElementById('calendar-month-year').innerText = `${monthNames[month]} ${year}`;
+
+      const firstDayIndex = new Date(year, month, 1).getDay();
+      const lastDay = new Date(year, month + 1, 0).getDate();
+
+      const grid = document.getElementById('calendar-grid');
+      grid.innerHTML = '';
+
+      const days = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+      days.forEach(d => {
+        const div = document.createElement('div');
+        div.className = 'cal-day-name';
+        div.innerText = d;
+        grid.appendChild(div);
+      });
+
+      for (let i = 0; i < firstDayIndex; i++) {
+        const div = document.createElement('div');
+        div.className = 'cal-cell empty';
+        grid.appendChild(div);
+      }
+
+      for (let day = 1; day <= lastDay; day++) {
+        const div = document.createElement('div');
+        div.className = 'cal-cell';
+
+        const dayNum = document.createElement('span');
+        dayNum.innerText = day;
+        dayNum.style.fontWeight = "bold";
+        div.appendChild(dayNum);
+
+        const cellDateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+        const dayEvents = calendarEvents[cellDateStr] || [];
+
+        if (dayEvents.length > 0) {
+          const dotsContainer = document.createElement('div');
+          dotsContainer.className = 'cal-dots-container';
+
+          dayEvents.forEach(ev => {
+            const dot = document.createElement('span');
+            dot.className = 'cal-event-dot';
+            dot.style.backgroundColor = ev.color || 'var(--accent)';
+            dotsContainer.appendChild(dot);
+          });
+          div.appendChild(dotsContainer);
+        }
+
+        if (selectedDate && 
+            selectedDate.getDate() === day && 
+            selectedDate.getMonth() === month && 
+            selectedDate.getFullYear() === year) {
+          div.classList.add('selected');
+        }
+
+        div.onclick = () => selectDateStep(day);
+        grid.appendChild(div);
+      }
+    }
+
+    function changeMonth(direction) {
+      calendarTargetDate.setMonth(calendarTargetDate.getMonth() + direction);
+      renderCalendar();
+    }
+
+    function selectDateStep(day) {
+      selectedDate = new Date(calendarTargetDate.getFullYear(), calendarTargetDate.getMonth(), day);
+      renderCalendar();
+      updateEventsList();
+      clearEventForm();
+
+      document.getElementById('step-2-section').classList.remove('locked');
+      document.getElementById('step-2-section').classList.add('active');
+
+      if (!selectedWeapon) {
+        lockStep3();
+        resetDashboard();
+      } else {
+        updateAvailableList();
+      }
+    }
+
+    // Color picker
+    function selectEventColor(colorHex, element) {
+      currentSelectedColor = colorHex;
+      document.querySelectorAll('.color-dot-btn').forEach(btn => btn.classList.remove('selected'));
+      element.classList.add('selected');
+    }
+
+    // Toggle event form tab
+    function setEventFormVisibility(visible) {
+      const form = document.getElementById('event-form-container');
+      const addTab = document.getElementById('add-event-tab-btn');
+      if (visible) {
+        form.style.display = 'flex';
+        addTab.style.display = 'none';
+      } else {
+        form.style.display = 'none';
+        addTab.style.display = 'inline-block';
+      }
+    }
+
+    function saveEvent() {
+      if (!selectedDate) return;
+      const titleInput = document.getElementById('event-title-input');
+      const text = titleInput.value.trim();
+      if (!text) {
+        alert("Please write a trip description before saving.");
+        return;
+      }
+
+      const dateStr = selectedDate.toISOString().split('T')[0];
+      const linkState = document.getElementById('link-hunt-state-chk').checked;
+
+      let linkedLoc = null;
+      let linkedWeapon = null;
+      let linkedLand = null;
+
+      if (linkState && selectedLocationId) {
+        linkedLoc = selectedLocationId;
+        linkedWeapon = selectedWeapon;
+        linkedLand = selectedLand;
+      }
+
+      const eventObj = {
+        id: editingEventId || 'ev_' + Date.now(),
+        text: text,
+        color: currentSelectedColor,
+        locationId: linkedLoc,
+        weapon: linkedWeapon,
+        land: linkedLand
+      };
+
+      if (!calendarEvents[dateStr]) calendarEvents[dateStr] = [];
+
+      if (editingEventId) {
+        const idx = calendarEvents[dateStr].findIndex(ev => ev.id === editingEventId);
+        if (idx !== -1) calendarEvents[dateStr][idx] = eventObj;
+        editingEventId = null;
+        document.getElementById('save-event-btn').innerText = "Add Event";
+        document.getElementById('cancel-edit-btn').style.display = "none";
+      } else {
+        calendarEvents[dateStr].push(eventObj);
+      }
+
+      titleInput.value = '';
+      renderCalendar();
+      updateEventsList();
+      setEventFormVisibility(false); 
+    }
+
+    function startEditEvent(dateStr, idx) {
+      const ev = calendarEvents[dateStr][idx];
+      editingEventId = ev.id;
+
+      const titleInput = document.getElementById('event-title-input');
+      titleInput.value = ev.text;
+
+      currentSelectedColor = ev.color;
+      document.querySelectorAll('.color-dot-btn').forEach(btn => {
+        btn.classList.remove('selected');
+        if (btn.style.backgroundColor === ev.color) btn.classList.add('selected');
+      });
+
+      document.getElementById('link-hunt-state-chk').checked = ev.locationId !== null;
+      document.getElementById('save-event-btn').innerText = "Save Changes";
+      document.getElementById('cancel-edit-btn').style.display = "inline-block";
+      setEventFormVisibility(true); 
+    }
+
+    function clearEventForm() {
+      editingEventId = null;
+      document.getElementById('event-title-input').value = '';
+      document.getElementById('save-event-btn').innerText = "Add Event";
+      document.getElementById('cancel-edit-btn').style.display = "none";
+      setEventFormVisibility(false); 
+    }
+
+    async function loadSavedEventHuntData(dateStr, idx) {
+      const ev = calendarEvents[dateStr][idx];
+      if (!ev.locationId) {
+        alert("This event does not have linked hunting location details.");
+        return;
+      }
+
+      selectedWeapon = ev.weapon;
+      selectedLand = ev.land || 'Public';
+      selectedLocationId = ev.locationId;
+      selectedSubsectionIndex = null;
+
+      document.querySelectorAll('#step-2-section .filter-btn').forEach(btn => btn.classList.remove('active'));
+      const activeWpnBtn = document.getElementById('wpn-' + ev.weapon.toLowerCase());
+      if (activeWpnBtn) activeWpnBtn.classList.add('active');
+
+      setLand(selectedLand);
+
+      document.getElementById('step-3-section').classList.remove('locked');
+      document.getElementById('step-3-section').classList.add('active');
+
+      updateAvailableList();
+
+      const matchedLoc = locations.find(l => l.id === ev.locationId);
+      if (matchedLoc) {
+        const openMatches = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand);
+        let matchRule = openMatches.find(m => m.location.id === ev.locationId);
+        const rule = matchRule ? matchRule.rule : rules.find(r => r.locId === ev.locationId);
+
+        selectLocation(matchedLoc, rule);
+      }
+    }
+
+    function deleteEvent(dateStr, idx) {
+      if (calendarEvents[dateStr]) {
+        calendarEvents[dateStr].splice(idx, 1);
+        if (calendarEvents[dateStr].length === 0) delete calendarEvents[dateStr];
+        renderCalendar();
+        updateEventsList();
+        clearEventForm();
+      }
+    }
+
+    // Render scheduled list
+    function updateEventsList() {
+      const list = document.getElementById('calendar-events-list');
+      const eventsSection = document.getElementById('calendar-events-section');
+
+      if (!selectedDate) {
+        eventsSection.style.display = 'none';
+        return;
+      }
+
+      eventsSection.style.display = 'block';
+
+      const dateStr = selectedDate.toISOString().split('T')[0];
+      const formattedDate = selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      document.getElementById('events-title-date').innerText = `Trips and Events: ${formattedDate}`;
+
+      const dayEvents = calendarEvents[dateStr] || [];
+
+      if (dayEvents.length === 0) {
+        list.innerHTML = '';
+      } else {
+        list.innerHTML = dayEvents.map((ev, idx) => `
+          <div style="margin-bottom: 6px; background: var(--panel); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); border-left: 4px solid ${ev.color};">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <span>[Trip] <strong>${ev.text}</strong></span>
+              <div style="display:flex; gap: 4px;">
+                <button onclick="startEditEvent('${dateStr}', ${idx})" style="background: none; border: none; color: var(--accent); cursor: pointer; font-size: 11px; padding: 2px;">Edit</button>
+                <button onclick="deleteEvent('${dateStr}', ${idx})" style="background: none; border: none; color: var(--danger); cursor: pointer; font-size: 11px; padding: 2px;">Delete</button>
+              </div>
+            </div>
+            ${ev.locationId ? `
+              <div style="margin-top:6px; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 4px 6px; border-radius: 4px;">
+                <span style="font-size: 10px; color: var(--muted);">Linked to ${locations.find(l => l.id === ev.locationId)?.name || 'Custom Area'}</span>
+                <button onclick="loadSavedEventHuntData('${dateStr}', ${idx})" style="background: var(--green); border: none; color: white; border-radius: 3px; font-size: 9px; padding: 2px 6px; cursor: pointer; font-weight: bold;">Quick Load Hunt</button>
+              </div>
+            ` : ''}
+          </div>
+        `).join('');
+      }
+    }
+
+    function setWeapon(weapon) {
+      selectedWeapon = weapon;
+
+      document.querySelectorAll('#step-2-section .filter-btn').forEach(btn => btn.classList.remove('active'));
+      const activeId = 'wpn-' + weapon.toLowerCase();
+      const targetBtn = document.getElementById(activeId);
+      if (targetBtn) targetBtn.classList.add('active');
+
+      document.getElementById('step-3-section').classList.remove('locked');
+      document.getElementById('step-3-section').classList.add('active');
+
+      selectedLocationId = null;
+      selectedSubsectionIndex = null;
+      updateAvailableList();
+      resetDashboard();
+
+      setTimeout(() => { if (map) map.invalidateSize(); }, 200);
+    }
+
+    function setLand(land) {
+      selectedLand = land;
+      const pblBtn = document.getElementById('land-public');
+      const pvtBtn = document.getElementById('land-private');
+
+      if (!pblBtn || !pvtBtn) return;
+
+      if (land === 'Public') {
+        pblBtn.classList.add('active');
+        pblBtn.style.order = '1';
+        pblBtn.style.flex = '1';
+        pblBtn.style.fontSize = '13px';
+        pblBtn.style.padding = '10px';
+        pblBtn.style.opacity = '1';
+
+        pvtBtn.classList.remove('active');
+        pvtBtn.style.order = '2';
+        pvtBtn.style.flex = '0 0 auto';
+        pvtBtn.style.fontSize = '10px';
+        pvtBtn.style.padding = '4px 10px';
+        pvtBtn.style.opacity = '0.6';
+      } else {
+        pvtBtn.classList.add('active');
+        pvtBtn.style.order = '1';
+        pvtBtn.style.flex = '1';
+        pvtBtn.style.fontSize = '13px';
+        pvtBtn.style.padding = '10px';
+        pvtBtn.style.opacity = '1';
+
+        pblBtn.classList.remove('active');
+        pblBtn.style.order = '2';
+        pblBtn.style.flex = '0 0 auto';
+        pblBtn.style.fontSize = '10px';
+        pblBtn.style.padding = '4px 10px';
+        pblBtn.style.opacity = '0.6';
+      }
+      updateAvailableList();
+    }
+
+    function lockStep3() {
+      document.getElementById('step-3-section').classList.add('locked');
+      document.getElementById('step-3-section').classList.remove('active');
+      document.getElementById('location-list').innerHTML = '';
+      document.getElementById('detection-toast').classList.remove('active');
+
+      standMarkers.forEach(m => map.removeLayer(m));
+      standMarkers = [];
+    }
+
+    function resetDashboard() {
+      document.getElementById('db-content').style.display = 'none';
+      document.getElementById('db-loading').style.display = 'none';
+      document.getElementById('db-blank').style.display = 'block';
+    }
+
+    function queryOpenSeasons(date, weapon, land) {
+      if (!date) return [];
+      const dateString = date.toISOString().split('T')[0];
+      const results = [];
+
+      locations.forEach(loc => {
+        if ((loc.id === 3 || loc.id === 4) && date.getDay() === 0) return;
+
+        if (weapon === 'Archery' && loc.type === 'WMA') {
+          const closedByConflict = rules.some(r => 
+            r.locId === loc.id && r.weapon === 'Youth' && dateString >= r.start && dateString <= r.end
+          );
+          if (closedByConflict) return;
+        }
+
+        const matched = rules.filter(r => {
+          if (r.locId !== loc.id) return false;
+          if (dateString < r.start || dateString > r.end) return false;
+          if (r.land !== 'Either' && r.land !== land) return false;
+
+          if (weapon !== 'Either') {
+            if (weapon === 'Gun' && r.weapon !== 'Gun' && r.weapon !== 'Primitive') return false;
+            if (weapon !== 'Gun' && r.weapon !== weapon) return false;
+          }
+          return true;
+        });
+
+        if (matched.length > 0) {
+          results.push({ location: loc, rule: matched[0] });
+        }
+      });
+
+      return results;
+    }
+
+    function updateAvailableList(skipMapUpdate = false) {
+      if (!selectedDate || !selectedWeapon) return;
+
+      const openMatches = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand);
+      const listContainer = document.getElementById('location-list');
+      const label = document.getElementById('list-label');
+
+      label.innerText = `Open Tracts (${selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})`;
+      listContainer.innerHTML = '';
+
+      let visibleMatches = openMatches.filter(m => !hiddenLocationIds.has(m.location.id));
+
+      if (viewFilterMode === 'selected' && selectedLocationId) {
+        visibleMatches = visibleMatches.filter(m => m.location.id === selectedLocationId);
+      }
+
+      const hiddenCount = openMatches.length - visibleMatches.length;
+      const countLabel = document.getElementById('hidden-count-label');
+      const restoreBtn = document.getElementById('restore-hidden-btn');
+
+      if (hiddenCount > 0) {
+        countLabel.innerText = `(${hiddenCount} hidden)`;
+        restoreBtn.style.display = 'inline-block';
+      } else {
+        countLabel.innerText = "";
+        restoreBtn.style.display = 'none';
+      }
+
+      if (!skipMapUpdate) {
+        updateMapMarkers(visibleMatches);
+      }
+
+      if (visibleMatches.length === 0) {
+        listContainer.innerHTML = '<div style="color:var(--muted); text-align:center; padding:20px; font-size:13px;">No open tracts match active filters. Toggle "Show All" or adjust weapon/land options.</div>';
+        return;
+      }
+
+      visibleMatches.forEach(match => {
+        const item = document.createElement('div');
+        item.className = 'location-item';
+        if (selectedLocationId === match.location.id) {
+          item.classList.add('selected');
+        }
+
+        item.innerHTML = `
+          <div style="flex: 1; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong>${match.location.name}</strong>
+              <div style="font-size:11px; color:var(--muted); margin-top:3px;">
+                Zone ${match.location.zone} - ${match.rule.weapon} Rules
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="badge ${match.location.type === 'Refuge' ? 'refuge' : 'open'}">${match.location.type}</span>
+              <button onclick="event.stopPropagation(); hideLocation(${match.location.id})" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 10px;" title="Minimize area">Hide</button>
+            </div>
+          </div>
+        `;
+
+        item.onclick = (e) => {
+          if (e.target.tagName.toLowerCase() === 'button') return;
+          selectLocation(match.location, match.rule);
+        };
+        listContainer.appendChild(item);
+      });
+    }
+
+    function addCustomSpot() {
+      const name = document.getElementById('cust-name').value.trim();
+      const coordsInput = document.getElementById('cust-coords').value.trim();
+
+      const parsed = extractCoordinates(coordsInput);
+
+      if (!name || !parsed) {
+        alert("Enter a Spot Name and paste valid coordinates (e.g., 34.3411, -87.3386).");
+        return;
+      }
+
+      const detected = detectBoundaryAndZone(parsed.lat, parsed.lng);
+
+      const newId = locations.length + 300;
+      const newLoc = {
+        id: newId,
+        name: `${name} (${detected.name})`,
+        type: "Custom Spot",
+        zone: detected.zone,
+        lat: parsed.lat,
+        lng: parsed.lng,
+        subSections: []
+      };
+
+      locations.push(newLoc);
+
+      const templateId = detected.zone === 'A' ? 10 : 11;
+      rules.forEach(r => {
+        if (r.locId === templateId) {
+          rules.push({ ...r, locId: newId });
+        }
+      });
+
+      document.getElementById('cust-name').value = '';
+      document.getElementById('cust-coords').value = '';
+      if (tempClickMarker) {
+        map.removeLayer(tempClickMarker);
+        tempClickMarker = null;
+      }
+
+      updateAvailableList();
+      alert(`"${name}" added successfully in Zone ${detected.zone}!`);
+    }
+
+    // Dynamic stand placement
+    function addStandFromMapClick() {
+      if (clickLat === null || clickLng === null) {
+        alert("Click on the map first to mark your stand!");
+        return;
+      }
+      if (!selectedLocationId) {
+        alert("Please select a main hunt location on the left first to add this stand to!");
+        return;
+      }
+      const standName = prompt("Enter Name for this Map-Clicked Stand (e.g., Ridge Oak Stand):");
+      if (!standName || standName.trim() === "") return;
+
+      const loc = locations.find(l => l.id === selectedLocationId);
+      if (loc) {
+        if (!loc.subSections) loc.subSections = [];
+        loc.subSections.push({
+          name: standName.trim(),
+          lat: clickLat,
+          lng: clickLng
+        });
+        const activeRule = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand).find(m => m.location.id === selectedLocationId).rule;
+        renderSubsections(loc, activeRule);
+        plotSubsections(loc, activeRule);
+        alert(`Stand "${standName}" successfully saved!`);
+      }
+    }
+
+    async function selectLocation(location, rule) {
+      selectedLocationId = location.id;
+      selectedSubsectionIndex = null;
+
+      document.querySelectorAll('.location-item').forEach(el => el.classList.remove('selected'));
+      updateAvailableList(true); 
+      updateEventsList(); 
+
+      if (map) {
+        map.panTo([location.lat, location.lng]);
+        plotSubsections(location, rule);
+      }
+
+      loadWeatherAndRender(location, rule);
+    }
+
+    async function selectSubsection(locId, subIdx) {
+      selectedSubsectionIndex = subIdx;
+
+      const loc = locations.find(l => l.id === locId);
+      const sub = loc.subSections[subIdx];
+
+      document.querySelectorAll('.subsection-item').forEach((el, index) => {
+        el.classList.remove('selected');
+        if (index === subIdx) el.classList.add('selected');
+      });
+
+      if (map && sub) {
+        map.panTo([sub.lat, sub.lng]);
+      }
+
+      const openMatches = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand);
+      const match = openMatches.find(m => m.location.id === locId);
+      const rule = match ? match.rule : { weapon: "General", target: "State limits", limit: "1/day" };
+
+      loadWeatherAndRender(loc, rule, sub);
+    }
+
+    async function loadWeatherAndRender(location, rule, subsection = null) {
+      const blank = document.getElementById('db-blank');
+      const loading = document.getElementById('db-loading');
+      const content = document.getElementById('db-content');
+
+      blank.style.display = 'none';
+      content.style.display = 'none';
+      loading.style.display = 'block';
+
+      const targetLat = subsection ? subsection.lat : location.lat;
+      const targetLng = subsection ? subsection.lng : location.lng;
+
+      try {
+        const weatherData = await fetchWeather(targetLat, targetLng, selectedDate);
+
+        // Evaluate USGS Gauge Proximity (Within 2.0 Miles)
+        let nearestGauge = null;
+        let minGaugeDist = 999;
+
+        waterGauges.forEach(st => {
+          const d = getDistanceMiles(targetLat, targetLng, st.lat, st.lng);
+          if (d < minGaugeDist) {
+            minGaugeDist = d;
+            nearestGauge = st;
+          }
+        });
+
+        let waterData = null;
+        if (nearestGauge && minGaugeDist <= 2.0) {
+          const today = new Date();
+          today.setHours(0,0,0,0);
+          const selDate = selectedDate ? new Date(selectedDate) : new Date();
+          selDate.setHours(0,0,0,0);
+
+          if (selDate < today) {
+            waterData = generateSimulatedWaterData(nearestGauge, selDate);
+          } else {
+            waterData = await fetchWaterDataForStation(nearestGauge);
+          }
+          waterData.station = nearestGauge;
+          waterData.distance = minGaugeDist;
+        }
+
+        displayDashboard(location, rule, weatherData, subsection, waterData);
+        renderSubsections(location, rule);
+      } catch (err) {
+        console.error(err);
+        const simulated = generateSimulatedWeather(targetLat, targetLng, selectedDate);
+        displayDashboard(location, rule, simulated, subsection, null);
+        renderSubsections(location, rule);
+      }
+    }
+
+    async function fetchWeather(lat, lon, date) {
+      const today = new Date();
+      const diffTime = Math.abs(date - today);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      let dateStr;
+      let isProxied = false;
+
+      if (diffDays <= 7) {
+        dateStr = date.toISOString().split('T')[0];
+      } else {
+        dateStr = today.toISOString().split('T')[0];
+        isProxied = true;
+      }
+
+      const apiURL = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation_probability,rain,wind_speed_10m,wind_direction_10m&daily=sunrise,sunset&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&start_date=${dateStr}&end_date=${dateStr}`;
+
+      const res = await fetch(apiURL);
+      if (!res.ok) throw new Error("API Failure Status: " + res.status);
+
+      const data = await res.json();
+      data.isProxied = isProxied;
+      return data;
+    }
+
+    function generateSimulatedWeather(lat, lon, date) {
+      const month = date.getMonth();
+      let baseTemp = 60; 
+      if (month === 11 || month === 0) baseTemp = 48; 
+      if (month === 1) baseTemp = 52; 
+      if (month === 9) baseTemp = 70; 
+
+      const hourlyTime = [];
+      const hourlyTemp = [];
+      const hourlyProb = [];
+      const hourlyRain = [];
+      const hourlyWindSpeed = [];
+      const hourlyWindDir = [];
+
+      const dateStr = date.toISOString().split('T')[0];
+
+      for (let h = 0; h < 24; h++) {
+        const timeStr = `${dateStr}T${h.toString().padStart(2, '0')}:00`;
+        hourlyTime.push(timeStr);
+
+        const tempOffset = -10 * Math.cos((2 * Math.PI * (h - 6)) / 24);
+        hourlyTemp.push(Math.round(baseTemp + tempOffset));
+
+        hourlyProb.push(h >= 6 && h <= 8 ? 35 : 5);
+        hourlyRain.push(h >= 6 && h <= 8 ? 0.04 : 0.0);
+        hourlyWindSpeed.push(Math.round(4 + Math.random() * 7));
+        hourlyWindDir.push(320); 
+      }
+
+      return {
+        hourly: {
+          time: hourlyTime,
+          temperature_2m: hourlyTemp,
+          precipitation_probability: hourlyProb,
+          rain: hourlyRain,
+          wind_speed_10m: hourlyWindSpeed,
+          wind_direction_10m: hourlyWindDir
+        },
+        daily: {
+          sunrise: [`${dateStr}T06:12`],
+          sunset: [`${dateStr}T17:48`]
+        },
+        isSimulated: true
+      };
+    }
+
+    function calculateMoonPhase(date) {
+      let year = date.getFullYear();
+      let month = date.getMonth() + 1;
+      let day = date.getDate();
+
+      if (month <= 2) {
+        year -= 1;
+        month += 12;
+      }
+
+      const A = Math.floor(year / 100);
+      const B = Math.floor(A / 4);
+      const C = 2 - A + B;
+      const E = Math.floor(365.25 * (year + 4716));
+      const F = Math.floor(30.6001 * (month + 1));
+      const jd = C + day + E + F - 1524.5;
+
+      const daysSinceNew = jd - 2451550.26;
+      const cycles = daysSinceNew / 29.530588853;
+      const phaseFrac = cycles - Math.floor(cycles);
+      const illumination = 0.5 * (1 - Math.cos(2 * Math.PI * phaseFrac)) * 100;
+
+      let phaseName = "";
+      if (phaseFrac < 0.03 || phaseFrac > 0.97) phaseName = "New Moon";
+      else if (phaseFrac < 0.22) phaseName = "Waxing Crescent";
+      else if (phaseFrac < 0.28) phaseName = "First Quarter";
+      else if (phaseFrac < 0.47) phaseName = "Waxing Gibbous";
+      else if (phaseFrac < 0.53) phaseName = "Full Moon";
+      else if (phaseFrac < 0.72) phaseName = "Waning Gibbous";
+      else if (phaseFrac < 0.78) phaseName = "Last Quarter";
+      else phaseName = "Waning Crescent";
+
+      return { phase: phaseName, illumination: Math.round(illumination) };
+    }
+
+    // Translate degrees to compass cardinals
+    function getCardinal(deg) {
+      const cardinals = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
+      return cardinals[Math.round(((deg % 360) / 22.5)) % 16];
+    }
+
+    // DISPLAY STEP 4: Render Dashboard with Water Gauge Module
+    function displayDashboard(location, rule, weather, subsection = null, waterData = null) {
+      document.getElementById('db-loading').style.display = 'none';
+      document.getElementById('db-content').style.display = 'block';
+
+      if (subsection) {
+        document.getElementById('db-title').innerText = `${location.name} - ${subsection.name}`;
+        document.getElementById('db-subtitle').innerText = `Microclimate coordinates: ${subsection.lat.toFixed(5)}, ${subsection.lng.toFixed(5)}`;
+      } else {
+        document.getElementById('db-title').innerText = location.name;
+        document.getElementById('db-subtitle').innerText = `Zone ${location.zone} - Daily Limit: ${rule.limit || '1/day'}`;
+      }
+
+      document.getElementById('db-reg-summary').innerText = `Open Season: ${rule.weapon} (${rule.target || 'State limits'})`;
+      document.getElementById('db-rules-text').innerText = `${rule.notes || 'Wear legal hunter orange. Submit harvests within 48 hours.'}`;
+
+      const waterBox = document.getElementById('water-gauge-container');
+      const warningBox = document.getElementById('water-date-warning');
+      if (waterData) {
+        waterBox.style.display = 'block';
+        document.getElementById('water-dist-label').innerText = `${waterData.distance.toFixed(1)} miles away`;
+
+        let stationLabelHTML = waterData.station.name;
+        if (waterData.isRealTime === false) {
+          stationLabelHTML += ` <span style="color: var(--danger); font-size: 11px; font-weight: bold; display: block; margin-top: 4px;">?? Unable to retrieve current data. Showing last known baseline data below:</span>`;
+        }
+        document.getElementById('water-station-name').innerHTML = stationLabelHTML;
+
+        document.getElementById('water-height-val').innerText = `${waterData.height.toFixed(2)} ft`;
+        document.getElementById('water-trend-val').innerText = waterData.trend;
+        document.getElementById('water-flow-val').innerText = `${Math.round(waterData.cfs)} cfs`;
+        document.getElementById('usgs-link-btn').href = `https://waterdata.usgs.gov/nwis/uv?site_no=${waterData.station.id}`;
+
+        const floodElem = document.getElementById('water-flood-status');
+        if (waterData.isFlooding) {
+          floodElem.innerText = "Flooding!";
+          floodElem.className = "flooding-tag";
+        } else {
+          floodElem.innerText = "Normal Stage";
+          floodElem.className = "";
+        }
+
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const selDate = selectedDate ? new Date(selectedDate) : new Date();
+        selDate.setHours(0,0,0,0);
+
+        if (selDate > today) {
+          const formattedSelDate = selDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          warningBox.innerText = `current water level data, not for ${formattedSelDate}`;
+          warningBox.style.color = 'var(--danger)';
+          warningBox.style.display = 'block';
+        } else if (selDate < today) {
+          const formattedSelDate = selDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          warningBox.innerText = `historical / simulated data for ${formattedSelDate}`;
+          warningBox.style.color = 'var(--muted)';
+          warningBox.style.display = 'block';
+        } else {
+          warningBox.style.display = 'none';
+        }
+      } else {
+        waterBox.style.display = 'none';
+      }
+
+      const sourceBadge = document.getElementById('weather-source-badge');
+      if (weather.isSimulated) {
+        sourceBadge.innerText = "Source: Local Climate Baseline (Offline fallback active)";
+      } else {
+        sourceBadge.innerText = "Source: Live Open-Meteo & USGS River APIs";
+      }
+
+      const rawSunrise = weather.daily.sunrise[0];
+      const rawSunset = weather.daily.sunset[0];
+
+      const parseTimeString = (isoStr) => {
+        if (!isoStr) return "--:--";
+        return new Date(isoStr).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      };
+
+      document.getElementById('sol-sunrise').innerText = parseTimeString(rawSunrise);
+      document.getElementById('sol-sunset').innerText = parseTimeString(rawSunset);
+
+      if (rawSunrise && rawSunset) {
+        const rise = new Date(rawSunrise);
+        const set = new Date(rawSunset);
+        rise.setMinutes(rise.getMinutes() - 30);
+        set.setMinutes(set.getMinutes() + 30);
+        document.getElementById('sol-shooting').innerText = `${rise.toLocaleTimeString('en-US', {hour: 'numeric', minute:'2-digit'}).replace(" ", "").toLowerCase()} to ${set.toLocaleTimeString('en-US', {hour: 'numeric', minute:'2-digit'}).replace(" ", "").toLowerCase()}`;
+      }
+
+      const moon = calculateMoonPhase(selectedDate ? selectedDate : new Date());
+      document.getElementById('db-moon-text').innerText = `${moon.phase} (${moon.illumination}% lit)`;
+
+      const morningIndex = 7; 
+      const hourly = weather.hourly;
+      const windSpeed = hourly.wind_speed_10m[morningIndex];
+      const windDir = hourly.wind_direction_10m[morningIndex];
+
+      document.getElementById('wind-speed-text').innerText = `Morning Wind (7 AM): ${Math.round(windSpeed)} MPH from ${getCardinal(windDir)}`;
+
+      const scentDir = (windDir + 180) % 360;
+      document.getElementById('scent-drift-text').innerText = `Scent Drift: Blowing towards ${getCardinal(scentDir)}`;
+      document.getElementById('compass-needle').style.transform = `rotate(${windDir}deg)`;
+
+      const tbody = document.getElementById('hourly-rows');
+      tbody.innerHTML = '';
+
+      for (let hour = 5; hour <= 18; hour++) {
+        const timeVal = new Date(hourly.time[hour]);
+        const formattedTime = timeVal.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        const temp = Math.round(hourly.temperature_2m[hour]);
+        const prob = hourly.precipitation_probability[hour];
+        const rain = hourly.rain[hour];
+        const speed = Math.round(hourly.wind_speed_10m[hour]);
+        const dir = getCardinal(hourly.wind_direction_10m[hour]);
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td><strong>${formattedTime}</strong></td>
+          <td>${temp} F</td>
+          <td>${prob}%</td>
+          <td>${rain > 0 ? rain.toFixed(2) + '"' : '0.00"'}</td>
+          <td>${speed} mph (${dir})</td>
+        `;
+        tbody.appendChild(row);
+      }
+    }
+
+    function renderSubsections(location, rule) {
+      const container = document.getElementById('subsections-list-container');
+      container.innerHTML = '';
+
+      if (!location.subSections || location.subSections.length === 0) {
+        container.innerHTML = '<div style="color:var(--muted); font-size:12px; padding: 10px 0;">No microclimate stands mapped. Add your first stand above.</div>';
+        return;
+      }
+
+      location.subSections.forEach((sub, index) => {
+        const div = document.createElement('div');
+        div.className = 'subsection-item';
+        if (selectedSubsectionIndex === index) {
+          div.classList.add('selected');
+        }
+
+        div.innerHTML = `
+          <div style="flex: 1;" onclick="selectSubsection(${location.id}, ${index})">
+            [Stand] <strong>${sub.name}</strong> 
+            <span style="font-size:11px; color:var(--muted); margin-left:8px;">(${sub.lat.toFixed(5)}, ${sub.lng.toFixed(5)})</span>
+          </div>
+          <button onclick="event.stopPropagation(); removeSubsection(${location.id}, ${index})">Remove</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function promptAddSubsection() {
+      if (!selectedLocationId) return;
+      const subName = prompt("Enter Name of hunting stand, blind, or ridge plot:");
+      if (!subName || subName.trim() === "") return;
+
+      const coordsInput = prompt("Enter specific coordinates for this stand:", document.getElementById('cust-coords').value);
+      const parsed = extractCoordinates(coordsInput);
+
+      const loc = locations.find(l => l.id === selectedLocationId);
+      if (loc) {
+        if (!loc.subSections) loc.subSections = [];
+
+        const finalCoords = parsed ? parsed : { lat: loc.lat + (Math.random() - 0.5) * 0.02, lng: loc.lng + (Math.random() - 0.5) * 0.02 };
+
+        loc.subSections.push({
+          name: subName.trim(),
+          lat: finalCoords.lat,
+          lng: finalCoords.lng
+        });
+
+        const activeRule = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand).find(m => m.location.id === selectedLocationId).rule;
+        renderSubsections(loc, activeRule);
+        plotSubsections(loc, activeRule);
+        alert(`Stand "${subName}" was added!`);
+      }
+    }
+
+    function removeSubsection(locId, index) {
+      const loc = locations.find(l => l.id === locId);
+      if (loc && loc.subSections) {
+        loc.subSections.splice(index, 1);
+        selectedSubsectionIndex = null;
+        const openMatches = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand);
+        const match = openMatches.find(m => m.location.id === locId);
+        const rule = match ? match.rule : { weapon: "General", target: "State limits", limit: "1/day" };
+
+        renderSubsections(loc, rule);
+        plotSubsections(loc, rule);
+        selectLocation(loc, rule);
+      }
+    }
+
+    window.onload = function() {
+      calendarTargetDate = new Date();
+      selectedDate = new Date();
+      renderCalendar();
+      initMap();
+      setLand('Public');
+      fetchRealTimeGauges(); 
+      selectDateStep(selectedDate.getDate());
+    };
+  </script>
+</body>
+</html>
