@@ -1436,6 +1436,9 @@
     let lastVisibleMarkerKey = '';
     let gaugesDrawn = false;
     let lastClickTva = null; // TVA hit from last map click (for pin/hunt save)
+    // Public-land unit under last free map-dot (from double-click on overlay polygon)
+    // { layer, attrs, name, cacheId, lat, lng }
+    let lastClickPublicLand = null;
     // Locations currently shown in the Available Hunts list (map dots must match this)
     let lastListedHuntLocations = [];
     // Map-click stand placement: { locId, name } while active
@@ -2903,7 +2906,46 @@
       // Always show map/rules link: unit PDF when available, otherwise official hub that should have it
       html += '<a href="' + mapHref + '" target="_blank" rel="noopener" style="display:block;text-align:center;padding:7px 10px;background:var(--panel-light);border:1px solid var(--border);border-radius:6px;font-size:11px;font-weight:600;color:var(--accent);text-decoration:none;">' + mapLabel + '</a>';
       html += '</div>';
+      html += '<div style="margin-top:8px;font-size:10px;color:var(--muted);line-height:1.35;">Double-click to drop a pin/dot here (then click the dot for pin actions + these links).</div>';
       return html;
+    }
+
+    /** Cache slim attrs + map link for public-land actions on the free map-dot menu. */
+    function cachePublicLandRegs(layer, attrs, name) {
+      attrs = attrs || {};
+      var slim = {
+        Link: attrs.Link || attrs.PageLink || '',
+        MapLink: attrs.MapLink || attrs.PMapLink || attrs.Link2 || '',
+        TractInfoL: attrs.TractInfoL || '',
+        RESERVOIRURL: attrs.RESERVOIRURL || '',
+        RESTRICTED: attrs.RESTRICTED || '',
+        CanHunt: attrs.CanHunt || '',
+        InWMA: attrs.InWMA || '',
+        County: attrs.County || ''
+      };
+      var cacheId = 'regs_' + Math.random().toString(36).slice(2, 10);
+      window.__regsCache = window.__regsCache || {};
+      window.__regsCache[cacheId] = { name: name, layerKey: (layer && layer.key) || 'wma', attrs: slim };
+      return cacheId;
+    }
+
+    function setLastClickPublicLand(layer, attrs, lat, lng) {
+      if (!layer) {
+        lastClickPublicLand = null;
+        return null;
+      }
+      attrs = attrs || {};
+      var name = featureDisplayName(layer, attrs) || attrName(attrs, layer.nameFields || ['Name']) || layer.label || 'Public land';
+      var cacheId = cachePublicLandRegs(layer, attrs, name);
+      lastClickPublicLand = {
+        layer: layer,
+        attrs: attrs,
+        name: name,
+        cacheId: cacheId,
+        lat: lat,
+        lng: lng
+      };
+      return lastClickPublicLand;
     }
 
     /**
@@ -3505,7 +3547,7 @@
           });
           if (interactive) {
             poly.bindPopup(buildAdcnrPopup(layer, attrs));
-            // Click unit: place stand if in place-mode, else load weather
+            // Click unit: place stand if in place-mode, else open public-land menu + weather
             poly.on('click', function(e) {
               if (e && e.originalEvent) L.DomEvent.stopPropagation(e.originalEvent);
               var clickLatLng = (e && e.latlng) ? e.latlng : L.latLng(c.lat, c.lng);
@@ -3513,10 +3555,26 @@
                 placeStandAt(clickLatLng.lat, clickLatLng.lng);
                 return;
               }
+              setLastClickPublicLand(layer, attrs, clickLatLng.lat, clickLatLng.lng);
               selectPublicLandWeather(layer, attrs, clickLatLng.lat, clickLatLng.lng, {
                 closePopup: false,
                 showOverlay: isMapFullscreen()
               });
+            });
+            // Double-click unit: dismiss overlay popup and drop free map-dot (pin menu)
+            poly.on('dblclick', function(e) {
+              if (e && e.originalEvent) {
+                L.DomEvent.stop(e);
+                L.DomEvent.preventDefault(e.originalEvent);
+              }
+              var clickLatLng = (e && e.latlng) ? e.latlng : L.latLng(c.lat, c.lng);
+              if (standPlaceMode) {
+                placeStandAt(clickLatLng.lat, clickLatLng.lng);
+                return;
+              }
+              if (map) map.closePopup();
+              setLastClickPublicLand(layer, attrs, clickLatLng.lat, clickLatLng.lng);
+              placeOrMoveMapDot(clickLatLng);
             });
             poly.on('popupopen', function() {
               wireAdcnrPopupWeatherBtn(layer, attrs, c.lat, c.lng);
@@ -3727,6 +3785,8 @@
           placeStandAt(e.latlng.lat, e.latlng.lng);
           return;
         }
+        // Free map click (not on public-land polygon) - clear unit context
+        lastClickPublicLand = null;
         // Place / move a clean map dot - no zone or lat/long UI
         placeOrMoveMapDot(e.latlng);
       });
@@ -3734,8 +3794,28 @@
 
     // Inline onclick is reliable inside Leaflet popups (DOM rebuilds strip JS listeners)
     function buildMapDotActionsHtml() {
+      var pl = lastClickPublicLand;
+      var plBlock = '';
+      if (pl && pl.name && pl.layer) {
+        // Refresh regs cache if popup is rebuilt later in the session
+        window.__regsCache = window.__regsCache || {};
+        if (!pl.cacheId || !window.__regsCache[pl.cacheId]) {
+          pl.cacheId = cachePublicLandRegs(pl.layer, pl.attrs || {}, pl.name);
+        }
+        var mapRules = resolveAreaMapRulesLink(pl.layer, pl.name, pl.attrs || {});
+        var mapHref = String(mapRules.url || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+        var mapLabel = String(mapRules.label || 'Area map & rules').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        plBlock =
+          '<div class="mdm-title" style="margin-top:2px;">Public land</div>' +
+          '<div class="mdm-sub">' + escHtml(pl.name) + (pl.layer.label ? ' · ' + escHtml(pl.layer.label) : '') + '</div>' +
+          '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotPublicLandAction(\'weather\');return false;">Select area / weather</button>' +
+          '<button type="button" class="mdm-btn regs" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotPublicLandAction(\'regs\');return false;">Deer rules &amp; legislation</button>' +
+          '<a href="' + mapHref + '" target="_blank" rel="noopener" class="mdm-btn" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box;margin-top:0;" onclick="event.stopPropagation();">' + mapLabel + '</a>' +
+          '<div style="height:1px;background:var(--border);margin:8px 0 6px;"></div>';
+      }
       return (
         '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
+          plBlock +
           '<div class="mdm-title">What do you want to do?</div>' +
           '<div class="mdm-sub">Choose an action for this spot</div>' +
           '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'weather\');return false;">Get weather</button>' +
@@ -3746,6 +3826,41 @@
         '</div>'
       );
     }
+
+    function handleMapDotPublicLandAction(act) {
+      try {
+        var pl = lastClickPublicLand;
+        if (!pl || !pl.layer) {
+          alert('Public land info is not available for this spot. Single-click the colored overlay for unit links.');
+          return false;
+        }
+        var lat = clickLat != null ? clickLat : pl.lat;
+        var lng = clickLng != null ? clickLng : pl.lng;
+        if (act === 'weather') {
+          selectPublicLandWeather(pl.layer, pl.attrs || {}, lat, lng, {
+            closePopup: true,
+            showOverlay: isMapFullscreen()
+          });
+          return false;
+        }
+        if (act === 'regs') {
+          if (pl.cacheId && window.__regsCache && window.__regsCache[pl.cacheId]) {
+            openDeerRegsFromCache(pl.cacheId);
+          } else {
+            var cid = cachePublicLandRegs(pl.layer, pl.attrs || {}, pl.name);
+            pl.cacheId = cid;
+            openDeerRegsFromCache(cid);
+          }
+          if (map) map.closePopup();
+          return false;
+        }
+      } catch (err) {
+        console.error('Public land map-dot action failed:', act, err);
+        alert('Something went wrong with that action. Try again.');
+      }
+      return false;
+    }
+    window.handleMapDotPublicLandAction = handleMapDotPublicLandAction;
 
     /** Drop a clean accent dot on the map (no lat/long/zone). Click the dot for actions. */
     function placeOrMoveMapDot(latlng) {
@@ -3936,6 +4051,7 @@
       clickLat = null;
       clickLng = null;
       lastClickTva = null;
+      lastClickPublicLand = null;
     }
     function selectPinColor(c, el) { selectedPinColor = c; el.parentNode.querySelectorAll('.color-dot-btn').forEach(b => b.classList.remove('selected')); el.classList.add('selected'); }
     function selectHuntColor(c, el) { selectedHuntColor = c; el.parentNode.querySelectorAll('.color-dot-btn').forEach(b => b.classList.remove('selected')); el.classList.add('selected'); }
