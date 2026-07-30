@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>REG SLAYER - Alabama Deer Season Planner v3.0</title>
+  <title>REG SLAYER - Alabama Deer Season Planner v3.1</title>
   <!-- Detect phone vs desktop as early as possible (reduces layout flash) -->
   <script>
     (function () {
@@ -45,7 +45,7 @@
     html, body { height: 100%; }
     body { background: var(--bg); color: var(--ink); margin: 0; padding: 0; line-height: 1.5; min-height: 100vh; display: flex; flex-direction: column; }
 
-    /* ========== BRAND HEADER (v3.0 - large logo fills top bar) ========== */
+    /* ========== BRAND HEADER (v3.1 - large logo fills top bar) ========== */
     .brand-header {
       background:
         linear-gradient(180deg, rgba(13,15,12,0.15) 0%, rgba(13,15,12,0.88) 100%),
@@ -99,7 +99,7 @@
       text-shadow: 0 1px 3px rgba(0,0,0,0.85);
     }
 
-    /* Site links / tagline live in page footer (v3.0) */
+    /* Site links / tagline live in page footer (v3.1) */
     .site-footer {
       margin-top: auto;
       border-top: 1px solid var(--border);
@@ -130,7 +130,7 @@
       padding: 3px 9px; border-radius: 6px; border: 1px solid var(--border);
     }
 
-    /* ========== DESKTOP SHELL (v3.0 - planner+weather left, big map right) ========== */
+    /* ========== DESKTOP SHELL (v3.1 - planner+weather left, big map right) ========== */
     .app-shell {
       max-width: none;
       margin: 0;
@@ -226,11 +226,19 @@
     }
 
     /* Phone shell via JS class (works even on wider phone landscape) */
+    html.layout-phone,
+    html.layout-phone body {
+      overflow-x: hidden;
+      max-width: 100%;
+      width: 100%;
+    }
     html.layout-phone .app-shell {
       max-width: none;
       width: 100%;
       padding: 10px 0 18px;
       margin: 0;
+      box-sizing: border-box;
+      overflow-x: hidden;
     }
     html.layout-phone .container {
       display: flex;
@@ -238,6 +246,9 @@
       grid-template-columns: 1fr;
       gap: 12px;
       width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      overflow-x: hidden;
     }
     html.layout-phone .brand-header { padding: 12px 14px 10px; position: relative; }
     html.layout-phone .brand-logo-wrap { width: 92vw; padding-right: 36px; }
@@ -254,6 +265,9 @@
       order: 1;
       margin: 0 10px;
       width: auto;
+      max-width: calc(100% - 20px);
+      box-sizing: border-box;
+      overflow-x: hidden;
     }
     html.layout-phone .card-map {
       position: static;
@@ -261,34 +275,54 @@
       max-height: none;
       order: 2;
       width: 100%;
+      max-width: 100%;
       margin: 0;
       padding: 10px 0 12px;
       border-radius: 0;
       border-left: none;
       border-right: none;
+      box-sizing: border-box;
+      overflow-x: hidden;
     }
-    html.layout-phone .card-map .map-section-block { width: 100%; }
+    html.layout-phone .card-map .map-section-block {
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
     html.layout-phone .card-map .map-section-block > div:first-child {
       padding: 0 12px;
+      box-sizing: border-box;
     }
+    /* Minimized (inline) map: always full device width — no side gutters */
     html.layout-phone .card-map .map-wrapper {
       min-height: min(58vh, 560px);
+      height: min(58vh, 560px);
       margin-top: 8px;
+      margin-left: 0;
+      margin-right: 0;
       border-radius: 0;
       border-left: none;
       border-right: none;
-      width: 100%;
+      width: 100% !important;
+      max-width: 100% !important;
+      left: 0;
+      right: 0;
+      box-sizing: border-box;
+      -webkit-touch-callout: none;
     }
     html.layout-phone #leaflet-map {
-      height: min(58vh, 560px) !important;
-      min-height: 360px !important;
+      height: 100% !important;
+      min-height: min(58vh, 560px) !important;
       width: 100% !important;
+      max-width: 100% !important;
       -webkit-touch-callout: none;
       -webkit-user-select: none;
       user-select: none;
     }
-    html.layout-phone .card-map .map-wrapper {
-      -webkit-touch-callout: none;
+    html.layout-phone .leaflet-container {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
     }
     html.layout-phone .location-list { max-height: 250px; }
 
@@ -320,32 +354,49 @@
       .card-planner {
         margin: 0 10px;
         width: auto;
+        max-width: calc(100% - 20px);
+        box-sizing: border-box;
+        overflow-x: hidden;
       }
       .card-map {
         position: static;
         min-height: 0;
         max-height: none;
         width: 100%;
+        max-width: 100%;
         margin: 0;
         padding: 10px 0 12px;
         border-radius: 0;
         border-left: none;
         border-right: none;
+        box-sizing: border-box;
+        overflow-x: hidden;
       }
-      .card-map .map-section-block { width: 100%; }
-      .card-map .map-section-block > div:first-child { padding: 0 12px; }
+      .card-map .map-section-block { width: 100%; max-width: 100%; box-sizing: border-box; }
+      .card-map .map-section-block > div:first-child { padding: 0 12px; box-sizing: border-box; }
       .card-map .map-wrapper {
         min-height: min(58vh, 560px);
+        height: min(58vh, 560px);
         margin-top: 8px;
+        margin-left: 0;
+        margin-right: 0;
         border-radius: 0;
         border-left: none;
         border-right: none;
-        width: 100%;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box;
       }
       #leaflet-map {
-        height: min(58vh, 560px) !important;
-        min-height: 360px !important;
+        height: 100% !important;
+        min-height: min(58vh, 560px) !important;
         width: 100% !important;
+        max-width: 100% !important;
+      }
+      .leaflet-container {
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
       }
       .location-list { max-height: 250px; }
     }
@@ -639,14 +690,17 @@
     }
     html.layout-phone .planner-cal-col {
       width: 100% !important;
-      max-width: none;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      box-sizing: border-box;
     }
     html.layout-phone .planner-wpn-col,
     html.layout-phone .planner-loc-col {
-      max-width: none;
+      max-width: 100%;
       min-width: 0;
       width: 100%;
       align-self: stretch;
+      box-sizing: border-box;
     }
     html.layout-phone .planner-wpn-col #step-2-section,
     html.layout-phone .planner-loc-col #step-3-section {
@@ -659,8 +713,15 @@
       border-radius: 0;
       padding: 0;
       overflow: visible;
+      width: 100%;
+      box-sizing: border-box;
     }
-    html.layout-phone .planner-cal-col #step-1-section { margin-bottom: 25px; }
+    html.layout-phone .planner-cal-col #step-1-section {
+      margin-bottom: 25px;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
     html.layout-phone .weapon-stack {
       flex-direction: row;
       flex-wrap: wrap;
@@ -683,21 +744,57 @@
       align-items: center;
     }
     html.layout-phone .planner-loc-col .location-filters-box .lf-label { width: auto; min-width: 42px; }
-    html.layout-phone .calendar-container { padding: 15px; }
+    /* Calendar: fill planner width on phone — no manual pinch/resize needed */
+    html.layout-phone .calendar-container {
+      padding: 10px;
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    html.layout-phone .calendar-header {
+      margin-bottom: 8px;
+      gap: 4px;
+    }
+    html.layout-phone .calendar-header h3 {
+      font-size: 13px !important;
+      max-width: 52%;
+    }
+    html.layout-phone .calendar-header button {
+      padding: 6px 10px;
+      font-size: 12px;
+    }
     html.layout-phone .calendar-grid {
+      width: 100% !important;
+      max-width: 100% !important;
       height: auto !important;
+      min-height: 0 !important;
+      gap: 4px;
+      box-sizing: border-box;
+      /* ~7 cols × ~7 rows (headers + weeks) → self-fit without JS square sizing */
+      aspect-ratio: 1 / 1.05;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      grid-auto-rows: minmax(0, 1fr);
+    }
+    html.layout-phone .cal-day-name {
+      font-size: 10px;
+      padding: 2px 0;
       min-height: 0;
-      gap: 6px;
-      grid-auto-rows: auto;
     }
-    html.layout-phone .cal-day-name { font-size: 11px; padding: 5px 0; }
     html.layout-phone .cal-cell {
-      padding: 8px 4px;
-      font-size: 13px;
-      min-height: 52px;
-      height: auto;
-      justify-content: space-between;
+      padding: 2px 1px;
+      font-size: clamp(11px, 3.2vw, 14px);
+      min-height: 0 !important;
+      height: 100%;
+      max-height: none;
+      justify-content: center;
+      gap: 2px;
+      overflow: hidden;
+      transform: none; /* avoid selected scale() overflowing on narrow screens */
     }
+    html.layout-phone .cal-cell.selected { transform: none; }
+    html.layout-phone .cal-dots-container { height: 4px; }
+    html.layout-phone .cal-event-dot { width: 4px; height: 4px; }
     html.layout-phone .locations-in-step3 {
       margin-top: 12px;
       padding-top: 12px;
@@ -718,14 +815,17 @@
       }
       .planner-cal-col {
         width: 100% !important;
-        max-width: none;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box;
       }
       .planner-wpn-col,
       .planner-loc-col {
-        max-width: none;
+        max-width: 100%;
         min-width: 0;
         width: 100%;
         align-self: stretch;
+        box-sizing: border-box;
       }
       .planner-wpn-col #step-2-section,
       .planner-loc-col #step-3-section {
@@ -738,8 +838,15 @@
         border-radius: 0;
         padding: 0;
         overflow: visible;
+        width: 100%;
+        box-sizing: border-box;
       }
-      .planner-cal-col #step-1-section { margin-bottom: 25px; }
+      .planner-cal-col #step-1-section {
+        margin-bottom: 25px;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+      }
       .weapon-stack {
         flex-direction: row;
         flex-wrap: wrap;
@@ -762,22 +869,41 @@
         align-items: center;
       }
       .planner-loc-col .location-filters-box .lf-label { width: auto; min-width: 42px; }
-      .calendar-container { padding: 15px; }
+      .calendar-container {
+        padding: 10px;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box;
+        overflow: hidden;
+      }
+      .calendar-header { margin-bottom: 8px; gap: 4px; }
+      .calendar-header h3 { font-size: 13px !important; max-width: 52%; }
+      .calendar-header button { padding: 6px 10px; font-size: 12px; }
       .calendar-grid {
+        width: 100% !important;
+        max-width: 100% !important;
         height: auto !important;
-        min-height: 0;
-        gap: 6px;
-        grid-auto-rows: auto;
+        min-height: 0 !important;
+        gap: 4px;
+        box-sizing: border-box;
+        aspect-ratio: 1 / 1.05;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        grid-auto-rows: minmax(0, 1fr);
       }
-      .cal-day-name { font-size: 11px; padding: 5px 0; }
+      .cal-day-name { font-size: 10px; padding: 2px 0; min-height: 0; }
       .cal-cell {
-        padding: 8px 4px;
-        font-size: 13px;
-        min-height: 52px;
-        height: auto;
-        justify-content: space-between;
+        padding: 2px 1px;
+        font-size: clamp(11px, 3.2vw, 14px);
+        min-height: 0 !important;
+        height: 100%;
+        justify-content: center;
+        gap: 2px;
+        overflow: hidden;
+        transform: none;
       }
-      /* Phone: list under step 3 filters, full width, normal scroll height */
+      .cal-cell.selected { transform: none; }
+      .cal-dots-container { height: 4px; }
+      .cal-event-dot { width: 4px; height: 4px; }
       .locations-in-step3 {
         margin-top: 12px;
         padding-top: 12px;
@@ -1630,11 +1756,11 @@
   </style>
 </head>
 <body>
-  <!-- Brand header: large logo + small V3.0 at bottom-right of logo -->
+  <!-- Brand header: large logo + small V3.1 at bottom-right of logo -->
   <header class="brand-header" role="banner">
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 3.0">V3.0</span>
+      <span class="brand-version" aria-label="Version 3.1">V3.1</span>
     </div>
   </header>
 
@@ -2021,7 +2147,7 @@
   </div>
   </div><!-- /.app-shell -->
 
-  <!-- Tagline + official links moved to bottom (v3.0) -->
+  <!-- Tagline + official links moved to bottom (v3.1) -->
   <footer class="site-footer" role="contentinfo">
     <div class="site-footer-inner">
       <p>Alabama public &amp; private land · USGS gauges · topo terrain · wind &amp; scent</p>
@@ -2089,7 +2215,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '3.0';
+    const APP_VERSION = '3.1';
     let selectedDate = null, selectedWeapon = null, selectedLand = 'Public', selectedLocationId = null;
     let selectedSubsectionIndex = null, viewFilterMode = 'all', currentSelectedColor = '#e59a18';
     let editingEventId = null, userLat = null, userLng = null;
@@ -5245,7 +5371,10 @@
 
     function ensureMap() {
       if (mapReady && map) {
-        requestAnimationFrame(function() { if (map) map.invalidateSize(); });
+        requestAnimationFrame(function() {
+          fitPhoneMapSize();
+          if (map) map.invalidateSize();
+        });
         return Promise.resolve(map);
       }
       var ph = document.getElementById('map-placeholder');
@@ -5254,6 +5383,14 @@
         if (!map) initMap();
         mapReady = true;
         if (ph) ph.remove();
+        // iOS / phone: reflow to full width after Leaflet mounts (tiles often start narrow)
+        fitPhoneMapSize();
+        [40, 120, 320, 700].forEach(function(ms) {
+          setTimeout(function() {
+            fitPhoneMapSize();
+            if (map) { try { map.invalidateSize(true); } catch (e) {} }
+          }, ms);
+        });
         return map;
       }).catch(function(err) {
         if (ph) ph.innerText = 'Map unavailable (offline?). Weather still works.';
@@ -7727,11 +7864,14 @@
       }
       window.__REG_SLAYER_IS_PHONE__ = phone;
       // Leaflet often keeps a wrong tile width after layout mode changes
+      fitPhoneMapSize();
       if (map) {
         setTimeout(function() {
+          fitPhoneMapSize();
           try { map.invalidateSize(true); } catch (e) {}
         }, 80);
         setTimeout(function() {
+          fitPhoneMapSize();
           try { map.invalidateSize(true); } catch (e2) {}
         }, 350);
       }
@@ -7739,6 +7879,49 @@
     }
     window.applyDeviceLayout = applyDeviceLayout;
     window.isPhoneLayout = isPhoneLayout;
+
+    /** Force map container to match phone width and tell Leaflet to reflow tiles. */
+    function fitPhoneMapSize() {
+      if (!isPhoneLayout()) return;
+      var wrap = document.querySelector('.map-wrapper');
+      var mapEl = document.getElementById('leaflet-map');
+      var card = document.querySelector('.card-map');
+      if (card) {
+        card.style.width = '100%';
+        card.style.maxWidth = '100%';
+        card.style.marginLeft = '0';
+        card.style.marginRight = '0';
+        card.style.paddingLeft = '0';
+        card.style.paddingRight = '0';
+      }
+      // Only force full width when NOT in fullscreen (minimized / inline)
+      if (wrap && !wrap.classList.contains('fullscreen')) {
+        wrap.style.width = '100%';
+        wrap.style.maxWidth = '100%';
+        wrap.style.left = '0';
+        wrap.style.right = '0';
+        wrap.style.marginLeft = '0';
+        wrap.style.marginRight = '0';
+        // Use measured parent width so Leaflet never keeps a narrow leftover size
+        var parentW = (card && card.clientWidth) || (window.innerWidth || document.documentElement.clientWidth || 0);
+        if (parentW > 0) {
+          wrap.style.width = parentW + 'px';
+          // Prefer % after paint; px first helps iOS Safari on first layout
+          requestAnimationFrame(function() {
+            wrap.style.width = '100%';
+          });
+        }
+      }
+      if (mapEl && wrap && !wrap.classList.contains('fullscreen')) {
+        mapEl.style.width = '100%';
+        mapEl.style.maxWidth = '100%';
+        mapEl.style.height = '100%';
+      }
+      if (map) {
+        try { map.invalidateSize(true); } catch (e) {}
+      }
+    }
+    window.fitPhoneMapSize = fitPhoneMapSize;
 
     function syncPlannerCalendarSquare() {
       var col = document.getElementById('planner-cal-col');
@@ -7748,14 +7931,23 @@
       var loc = document.querySelector('.planner-loc-col #step-3-section');
       if (!col || !cal || !grid) return;
 
-      // Phone / stacked layout: clear desktop fixed heights
+      // Phone / stacked layout: clear desktop fixed heights — CSS aspect-ratio owns fit
       if (isPhoneLayout()) {
         col.style.width = '';
+        col.style.maxWidth = '';
+        col.style.minWidth = '';
+        cal.style.width = '';
+        cal.style.height = '';
+        cal.style.minHeight = '';
+        grid.style.width = '';
         grid.style.height = '';
+        grid.style.minHeight = '';
+        grid.style.maxHeight = '';
         document.documentElement.style.removeProperty('--planner-cal-grid-h');
         document.documentElement.style.removeProperty('--planner-side-height');
-        if (wpn) { wpn.style.minHeight = ''; wpn.style.height = ''; wpn.style.maxHeight = ''; }
-        if (loc) { loc.style.minHeight = ''; loc.style.height = ''; loc.style.maxHeight = ''; }
+        if (wpn) { wpn.style.minHeight = ''; wpn.style.height = ''; wpn.style.maxHeight = ''; wpn.style.width = ''; }
+        if (loc) { loc.style.minHeight = ''; loc.style.height = ''; loc.style.maxHeight = ''; loc.style.width = ''; }
+        fitPhoneMapSize();
         return;
       }
 
@@ -8912,6 +9104,30 @@
         var full = w.classList.toggle('fullscreen');
         document.getElementById('map-maximize-btn').style.display = full ? 'none' : 'block';
         document.getElementById('map-minimize-btn').style.display = full ? 'block' : 'none';
+        // When minimizing back to inline map, clear any leftover fixed fullscreen sizing
+        if (!full) {
+          w.style.width = '';
+          w.style.height = '';
+          w.style.top = '';
+          w.style.left = '';
+          w.style.right = '';
+          w.style.bottom = '';
+          var mapEl = document.getElementById('leaflet-map');
+          if (mapEl) {
+            mapEl.style.width = '';
+            mapEl.style.height = '';
+          }
+          fitPhoneMapSize();
+          [50, 150, 400].forEach(function(ms) {
+            setTimeout(function() {
+              fitPhoneMapSize();
+              if (map) { try { map.invalidateSize(true); } catch (e) {} }
+            }, ms);
+          });
+        } else if (map) {
+          setTimeout(function() { try { map.invalidateSize(true); } catch (e0) {} }, 60);
+          setTimeout(function() { try { map.invalidateSize(true); } catch (e1) {} }, 280);
+        }
         // Weather box only if a real area is selected (not bare current-location)
         var isCur = selectedLocationId == 9999 || usingCurrentLocation;
         document.getElementById('map-weather-overlay').style.display = (full && selectedLocationId && !isCur) ? 'block' : 'none';
@@ -8980,6 +9196,19 @@
       calendarTargetDate = new Date();
       selectedDate = new Date();
       renderCalendar();
+      // Phone: second pass after fonts/layout so calendar + map fill width on launch
+      requestAnimationFrame(function() {
+        syncPlannerCalendarSquare();
+        fitPhoneMapSize();
+        requestAnimationFrame(function() {
+          syncPlannerCalendarSquare();
+          fitPhoneMapSize();
+        });
+      });
+      setTimeout(function() {
+        syncPlannerCalendarSquare();
+        fitPhoneMapSize();
+      }, 200);
       setLand('Public');
       updateDistStatus();
       // Layers menu (basemap + overlays) next to compass — wire before map loads
@@ -8992,13 +9221,33 @@
         _plannerResizeTimer = setTimeout(function() {
           applyDeviceLayout(true);
           syncPlannerCalendarSquare();
+          fitPhoneMapSize();
           if (map) {
-            try { map.invalidateSize(); } catch (e) {}
+            try { map.invalidateSize(true); } catch (e) {}
           }
         }, 140);
       }
       window.addEventListener('resize', onViewportChange);
-      window.addEventListener('orientationchange', onViewportChange);
+      window.addEventListener('orientationchange', function() {
+        // iOS fires orientationchange before new dimensions settle
+        onViewportChange();
+        setTimeout(onViewportChange, 250);
+        setTimeout(onViewportChange, 600);
+      });
+      // iOS Safari / home-screen: address bar & visual viewport changes
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', onViewportChange);
+      }
+      // When returning from background, re-fit layout
+      document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) {
+          setTimeout(function() {
+            syncPlannerCalendarSquare();
+            fitPhoneMapSize();
+            if (map) { try { map.invalidateSize(true); } catch (e) {} }
+          }, 100);
+        }
+      });
       // Esc cancels stand placement mode
       document.addEventListener('keydown', function(ev) {
         if (ev.key === 'Escape' && standPlaceMode) cancelStandPlacement();
