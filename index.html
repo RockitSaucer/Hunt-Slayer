@@ -2,25 +2,211 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Alabama Deer Hunting App v2.1</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>REG SLAYER - Alabama Deer Season Planner v2.4</title>
+  <!-- Detect phone vs desktop as early as possible (reduces layout flash) -->
+  <script>
+    (function () {
+      function detectIsPhone() {
+        var w = window.innerWidth || document.documentElement.clientWidth || 1200;
+        var ua = navigator.userAgent || '';
+        var mobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(ua);
+        var coarse = false, noHover = false, finePointer = false;
+        try {
+          coarse = window.matchMedia('(pointer: coarse)').matches;
+          noHover = window.matchMedia('(hover: none)').matches;
+          finePointer = window.matchMedia('(pointer: fine)').matches;
+        } catch (e) {}
+        // Narrow screens always use phone layout
+        if (w <= 950) return true;
+        // Phones / most tablets (including wider landscape)
+        if (mobileUA && (w <= 1180 || (coarse && noHover))) return true;
+        // Touch-primary device without fine pointer (phones, many tablets)
+        if (coarse && noHover && !finePointer && w <= 1280) return true;
+        return false;
+      }
+      var phone = detectIsPhone();
+      var root = document.documentElement;
+      root.classList.remove('layout-phone', 'layout-desktop');
+      root.classList.add(phone ? 'layout-phone' : 'layout-desktop');
+      root.setAttribute('data-layout', phone ? 'phone' : 'desktop');
+      window.__REG_SLAYER_IS_PHONE__ = phone;
+    })();
+  </script>
   <!-- Leaflet loaded on demand when Step 3 / map is first needed (faster first paint) -->
   <style>
     :root {
       --bg: #0d0f0c; --panel: #161a12; --panel-light: #20261a; --accent: #e59a18;
       --green: #486a2f; --green-hover: #5d8e3d; --ink: #f0f4ee; --muted: #8d9c84;
       --border: #28321a; --danger: #d94136; --blue-refuge: #3498db; --water-cyan: #00bcd4;
+      --brand-bar: #0a0c09;
     }
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background: var(--bg); color: var(--ink); margin: 0; padding: 20px; line-height: 1.5; }
-    .container { max-width: 1250px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1.3fr; gap: 20px; }
-    @media (max-width: 950px) { .container { grid-template-columns: 1fr; } }
+    html, body { height: 100%; }
+    body { background: var(--bg); color: var(--ink); margin: 0; padding: 0; line-height: 1.5; min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ========== BRAND HEADER (v2.4 - large logo fills top bar) ========== */
+    .brand-header {
+      background:
+        linear-gradient(180deg, rgba(13,15,12,0.15) 0%, rgba(13,15,12,0.88) 100%),
+        repeating-linear-gradient(
+          -35deg,
+          #0f160e 0px,
+          #0f160e 22px,
+          #121b10 22px,
+          #121b10 44px
+        );
+      border-bottom: 1px solid var(--border);
+      padding: 18px 20px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      /* Non-sticky so the large logo doesn't consume the viewport while scrolling */
+      position: relative;
+      z-index: 5000;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.45);
+      flex-shrink: 0;
+    }
+    .brand-logo-wrap {
+      position: relative;
+      display: block;
+      line-height: 0;
+      width: min(1100px, 94vw);
+      padding-right: 48px;
+      padding-bottom: 4px;
+    }
+    .brand-logo {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-height: min(168px, 22vh);
+      object-fit: contain;
+      object-position: center;
+    }
+    /* Version only - very small, bottom-right of the logo */
+    .brand-version {
+      position: absolute;
+      right: 4px;
+      bottom: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: rgba(160, 175, 150, 0.9);
+      line-height: 1;
+      pointer-events: none;
+      user-select: none;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.85);
+    }
+
+    /* Site links / tagline live in page footer (v2.4) */
+    .site-footer {
+      margin-top: auto;
+      border-top: 1px solid var(--border);
+      background: var(--brand-bar);
+      padding: 16px 20px 20px;
+      flex-shrink: 0;
+    }
+    .site-footer-inner {
+      width: 100%;
+      max-width: none;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 8px 16px;
+      text-align: center;
+    }
+    .site-footer-inner p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12.5px;
+    }
+    .site-footer-inner a { color: var(--accent); text-decoration: none; font-size: 12px; }
+    .site-footer-inner a:hover { text-decoration: underline; }
+    .version-badge {
+      font-size: 11px; color: var(--muted); background: var(--panel-light);
+      padding: 3px 9px; border-radius: 6px; border: 1px solid var(--border);
+    }
+
+    /* ========== DESKTOP SHELL (v2.4 - edge-to-edge, minimal side gutter) ========== */
+    .app-shell {
+      max-width: none;
+      margin: 0;
+      padding: 14px 14px 20px;
+      width: 100%;
+      flex: 1 1 auto;
+    }
+    .container {
+      display: grid;
+      grid-template-columns: minmax(400px, 0.92fr) minmax(520px, 1.4fr);
+      gap: 14px;
+      align-items: start;
+      width: 100%;
+    }
     h1, h2, h3 { margin-top: 0; color: #fff; }
-    header { grid-column: 1 / -1; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 10px; }
-    header p { margin: 5px 0 0; color: var(--muted); font-size: 14px; }
-    header a { color: var(--accent); text-decoration: none; }
-    .version-badge { font-size: 12px; color: var(--muted); background: var(--panel-light); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); }
-    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    #dashboard-container {
+      min-height: calc(100vh - 220px);
+      position: sticky;
+      top: 16px;
+      max-height: calc(100vh - 32px);
+      overflow-y: auto;
+    }
+    #leaflet-map { height: min(56vh, 620px); width: 100%; background: #e5e3df; }
+    .location-list { max-height: min(300px, 30vh); }
+
+    /*
+     * ========== PHONE / NARROW LAYOUT ==========
+     * Applied by:
+     *  1) html.layout-phone  (JS: phone/tablet detection)
+     *  2) @media (max-width: 950px) (resized desktop browser fallback)
+     */
+
+    /* Mid-width hybrid only while desktop mode is active */
+    @media (max-width: 1100px) {
+      html.layout-desktop .container { grid-template-columns: 1fr 1.1fr; gap: 12px; }
+      html.layout-desktop .app-shell { padding: 12px; }
+      html.layout-desktop .brand-logo-wrap { width: min(900px, 96vw); }
+      html.layout-desktop .brand-logo { max-height: min(120px, 18vh); }
+      html.layout-desktop #dashboard-container { position: static; max-height: none; min-height: 500px; }
+      html.layout-desktop #leaflet-map { height: 440px; }
+    }
+
+    /* Phone shell via JS class (works even on wider phone landscape) */
+    html.layout-phone .app-shell { max-width: 1250px; padding: 16px 14px 20px; margin: 0 auto; }
+    html.layout-phone .container { grid-template-columns: 1fr; gap: 16px; }
+    html.layout-phone .brand-header { padding: 12px 14px 10px; position: relative; }
+    html.layout-phone .brand-logo-wrap { width: 92vw; padding-right: 36px; }
+    html.layout-phone .brand-logo { max-height: 72px; }
+    html.layout-phone .brand-version { font-size: 9px; bottom: 4px; }
+    html.layout-phone .site-footer-inner { gap: 6px 10px; }
+    html.layout-phone .site-footer-inner p { font-size: 12px; }
+    html.layout-phone #dashboard-container { position: static; max-height: none; min-height: 500px; }
+    html.layout-phone #leaflet-map { height: 440px; }
+    html.layout-phone .location-list { max-height: 250px; }
+
+    /* Same phone shell for narrow viewports (desktop browser resized / no early JS) */
+    @media (max-width: 950px) {
+      .app-shell { max-width: 1250px; padding: 16px 14px 20px; margin: 0 auto; }
+      .container { grid-template-columns: 1fr; gap: 16px; }
+      .brand-header { padding: 12px 14px 10px; position: relative; }
+      .brand-logo-wrap { width: 92vw; padding-right: 36px; }
+      .brand-logo { max-height: 72px; }
+      .brand-version { font-size: 9px; bottom: 4px; }
+      .site-footer-inner { gap: 6px 10px; }
+      .site-footer-inner p { font-size: 12px; }
+      #dashboard-container { position: static; max-height: none; min-height: 500px; }
+      #leaflet-map { height: 440px; }
+      .location-list { max-height: 250px; }
+    }
     .step-section { margin-bottom: 25px; transition: all 0.3s ease; }
     .step-section.locked { opacity: 0.35; pointer-events: none; filter: grayscale(70%); }
     .step-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
@@ -28,19 +214,265 @@
     .active .step-num { background: var(--accent); color: #000; }
     .step-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
     .active .step-title { color: #fff; }
-    .calendar-container { background: var(--panel-light); border-radius: 10px; padding: 15px; border: 1px solid var(--border); }
-    .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-    .calendar-header button { background: var(--green); color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; }
+    /*
+     * Desktop planner: steps 1-3 fill the full width above the location list.
+     * Proportional columns, equal visual height, square calendar that grows with width.
+     */
+    .planner-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(128px, 0.48fr) minmax(210px, 1.05fr);
+      gap: 14px;
+      align-items: stretch;
+      width: 100%;
+      margin-bottom: 16px;
+    }
+    .planner-cal-col,
+    .planner-wpn-col,
+    .planner-loc-col {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .planner-cal-col {
+      width: auto !important; /* CSS grid owns width - no leftover side gutter */
+    }
+    .planner-cal-col #step-1-section,
+    .planner-wpn-col #step-2-section,
+    .planner-loc-col #step-3-section {
+      margin-bottom: 0;
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      min-height: 0;
+    }
+    /* Shared panel shell - fixed height so long lists scroll instead of stretching layout */
+    .planner-wpn-col #step-2-section,
+    .planner-loc-col #step-3-section {
+      background: var(--panel-light);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      box-sizing: border-box;
+      min-height: var(--planner-side-height, 0);
+      height: var(--planner-side-height, auto);
+      max-height: var(--planner-side-height, none);
+      overflow: hidden;
+    }
+    .planner-wpn-col #step-2-section .step-header,
+    .planner-loc-col #step-3-section .step-header {
+      margin-bottom: 12px;
+      flex-shrink: 0;
+    }
+    .planner-wpn-col #step-2-section .step-title,
+    .planner-loc-col #step-3-section .step-title {
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      line-height: 1.25;
+    }
+    .weapon-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+    .weapon-stack .filter-btn {
+      flex: 1 1 0;
+      width: 100%;
+      min-height: 48px;
+      padding: 12px 10px;
+      font-size: 13px;
+    }
+    /* Step 3 filters (compact) + list fills remaining dead space under them */
+    .planner-loc-col .location-filters-box {
+      margin-bottom: 0;
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      padding: 0;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      min-height: 0;
+    }
+    .planner-loc-col .location-filters-box .lf-row {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+    }
+    .planner-loc-col .location-filters-box .lf-row + .lf-row { margin-top: 8px; }
+    .planner-loc-col .location-filters-box .lf-label {
+      min-width: 0;
+      width: 100%;
+      margin-bottom: 0;
+    }
+    .planner-loc-col .location-filters-box .lf-seg { width: 100%; }
+    .planner-loc-col .location-filters-box .lf-seg .filter-btn {
+      padding: 8px 6px;
+      font-size: 12px;
+    }
+    .planner-loc-col .location-filters-box .lf-within {
+      flex: 0 0 auto;
+      width: 100%;
+    }
+    .planner-loc-col .location-filters-box #land-private {
+      flex: 1;
+      font-size: 12px;
+      padding: 8px 6px;
+      opacity: 0.75;
+    }
+    .planner-loc-col .location-filters-box #land-private.active { opacity: 1; }
+    .planner-loc-col .location-filters-box #dist-status {
+      margin-top: 6px;
+      padding-top: 0;
+      font-size: 10px;
+    }
+
+    /* Huntable areas: fixed space under filters, scroll inside (layout stays put) */
+    .locations-in-step3 {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .locations-in-step3 .list-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      flex-shrink: 0;
+    }
+    .locations-in-step3 .list-toolbar .filter-btn {
+      padding: 4px 7px;
+      font-size: 10px;
+    }
+    .locations-in-step3 .location-list {
+      flex: 1 1 auto;
+      min-height: 0;
+      max-height: 100% !important;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      margin-bottom: 0;
+      gap: 6px;
+      padding-right: 4px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--muted) rgba(0,0,0,0.2);
+    }
+    .locations-in-step3 .location-list::-webkit-scrollbar { width: 8px; }
+    .locations-in-step3 .location-list::-webkit-scrollbar-track {
+      background: rgba(0,0,0,0.2);
+      border-radius: 4px;
+    }
+    .locations-in-step3 .location-list::-webkit-scrollbar-thumb {
+      background: var(--muted);
+      border-radius: 4px;
+    }
+    .locations-in-step3 .location-item {
+      padding: 8px 9px;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    .locations-in-step3 .location-item strong {
+      font-size: 12px;
+    }
+
+    .calendar-container {
+      background: var(--panel-light);
+      border-radius: 10px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      width: 100%;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      flex: 0 0 auto;
+    }
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .calendar-header button {
+      background: var(--green);
+      color: white;
+      border: none;
+      padding: 7px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
     .calendar-header button:hover { background: var(--green-hover); }
-    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; }
-    .cal-day-name { font-weight: 700; color: var(--muted); font-size: 11px; padding: 5px 0; text-transform: uppercase; }
-    .cal-cell { padding: 8px 4px; border-radius: 6px; cursor: pointer; background: var(--panel); font-size: 13px; min-height: 52px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; }
+    .calendar-header h3 {
+      font-size: 14px !important;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    /* Square grid: width fills column; height matched in JS → taller when wider */
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      grid-auto-rows: minmax(0, 1fr);
+      gap: 5px;
+      text-align: center;
+      width: 100%;
+      height: var(--planner-cal-grid-h, auto);
+      min-height: 280px;
+    }
+    .cal-day-name {
+      font-weight: 700;
+      color: var(--muted);
+      font-size: 11px;
+      padding: 2px 0;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+    }
+    .cal-cell {
+      padding: 6px 2px;
+      border-radius: 6px;
+      cursor: pointer;
+      background: var(--panel);
+      font-size: 13px;
+      min-height: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 3px;
+    }
     .cal-cell:hover { background: var(--border); }
-    .cal-cell.selected { background: var(--accent); color: #000; font-weight: bold; transform: scale(1.05); }
+    .cal-cell.selected { background: var(--accent); color: #000; font-weight: bold; transform: scale(1.04); }
     .cal-cell.empty { background: transparent; cursor: default; }
-    .cal-dots-container { display: flex; gap: 3px; justify-content: center; margin-top: 4px; height: 8px; }
-    .cal-event-dot { width: 6px; height: 6px; border-radius: 50%; }
-    .events-box { background: var(--panel-light); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-top: 12px; display: none; }
+    .cal-dots-container { display: flex; gap: 2px; justify-content: center; height: 6px; margin-top: 0; }
+    .cal-event-dot { width: 5px; height: 5px; border-radius: 50%; }
+    .events-box {
+      background: var(--panel-light);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      margin-top: 12px;
+      display: none;
+      width: 100%;
+      box-sizing: border-box;
+    }
     .event-form-row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; background: rgba(0,0,0,0.15); padding: 10px; border-radius: 8px; border: 1px solid var(--border); }
     .color-dot-btn { width: 18px; height: 18px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
     .color-dot-btn.selected { border-color: #fff; transform: scale(1.1); }
@@ -48,7 +480,174 @@
     .filter-btn { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel-light); color: var(--ink); cursor: pointer; font-size: 13px; font-weight: 600; text-align: center; }
     .filter-btn:hover { border-color: var(--muted); }
     .filter-btn.active { background: var(--green); border-color: var(--green-hover); color: white; }
-    .location-list { display: flex; flex-direction: column; gap: 10px; max-height: 250px; overflow-y: auto; margin-bottom: 15px; }
+
+    @media (max-width: 1200px) {
+      html.layout-desktop .planner-row {
+        grid-template-columns: minmax(0, 1.45fr) minmax(118px, 0.48fr) minmax(190px, 1fr);
+        gap: 12px;
+      }
+    }
+
+    /* Phone planner: stack steps 1-3 (JS class) */
+    html.layout-phone .planner-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin-bottom: 0;
+    }
+    html.layout-phone .planner-cal-col {
+      width: 100% !important;
+      max-width: none;
+    }
+    html.layout-phone .planner-wpn-col,
+    html.layout-phone .planner-loc-col {
+      max-width: none;
+      min-width: 0;
+      width: 100%;
+      align-self: stretch;
+    }
+    html.layout-phone .planner-wpn-col #step-2-section,
+    html.layout-phone .planner-loc-col #step-3-section {
+      min-height: 0 !important;
+      height: auto !important;
+      max-height: none !important;
+      margin-bottom: 25px;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      padding: 0;
+      overflow: visible;
+    }
+    html.layout-phone .planner-cal-col #step-1-section { margin-bottom: 25px; }
+    html.layout-phone .weapon-stack {
+      flex-direction: row;
+      flex-wrap: wrap;
+      flex: none;
+    }
+    html.layout-phone .weapon-stack .filter-btn {
+      flex: 1 1 calc(50% - 4px);
+      min-height: 0;
+      font-size: 13px;
+    }
+    html.layout-phone .planner-loc-col .location-filters-box {
+      background: var(--panel-light);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+    html.layout-phone .planner-loc-col .location-filters-box .lf-row {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    html.layout-phone .planner-loc-col .location-filters-box .lf-label { width: auto; min-width: 42px; }
+    html.layout-phone .calendar-container { padding: 15px; }
+    html.layout-phone .calendar-grid {
+      height: auto !important;
+      min-height: 0;
+      gap: 6px;
+      grid-auto-rows: auto;
+    }
+    html.layout-phone .cal-day-name { font-size: 11px; padding: 5px 0; }
+    html.layout-phone .cal-cell {
+      padding: 8px 4px;
+      font-size: 13px;
+      min-height: 52px;
+      height: auto;
+      justify-content: space-between;
+    }
+    html.layout-phone .locations-in-step3 {
+      margin-top: 12px;
+      padding-top: 12px;
+      min-height: 0;
+    }
+    html.layout-phone .locations-in-step3 .location-list {
+      max-height: 250px;
+      min-height: 120px;
+    }
+
+    @media (max-width: 950px) {
+      /* Phone: stack steps full width (viewport fallback) */
+      .planner-row {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        margin-bottom: 0;
+      }
+      .planner-cal-col {
+        width: 100% !important;
+        max-width: none;
+      }
+      .planner-wpn-col,
+      .planner-loc-col {
+        max-width: none;
+        min-width: 0;
+        width: 100%;
+        align-self: stretch;
+      }
+      .planner-wpn-col #step-2-section,
+      .planner-loc-col #step-3-section {
+        min-height: 0 !important;
+        height: auto !important;
+        max-height: none !important;
+        margin-bottom: 25px;
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        padding: 0;
+        overflow: visible;
+      }
+      .planner-cal-col #step-1-section { margin-bottom: 25px; }
+      .weapon-stack {
+        flex-direction: row;
+        flex-wrap: wrap;
+        flex: none;
+      }
+      .weapon-stack .filter-btn {
+        flex: 1 1 calc(50% - 4px);
+        min-height: 0;
+        font-size: 13px;
+      }
+      .planner-loc-col .location-filters-box {
+        background: var(--panel-light);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 12px;
+      }
+      .planner-loc-col .location-filters-box .lf-row {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .planner-loc-col .location-filters-box .lf-label { width: auto; min-width: 42px; }
+      .calendar-container { padding: 15px; }
+      .calendar-grid {
+        height: auto !important;
+        min-height: 0;
+        gap: 6px;
+        grid-auto-rows: auto;
+      }
+      .cal-day-name { font-size: 11px; padding: 5px 0; }
+      .cal-cell {
+        padding: 8px 4px;
+        font-size: 13px;
+        min-height: 52px;
+        height: auto;
+        justify-content: space-between;
+      }
+      /* Phone: list under step 3 filters, full width, normal scroll height */
+      .locations-in-step3 {
+        margin-top: 12px;
+        padding-top: 12px;
+        min-height: 0;
+      }
+      .locations-in-step3 .location-list {
+        max-height: 250px;
+        min-height: 120px;
+      }
+    }
+    .location-list { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; margin-bottom: 15px; }
+    /* max-height set in desktop / phone layout blocks above */
     .location-item { padding: 12px; border-radius: 8px; background: var(--panel-light); border: 1px solid var(--border); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
     .location-item:hover { border-color: var(--muted); transform: translateX(3px); }
     .location-item.selected { border-left: 5px solid var(--accent); background: rgba(229,154,24,0.08); }
@@ -56,11 +655,105 @@
     .badge.open { background: var(--green); color: white; }
     .badge.refuge { background: var(--blue-refuge); color: white; }
     .map-wrapper { margin-top: 15px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); position: relative; }
-    #leaflet-map { height: 440px; width: 100%; background: #e5e3df; }
+    /* Map height set in desktop / phone layout blocks above */
     .map-wrapper.fullscreen { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 99999 !important; margin-top: 0 !important; border-radius: 0 !important; }
     .map-wrapper.fullscreen #leaflet-map { height: 100% !important; }
     .detection-toast { background: var(--panel-light); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-top: 10px; display: none; border-left: 5px solid var(--accent); position: absolute; bottom: 70px; left: 20px; z-index: 10002; max-width: 320px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); }
     .detection-toast.active { display: block; }
+    /* Free-map dot action menu - high contrast, large tap targets */
+    .map-dot-popup .leaflet-popup-content-wrapper {
+      background: #0f120e;
+      color: #ffffff;
+      border: 2px solid #e59a18;
+      border-radius: 12px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.65);
+      padding: 0;
+    }
+    .map-dot-popup .leaflet-popup-tip {
+      background: #0f120e;
+      border: none;
+      box-shadow: none;
+    }
+    .map-dot-popup .leaflet-popup-content {
+      margin: 0;
+      min-width: 220px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .map-dot-popup .leaflet-popup-close-button {
+      color: #ffffff !important;
+      font-size: 22px !important;
+      font-weight: 700 !important;
+      top: 6px !important;
+      right: 8px !important;
+      width: 28px !important;
+      height: 28px !important;
+      padding: 0 !important;
+      opacity: 0.9;
+    }
+    .map-dot-popup .leaflet-popup-close-button:hover { opacity: 1; color: #e59a18 !important; }
+    .map-dot-menu {
+      min-width: 220px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 14px 14px 12px;
+      box-sizing: border-box;
+    }
+    .map-dot-menu .mdm-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 0.02em;
+      margin: 0 28px 4px 0;
+      line-height: 1.3;
+    }
+    .map-dot-menu .mdm-sub {
+      font-size: 12px;
+      color: #c5d0be;
+      margin: -2px 0 4px;
+      line-height: 1.35;
+    }
+    .map-dot-menu .mdm-btn {
+      display: block;
+      width: 100%;
+      text-align: center;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      line-height: 1.2;
+      color: #ffffff;
+      box-shadow: 0 2px 0 rgba(0,0,0,0.25);
+    }
+    .map-dot-menu .mdm-btn:hover { filter: brightness(1.08); }
+    .map-dot-menu .mdm-btn:active { transform: translateY(1px); }
+    .map-dot-menu .mdm-btn.weather { background: #3f6b2a; }
+    .map-dot-menu .mdm-btn.regs { background: #c47a0f; color: #fff; }
+    .map-dot-menu .mdm-btn.stand { background: #1f6f9f; }
+    .map-dot-menu .mdm-btn.hunt { background: #2a5f9e; }
+    .map-dot-menu .mdm-btn.pin { background: #a35f0c; }
+    .map-dot-menu .mdm-btn.danger {
+      background: #a32922;
+      margin-top: 4px;
+    }
+    .map-dot-menu .mdm-btn.danger:hover { filter: brightness(1.1); }
+    /* Reuse same readable menu style for pin / stand / hunt popups */
+    .saved-item-popup .leaflet-popup-content-wrapper {
+      background: #0f120e;
+      color: #ffffff;
+      border: 2px solid #e59a18;
+      border-radius: 12px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.65);
+    }
+    .saved-item-popup .leaflet-popup-tip { background: #0f120e; }
+    .saved-item-popup .leaflet-popup-content { margin: 0; min-width: 200px; }
+    .saved-item-popup .leaflet-popup-close-button {
+      color: #fff !important; font-size: 22px !important; font-weight: 700 !important;
+      top: 6px !important; right: 8px !important;
+    }
     .toast-form-control { background: var(--panel); border: 1px solid var(--border); color: var(--ink); border-radius: 4px; padding: 6px; font-size: 11px; width: 100%; margin-top: 4px; }
     .dashboard-grid { display: flex; flex-direction: column; gap: 18px; }
     .solunar-panel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; background: var(--panel-light); padding: 16px; border-radius: 10px; border: 1px solid var(--border); }
@@ -73,12 +766,186 @@
     .water-card strong { font-size: 15px; color: #fff; display: block; margin-top: 2px; }
     .flooding-tag { color: var(--danger) !important; font-weight: 900 !important; animation: blink 1.2s infinite; }
     @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-    .compass-container { display: flex; align-items: center; gap: 20px; background: var(--panel-light); padding: 16px; border-radius: 10px; border: 1px solid var(--border); }
-    .compass { width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--border); position: relative; display: flex; justify-content: center; align-items: center; background: var(--panel); flex-shrink: 0; }
-    .compass::before { content: 'N'; position: absolute; top: 4px; font-size: 10px; color: var(--danger); }
-    .compass::after { content: 'S'; position: absolute; bottom: 4px; font-size: 10px; color: var(--muted); }
-    .compass-needle { width: 4px; height: 70px; background: linear-gradient(to bottom, var(--accent) 50%, var(--muted) 50%); position: absolute; transform-origin: 50% 50%; transition: transform 0.6s ease; }
-    .scent-warn { color: var(--accent); font-weight: bold; margin-top: 4px; font-size: 14px; }
+    .db-title-block h2 { margin: 0 0 2px; font-size: 1.5em; line-height: 1.25; }
+    #weather-source-badge { font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+    /* Map wind compass HUD - top center, compact */
+    .map-wind-hud {
+      display: none;
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10005;
+      align-items: center;
+      gap: 8px;
+      background: rgba(22, 26, 18, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px 10px 6px 8px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+      pointer-events: none;
+      max-width: min(280px, calc(100% - 140px));
+    }
+    .map-wind-hud.active { display: flex; }
+    /* Stay on top of Leaflet chrome in fullscreen */
+    .map-wrapper.fullscreen .map-wind-hud {
+      z-index: 100050;
+      top: 16px;
+      max-width: min(320px, calc(100% - 160px));
+    }
+    .stand-place-banner {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100060;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: rgba(229, 154, 24, 0.95);
+      color: #000;
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+      max-width: min(420px, calc(100% - 24px));
+      pointer-events: auto;
+    }
+    .stand-place-banner.active { display: flex; }
+    .map-wrapper.stand-placing {
+      cursor: crosshair;
+    }
+    .map-wrapper.stand-placing #leaflet-map {
+      cursor: crosshair;
+    }
+    .map-wind-hud .compass {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: var(--panel);
+      flex-shrink: 0;
+    }
+    .map-wind-hud .compass::before {
+      content: 'N'; position: absolute; top: 1px; font-size: 7px; font-weight: 700;
+      color: var(--danger); line-height: 1;
+    }
+    .map-wind-hud .compass::after {
+      content: 'S'; position: absolute; bottom: 1px; font-size: 6px;
+      color: var(--muted); line-height: 1;
+    }
+    .compass-needle {
+      width: 2px;
+      height: 30px;
+      background: linear-gradient(to bottom, var(--accent) 50%, var(--muted) 50%);
+      position: absolute;
+      transform-origin: 50% 50%;
+      transition: transform 0.6s ease;
+    }
+    .map-wind-meta { min-width: 0; line-height: 1.25; }
+    .map-wind-meta .mw-speed {
+      font-size: 13px; font-weight: 800; color: #fff; white-space: nowrap;
+    }
+    .map-wind-meta .mw-dir {
+      font-size: 11px; color: var(--muted); white-space: nowrap;
+    }
+    .map-wind-meta .mw-scent {
+      font-size: 11px; font-weight: 700; color: var(--accent); white-space: nowrap;
+    }
+
+    /* Combined land + distance filter panel */
+    .location-filters-box {
+      margin-bottom: 10px;
+      background: var(--panel-light);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+    .location-filters-box .lf-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px 8px;
+    }
+    .location-filters-box .lf-row + .lf-row { margin-top: 8px; }
+    .location-filters-box .lf-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      flex: 0 0 auto;
+      min-width: 42px;
+    }
+    .location-filters-box .lf-seg {
+      display: flex;
+      gap: 4px;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .location-filters-box .lf-seg .filter-btn {
+      flex: 1;
+      padding: 7px 8px;
+      font-size: 12px;
+    }
+    .location-filters-box #land-private {
+      flex: 0 0 auto;
+      font-size: 11px;
+      padding: 7px 10px;
+      opacity: 0.75;
+    }
+    .location-filters-box #land-private.active { opacity: 1; }
+    .location-filters-box .lf-within {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1 1 160px;
+      min-width: 0;
+    }
+    .location-filters-box .lf-within label {
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .location-filters-box .lf-within select {
+      flex: 1;
+      min-width: 0;
+      padding: 7px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--ink);
+      font-size: 12px;
+    }
+    .location-filters-box #dist-zip-row {
+      display: none;
+      gap: 6px;
+      margin-top: 8px;
+      align-items: center;
+    }
+    .location-filters-box #dist-zip-row.active { display: flex; }
+    .location-filters-box #dist-zip-input {
+      flex: 1;
+      padding: 7px 9px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--ink);
+      font-size: 12px;
+    }
+    .location-filters-box #dist-status {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 6px;
+      line-height: 1.3;
+    }
     .hourly-table-container { overflow-x: auto; margin-top: 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-light); }
     .hourly-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 480px; }
     .hourly-table th, .hourly-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
@@ -132,18 +999,11 @@
   </style>
 </head>
 <body>
-  <header>
-    <div>
-      <h1>Southeastern Deer Season & Scent Planner (v2.1)</h1>
-      <p>Alabama public and private land boundaries, USGS water level gauges, topographic terrain, and microclimate wind matrices.</p>
-      <p style="font-size:12px; margin-top:6px;">
-        <span class="version-badge">v2.1</span>
-        <span class="version-badge">Ruleset: 2026-2027 Season</span>
-        <a href="https://waterdata.usgs.gov/state/Alabama/" target="_blank">USGS Water Data</a> |
-        <a href="https://www.outdooralabama.com/seasons-and-bag-limits/deer-season" target="_blank">Alabama Outdoor Regulations</a> |
-        <a href="https://www.arcgis.com/apps/Embed/index.html?webmap=b110b866ffec492cb95e5c62b1a4f40f" target="_blank">TVA Undeveloped Lands</a> |
-        <a href="https://conservationgis.alabama.gov/dcnr/" target="_blank">ADCNR Conservation GIS</a>
-      </p>
+  <!-- Brand header: large logo + small V2.4 at bottom-right of logo -->
+  <header class="brand-header" role="banner">
+    <div class="brand-logo-wrap">
+      <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
+      <span class="brand-version" aria-label="Version 2.4">V2.4</span>
     </div>
   </header>
 
@@ -153,7 +1013,7 @@
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
         <div>
           <h3 id="regs-modal-title">Deer hunting regulations</h3>
-          <div class="regs-modal-jurisdiction" id="regs-modal-jurisdiction">—</div>
+          <div class="regs-modal-jurisdiction" id="regs-modal-jurisdiction">-</div>
         </div>
         <button type="button" onclick="closeDeerRegsPanel()" title="Close" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;font-weight:bold;line-height:1;padding:0 2px;">&times;</button>
       </div>
@@ -168,109 +1028,147 @@
         <div class="regs-link-row" id="regs-modal-legislation"></div>
       </div>
       <div class="regs-modal-section" id="regs-modal-oa-section" style="display:none;">
-        <h4>Outdoor Alabama — this area</h4>
+        <h4>Outdoor Alabama - this area</h4>
         <div class="regs-link-row" id="regs-modal-oa"></div>
       </div>
       <p class="regs-disclaimer">Summary only for planning. Always verify the current AREA permit, refuge brochure, and full code before hunting. Seasons and weapons can change by year and unit.</p>
     </div>
   </div>
 
+  <div class="app-shell">
   <div class="container">
     <div class="card">
-      <div class="step-section active" id="step-1-section">
-        <div class="step-header"><div class="step-num">1</div><span class="step-title">Select Hunt Date</span></div>
-        <div class="calendar-container">
-          <div class="calendar-header">
-            <button onclick="changeMonth(-1)">&lt; Prev</button>
-            <h3 id="calendar-month-year" style="margin:0;font-size:15px;">November 2026</h3>
-            <button onclick="changeMonth(1)">Next &gt;</button>
+      <!-- Square calendar (left fixed) + weapons stacked in freed space on the right -->
+      <div class="planner-row">
+        <div class="planner-cal-col" id="planner-cal-col">
+          <div class="step-section active" id="step-1-section">
+            <div class="step-header"><div class="step-num">1</div><span class="step-title">Select Hunt Date</span></div>
+            <div class="calendar-container" id="calendar-container">
+              <div class="calendar-header">
+                <button onclick="changeMonth(-1)">&lt; Prev</button>
+                <h3 id="calendar-month-year" style="margin:0;font-size:15px;">November 2026</h3>
+                <button onclick="changeMonth(1)">Next &gt;</button>
+              </div>
+              <div class="calendar-grid" id="calendar-grid"></div>
+            </div>
+            <div class="events-box" id="calendar-events-section">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <span id="events-title-date" style="font-size:11px;font-weight:bold;color:var(--accent);text-transform:uppercase;">Trips and Events</span>
+                <button id="add-event-tab-btn" onclick="setEventFormVisibility(true)" style="background:var(--panel);border:1px solid var(--border);color:var(--accent);padding:3px 8px;border-radius:4px;font-weight:bold;cursor:pointer;font-size:11px;">+ Add Event</button>
+              </div>
+              <div class="event-form-row" id="event-form-container" style="display:none;">
+                <input type="text" id="event-title-input" placeholder="Trip Detail..." style="padding:6px 10px;font-size:12px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+                  <div style="display:flex;gap:6px;align-items:center;">
+                    <span style="font-size:11px;color:var(--muted);">Color:</span>
+                    <button class="color-dot-btn selected" style="background:#e59a18;" onclick="selectEventColor('#e59a18',this)"></button>
+                    <button class="color-dot-btn" style="background:#486a2f;" onclick="selectEventColor('#486a2f',this)"></button>
+                    <button class="color-dot-btn" style="background:#3498db;" onclick="selectEventColor('#3498db',this)"></button>
+                    <button class="color-dot-btn" style="background:#d94136;" onclick="selectEventColor('#d94136',this)"></button>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:4px;">
+                    <input type="checkbox" id="link-hunt-state-chk" checked>
+                    <label for="link-hunt-state-chk" style="font-size:11px;color:var(--muted);">Link Current Hunt State</label>
+                  </div>
+                </div>
+                <div style="display:flex;gap:6px;margin-top:6px;">
+                  <button id="save-event-btn" onclick="saveEvent()" style="flex:1;background:var(--accent);border:none;color:#000;font-weight:bold;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;">Add Event</button>
+                  <button id="cancel-edit-btn" onclick="clearEventForm()" style="background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;display:none;">Cancel</button>
+                </div>
+              </div>
+              <div id="calendar-events-list" style="font-size:12px;"></div>
+            </div>
           </div>
-          <div class="calendar-grid" id="calendar-grid"></div>
         </div>
-        <div class="events-box" id="calendar-events-section">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <span id="events-title-date" style="font-size:11px;font-weight:bold;color:var(--accent);text-transform:uppercase;">Trips and Events</span>
-            <button id="add-event-tab-btn" onclick="setEventFormVisibility(true)" style="background:var(--panel);border:1px solid var(--border);color:var(--accent);padding:3px 8px;border-radius:4px;font-weight:bold;cursor:pointer;font-size:11px;">+ Add Event</button>
-          </div>
-          <div class="event-form-row" id="event-form-container" style="display:none;">
-            <input type="text" id="event-title-input" placeholder="Trip Detail..." style="padding:6px 10px;font-size:12px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
-              <div style="display:flex;gap:6px;align-items:center;">
-                <span style="font-size:11px;color:var(--muted);">Color:</span>
-                <button class="color-dot-btn selected" style="background:#e59a18;" onclick="selectEventColor('#e59a18',this)"></button>
-                <button class="color-dot-btn" style="background:#486a2f;" onclick="selectEventColor('#486a2f',this)"></button>
-                <button class="color-dot-btn" style="background:#3498db;" onclick="selectEventColor('#3498db',this)"></button>
-                <button class="color-dot-btn" style="background:#d94136;" onclick="selectEventColor('#d94136',this)"></button>
-              </div>
-              <div style="display:flex;align-items:center;gap:4px;">
-                <input type="checkbox" id="link-hunt-state-chk" checked>
-                <label for="link-hunt-state-chk" style="font-size:11px;color:var(--muted);">Link Current Hunt State</label>
-              </div>
-            </div>
-            <div style="display:flex;gap:6px;margin-top:6px;">
-              <button id="save-event-btn" onclick="saveEvent()" style="flex:1;background:var(--accent);border:none;color:#000;font-weight:bold;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;">Add Event</button>
-              <button id="cancel-edit-btn" onclick="clearEventForm()" style="background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;display:none;">Cancel</button>
+
+        <div class="planner-wpn-col">
+          <div class="step-section locked" id="step-2-section">
+            <div class="step-header"><div class="step-num">2</div><span class="step-title">Choose Your Weapon</span></div>
+            <div class="btn-group weapon-stack">
+              <button class="filter-btn" id="wpn-either" onclick="setWeapon('Either')">Either weapon</button>
+              <button class="filter-btn" id="wpn-archery" onclick="setWeapon('Archery')">Archery</button>
+              <button class="filter-btn" id="wpn-gun" onclick="setWeapon('Gun')">Gun</button>
+              <button class="filter-btn" id="wpn-primitive" onclick="setWeapon('Primitive')">Primitive</button>
             </div>
           </div>
-          <div id="calendar-events-list" style="font-size:12px;"></div>
+        </div>
+
+        <div class="planner-loc-col">
+          <div class="step-section locked" id="step-3-section">
+            <div class="step-header"><div class="step-num">3</div><span class="step-title" id="list-label">Hunt Locations</span></div>
+            <!-- Land + distance filters (list stays full-width under steps) -->
+            <div class="location-filters-box" id="location-filters-box">
+              <div class="lf-row" id="land-btn-group">
+                <span class="lf-label">Land</span>
+                <div class="lf-seg">
+                  <button type="button" class="filter-btn active" id="land-public" onclick="setLand('Public')">Public</button>
+                  <button type="button" class="filter-btn" id="land-private" onclick="setLand('Private')">Private</button>
+                </div>
+              </div>
+              <div class="lf-row">
+                <span class="lf-label">From</span>
+                <div class="lf-seg">
+                  <button type="button" class="filter-btn active" id="dist-origin-gps" onclick="setDistOriginMode('gps')">My Location</button>
+                  <button type="button" class="filter-btn" id="dist-origin-zip" onclick="setDistOriginMode('zip')">ZIP</button>
+                </div>
+              </div>
+              <div class="lf-row">
+                <div class="lf-within">
+                  <label for="dist-radius-select">Within</label>
+                  <select id="dist-radius-select" onchange="setDistRadius(this.value)">
+                    <option value="0">Any distance</option>
+                    <option value="25">25 miles</option>
+                    <option value="50" selected>50 miles</option>
+                    <option value="100">100 miles</option>
+                    <option value="150">150 miles</option>
+                    <option value="200">200 miles</option>
+                  </select>
+                </div>
+              </div>
+              <div id="dist-zip-row">
+                <input type="text" id="dist-zip-input" inputmode="numeric" maxlength="5" placeholder="ZIP e.g. 35203">
+                <button type="button" class="filter-btn active" style="flex:0 0 auto;padding:7px 12px;" onclick="applyDistZip()">Apply</button>
+              </div>
+              <div id="dist-status">Using GPS when available · default 50 mi</div>
+            </div>
+
+            <!-- List fills dead space under step-3 filters -->
+            <div class="locations-in-step3" id="locations-under-steps">
+              <div class="list-toolbar">
+                <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                  <button class="filter-btn active" id="v-toggle-all" onclick="setViewFilterMode('all')">Show All</button>
+                  <button class="filter-btn" id="v-toggle-sel" onclick="setViewFilterMode('selected')">Selected</button>
+                </div>
+                <button id="restore-hidden-btn" onclick="restoreAllHidden()" style="background:var(--green);border:none;color:#fff;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:10px;font-weight:bold;display:none;">Restore</button>
+                <span id="hidden-count-label" style="font-size:10px;color:var(--muted);"></span>
+              </div>
+              <div class="location-list" id="location-list"></div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="step-section locked" id="step-2-section">
-        <div class="step-header"><div class="step-num">2</div><span class="step-title">Choose Your Weapon</span></div>
-        <div class="btn-group">
-          <button class="filter-btn" id="wpn-either" onclick="setWeapon('Either')">Either weapon</button>
-          <button class="filter-btn" id="wpn-archery" onclick="setWeapon('Archery')">Archery</button>
-          <button class="filter-btn" id="wpn-gun" onclick="setWeapon('Gun')">Gun</button>
-          <button class="filter-btn" id="wpn-primitive" onclick="setWeapon('Primitive')">Primitive</button>
-        </div>
-      </div>
-
-      <div class="step-section locked" id="step-3-section">
-        <div class="step-header"><div class="step-num">3</div><span class="step-title" id="list-label">Available Hunt Locations</span></div>
-        <div style="margin-bottom:12px;">
-          <div style="display:flex;gap:8px;" id="land-btn-group">
-            <button class="filter-btn active" id="land-public" style="flex:1;" onclick="setLand('Public')">Public Land</button>
-            <button class="filter-btn" id="land-private" style="flex:0 0 auto;font-size:10px;padding:4px 10px;opacity:0.6;" onclick="setLand('Private')">Private Land</button>
-          </div>
-        </div>
-        <div class="distance-filter" style="margin-bottom:12px;background:var(--panel-light);border:1px solid var(--border);border-radius:10px;padding:12px;">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:8px;">Distance filter</div>
-          <div class="btn-group" style="margin-bottom:8px;">
-            <button type="button" class="filter-btn active" id="dist-origin-gps" style="flex:1;padding:8px;font-size:12px;" onclick="setDistOriginMode('gps')">My Location</button>
-            <button type="button" class="filter-btn" id="dist-origin-zip" style="flex:1;padding:8px;font-size:12px;" onclick="setDistOriginMode('zip')">ZIP Code</button>
-          </div>
-          <div id="dist-zip-row" style="display:none;gap:8px;margin-bottom:8px;align-items:center;">
-            <input type="text" id="dist-zip-input" inputmode="numeric" maxlength="5" placeholder="e.g. 35203" style="flex:1;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--panel);color:var(--ink);font-size:13px;">
-            <button type="button" class="filter-btn active" style="flex:0 0 auto;padding:8px 12px;" onclick="applyDistZip()">Apply</button>
-          </div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <label for="dist-radius-select" style="font-size:12px;color:var(--muted);">Within</label>
-            <select id="dist-radius-select" onchange="setDistRadius(this.value)" style="flex:1;min-width:140px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--panel);color:var(--ink);font-size:13px;">
-              <option value="0">Any distance</option>
-              <option value="25">25 miles</option>
-              <option value="50" selected>50 miles</option>
-              <option value="100">100 miles</option>
-              <option value="150">150 miles</option>
-              <option value="200">200 miles</option>
-            </select>
-          </div>
-          <div id="dist-status" style="font-size:11px;color:var(--muted);margin-top:8px;">Using GPS when available · default 50 mi</div>
-        </div>
-        <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;margin-bottom:10px;background:rgba(255,255,255,0.02);padding:8px 10px;border-radius:8px;border:1px solid var(--border);">
-          <div style="display:flex;gap:6px;">
-            <button class="filter-btn active" id="v-toggle-all" style="padding:4px 8px;font-size:11px;" onclick="setViewFilterMode('all')">Show All</button>
-            <button class="filter-btn" id="v-toggle-sel" style="padding:4px 8px;font-size:11px;" onclick="setViewFilterMode('selected')">Selected Only</button>
-          </div>
-          <button id="restore-hidden-btn" onclick="restoreAllHidden()" style="background:var(--green);border:none;color:#fff;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:bold;display:none;">Restore Hidden</button>
-          <span id="hidden-count-label" style="font-size:11px;color:var(--muted);"></span>
-        </div>
-        <div class="location-list" id="location-list"></div>
-
+      <div class="map-section-block">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
           <span class="step-title" style="font-size:11px;">Alabama Map & Bordering States</span>
         </div>
         <div class="map-wrapper">
+          <!-- Compact wind compass for selected area (top center) -->
+          <div id="map-wind-hud" class="map-wind-hud" aria-live="polite">
+            <div class="compass" title="Wind direction">
+              <div class="compass-needle" id="compass-needle"></div>
+            </div>
+            <div class="map-wind-meta">
+              <div class="mw-speed" id="map-wind-speed">-- mph</div>
+              <div class="mw-dir" id="map-wind-dir">from -</div>
+              <div class="mw-scent" id="map-scent-text">Scent → -</div>
+            </div>
+          </div>
+          <!-- Stand placement: click map after + Add Stand -->
+          <div id="stand-place-banner" class="stand-place-banner" style="display:none;" role="status">
+            <span id="stand-place-banner-text">Click the map to place your stand</span>
+            <button type="button" id="stand-place-cancel" onclick="cancelStandPlacement()" style="background:none;border:1px solid var(--border);color:var(--ink);border-radius:4px;padding:3px 8px;cursor:pointer;font-size:11px;font-weight:600;">Cancel</button>
+          </div>
           <button id="map-maximize-btn" onclick="toggleMapFullscreen()" style="position:absolute;top:10px;right:10px;z-index:10000;background:var(--panel);border:1px solid var(--border);color:var(--accent);border-radius:6px;padding:6px 12px;font-weight:bold;cursor:pointer;font-size:11px;">Full Screen</button>
           <button id="map-minimize-btn" onclick="toggleMapFullscreen()" style="position:absolute;top:10px;right:10px;z-index:10000;background:var(--panel);border:1px solid var(--border);color:var(--accent);border-radius:6px;padding:6px 12px;font-weight:bold;cursor:pointer;font-size:11px;display:none;">Minimize</button>
           <button id="gps-snap-btn" onclick="snapToGPS()" style="position:absolute;bottom:20px;left:20px;z-index:10000;background:var(--green);color:white;border:none;border-radius:6px;padding:8px 12px;font-weight:bold;cursor:pointer;font-size:11px;">Current Location</button>
@@ -360,7 +1258,7 @@
       </div>
     </div>
 
-    <div class="card" style="min-height:500px;" id="dashboard-container">
+    <div class="card" id="dashboard-container">
       <div id="db-blank" style="text-align:center;padding:120px 0;color:var(--muted);">
         <h3>Step 4: Weather & Water Dashboard</h3>
         <p>Select a date and weapon, then choose a location or use Current Location. Water levels appear only when within 3 miles of a USGS gauge.</p>
@@ -372,10 +1270,14 @@
       <div id="db-content" style="display:none;" class="dashboard-grid">
         <div id="current-data-banner" class="current-data-banner"></div>
 
-        <div>
-          <h2 id="db-title" style="margin-bottom:2px;">Location Name</h2>
+        <div class="db-title-block">
+          <h2 id="db-title">Location Name</h2>
           <span id="db-reg-summary" style="font-weight:bold;color:var(--accent);">Season Open Rules</span>
           <p id="db-subtitle" style="color:var(--muted);font-size:12.5px;margin:5px 0 0;">Area specifics</p>
+          <div id="weather-source-badge">Source: Open-Meteo</div>
+          <!-- Hidden mirrors kept for any legacy references; live wind UI is on the map -->
+          <div id="wind-speed-text" style="display:none;"></div>
+          <div id="scent-drift-text" style="display:none;"></div>
         </div>
         <hr style="border:0;border-top:1px solid var(--border);margin:0;">
         <div id="db-rules-box" style="background:rgba(229,154,24,0.08);border-left:4px solid var(--accent);padding:12px;border-radius:6px;font-size:13px;">
@@ -415,17 +1317,6 @@
           </div>
         </div>
         <div>
-          <span class="step-title" style="font-size:11px;">Scent Drift</span>
-          <div class="compass-container">
-            <div class="compass"><div class="compass-needle" id="compass-needle"></div></div>
-            <div>
-              <div style="font-size:16px;font-weight:bold;" id="wind-speed-text">Checking...</div>
-              <div class="scent-warn" id="scent-drift-text">Scent drift calculated.</div>
-              <div id="weather-source-badge" style="font-size:10px;color:var(--muted);margin-top:3px;">Source: Open-Meteo</div>
-            </div>
-          </div>
-        </div>
-        <div>
           <span class="step-title" style="font-size:11px;">Hourly Forecast (Daylight)</span>
           <div class="hourly-table-container">
             <table class="hourly-table">
@@ -437,9 +1328,23 @@
       </div>
     </div>
   </div>
+  </div><!-- /.app-shell -->
+
+  <!-- Tagline + official links moved to bottom (v2.4) -->
+  <footer class="site-footer" role="contentinfo">
+    <div class="site-footer-inner">
+      <p>Alabama public &amp; private land · USGS gauges · topo terrain · wind &amp; scent</p>
+      <span class="version-badge">Ruleset: 2026-2027 Season</span>
+      <a href="https://waterdata.usgs.gov/state/Alabama/" target="_blank" rel="noopener">USGS Water</a>
+      <a href="https://www.outdooralabama.com/seasons-and-bag-limits/deer-season" target="_blank" rel="noopener">Outdoor Alabama</a>
+      <a href="https://www.arcgis.com/apps/Embed/index.html?webmap=b110b866ffec492cb95e5c62b1a4f40f" target="_blank" rel="noopener">TVA Lands</a>
+      <a href="https://conservationgis.alabama.gov/dcnr/" target="_blank" rel="noopener">ADCNR GIS</a>
+    </div>
+  </footer>
 
   <script>
     // ========== STATE ==========
+    const APP_VERSION = '2.4';
     let selectedDate = null, selectedWeapon = null, selectedLand = 'Public', selectedLocationId = null;
     let selectedSubsectionIndex = null, viewFilterMode = 'all', currentSelectedColor = '#e59a18';
     let editingEventId = null, userLat = null, userLng = null;
@@ -463,6 +1368,10 @@
     let lastVisibleMarkerKey = '';
     let gaugesDrawn = false;
     let lastClickTva = null; // TVA hit from last map click (for pin/hunt save)
+    // Locations currently shown in the Available Hunts list (map dots must match this)
+    let lastListedHuntLocations = [];
+    // Map-click stand placement: { locId, name } while active
+    let standPlaceMode = null;
 
     // Weather + water caches (15 min) and in-flight request dedupe
     let weatherCache = { key: null, data: null, timestamp: 0 };
@@ -471,17 +1380,18 @@
     let waterStationCache = {};
     const CACHE_TTL = 15 * 60 * 1000;
 
-    // TVA Undeveloped Recreation Lands (ArcGIS) — loaded for silent point-in-polygon only (no map outline)
+    // TVA Undeveloped Recreation Lands (ArcGIS) - loaded for silent point-in-polygon only (no map outline)
     const TVA_FEATURE_URL = 'https://services.arcgis.com/w8auYAijfGK1Mydj/arcgis/rest/services/Dispersed_Recreation_Areas/FeatureServer/0/query';
     const TVA_INFO_URL = 'https://www.tva.com/environment/recreation/recreation-on-undeveloped-tva-public-lands';
     let tvaPolygons = null;
     let tvaLoadPromise = null;
 
-    // Public lands overlay + list (ADCNR, TVA, federal) — cached ~30 days
+    // Public lands overlay + list (ADCNR, TVA, federal) - cached ~30 days
     const ADCNR_BASE = 'https://conservationgis.alabama.gov/adcnrweb/rest/services';
     const ADCNR_CACHE_KEY = 'alabama_hunt_public_lands_v3';
     const ADCNR_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
     const HIDDEN_LOCS_KEY = 'alabama_hunt_hidden_locations_v1';
+    const USER_STANDS_KEY = 'alabama_hunt_user_stands_v1';
     const AL_BBOX = '-88.473,30.14,-84.889,35.008'; // tight Alabama envelope for GIS queries
     // Approximate Alabama state outline [lng, lat] for in-state checks (list + hunt options)
     const AL_BOUNDARY_RING = [
@@ -503,7 +1413,7 @@
         url: ADCNR_BASE + '/ForeverWildTracts/MapServer/0/query',
         where: '1=1', outFields: 'Name,NameLookup,County,Acres,CanHunt,InWMA,TractInfoL,PMapLink,OBJECTID',
         color: '#486a2f', fillOpacity: 0.18, weight: 1.25,
-        // Never list Forever Wild as hunt destinations — especially tracts inside WMAs
+        // Never list Forever Wild as hunt destinations - especially tracts inside WMAs
         // (InWMA=Yes). Map polygons stay for click-to-inspect only.
         listMode: 'none',
         minAcres: 400, nameFields: ['NameLookup', 'Name', 'DCNR_Name'],
@@ -565,7 +1475,7 @@
         match: /swan\s*creek|mallard|fox\s*creek/i,
         allow: ['Archery'],
         archeryOnly: true,
-        antlerRestriction: 'Statewide antlered buck bag applies; unit permit may add restrictions — confirm AREA map.',
+        antlerRestriction: 'Statewide antlered buck bag applies; unit permit may add restrictions - confirm AREA map.',
         seasons: [
           { weapon: 'Archery', land: 'Either', start: '2026-10-15', end: '2026-11-22', target: "Hunter's Choice", limit: '2/day (1 antlered + 1 unantlered)', notes: 'Deer archery only. No gun or primitive deer.' }
         ]
@@ -578,14 +1488,14 @@
         antlerRestriction: 'Follow refuge brochure / state limits; no organized drives.',
         seasons: [
           { weapon: 'Archery', land: 'Either', start: '2026-10-15', end: '2027-02-15', target: 'Either Sex', limit: 'State daily limits', notes: 'Archery equipment only (plus flintlock season).' },
-          { weapon: 'Primitive', land: 'Either', start: '2026-10-15', end: '2027-02-15', target: 'Either Sex', limit: 'State daily limits', notes: 'Flintlock .40 cal or larger only — not modern gun.' }
+          { weapon: 'Primitive', land: 'Either', start: '2026-10-15', end: '2027-02-15', target: 'Either Sex', limit: 'State daily limits', notes: 'Flintlock .40 cal or larger only - not modern gun.' }
         ]
       },
       {
         match: /cahaba\s*river/i,
         allow: ['Archery'],
         archeryOnly: true,
-        antlerRestriction: 'Antlered bucks typically require 3+ points (1"+) on one beam on the associated WMA — confirm current AREA permit.',
+        antlerRestriction: 'Antlered bucks typically require 3+ points (1"+) on one beam on the associated WMA - confirm current AREA permit.',
         seasons: [
           { weapon: 'Archery', land: 'Either', start: '2026-10-15', end: '2027-02-10', target: "Hunter's Choice", limit: '1 deer/day', notes: 'DEER ARCHERY ONLY on Cahaba River NWR (no gun deer).' }
         ]
@@ -647,7 +1557,7 @@
           { weapon: 'Archery', land: 'Either', start: '2026-10-01', end: '2027-01-15', target: "Hunter's Choice", limit: '1/day', notes: 'Pre-rut/peak windows on AREA permit.' },
           { weapon: 'Archery', land: 'Either', start: '2027-01-16', end: '2027-01-27', target: 'Antlered Bucks Only', limit: '1 buck/day' },
           { weapon: 'Primitive', land: 'Either', start: '2026-11-02', end: '2026-11-06', target: "Hunter's Choice", limit: '1/day' },
-          { weapon: 'Gun', land: 'Either', start: '2026-11-07', end: '2026-11-08', target: "Hunter's Choice", limit: '1/day', notes: 'Gun doe hunt — mandatory check station.' },
+          { weapon: 'Gun', land: 'Either', start: '2026-11-07', end: '2026-11-08', target: "Hunter's Choice", limit: '1/day', notes: 'Gun doe hunt - mandatory check station.' },
           { weapon: 'Gun', land: 'Either', start: '2026-11-19', end: '2026-11-22', target: 'Bucks Only', limit: '1/day', notes: 'Zone B gun bucks; antler rule applies.' }
         ]
       },
@@ -664,37 +1574,37 @@
       }
     ];
 
-    // Alabama NWR units with NO big-game/deer hunting (50 CFR 32.20 or not listed) — never map/list
+    // Alabama NWR units with NO big-game/deer hunting (50 CFR 32.20 or not listed) - never map/list
     const NON_HUNTABLE_REFUGE_MATCH = /bon\s*secour|fern\s*cave|sauta\s*cave|watercress\s*darter|paint\s*rock\s*river/i;
 
     // Official legislation + Outdoor Alabama hubs (most current published sources)
     const LEGISLATION = {
       stateWMA: {
-        label: 'Ala. Admin. Code r. 220-2-.55 — WMA Rules',
+        label: 'Ala. Admin. Code r. 220-2-.55 - WMA Rules',
         url: 'https://admincode.legislature.state.al.us/api/rule/220-2-.55'
       },
       stateDeer: {
-        label: 'Outdoor Alabama — Deer Season & Bag Limits',
+        label: 'Outdoor Alabama - Deer Season & Bag Limits',
         url: 'https://www.outdooralabama.com/seasons-and-bag-limits/deer-season'
       },
       stateWMAIndex: {
-        label: 'Outdoor Alabama — Wildlife Management Areas',
+        label: 'Outdoor Alabama - Wildlife Management Areas',
         url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas'
       },
       stateWMARulesPage: {
-        label: 'Outdoor Alabama — WMA Rules Overview',
+        label: 'Outdoor Alabama - WMA Rules Overview',
         url: 'https://www.outdooralabama.com/hunting/wma-rules'
       },
       federalNWR: {
-        label: '50 CFR § 32.20 — Alabama National Wildlife Refuges (hunting)',
+        label: '50 CFR § 32.20 - Alabama National Wildlife Refuges (hunting)',
         url: 'https://www.ecfr.gov/current/title-50/chapter-I/subchapter-C/part-32/subpart-B/section-32.20'
       },
       federalPart32: {
-        label: '50 CFR Part 32 — Hunting & Fishing on NWRs',
+        label: '50 CFR Part 32 - Hunting & Fishing on NWRs',
         url: 'https://www.ecfr.gov/current/title-50/chapter-I/subchapter-C/part-32'
       },
       tvaLands: {
-        label: 'TVA — Undeveloped Public Lands Recreation Rules',
+        label: 'TVA - Undeveloped Public Lands Recreation Rules',
         url: 'https://www.tva.com/environment/recreation/recreation-on-undeveloped-tva-public-lands'
       },
       tvaMap: {
@@ -705,28 +1615,28 @@
 
     // Outdoor Alabama pages / permit hubs for specific state units (when known)
     const OA_AREA_PAGES = [
-      { match: /black\s*warrior/i, label: 'Outdoor Alabama — Black Warrior WMA area info', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
-      { match: /skyline|james\s*d\.?\s*martin/i, label: 'Outdoor Alabama — Skyline WMA area info', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
-      { match: /swan\s*creek|mallard|fox\s*creek/i, label: 'Outdoor Alabama — Swan Creek / Mallard-Fox Creek', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
-      { match: /cahaba/i, label: 'Outdoor Alabama — Cahaba River WMA / Refuge', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
-      { match: /choccolocco|mountain\s*longleaf/i, label: 'Outdoor Alabama — Choccolocco / Mountain Longleaf', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
+      { match: /black\s*warrior/i, label: 'Outdoor Alabama - Black Warrior WMA area info', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
+      { match: /skyline|james\s*d\.?\s*martin/i, label: 'Outdoor Alabama - Skyline WMA area info', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
+      { match: /swan\s*creek|mallard|fox\s*creek/i, label: 'Outdoor Alabama - Swan Creek / Mallard-Fox Creek', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
+      { match: /cahaba/i, label: 'Outdoor Alabama - Cahaba River WMA / Refuge', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
+      { match: /choccolocco|mountain\s*longleaf/i, label: 'Outdoor Alabama - Choccolocco / Mountain Longleaf', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
       { match: /forever\s*wild/i, label: 'Alabama Forever Wild', url: 'https://www.alabamaforeverwild.com/' },
-      { match: /special\s*opportunity|soa/i, label: 'Outdoor Alabama — Special Opportunity Areas', url: 'https://www.outdooralabama.com/hunting/special-opportunity-areas' }
+      { match: /special\s*opportunity|soa/i, label: 'Outdoor Alabama - Special Opportunity Areas', url: 'https://www.outdooralabama.com/hunting/special-opportunity-areas' }
     ];
 
     // Preferred map / rules destinations by unit (used under the regs button on map popup)
     const AREA_MAP_RULES_LINKS = [
-      { match: /wheeler/i, label: 'Wheeler NWR — hunting map & rules', url: 'https://www.fws.gov/refuge/wheeler/visit-us/activities/hunting' },
-      { match: /cahaba\s*river/i, label: 'Cahaba River NWR — hunting map & rules', url: 'https://www.fws.gov/refuge/cahaba-river/visit-us/activities/hunting' },
-      { match: /choctaw/i, label: 'Choctaw NWR — hunting map & rules', url: 'https://www.fws.gov/refuge/choctaw/visit-us/activities/hunting' },
-      { match: /eufaula/i, label: 'Eufaula NWR — hunting map & rules', url: 'https://www.fws.gov/refuge/eufaula/visit-us/activities/hunting' },
-      { match: /key\s*cave/i, label: 'Key Cave NWR — hunting map & rules', url: 'https://www.fws.gov/refuge/key-cave/visit-us/activities/hunting' },
-      { match: /mountain\s*longleaf/i, label: 'Mountain Longleaf NWR — hunting map & rules', url: 'https://www.fws.gov/refuge/mountain-longleaf/visit-us/activities/hunting' },
-      { match: /grand\s*bay/i, label: 'Grand Bay NWR — hunting map & rules', url: 'https://www.fws.gov/refuge/grand-bay/visit-us/activities/hunting' },
-      { match: /swan\s*creek|mallard|fox\s*creek/i, label: 'Outdoor Alabama — WMA maps & AREA permits', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
-      { match: /black\s*warrior/i, label: 'Outdoor Alabama — WMA maps & AREA permits', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
-      { match: /skyline|james\s*d\.?\s*martin/i, label: 'Outdoor Alabama — WMA maps & AREA permits', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
-      { match: /choccolocco/i, label: 'Outdoor Alabama — WMA maps & AREA permits', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' }
+      { match: /wheeler/i, label: 'Wheeler NWR - hunting map & rules', url: 'https://www.fws.gov/refuge/wheeler/visit-us/activities/hunting' },
+      { match: /cahaba\s*river/i, label: 'Cahaba River NWR - hunting map & rules', url: 'https://www.fws.gov/refuge/cahaba-river/visit-us/activities/hunting' },
+      { match: /choctaw/i, label: 'Choctaw NWR - hunting map & rules', url: 'https://www.fws.gov/refuge/choctaw/visit-us/activities/hunting' },
+      { match: /eufaula/i, label: 'Eufaula NWR - hunting map & rules', url: 'https://www.fws.gov/refuge/eufaula/visit-us/activities/hunting' },
+      { match: /key\s*cave/i, label: 'Key Cave NWR - hunting map & rules', url: 'https://www.fws.gov/refuge/key-cave/visit-us/activities/hunting' },
+      { match: /mountain\s*longleaf/i, label: 'Mountain Longleaf NWR - hunting map & rules', url: 'https://www.fws.gov/refuge/mountain-longleaf/visit-us/activities/hunting' },
+      { match: /grand\s*bay/i, label: 'Grand Bay NWR - hunting map & rules', url: 'https://www.fws.gov/refuge/grand-bay/visit-us/activities/hunting' },
+      { match: /swan\s*creek|mallard|fox\s*creek/i, label: 'Outdoor Alabama - WMA maps & AREA permits', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
+      { match: /black\s*warrior/i, label: 'Outdoor Alabama - WMA maps & AREA permits', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
+      { match: /skyline|james\s*d\.?\s*martin/i, label: 'Outdoor Alabama - WMA maps & AREA permits', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
+      { match: /choccolocco/i, label: 'Outdoor Alabama - WMA maps & AREA permits', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' }
     ];
 
     /**
@@ -757,11 +1667,11 @@
         }
       }
 
-      // 3) Fallbacks by land type — sites that SHOULD have the map & regs
+      // 3) Fallbacks by land type - sites that SHOULD have the map & regs
       if (layerKey === 'nwr' || /national\s*wildlife\s*refuge|\bnwr\b/i.test(n)) {
         return {
           url: 'https://www.fws.gov/our-facilities?state_name=Alabama&field_facility_purpose_value=National%20Wildlife%20Refuge',
-          label: 'FWS — find this refuge hunting map & brochure',
+          label: 'FWS - find this refuge hunting map & brochure',
           source: 'fallback'
         };
       }
@@ -775,28 +1685,28 @@
       if (layerKey === 'soa' || /special\s*opportunity/i.test(n)) {
         return {
           url: 'https://www.outdooralabama.com/hunting/special-opportunity-areas',
-          label: 'Outdoor Alabama — Special Opportunity Areas (maps & regs)',
+          label: 'Outdoor Alabama - Special Opportunity Areas (maps & regs)',
           source: 'fallback'
         };
       }
       if (layerKey === 'pdha' || /physically\s*disabled/i.test(n)) {
         return {
           url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas',
-          label: 'Outdoor Alabama — PDHA / WMA maps & permits',
+          label: 'Outdoor Alabama - PDHA / WMA maps & permits',
           source: 'fallback'
         };
       }
       if (layerKey === 'foreverWild') {
         return {
           url: 'https://www.alabamaforeverwild.com/',
-          label: 'Alabama Forever Wild — tract info & maps',
+          label: 'Alabama Forever Wild - tract info & maps',
           source: 'fallback'
         };
       }
       // Default state WMA / public land
       return {
         url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas',
-        label: 'Outdoor Alabama — WMA maps, AREA permits & rules',
+        label: 'Outdoor Alabama - WMA maps, AREA permits & rules',
         source: 'fallback'
       };
     }
@@ -826,7 +1736,7 @@
       var dates = (s.start && s.end) ? (s.start + ' → ' + s.end) : 'See current permit';
       var target = s.target ? ('; · ' + s.target) : '';
       var limit = s.limit ? ('; · Bag: ' + s.limit) : '';
-      return w + ': ' + dates + target + limit + (s.notes ? ' — ' + s.notes : '');
+      return w + ': ' + dates + target + limit + (s.notes ? ' - ' + s.notes : '');
     }
 
     function isoDateStr(d) {
@@ -892,7 +1802,7 @@
       }
       if (profile && profile.huntDaysOnly && profile.huntDaysOnly.length) {
         if (profile.huntDaysOnly.indexOf(day) === -1) {
-          return 'Hunting only on ' + profile.huntDaysOnly.join(', ') + ' — not on ' + day + 's.';
+          return 'Hunting only on ' + profile.huntDaysOnly.join(', ') + ' - not on ' + day + 's.';
         }
       }
       return null;
@@ -913,7 +1823,7 @@
       var closedReason = '';
       var statusKnown = false; // true when we could determine open/closed from coded data
 
-      // —— Selected day / weapon context ——
+      // -- Selected day / weapon context --
       bullets.push('Selected day: ' + prettyDate(dateObj) + '.');
       if (weapon && weapon !== 'Either') {
         bullets.push('Your selected weapon filter: ' + weapon + '.');
@@ -921,7 +1831,7 @@
         bullets.push('Weapon filter: Either (showing all legal deer weapons for this unit).');
       }
 
-      // —— Always-archery / allowed weapons ——
+      // -- Always-archery / allowed weapons --
       if (profile && profile.archeryOnly) {
         bullets.push('This unit is ARCHERY ONLY for deer (no modern gun deer season).');
       } else if (profile && profile.allow && profile.allow.length) {
@@ -949,7 +1859,7 @@
         }
       }
 
-      // —— Specific days you cannot hunt ——
+      // -- Specific days you cannot hunt --
       var closedMsg = unitClosedOnSelectedDay(profile, dateObj);
       if (closedMsg) {
         bullets.push(closedMsg);
@@ -964,7 +1874,7 @@
         bullets.push('Hunt days only: ' + profile.huntDaysOnly.join(', ') + '.');
       }
 
-      // —— Open on selected day? ——
+      // -- Open on selected day? --
       var openToday = seasons.filter(function(s) {
         if (!seasonCoversDate(s, ds)) return false;
         if (s.land && s.land !== 'Either' && s.land !== land) return false;
@@ -975,14 +1885,14 @@
       if (closedMsg) {
         bullets.push('Status on selected day: CLOSED for deer hunting.');
       } else if (!seasons.length) {
-        // Generic unit without coded calendar — do not claim a hard red closed unless weapon is known illegal
+        // Generic unit without coded calendar - do not claim a hard red closed unless weapon is known illegal
         if (layerKey === 'wma' || /wildlife\s*management\s*area|\bwma\b/i.test(name || '')) {
           bullets.push('Status on selected day: check the current Outdoor Alabama AREA permit for this WMA (weapon seasons are unit-specific).');
-          bullets.push('Bag limit / antler rules: printed on the AREA permit — often 1 deer/day with unit antler restrictions.');
+          bullets.push('Bag limit / antler rules: printed on the AREA permit - often 1 deer/day with unit antler restrictions.');
           bullets.push('Some WMAs are archery-only for deer; never assume gun is open.');
         } else if (layerKey === 'tva') {
           var zoneArchery = { weapon: 'Archery', start: '2026-10-15', end: '2027-02-10', target: "Hunter's Choice", limit: 'Statewide daily limits' };
-          var zoneGun = { weapon: 'Gun', start: '2026-11-21', end: '2027-02-10', target: "Hunter's Choice", limit: 'Statewide daily limits', notes: 'Private-land statewide gun dates often differ from public — confirm zone.' };
+          var zoneGun = { weapon: 'Gun', start: '2026-11-21', end: '2027-02-10', target: "Hunter's Choice", limit: 'Statewide daily limits', notes: 'Private-land statewide gun dates often differ from public - confirm zone.' };
           var openTva = [zoneArchery, zoneGun].filter(function(s) {
             return seasonCoversDate(s, ds) && weaponMatchesSeason(weapon, s.weapon);
           });
@@ -996,14 +1906,14 @@
             statusKnown = true;
             canHuntToday = false;
             closedReason = 'No statewide deer season open for ' + (weapon === 'Either' ? 'deer weapons' : weapon) + ' on ' + prettyDate(dateObj) + '.';
-            bullets.push('Status on selected day: no statewide deer weapon season matched — CLOSED for deer (confirm Outdoor Alabama zone calendar).');
+            bullets.push('Status on selected day: no statewide deer weapon season matched - CLOSED for deer (confirm Outdoor Alabama zone calendar).');
           }
           bullets.push('Antler restrictions: follow statewide zone rules for your zone on Outdoor Alabama.');
         } else if (layerKey === 'soa') {
-          bullets.push('Status on selected day: SOA deer hunts are limited-quota / special dates only — open only if you are drawn for this day.');
+          bullets.push('Status on selected day: SOA deer hunts are limited-quota / special dates only - open only if you are drawn for this day.');
           bullets.push('Bag limit & antler rules: SOA permit specific (not full statewide by default).');
         } else if (layerKey === 'foreverWild') {
-          bullets.push('Status on selected day: if this tract is inside a WMA, use that WMA’s AREA permit for open/closed and bag rules.');
+          bullets.push('Status on selected day: if this tract is inside a WMA, use that WMA AREA permit for open/closed and bag rules.');
           bullets.push('If not in a WMA, confirm Forever Wild posted rules / CanHunt before hunting.');
         } else {
           bullets.push('Status on selected day: verify on the current official permit/brochure for this unit.');
@@ -1012,7 +1922,7 @@
         statusKnown = true;
         canHuntToday = false;
         var wLabel = weapon === 'Either' ? 'listed weapons' : weapon;
-        closedReason = 'Cannot hunt with ' + wLabel + ' on ' + prettyDate(dateObj) + ' — no open deer season for that weapon on this unit.';
+        closedReason = 'Cannot hunt with ' + wLabel + ' on ' + prettyDate(dateObj) + ' - no open deer season for that weapon on this unit.';
         bullets.push('Status on selected day: NO deer season open for ' + wLabel + ' on this unit.');
         var upcoming = seasons.filter(function(s) {
           return s.end >= ds && weaponMatchesSeason(weapon, s.weapon) && s.weapon !== 'Youth';
@@ -1036,7 +1946,7 @@
               '• ' + s.weapon +
               ' · Bag: ' + (s.limit || 'see permit') +
               ' · ' + (s.target || 'see permit') +
-              (s.notes ? ' — ' + s.notes : '')
+              (s.notes ? ' - ' + s.notes : '')
             );
           });
         }
@@ -1053,7 +1963,7 @@
         if (!closedReason) closedReason = closedMsg;
       }
 
-      // —— Antler restrictions ——
+      // -- Antler restrictions --
       var antler = (profile && profile.antlerRestriction) || null;
       if (!antler) {
         openToday.forEach(function(s) {
@@ -1066,15 +1976,15 @@
         });
       }
       if (antler) bullets.push(antler);
-      else if (seasons.length || profile) bullets.push('Antler restrictions: none coded for this unit — still confirm AREA permit / refuge brochure.');
+      else if (seasons.length || profile) bullets.push('Antler restrictions: none coded for this unit - still confirm AREA permit / refuge brochure.');
 
-      // —— Bag limit highlight for today ——
+      // -- Bag limit highlight for today --
       if (openToday.length && canHuntToday) {
         var bags = openToday.map(function(s) { return s.weapon + ': ' + (s.limit || 'see permit'); });
         bullets.push('Daily bag (selected day): ' + bags.join('; ') + '.');
       }
 
-      // —— Unit type reminders ——
+      // -- Unit type reminders --
       if (layerKey === 'wma' || /wildlife\s*management\s*area|\bwma\b/i.test(name || '')) {
         bullets.push('WMA hunters: follow Ala. Admin. Code r. 220-2-.55 and the signed Outdoor Alabama map/permit; daily check-in required.');
       }
@@ -1181,7 +2091,7 @@
       document.getElementById('regs-modal-jurisdiction').textContent = info.jurisdictionLabel;
       var dayLabel = document.getElementById('regs-modal-day-label');
       if (dayLabel) {
-        dayLabel.textContent = 'Condensed deer rules — ' + prettyDate(selectedDate || new Date()) +
+        dayLabel.textContent = 'Condensed deer rules - ' + prettyDate(selectedDate || new Date()) +
           (selectedWeapon ? ' · ' + selectedWeapon : '');
       }
 
@@ -1269,13 +2179,14 @@
     ];
 
     const locations = [
-      { id: 1, name: "Black Warrior WMA", type: "WMA", zone: "B", lat: 34.3411, lng: -87.3386, subSections: [{ name: "Northeast Ridge Clear", lat: 34.3551, lng: -87.3186 }, { name: "Turkey Creek Bottom", lat: 34.3221, lng: -87.3512 }] },
-      { id: 2, name: "James D. Martin - Skyline WMA", type: "WMA", zone: "A", lat: 34.9189, lng: -86.1364, subSections: [{ name: "Coon Dog Hollow Stand", lat: 34.9250, lng: -86.1200 }, { name: "Mill Creek Gate", lat: 34.9010, lng: -86.1550 }] },
-      { id: 3, name: "Wheeler North Wildlife Refuge", type: "Refuge", zone: "A", lat: 34.6200, lng: -86.8500, subSections: [{ name: "Swancott Blind", lat: 34.6231, lng: -86.8710 }] },
-      { id: 4, name: "Wheeler South Wildlife Refuge", type: "Refuge", zone: "C", lat: 34.4800, lng: -87.0500, subSections: [{ name: "Flint Creek Stand 1", lat: 34.4821, lng: -87.0710 }] },
-      { id: 5, name: "Bankhead National Forest (Stalk Land)", type: "Forest", zone: "D", lat: 34.3021, lng: -87.3511, subSections: [{ name: "Double Springs Stand", lat: 34.2900, lng: -87.3800 }] },
-      { id: 6, name: "Talladega National Forest (Talladega)", type: "Forest", zone: "A", lat: 33.6111, lng: -85.8211, subSections: [{ name: "Shoal Creek Stand", lat: 33.6800, lng: -85.7500 }] },
-      { id: 7, name: "Talladega National Forest (Oakmulgee)", type: "Forest", zone: "A", lat: 32.9411, lng: -87.3511, subSections: [{ name: "Oakmulgee Creek Ridge", lat: 32.9800, lng: -87.3000 }] },
+      // subSections start empty - only user-added stands appear in Location Subsections
+      { id: 1, name: "Black Warrior WMA", type: "WMA", zone: "B", lat: 34.3411, lng: -87.3386, subSections: [] },
+      { id: 2, name: "James D. Martin - Skyline WMA", type: "WMA", zone: "A", lat: 34.9189, lng: -86.1364, subSections: [] },
+      { id: 3, name: "Wheeler North Wildlife Refuge", type: "Refuge", zone: "A", lat: 34.6200, lng: -86.8500, subSections: [] },
+      { id: 4, name: "Wheeler South Wildlife Refuge", type: "Refuge", zone: "C", lat: 34.4800, lng: -87.0500, subSections: [] },
+      { id: 5, name: "Bankhead National Forest (Stalk Land)", type: "Forest", zone: "D", lat: 34.3021, lng: -87.3511, subSections: [] },
+      { id: 6, name: "Talladega National Forest (Talladega)", type: "Forest", zone: "A", lat: 33.6111, lng: -85.8211, subSections: [] },
+      { id: 7, name: "Talladega National Forest (Oakmulgee)", type: "Forest", zone: "A", lat: 32.9411, lng: -87.3511, subSections: [] },
       { id: 8, name: "Smith Lake / Club (Public)", type: "Club", zone: "C", lat: 34.1500, lng: -87.2000, subSections: [] },
       { id: 9, name: "Smith Lake / Club (Private)", type: "Club", zone: "C", lat: 34.1200, lng: -87.1500, subSections: [] },
       { id: 15, name: "Flint Tract Public Land", type: "Public", zone: "A", lat: 34.5100, lng: -86.9100, subSections: [] },
@@ -1287,6 +2198,86 @@
       { id: 13, name: "Statewide Zone D", type: "Statewide", zone: "D", lat: 34.1865, lng: -87.8931, subSections: [] },
       { id: 14, name: "Statewide Zone E", type: "Statewide", zone: "E", lat: 31.3323, lng: -88.1754, subSections: [] }
     ];
+
+    function standStorageNameKey(name) {
+      return 'name:' + String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    }
+    function getUserStandsForLocation(loc) {
+      if (!loc) return [];
+      return (loc.subSections || []).filter(function(s) { return s && s.userAdded; });
+    }
+    function loadUserStands() {
+      try {
+        var data = JSON.parse(localStorage.getItem(USER_STANDS_KEY) || '{}');
+        if (!data || typeof data !== 'object') return;
+        locations.forEach(function(loc) {
+          var byId = data[String(loc.id)];
+          var byName = data[standStorageNameKey(loc.name)];
+          var stands = Array.isArray(byId) ? byId : (Array.isArray(byName) ? byName : null);
+          if (stands && stands.length) {
+            loc.subSections = stands.map(function(s) {
+              return {
+                name: s.name,
+                lat: s.lat,
+                lng: s.lng,
+                userAdded: true
+              };
+            });
+          }
+        });
+      } catch (e) { /* ignore corrupt stands cache */ }
+    }
+    function saveUserStands() {
+      try {
+        var data = {};
+        locations.forEach(function(loc) {
+          var user = getUserStandsForLocation(loc);
+          if (!user.length) return;
+          var payload = user.map(function(s) {
+            return { name: s.name, lat: s.lat, lng: s.lng, userAdded: true };
+          });
+          data[String(loc.id)] = payload;
+          data[standStorageNameKey(loc.name)] = payload;
+        });
+        localStorage.setItem(USER_STANDS_KEY, JSON.stringify(data));
+      } catch (e) { /* ignore quota */ }
+    }
+    function attachUserStandsToLocation(loc) {
+      if (!loc) return loc;
+      try {
+        var data = JSON.parse(localStorage.getItem(USER_STANDS_KEY) || '{}');
+        var byId = data[String(loc.id)];
+        var byName = data[standStorageNameKey(loc.name)];
+        var stands = Array.isArray(byId) ? byId : (Array.isArray(byName) ? byName : null);
+        if (stands && stands.length) {
+          loc.subSections = stands.map(function(s) {
+            return { name: s.name, lat: s.lat, lng: s.lng, userAdded: true };
+          });
+        } else if (!loc.subSections) {
+          loc.subSections = [];
+        }
+      } catch (e) {
+        if (!loc.subSections) loc.subSections = [];
+      }
+      return loc;
+    }
+    loadUserStands();
+
+    /** True if a map pin should show for this unit (must appear in Available Hunts list). */
+    function isUnitInListedHunts(name, lat, lng) {
+      if (!lastListedHuntLocations || !lastListedHuntLocations.length) return false;
+      var n = String(name || '');
+      for (var i = 0; i < lastListedHuntLocations.length; i++) {
+        var loc = lastListedHuntLocations[i];
+        if (!loc) continue;
+        if (String(loc.id) === String(name)) return true;
+        if (n && loc.name && namesRoughMatch(loc.name, n)) return true;
+        if (lat != null && lng != null && loc.lat != null && loc.lng != null) {
+          if (getDistanceMiles(lat, lng, loc.lat, loc.lng) < 0.75) return true;
+        }
+      }
+      return false;
+    }
 
     let historicalHunts = JSON.parse(localStorage.getItem('alabama_hunt_historical_hunts') || '[]');
 
@@ -1307,7 +2298,7 @@
       { locId: 2, weapon: "Gun", land: "Either", start: "2026-12-10", end: "2026-12-13", target: "Bucks Only", limit: "1/day" },
       { locId: 3, weapon: "Archery", land: "Either", start: "2026-10-15", end: "2027-02-15", target: "Either Sex", limit: "State limits", notes: "Wheeler North. Archery Only. NO SUNDAY HUNTING." },
       { locId: 4, weapon: "Archery", land: "Either", start: "2026-10-15", end: "2027-02-10", target: "Either Sex", limit: "State limits", notes: "Wheeler South. Archery Only. NO SUNDAY HUNTING." },
-      // Swan Creek / Mallard-Fox Creek — deer ARCHERY ONLY (no gun deer seasons per Outdoor Alabama AREA permit)
+      // Swan Creek / Mallard-Fox Creek - deer ARCHERY ONLY (no gun deer seasons per Outdoor Alabama AREA permit)
       { locId: 16, weapon: "Archery", land: "Either", start: "2026-10-15", end: "2026-11-22", target: "Hunter's Choice", limit: "2/day", notes: "Swan Creek WMA: deer archery only. No gun/primitive deer. WMA permit + daily check-in required." },
       { locId: 17, weapon: "Archery", land: "Either", start: "2026-10-15", end: "2026-11-22", target: "Hunter's Choice", limit: "2/day", notes: "Mallard-Fox Creek WMA: deer archery only. No gun/primitive deer. WMA permit + daily check-in required." },
       { locId: 6, weapon: "Archery", land: "Either", start: "2026-10-15", end: "2027-02-10", target: "Hunter's Choice", limit: "State limits" },
@@ -1583,10 +2574,10 @@
       var restrict = tva.restricted ? tva.restricted : 'Some restrictions may apply.';
       var link = tva.url || TVA_INFO_URL;
       if (compact) {
-        return '<strong>TVA Land</strong> — ' + tva.reservoir + ' (' + tva.recType + '). ' + restrict;
+        return '<strong>TVA Land</strong> - ' + tva.reservoir + ' (' + tva.recType + '). ' + restrict;
       }
       return '<strong>TVA Undeveloped Recreation Land</strong><br>' +
-        tva.reservoir + ' — ' + tva.recType + '<br>' +
+        tva.reservoir + ' - ' + tva.recType + '<br>' +
         '<span style="color:var(--muted);">' + restrict + '</span><br>' +
         '<a href="' + link + '" target="_blank" rel="noopener">TVA map / rules</a>';
     }
@@ -1718,7 +2709,7 @@
         var stale = readAdcnrCache();
         if (stale) {
           adcnrLandsData = stale;
-          updateAdcnrCacheStatus(stale.timestamp, 'offline — stale cache');
+          updateAdcnrCacheStatus(stale.timestamp, 'offline - stale cache');
           syncPublicLandsToLocations(stale);
           return stale;
         }
@@ -1788,12 +2779,108 @@
       var mapLabel = String(mapRules.label || 'Area map & rules').replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
       html += '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px;">';
+      html += '<button type="button" class="adcnr-weather-btn" style="width:100%;padding:7px 10px;background:var(--green);color:#fff;border:none;border-radius:6px;font-weight:bold;font-size:11px;cursor:pointer;">Select area / weather</button>';
       html += '<button type="button" style="width:100%;padding:7px 10px;background:var(--accent);color:#000;border:none;border-radius:6px;font-weight:bold;font-size:11px;cursor:pointer;" onclick="openDeerRegsFromCache(\'' + cacheId + '\')">Deer rules &amp; legislation</button>';
       // Always show map/rules link: unit PDF when available, otherwise official hub that should have it
       html += '<a href="' + mapHref + '" target="_blank" rel="noopener" style="display:block;text-align:center;padding:7px 10px;background:var(--panel-light);border:1px solid var(--border);border-radius:6px;font-size:11px;font-weight:600;color:var(--accent);text-decoration:none;">' + mapLabel + '</a>';
       html += '</div>';
       return html;
     }
+
+    /**
+     * Load weather + dashboard for a public-land unit at lat/lng (map select).
+     * In small (non-fullscreen) map mode this is the primary way to update weather from the map.
+     */
+    function selectPublicLandWeather(layer, attrs, lat, lng, opts) {
+      opts = opts || {};
+      if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) return;
+      ensureHuntContext();
+      var name = featureDisplayName(layer, attrs) || layer.label || 'Public land';
+      var idSuffix = String(name).toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 40) + '_' + lat.toFixed(3) + '_' + lng.toFixed(3);
+      var loc = makePublicLocation(layer, name, attrs || {}, lat, lng, idSuffix);
+      if (!loc) {
+        // Outside AL envelope - still allow weather at click
+        var det = detectBoundaryAndZone(lat, lng);
+        loc = {
+          id: 'mapspot_' + Date.now(),
+          name: name + ' (Selected Spot)',
+          type: layer.typeLabel || layer.label || det.type || 'Public',
+          zone: det.zone || 'A',
+          lat: lat,
+          lng: lng,
+          subSections: [],
+          isPublicLand: true,
+          landSource: layer.key,
+          notes: publicLandRuleNotes(layer, attrs || {})
+        };
+      }
+      // Reuse existing location entry (keeps user stands) when name matches
+      var existing = locations.find(function(l) {
+        return l && l.name && namesRoughMatch(l.name, loc.name) && (l.isPublicLand || l.type === loc.type);
+      });
+      if (existing) {
+        existing.lat = loc.lat;
+        existing.lng = loc.lng;
+        loc = existing;
+      } else if (!locations.some(function(l) { return String(l.id) === String(loc.id); })) {
+        locations.push(loc);
+      }
+      attachUserStandsToLocation(loc);
+      var dateStr = selectedDate ? isoDateStr(selectedDate) : new Date().toISOString().split('T')[0];
+      var matched = findRulesForPublicLand(loc, selectedDate, selectedWeapon || 'Either', selectedLand || 'Public', dateStr);
+      var rule = (matched && matched[0]) || null;
+      if (!rule) {
+        var tid = statewideLocIdForZone(loc.zone);
+        var zoneMatched = matchRulesForLocId(tid, selectedDate, selectedWeapon || 'Either', selectedLand || 'Public', dateStr);
+        rule = zoneMatched[0] || { weapon: 'General', target: 'Statewide Rules', limit: 'Statewide Limit', notes: loc.notes || 'Check regulations.' };
+      }
+      usingCurrentLocation = false;
+      isShowingCurrentData = false;
+      isHistorical = getDaysFromToday(selectedDate) < 0;
+      // Show compact map weather card only in fullscreen; small mode updates the right dashboard
+      if (opts.showOverlay || isMapFullscreen()) window._forceMapWeatherOverlay = true;
+      if (map && opts.closePopup !== false) map.closePopup();
+      selectLocation(loc, rule);
+    }
+    window.selectPublicLandWeather = selectPublicLandWeather;
+
+    /** Weather for a free map click (boundary detect + optional TVA). Always uses exact lat/lng. */
+    function selectWeatherAtMapPoint(lat, lng, detected, tva) {
+      if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) return;
+      ensureHuntContext();
+      detected = detected || detectBoundaryAndZone(lat, lng);
+      // Unique id per click so each map spot reloads weather (do not reuse zone id)
+      var clickLoc = {
+        id: 'mapspot_' + lat.toFixed(5) + '_' + lng.toFixed(5),
+        name: (detected.name && detected.name !== 'Alabama' ? detected.name : 'Map spot'),
+        type: detected.type || 'Spot',
+        zone: detected.zone || 'A',
+        lat: lat,
+        lng: lng,
+        subSections: [],
+        tva: tva || null,
+        tvaChecked: tva !== undefined,
+        isMapSpot: true
+      };
+      var dateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+      var openRule = null;
+      if (detected.id != null) {
+        openRule = rules.find(function(r) { return r.locId == detected.id && dateStr >= r.start && dateStr <= r.end; });
+      }
+      if (!openRule) {
+        var tid = statewideLocIdForZone(detected.zone);
+        openRule = rules.find(function(r) { return r.locId == tid && dateStr >= r.start && dateStr <= r.end; }) ||
+          { weapon: 'General', target: 'Statewide Rules', limit: 'Statewide Limit', notes: 'Check regulations.' };
+      }
+      usingCurrentLocation = false;
+      isShowingCurrentData = false;
+      isHistorical = getDaysFromToday(selectedDate) < 0;
+      // Keep compass / weather HUD visible for map clicks (including fullscreen)
+      window._forceMapWeatherOverlay = !!isMapFullscreen();
+      // Load weather at this exact coordinate (dashboard + map wind compass)
+      selectLocation(clickLoc, openRule);
+    }
+    window.selectWeatherAtMapPoint = selectWeatherAtMapPoint;
 
     function namesRoughMatch(a, b) {
       if (!a || !b) return false;
@@ -1819,10 +2906,10 @@
     function publicLandRuleNotes(layer, attrs) {
       if (layer.notes) return layer.notes;
       if (attrs.RESTRICTED) return attrs.RESTRICTED;
-      if (layer.key === 'nwr') return 'Federal NWR — check refuge-specific hunt rules. Often archery-only or special seasons. No Sunday hunting on some units.';
-      if (layer.key === 'usfs') return 'National Forest — stalk / general forest rules vary by district. Confirm zone and county regulations.';
-      if (layer.key === 'tva') return 'TVA Undeveloped Recreation Land — max 14-day stay rules apply. Confirm local reservoir rules.';
-      if (layer.key === 'nps') return 'National Park Service unit — hunting usually prohibited. Verify before hunting.';
+      if (layer.key === 'nwr') return 'Federal NWR - check refuge-specific hunt rules. Often archery-only or special seasons. No Sunday hunting on some units.';
+      if (layer.key === 'usfs') return 'National Forest - stalk / general forest rules vary by district. Confirm zone and county regulations.';
+      if (layer.key === 'tva') return 'TVA Undeveloped Recreation Land - max 14-day stay rules apply. Confirm local reservoir rules.';
+      if (layer.key === 'nps') return 'National Park Service unit - hunting usually prohibited. Verify before hunting.';
       return 'Public land from official GIS. Always verify current regulations.';
     }
 
@@ -2003,7 +3090,7 @@
       distOriginMode = mode === 'zip' ? 'zip' : 'gps';
       document.getElementById('dist-origin-gps').classList.toggle('active', distOriginMode === 'gps');
       document.getElementById('dist-origin-zip').classList.toggle('active', distOriginMode === 'zip');
-      document.getElementById('dist-zip-row').style.display = distOriginMode === 'zip' ? 'flex' : 'none';
+      document.getElementById('dist-zip-row').classList.toggle('active', distOriginMode === 'zip');
       if (distOriginMode === 'gps') {
         if (userLat != null && userLng != null) {
           distOriginLat = userLat;
@@ -2098,7 +3185,7 @@
       }
       if (distOriginLat == null || distOriginLng == null || loc.lat == null || loc.lng == null) {
         loc._distanceMi = null;
-        return true; // no origin yet — don't hide everything
+        return true; // no origin yet - don't hide everything
       }
       // Virtual statewide entries stay available
       if (loc.type === 'Statewide') {
@@ -2211,7 +3298,9 @@
           var latlngs = esriRingsToLatLngs(feat.geometry);
           if (!latlngs) return;
 
-          // Show ALL eligible public lands; green pin + brighter fill if open for selected weapon/date
+          // Always draw every eligible public-land polygon when overlay is on.
+          // Green ✓ only when open for selected weapon + date (huntable).
+          var featName = featureDisplayName(layer, attrs) || layer.label || '';
           var isOpen = !!(selectedDate && selectedWeapon &&
             isOpenForSelectedWeaponAndDate(layer, attrs, c.lat, c.lng));
 
@@ -2225,11 +3314,26 @@
             bubblingMouseEvents: false
           });
           poly.bindPopup(buildAdcnrPopup(layer, attrs));
+          // Click unit: place stand if in place-mode, else load weather
+          poly.on('click', function(e) {
+            if (e && e.originalEvent) L.DomEvent.stopPropagation(e.originalEvent);
+            var clickLatLng = (e && e.latlng) ? e.latlng : L.latLng(c.lat, c.lng);
+            if (standPlaceMode) {
+              placeStandAt(clickLatLng.lat, clickLatLng.lng);
+              return;
+            }
+            selectPublicLandWeather(layer, attrs, clickLatLng.lat, clickLatLng.lng, {
+              closePopup: false,
+              showOverlay: isMapFullscreen()
+            });
+          });
+          poly.on('popupopen', function() {
+            wireAdcnrPopupWeatherBtn(layer, attrs, c.lat, c.lng);
+          });
           adcnrOverlayGroup.addLayer(poly);
 
           if (isOpen && adcnrOpenPinGroup && typeof L !== 'undefined') {
-            var name = featureDisplayName(layer, attrs) || layer.label || '';
-            var pinKey = (layer.key || '') + '|' + name.toLowerCase();
+            var pinKey = (layer.key || '') + '|' + featName.toLowerCase();
             if (!openPinKeys[pinKey]) {
               openPinKeys[pinKey] = true;
               var pin = L.marker([c.lat, c.lng], {
@@ -2242,6 +3346,19 @@
                 zIndexOffset: 400
               });
               pin.bindPopup(buildAdcnrPopup(layer, attrs));
+              pin.on('click', function() {
+                if (standPlaceMode) {
+                  placeStandAt(c.lat, c.lng);
+                  return;
+                }
+                selectPublicLandWeather(layer, attrs, c.lat, c.lng, {
+                  closePopup: false,
+                  showOverlay: isMapFullscreen()
+                });
+              });
+              pin.on('popupopen', function() {
+                wireAdcnrPopupWeatherBtn(layer, attrs, c.lat, c.lng);
+              });
               adcnrOpenPinGroup.addLayer(pin);
             }
           }
@@ -2255,7 +3372,7 @@
       var chk = document.getElementById('toggle-adcnr-lands-chk');
       if (!chk || !chk.checked) return;
       if (!map || !adcnrOverlayGroup) {
-        // Map not ready yet — ensureMap + load will draw
+        // Map not ready yet - ensureMap + load will draw
         if (selectedWeapon) {
           ensureMap().then(function() {
             loadAdcnrLands(false).then(function() {
@@ -2280,6 +3397,20 @@
     function isMapFullscreen() {
       var w = document.querySelector('.map-wrapper');
       return !!(w && w.classList.contains('fullscreen'));
+    }
+
+    function wireAdcnrPopupWeatherBtn(layer, attrs, lat, lng) {
+      var btns = document.querySelectorAll('.adcnr-weather-btn');
+      if (!btns || !btns.length) return;
+      // Wire the last opened popup button
+      var btn = btns[btns.length - 1];
+      if (!btn || btn._wiredWeather) return;
+      btn._wiredWeather = true;
+      L.DomEvent.disableClickPropagation(btn);
+      L.DomEvent.on(btn, 'click', function(ev) {
+        L.DomEvent.stop(ev);
+        selectPublicLandWeather(layer, attrs, lat, lng, { closePopup: true, showOverlay: isMapFullscreen() });
+      });
     }
 
     function updateAdcnrLegendVisibility() {
@@ -2409,9 +3540,9 @@
       drawHuntsOnMap(); // respects Past Hunts checkbox (off by default)
       drawPinsOnMap();
       fetchRealTimeGauges(false);
-      loadTvaLands(); // silent preload — never drawn on map
+      loadTvaLands(); // silent preload - never drawn on map
 
-      // Public Lands Overlay defaults ON — load polygons open for selected weapon/date
+      // Public Lands Overlay defaults ON - load polygons open for selected weapon/date
       var adcnrChk = document.getElementById('toggle-adcnr-lands-chk');
       if (adcnrChk && adcnrChk.checked && selectedWeapon) {
         loadAdcnrLands(false).then(function() {
@@ -2426,73 +3557,186 @@
       }
 
       map.on('click', function(e) {
-        clickLat = e.latlng.lat;
-        clickLng = e.latlng.lng;
-        lastClickTva = null;
-        if (tempClickMarker) tempClickMarker.setLatLng(e.latlng);
-        else {
-          tempClickMarker = L.marker(e.latlng, {
-            icon: L.divIcon({ className: '', html: '<div style="background:var(--accent);width:14px;height:14px;border-radius:50%;border:2px solid white;"></div>', iconSize: [14,14], iconAnchor: [7,7] })
-          }).addTo(map);
+        // Stand placement mode: click sets stand coordinates (no free-form menu)
+        if (standPlaceMode) {
+          placeStandAt(e.latlng.lat, e.latlng.lng);
+          return;
         }
-        var detected = detectBoundaryAndZone(clickLat, clickLng);
-        var basePopup = '<strong>Point Picked</strong><br>Lat: ' + clickLat.toFixed(4) + '<br>Lon: ' + clickLng.toFixed(4) + '<br>Zone: ' + detected.zone;
-        tempClickMarker.bindPopup(basePopup).openPopup();
-        document.getElementById('dt-name').innerText = detected.name;
-        document.getElementById('dt-zone').innerText = 'State Season Zone: ' + detected.zone + ' (' + detected.type + ')';
-        document.getElementById('dt-desc').innerText = detected.desc;
-        setTvaNoteEl('dt-tva-note', null);
-        cancelToastForm();
-        document.getElementById('detection-toast').classList.add('active');
-
-        // Async TVA check (no boundary shown) — updates toast + popup when ready
-        queryTvaLand(clickLat, clickLng).then(function(tva) {
-          if (clickLat !== e.latlng.lat || clickLng !== e.latlng.lng) return; // stale click
-          lastClickTva = tva;
-          setTvaNoteEl('dt-tva-note', tva);
-          if (tva && tempClickMarker) {
-            tempClickMarker.setPopupContent(basePopup + '<br><span style="color:#7ec8ff;font-weight:bold;">TVA Land:</span> ' + tva.reservoir + ' (' + tva.recType + ')');
-          }
-        });
-
-        document.getElementById('dt-button').onclick = function() {
-          var matched = locations.find(function(l) { return l.id == detected.id; });
-          var clickLoc = {
-            id: detected.id,
-            name: detected.name + ' (Selected Spot)',
-            type: detected.type,
-            zone: detected.zone,
-            lat: clickLat,
-            lng: clickLng,
-            subSections: matched ? matched.subSections : [],
-            tva: lastClickTva,
-            tvaChecked: true
-          };
-          var dateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-          var openRule = rules.find(function(r) { return r.locId == detected.id && dateStr >= r.start && dateStr <= r.end; });
-          if (!openRule) {
-            var tid = detected.zone === 'A' ? 10 : 11;
-            openRule = rules.find(function(r) { return r.locId == tid && dateStr >= r.start && dateStr <= r.end; }) || { weapon: 'General', target: 'Statewide Rules', limit: 'Statewide Limit', notes: 'Check regulations.' };
-          }
-          usingCurrentLocation = false;
-          isShowingCurrentData = false;
-          isHistorical = getDaysFromToday(selectedDate) < 0;
-          selectLocation(clickLoc, openRule);
-          closeDetectionToast();
-        };
-        document.getElementById('dt-add-pin-btn').onclick = function() {
-          document.getElementById('dt-main-actions').style.display = 'none';
-          document.getElementById('dt-pin-form').style.display = 'block';
-          document.getElementById('pin-name-input').focus();
-        };
-        document.getElementById('dt-add-hunt-btn').onclick = function() {
-          document.getElementById('dt-main-actions').style.display = 'none';
-          document.getElementById('dt-hunt-form').style.display = 'block';
-          document.getElementById('hunt-date-input').value = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-          document.getElementById('hunt-name-input').focus();
-        };
+        // Place / move a clean map dot - no zone or lat/long UI
+        placeOrMoveMapDot(e.latlng);
       });
     }
+
+    // Inline onclick is reliable inside Leaflet popups (DOM rebuilds strip JS listeners)
+    function buildMapDotActionsHtml() {
+      return (
+        '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
+          '<div class="mdm-title">What do you want to do?</div>' +
+          '<div class="mdm-sub">Choose an action for this spot</div>' +
+          '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'weather\');return false;">Get weather</button>' +
+          '<button type="button" class="mdm-btn regs" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'regs\');return false;">Rules &amp; regs</button>' +
+          '<button type="button" class="mdm-btn stand" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'stand\');return false;">Add stand</button>' +
+          '<button type="button" class="mdm-btn hunt" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'hunt\');return false;">Add hunt</button>' +
+          '<button type="button" class="mdm-btn pin" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'pin\');return false;">Add pin</button>' +
+        '</div>'
+      );
+    }
+
+    /** Drop a clean accent dot on the map (no lat/long/zone). Click the dot for actions. */
+    function placeOrMoveMapDot(latlng) {
+      if (!map || typeof L === 'undefined') return;
+      clickLat = latlng.lat;
+      clickLng = latlng.lng;
+      lastClickTva = null;
+      // Hide old toast UI on free click
+      var toast = document.getElementById('detection-toast');
+      if (toast) toast.classList.remove('active');
+      cancelToastForm();
+
+      var icon = L.divIcon({
+        className: 'map-free-dot-icon',
+        html: '<div style="background:#e59a18;width:16px;height:16px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,0.55);"></div>',
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+      });
+
+      if (tempClickMarker) {
+        tempClickMarker.setLatLng(latlng);
+        // Keep popup content in sync (inline handlers included)
+        tempClickMarker.setPopupContent(buildMapDotActionsHtml());
+        if (map) map.closePopup();
+      } else {
+        tempClickMarker = L.marker(latlng, { icon: icon, keyboard: true }).addTo(map);
+        tempClickMarker.bindPopup(buildMapDotActionsHtml(), {
+          className: 'map-dot-popup',
+          closeButton: true,
+          autoPan: true,
+          maxWidth: 280,
+          closeOnClick: false
+        });
+        // Prevent map click from immediately moving the dot when interacting with popup
+        tempClickMarker.on('click', function(ev) {
+          if (ev && ev.originalEvent) {
+            L.DomEvent.stopPropagation(ev.originalEvent);
+            L.DomEvent.preventDefault(ev.originalEvent);
+          }
+        });
+        // When popup opens, stop map from receiving those clicks
+        tempClickMarker.on('popupopen', function() {
+          var el = tempClickMarker.getPopup() && tempClickMarker.getPopup().getElement();
+          if (!el) return;
+          L.DomEvent.disableClickPropagation(el);
+          L.DomEvent.disableScrollPropagation(el);
+        });
+      }
+
+      // Always refresh weather + compass for this exact map click
+      var detected = detectBoundaryAndZone(clickLat, clickLng);
+      selectWeatherAtMapPoint(clickLat, clickLng, detected, null);
+
+      // Silent TVA lookup; if still on this spot, attach TVA note without blocking first weather paint
+      queryTvaLand(clickLat, clickLng).then(function(tva) {
+        if (clickLat !== latlng.lat || clickLng !== latlng.lng) return;
+        lastClickTva = tva;
+        if (tva && selectedLocationId && String(selectedLocationId).indexOf('mapspot_') === 0) {
+          // Update TVA banner on dashboard if this map spot is still selected
+          var title = document.getElementById('db-title');
+          if (title && document.getElementById('db-content') &&
+              document.getElementById('db-content').style.display !== 'none') {
+            setTvaNoteEl('db-tva-note', tva);
+          }
+        }
+      });
+    }
+
+    function handleMapDotAction(act) {
+      try {
+        if (clickLat == null || clickLng == null) {
+          alert('Tap the map to place a spot first, then choose an action.');
+          return false;
+        }
+        var detected = detectBoundaryAndZone(clickLat, clickLng);
+
+        if (act === 'weather') {
+          ensureHuntContext();
+          selectWeatherAtMapPoint(clickLat, clickLng, detected, lastClickTva);
+          if (isMapFullscreen()) window._forceMapWeatherOverlay = true;
+          if (map) map.closePopup();
+          return false;
+        }
+
+        if (act === 'regs') {
+          ensureHuntContext();
+          openDeerRegsPanel(detected.name || 'Selected area', detected.type === 'Refuge' ? 'nwr' : 'wma', {});
+          if (map) map.closePopup();
+          return false;
+        }
+
+        if (act === 'stand') {
+          if (!selectedLocationId || selectedLocationId === 9999) {
+            alert('Select a hunt area in the list first, then use Add stand on the map spot.');
+            return false;
+          }
+          var loc = locations.find(function(l) { return String(l.id) === String(selectedLocationId); });
+          if (!loc || loc.type === 'Current Location') {
+            alert('Select a WMA, refuge, or other hunt area first.');
+            return false;
+          }
+          var standName = prompt('Stand / blind name:');
+          if (!standName || !standName.trim()) return false;
+          standPlaceMode = { locId: loc.id, name: standName.trim() };
+          placeStandAt(clickLat, clickLng);
+          if (map) map.closePopup();
+          return false;
+        }
+
+        if (act === 'hunt') {
+          ensureHuntContext();
+          document.getElementById('dt-name').innerText = detected.name || 'Map spot';
+          document.getElementById('dt-zone').innerText = '';
+          document.getElementById('dt-desc').innerText = 'Log a past hunt at this map spot.';
+          document.getElementById('dt-zone').style.display = 'none';
+          setTvaNoteEl('dt-tva-note', lastClickTva);
+          cancelToastForm();
+          document.getElementById('dt-main-actions').style.display = 'none';
+          document.getElementById('dt-pin-form').style.display = 'none';
+          document.getElementById('dt-hunt-form').style.display = 'block';
+          document.getElementById('hunt-date-input').value = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+          document.getElementById('detection-toast').classList.add('active');
+          if (map) map.closePopup();
+          setTimeout(function() {
+            var inp = document.getElementById('hunt-name-input');
+            if (inp) inp.focus();
+          }, 50);
+          return false;
+        }
+
+        if (act === 'pin') {
+          ensureHuntContext();
+          document.getElementById('dt-name').innerText = detected.name || 'Map spot';
+          document.getElementById('dt-zone').innerText = '';
+          document.getElementById('dt-desc').innerText = 'Save this map spot as a pin.';
+          document.getElementById('dt-zone').style.display = 'none';
+          setTvaNoteEl('dt-tva-note', lastClickTva);
+          cancelToastForm();
+          document.getElementById('dt-main-actions').style.display = 'none';
+          document.getElementById('dt-hunt-form').style.display = 'none';
+          document.getElementById('dt-pin-form').style.display = 'block';
+          document.getElementById('detection-toast').classList.add('active');
+          if (map) map.closePopup();
+          setTimeout(function() {
+            var inp = document.getElementById('pin-name-input');
+            if (inp) inp.focus();
+          }, 50);
+          return false;
+        }
+      } catch (err) {
+        console.error('Map spot action failed:', act, err);
+        alert('Something went wrong with that action. Try again.');
+      }
+      return false;
+    }
+    window.handleMapDotAction = handleMapDotAction;
 
     function setGpsMarker(lat, lng) {
       if (!map || typeof L === 'undefined') return;
@@ -2500,7 +3744,7 @@
       if (gpsMarker) {
         gpsMarker.setLatLng([lat, lng]);
       } else {
-        // Blue dot only — no auto "You are here" popup
+        // Blue dot only - no auto "You are here" popup
         gpsMarker = L.marker([lat, lng], { icon: icon }).addTo(map);
       }
       if (map) map.closePopup();
@@ -2515,12 +3759,18 @@
       document.getElementById('detection-toast').classList.remove('active');
       setTvaNoteEl('dt-tva-note', null);
       cancelToastForm();
+      var zoneEl = document.getElementById('dt-zone');
+      if (zoneEl) zoneEl.style.display = '';
+      // Keep the map dot after pin/hunt forms close - only clear forms
+    }
+    function clearMapDot() {
       if (tempClickMarker && map) {
         map.removeLayer(tempClickMarker);
         tempClickMarker = null;
       }
       clickLat = null;
       clickLng = null;
+      lastClickTva = null;
     }
     function selectPinColor(c, el) { selectedPinColor = c; el.parentNode.querySelectorAll('.color-dot-btn').forEach(b => b.classList.remove('selected')); el.classList.add('selected'); }
     function selectHuntColor(c, el) { selectedHuntColor = c; el.parentNode.querySelectorAll('.color-dot-btn').forEach(b => b.classList.remove('selected')); el.classList.add('selected'); }
@@ -2532,7 +3782,7 @@
       const detected = detectBoundaryAndZone(clickLat, clickLng);
       const tva = lastClickTva;
       if (tva) {
-        var tvaLine = 'TVA Land: ' + tva.reservoir + ' (' + tva.recType + ')' + (tva.restricted ? ' — ' + tva.restricted : '');
+        var tvaLine = 'TVA Land: ' + tva.reservoir + ' (' + tva.recType + ')' + (tva.restricted ? ' - ' + tva.restricted : '');
         notes = notes ? (notes + '\n' + tvaLine) : tvaLine;
       }
       const newId = 'pin_' + Date.now();
@@ -2558,6 +3808,7 @@
       document.getElementById('pin-name-input').value = '';
       document.getElementById('pin-notes-input').value = '';
       closeDetectionToast();
+      clearMapDot();
       lastVisibleMarkerKey = '';
       updateAvailableList();
       drawPinsOnMap();
@@ -2592,48 +3843,51 @@
       document.getElementById('hunt-name-input').value = '';
       document.getElementById('hunt-notes-input').value = '';
       closeDetectionToast();
+      clearMapDot();
+      // Make sure past-hunt markers are visible so the new hunt can be clicked / deleted
+      var huntToggle = document.getElementById('toggle-prev-hunts-chk');
+      if (huntToggle) huntToggle.checked = true;
       drawHuntsOnMap();
       alert('Hunt "' + name + '" logged!' + (tva ? '\n\nOn TVA land: ' + tva.reservoir + '.' : ''));
+    }
+
+    function escHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+    function escJsStr(s) {
+      return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     }
 
     function drawPinsOnMap() {
       if (!map || !pinMarkerGroup) return;
       pinMarkerGroup.clearLayers();
+      // Always show saved user pins so they can be reopened / deleted
       locations.filter(function(l) { return l.isPin; }).forEach(function(loc) {
         var letter = getFirstLetter(loc.name);
-        var m = L.marker([loc.lat, loc.lng], { icon: L.divIcon({ className: '', html: '<div style="background:' + (loc.color||'#e59a18') + ';width:20px;height:20px;border-radius:50%;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:bold;">' + letter + '</div>', iconSize:[20,20], iconAnchor:[10,10] }) });
-        var tvaLine = '';
-        if (loc.tva) {
-          tvaLine = '<br><span style="color:#7ec8ff;font-weight:bold;">TVA Land:</span> ' + loc.tva.reservoir + ' (' + loc.tva.recType + ')';
-        }
+        var m = L.marker([loc.lat, loc.lng], {
+          icon: L.divIcon({
+            className: '',
+            html: '<div style="background:' + (loc.color||'#e59a18') + ';width:20px;height:20px;border-radius:50%;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:bold;box-shadow:0 1px 5px rgba(0,0,0,0.45);">' + letter + '</div>',
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+          })
+        });
+        var safeId = escJsStr(loc.id);
         var popupHtml =
-          '<div class="pin-popup" data-pin-id="' + String(loc.id).replace(/"/g, '&quot;') + '">' +
-            '<strong>' + (loc.type || 'Custom Pin') + '</strong><br>' + loc.name + '<br>Zone ' + loc.zone + tvaLine +
-            (loc.notes ? '<br><i>' + loc.notes.replace(/\n/g, '<br>') + '</i>' : '') +
-            '<br><button type="button" class="pin-select-btn" style="margin-top:6px;padding:4px 8px;background:#486a2f;color:white;border:none;border-radius:4px;cursor:pointer;font-size:10px;width:100%;">Select</button>' +
-            '<button type="button" class="pin-delete-btn" style="margin-top:4px;padding:4px 8px;background:#d94136;color:white;border:none;border-radius:4px;cursor:pointer;font-size:10px;width:100%;">Delete</button>' +
+          '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
+            '<div class="mdm-title">Pin</div>' +
+            '<div class="mdm-sub">' + escHtml(loc.name) + '</div>' +
+            '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.selectSavedPin(\'' + safeId + '\');return false;">Get weather</button>' +
+            '<button type="button" class="mdm-btn danger" onclick="event.preventDefault();event.stopPropagation();window.deletePin(\'' + safeId + '\');return false;">Delete pin</button>' +
           '</div>';
-        m.bindPopup(popupHtml);
-        // Open popup only on pin click — Select button loads weather and closes popup
+        m.bindPopup(popupHtml, { className: 'saved-item-popup map-dot-popup', closeButton: true, autoPan: true, maxWidth: 280, closeOnClick: false });
         m.on('popupopen', function() {
-          var root = document.querySelector('.pin-popup[data-pin-id="' + String(loc.id).replace(/"/g, '\\"') + '"]');
-          if (!root) return;
-          var sel = root.querySelector('.pin-select-btn');
-          var del = root.querySelector('.pin-delete-btn');
-          if (sel) {
-            L.DomEvent.disableClickPropagation(sel);
-            L.DomEvent.on(sel, 'click', function(ev) {
-              L.DomEvent.stop(ev);
-              selectLocationById(loc.id, { closePopup: true, showOverlay: true });
-            });
-          }
-          if (del) {
-            L.DomEvent.disableClickPropagation(del);
-            L.DomEvent.on(del, 'click', function(ev) {
-              L.DomEvent.stop(ev);
-              if (map) map.closePopup();
-              deletePin(loc.id);
-            });
+          var el = m.getPopup() && m.getPopup().getElement();
+          if (el) {
+            L.DomEvent.disableClickPropagation(el);
+            L.DomEvent.disableScrollPropagation(el);
           }
         });
         pinMarkerGroup.addLayer(m);
@@ -2644,29 +3898,61 @@
       huntMarkerGroup.clearLayers();
       if (!document.getElementById('toggle-prev-hunts-chk').checked) return;
       historicalHunts.forEach(function(hunt) {
-        var m = L.marker([hunt.lat, hunt.lng], { icon: L.divIcon({ className: '', html: '<div style="background:' + hunt.color + ';width:18px;height:18px;border-radius:50%;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:bold;">H</div>', iconSize:[18,18], iconAnchor:[9,9] }) });
-        var tvaLine = hunt.tva ? '<br><span style="color:#7ec8ff;font-weight:bold;">TVA:</span> ' + hunt.tva.reservoir : '';
-        m.bindPopup('<strong>' + hunt.name + '</strong><br>Date: ' + hunt.date + tvaLine + '<br>Temp: ' + hunt.temp + ' F<br>Wind: ' + hunt.windSpeed + ' mph from ' + getCardinal(hunt.windDir) + '<br>Notes: <i>' + (hunt.notes||'None') + '</i><br><button onclick="deleteHunt(\'' + hunt.id + '\')" style="margin-top:6px;padding:4px 8px;background:#d94136;color:white;border:none;border-radius:4px;cursor:pointer;font-size:10px;width:100%;">Delete</button>');
+        var m = L.marker([hunt.lat, hunt.lng], {
+          icon: L.divIcon({
+            className: '',
+            html: '<div style="background:' + (hunt.color||'#3498db') + ';width:20px;height:20px;border-radius:50%;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:bold;box-shadow:0 1px 5px rgba(0,0,0,0.45);">H</div>',
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+          })
+        });
+        var safeId = escJsStr(hunt.id);
+        var popupHtml =
+          '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
+            '<div class="mdm-title">Past hunt</div>' +
+            '<div class="mdm-sub">' + escHtml(hunt.name) + '<br>' + escHtml(hunt.date) + '</div>' +
+            '<button type="button" class="mdm-btn danger" onclick="event.preventDefault();event.stopPropagation();window.deleteHunt(\'' + safeId + '\');return false;">Delete hunt</button>' +
+          '</div>';
+        m.bindPopup(popupHtml, { className: 'saved-item-popup map-dot-popup', closeButton: true, autoPan: true, maxWidth: 280, closeOnClick: false });
+        m.on('popupopen', function() {
+          var el = m.getPopup() && m.getPopup().getElement();
+          if (el) {
+            L.DomEvent.disableClickPropagation(el);
+            L.DomEvent.disableScrollPropagation(el);
+          }
+        });
         huntMarkerGroup.addLayer(m);
       });
     }
     function deleteHunt(id) {
-      historicalHunts = historicalHunts.filter(h => h.id !== id);
+      if (!confirm('Delete this past hunt?')) return;
+      historicalHunts = historicalHunts.filter(function(h) { return String(h.id) !== String(id); });
       localStorage.setItem('alabama_hunt_historical_hunts', JSON.stringify(historicalHunts));
+      if (map) map.closePopup();
       drawHuntsOnMap();
     }
+    window.deleteHunt = deleteHunt;
+
     function deletePin(id) {
       if (!confirm('Delete this pin?')) return;
-      const idx = locations.findIndex(l => l.id == id);
+      var idx = locations.findIndex(function(l) { return String(l.id) === String(id); });
       if (idx !== -1) locations.splice(idx, 1);
-      let pins = JSON.parse(localStorage.getItem('alabama_hunt_custom_pins') || '[]');
-      pins = pins.filter(p => p.id != id);
+      var pins = JSON.parse(localStorage.getItem('alabama_hunt_custom_pins') || '[]');
+      pins = pins.filter(function(p) { return String(p.id) !== String(id); });
       localStorage.setItem('alabama_hunt_custom_pins', JSON.stringify(pins));
-      if (selectedLocationId == id) { resetDashboard(); selectedLocationId = null; }
+      if (String(selectedLocationId) === String(id)) { resetDashboard(); selectedLocationId = null; }
       lastVisibleMarkerKey = '';
+      if (map) map.closePopup();
       updateAvailableList();
       drawPinsOnMap();
     }
+    window.deletePin = deletePin;
+
+    function selectSavedPin(id) {
+      if (map) map.closePopup();
+      selectLocationById(id, { closePopup: true, showOverlay: isMapFullscreen() });
+    }
+    window.selectSavedPin = selectSavedPin;
     function drawWaterGaugesOnMap(force) {
       if (!map || !gaugeMarkerGroup) return;
       if (!force && gaugesDrawn) return;
@@ -2708,30 +3994,21 @@
             iconAnchor: [11,11]
           })
         });
-        var popupHtml = '<div class="area-popup" data-loc-id="' + String(loc.id).replace(/"/g, '&quot;') + '"><strong>' + loc.name + '</strong><br>Zone ' + loc.zone + ' - ' + match.rule.weapon +
-          '<br><button type="button" class="area-select-btn" style="margin-top:6px;padding:4px 8px;background:#486a2f;color:white;border:none;border-radius:4px;cursor:pointer;font-size:10px;width:100%;">Select</button>' +
-          (loc.isPin ? '<button type="button" class="area-delete-btn" style="margin-top:4px;padding:4px 8px;background:#d94136;color:white;border:none;border-radius:4px;cursor:pointer;font-size:10px;width:100%;">Delete Pin</button>' : '') +
+        // Skip custom pins here - they are drawn by drawPinsOnMap with full delete menu
+        if (loc.isPin) return;
+        var safeId = escJsStr(loc.id);
+        var popupHtml =
+          '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
+            '<div class="mdm-title">' + escHtml(loc.name) + '</div>' +
+            '<div class="mdm-sub">Zone ' + escHtml(loc.zone) + ' - ' + escHtml(match.rule.weapon) + '</div>' +
+            '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.selectLocationById(\'' + safeId + '\',{closePopup:true,showOverlay:true});return false;">Get weather</button>' +
           '</div>';
-        m.bindPopup(popupHtml);
+        m.bindPopup(popupHtml, { className: 'saved-item-popup map-dot-popup', closeButton: true, autoPan: true, maxWidth: 280, closeOnClick: false });
         m.on('popupopen', function() {
-          var root = document.querySelector('.area-popup[data-loc-id="' + String(loc.id).replace(/"/g, '\\"') + '"]');
-          if (!root) return;
-          var sel = root.querySelector('.area-select-btn');
-          var del = root.querySelector('.area-delete-btn');
-          if (sel) {
-            L.DomEvent.disableClickPropagation(sel);
-            L.DomEvent.on(sel, 'click', function(ev) {
-              L.DomEvent.stop(ev);
-              selectLocationById(loc.id, { closePopup: true, showOverlay: true, rule: match.rule });
-            });
-          }
-          if (del) {
-            L.DomEvent.disableClickPropagation(del);
-            L.DomEvent.on(del, 'click', function(ev) {
-              L.DomEvent.stop(ev);
-              if (map) map.closePopup();
-              deletePin(loc.id);
-            });
+          var el = m.getPopup() && m.getPopup().getElement();
+          if (el) {
+            L.DomEvent.disableClickPropagation(el);
+            L.DomEvent.disableScrollPropagation(el);
           }
         });
         mapMarkerGroup.addLayer(m);
@@ -2745,32 +4022,149 @@
     function plotSubsections(location, rule) {
       if (!map || !standMarkerGroup) return;
       standMarkerGroup.clearLayers();
-      if (location.subSections && location.subSections.length) {
-        location.subSections.forEach(function(sub, i) {
-          var m = L.marker([sub.lat, sub.lng], { icon: L.divIcon({ className: '', html: '<div style="background:#e59a18;width:14px;height:14px;border-radius:50%;border:2px solid white;"></div>', iconSize:[14,14], iconAnchor:[7,7] }) });
-          var popupHtml = '<div class="stand-popup" data-stand="' + location.id + '-' + i + '"><strong>Stand: ' + sub.name + '</strong><br>Lat: ' + sub.lat.toFixed(5) + ', Lon: ' + sub.lng.toFixed(5) +
-            '<br><button type="button" class="stand-select-btn" style="margin-top:6px;padding:4px 8px;background:#e59a18;color:black;border:none;border-radius:4px;cursor:pointer;font-size:10px;width:100%;">Select & Load Weather</button></div>';
-          m.bindPopup(popupHtml);
-          m.on('popupopen', function() {
-            var root = document.querySelector('.stand-popup[data-stand="' + location.id + '-' + i + '"]');
-            if (!root) return;
-            var sel = root.querySelector('.stand-select-btn');
-            if (sel) {
-              L.DomEvent.disableClickPropagation(sel);
-              L.DomEvent.on(sel, 'click', function(ev) {
-                L.DomEvent.stop(ev);
-                if (map) map.closePopup();
-                window._forceMapWeatherOverlay = true;
-                selectSubsection(location.id, i);
-              });
-            }
-          });
-          standMarkerGroup.addLayer(m);
+      // Only user-added stands
+      var stands = getUserStandsForLocation(location);
+      if (!stands.length) return;
+      stands.forEach(function(sub, i) {
+        // Index into full subSections array for selectSubsection / removeSubsection
+        var fullIdx = (location.subSections || []).indexOf(sub);
+        if (fullIdx < 0) fullIdx = i;
+        var m = L.marker([sub.lat, sub.lng], {
+          icon: L.divIcon({
+            className: '',
+            html: '<div style="background:#e59a18;width:16px;height:16px;border-radius:50%;border:2px solid white;box-shadow:0 1px 5px rgba(0,0,0,0.45);"></div>',
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
+          })
         });
-      }
+        var safeLocId = escJsStr(location.id);
+        var popupHtml =
+          '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
+            '<div class="mdm-title">Stand</div>' +
+            '<div class="mdm-sub">' + escHtml(sub.name) + '</div>' +
+            '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.selectSavedStand(\'' + safeLocId + '\',' + fullIdx + ');return false;">Get weather</button>' +
+            '<button type="button" class="mdm-btn danger" onclick="event.preventDefault();event.stopPropagation();window.removeSubsection(\'' + safeLocId + '\',' + fullIdx + ');return false;">Delete stand</button>' +
+          '</div>';
+        m.bindPopup(popupHtml, { className: 'saved-item-popup map-dot-popup', closeButton: true, autoPan: true, maxWidth: 280, closeOnClick: false });
+        m.on('popupopen', function() {
+          var el = m.getPopup() && m.getPopup().getElement();
+          if (el) {
+            L.DomEvent.disableClickPropagation(el);
+            L.DomEvent.disableScrollPropagation(el);
+          }
+        });
+        standMarkerGroup.addLayer(m);
+      });
     }
 
+    function selectSavedStand(locId, index) {
+      if (map) map.closePopup();
+      window._forceMapWeatherOverlay = true;
+      selectSubsection(locId, index);
+    }
+    window.selectSavedStand = selectSavedStand;
+
     // ========== CALENDAR ==========
+    /**
+     * Desktop: columns already fill full width via CSS grid.
+     * Make the calendar grid square (height = width) so the row grows intentionally,
+     * and match steps 2 & 3 panel height to step 1 header + calendar card.
+     */
+    /** True when phone/tablet layout should be used (class + viewport). */
+    function isPhoneLayout() {
+      if (document.documentElement.classList.contains('layout-phone')) return true;
+      if (document.body && document.body.classList.contains('layout-phone')) return true;
+      return (window.innerWidth || 0) <= 950;
+    }
+
+    /**
+     * Detect computer vs phone/tablet and set html/body layout classes.
+     * Keeps desktop multi-column shell on computers; stacked phone shell on mobile.
+     */
+    function detectIsPhoneDevice() {
+      var w = window.innerWidth || document.documentElement.clientWidth || 1200;
+      var ua = navigator.userAgent || '';
+      var mobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(ua);
+      var coarse = false, noHover = false, finePointer = false;
+      try {
+        coarse = window.matchMedia('(pointer: coarse)').matches;
+        noHover = window.matchMedia('(hover: none)').matches;
+        finePointer = window.matchMedia('(pointer: fine)').matches;
+      } catch (e) {}
+      if (w <= 950) return true;
+      if (mobileUA && (w <= 1180 || (coarse && noHover))) return true;
+      if (coarse && noHover && !finePointer && w <= 1280) return true;
+      return false;
+    }
+
+    function applyDeviceLayout(force) {
+      var phone = detectIsPhoneDevice();
+      var root = document.documentElement;
+      var prev = root.getAttribute('data-layout');
+      var next = phone ? 'phone' : 'desktop';
+      if (!force && prev === next) {
+        // Still re-sync planner metrics on resize within same mode
+        return next;
+      }
+      root.classList.remove('layout-phone', 'layout-desktop');
+      root.classList.add(phone ? 'layout-phone' : 'layout-desktop');
+      root.setAttribute('data-layout', next);
+      if (document.body) {
+        document.body.classList.remove('layout-phone', 'layout-desktop');
+        document.body.classList.add(phone ? 'layout-phone' : 'layout-desktop');
+        document.body.setAttribute('data-layout', next);
+      }
+      window.__REG_SLAYER_IS_PHONE__ = phone;
+      return next;
+    }
+    window.applyDeviceLayout = applyDeviceLayout;
+    window.isPhoneLayout = isPhoneLayout;
+
+    function syncPlannerCalendarSquare() {
+      var col = document.getElementById('planner-cal-col');
+      var cal = document.getElementById('calendar-container');
+      var grid = document.getElementById('calendar-grid');
+      var wpn = document.querySelector('.planner-wpn-col #step-2-section');
+      var loc = document.querySelector('.planner-loc-col #step-3-section');
+      if (!col || !cal || !grid) return;
+
+      // Phone / stacked layout: clear desktop fixed heights
+      if (isPhoneLayout()) {
+        col.style.width = '';
+        grid.style.height = '';
+        document.documentElement.style.removeProperty('--planner-cal-grid-h');
+        document.documentElement.style.removeProperty('--planner-side-height');
+        if (wpn) { wpn.style.minHeight = ''; wpn.style.height = ''; wpn.style.maxHeight = ''; }
+        if (loc) { loc.style.minHeight = ''; loc.style.height = ''; loc.style.maxHeight = ''; }
+        return;
+      }
+
+      // Clear any legacy fixed column width - grid distributes full card width
+      col.style.width = '';
+
+      // Square calendar body: height matches content width (grows as column is wider)
+      var gridW = Math.round(grid.getBoundingClientRect().width);
+      if (gridW < 160) return;
+      var gridH = gridW; // true square day area
+      grid.style.height = gridH + 'px';
+      document.documentElement.style.setProperty('--planner-cal-grid-h', gridH + 'px');
+
+      // Fixed side panel height (= header + calendar). List scrolls inside step 3.
+      var step1 = document.getElementById('step-1-section');
+      var header = step1 ? step1.querySelector('.step-header') : null;
+      var headerH = header ? header.getBoundingClientRect().height + 12 : 36;
+      var calH = Math.round(cal.getBoundingClientRect().height);
+      var sideH = Math.round(headerH + calH);
+      document.documentElement.style.setProperty('--planner-side-height', sideH + 'px');
+      [wpn, loc].forEach(function(el) {
+        if (!el) return;
+        el.style.minHeight = sideH + 'px';
+        el.style.height = sideH + 'px';
+        el.style.maxHeight = sideH + 'px';
+      });
+    }
+    window.syncPlannerCalendarSquare = syncPlannerCalendarSquare;
+
     function renderCalendar() {
       var y = calendarTargetDate.getFullYear(), m = calendarTargetDate.getMonth();
       var names = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -2800,6 +4194,11 @@
       }
       grid.innerHTML = '';
       grid.appendChild(frag);
+      // After layout: pull calendar width in to match height (square)
+      requestAnimationFrame(function() {
+        syncPlannerCalendarSquare();
+        requestAnimationFrame(syncPlannerCalendarSquare);
+      });
     }
     function changeMonth(dir) { calendarTargetDate.setMonth(calendarTargetDate.getMonth() + dir); renderCalendar(); }
     function selectDateStep(day) {
@@ -3004,6 +4403,45 @@
       document.getElementById('db-blank').style.display = 'block';
       document.getElementById('current-data-banner').style.display = 'none';
       setTvaNoteEl('db-tva-note', null);
+      var windHud = document.getElementById('map-wind-hud');
+      if (windHud) windHud.classList.remove('active');
+    }
+
+    // Last wind used on the map compass (re-applied when entering fullscreen)
+    var lastMapWind = { wspd: null, wdir: null, isCurrent: false };
+
+    function updateMapWindHud(wspd, wdir, isCurrent) {
+      var hud = document.getElementById('map-wind-hud');
+      if (!hud) return;
+      if (wspd == null || wdir == null || isNaN(wdir)) return;
+
+      lastMapWind = { wspd: wspd, wdir: wdir, isCurrent: !!isCurrent };
+
+      var speedEl = document.getElementById('map-wind-speed');
+      var dirEl = document.getElementById('map-wind-dir');
+      var scentEl = document.getElementById('map-scent-text');
+      var mph = Math.round(wspd || 0);
+      // Meteorological degrees: direction wind is FROM (0=N, 90=E, 180=S, 270=W)
+      var deg = ((Number(wdir) % 360) + 360) % 360;
+      var from = getCardinal(deg);
+      var drift = getCardinal((deg + 180) % 360);
+      if (speedEl) speedEl.textContent = mph + ' mph';
+      if (dirEl) dirEl.textContent = (isCurrent ? 'Now from ' : 'from ') + from;
+      if (scentEl) scentEl.textContent = 'Scent → ' + drift;
+      hud.classList.add('active');
+
+      var needle = document.getElementById('compass-needle');
+      if (!needle) return;
+      // Orange half points toward wind source (FROM direction)
+      if (!windInitialized) {
+        needle.style.transition = 'none';
+        needle.style.transform = 'rotate(' + deg + 'deg)';
+        void needle.offsetWidth;
+        needle.style.transition = 'transform 0.6s ease';
+        windInitialized = true;
+      } else {
+        needle.style.transform = 'rotate(' + deg + 'deg)';
+      }
     }
     function statewideLocIdForZone(zone) {
       if (zone === 'B') return 11;
@@ -3059,7 +4497,7 @@
       // Hard block non-huntable refuges (Bon Secour, Fern Cave, Sauta Cave, Watercress Darter, etc.)
       if (isNonHuntableRefugeName(loc.name) || isNonHuntableRefugeName(loc.unitName)) return [];
 
-      // Federal NWR: require whitelist profile — no generic "assume archery" for unknown refuges
+      // Federal NWR: require whitelist profile - no generic "assume archery" for unknown refuges
       if (loc.landSource === 'nwr' || loc.type === 'NWR' || (loc.type === 'Refuge' && !loc.id)) {
         if (!isHuntableDeerRefugeName(loc.name) && !isHuntableDeerRefugeName(loc.unitName)) return [];
       }
@@ -3083,7 +4521,7 @@
       if (loc.landSource === 'nwr' || loc.type === 'NWR') return [];
 
       // 4) Other public GIS (WMA/SOA/PDHA/FW/TVA): use ONLY statewide zone rules that already
-      //    apply to this land type — do NOT copy Black Warrior / Talladega gun calendars.
+      //    apply to this land type - do NOT copy Black Warrior / Talladega gun calendars.
       //    Note: statewide Zone A gun is Private-only in our ruleset, so Gun will not open
       //    unknown public WMAs unless we have an explicit profile or built-in.
       var zoneId = statewideLocIdForZone(loc.zone);
@@ -3129,7 +4567,7 @@
       locations.forEach(function(loc) {
         // Skip out-of-state points
         if (loc.lat != null && loc.lng != null && loc.id !== 9999 && !loc.isPin) {
-          // Statewide zone "locations" are virtual — keep them
+          // Statewide zone "locations" are virtual - keep them
           if (loc.type !== 'Statewide' && !isInAlabama(loc.lat, loc.lng) && !loc.isPublicLand) {
             // built-ins are all in AL; still guard
           }
@@ -3144,8 +4582,11 @@
           return;
         }
 
-        // Current GPS / custom click spots without dedicated rules: only if in AL and statewide open
-        if (loc.id === 9999 || (loc.name && String(loc.name).indexOf('Selected Spot') !== -1)) {
+        // Never list "My Location" / current GPS as a hunt destination (use real area names only)
+        if (loc.id === 9999 || loc.type === 'Current Location') return;
+
+        // Custom free-map clicks (Selected Spot): keep as optional list entry when open
+        if (loc.name && String(loc.name).indexOf('Selected Spot') !== -1) {
           if (!isInAlabama(loc.lat, loc.lng)) return;
           if (land === 'Private') return;
           var curMatched = matchRulesForLocId(statewideLocIdForZone(loc.zone), date, weapon, land, ds);
@@ -3164,9 +4605,50 @@
       });
       return results;
     }
+    /** True if GPS is inside this hunt unit (polygon when known, else near center). */
+    function userIsInsideHuntLocation(loc) {
+      if (userLat == null || userLng == null || !loc) return false;
+      if (loc.id === 9999 || loc.type === 'Current Location') return false;
+
+      // Prefer official public-land polygons
+      if (adcnrLandsData && loc.name) {
+        var layers = adcnrLandsData.layers || [];
+        for (var li = 0; li < layers.length; li++) {
+          var layer = layers[li];
+          if (layer.drawOnMap === false) continue;
+          var feats = layer.features || [];
+          for (var fi = 0; fi < feats.length; fi++) {
+            var attrs = feats[fi].attributes || {};
+            var fname = featureDisplayName(layer, attrs) || layer.label || '';
+            if (!fname || !namesRoughMatch(fname, loc.name)) continue;
+            var rings = feats[fi].geometry && feats[fi].geometry.rings;
+            if (!rings) continue;
+            for (var ri = 0; ri < rings.length; ri++) {
+              if (pointInRing(userLng, userLat, rings[ri])) return true;
+            }
+          }
+        }
+      }
+
+      // Fallback: near unit pin/center
+      if (loc.lat != null && loc.lng != null) {
+        var nearMi = loc.isPublicLand ? 1.25 : 3.0;
+        return getDistanceMiles(userLat, userLng, loc.lat, loc.lng) <= nearMi;
+      }
+      return false;
+    }
+
     function updateAvailableList(skipMap) {
       if (!selectedDate || !selectedWeapon) return;
       var open = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand);
+      // Never show "My Location" as a list row
+      open = open.filter(function(m) {
+        var loc = m.location;
+        if (!loc) return false;
+        if (loc.id === 9999 || loc.type === 'Current Location') return false;
+        if (loc.name && /^My Location/i.test(String(loc.name))) return false;
+        return true;
+      });
       var list = document.getElementById('location-list');
       document.getElementById('list-label').innerText = 'Open Tracts (' + selectedDate.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ')';
 
@@ -3178,16 +4660,17 @@
         visible = visible.filter(function(m) { return String(m.location.id) === String(selectedLocationId); });
       }
 
-      // Sort by distance when origin known
-      if (distOriginLat != null && distRadiusMiles > 0) {
-        visible = visible.slice().sort(function(a, b) {
-          var da = a.location._distanceMi, db = b.location._distanceMi;
-          if (da == null && db == null) return 0;
-          if (da == null) return 1;
-          if (db == null) return -1;
-          return da - db;
-        });
-      }
+      // Sort: areas you are physically inside first, then by distance
+      visible = visible.slice().sort(function(a, b) {
+        var aIn = userIsInsideHuntLocation(a.location) ? 0 : 1;
+        var bIn = userIsInsideHuntLocation(b.location) ? 0 : 1;
+        if (aIn !== bIn) return aIn - bIn;
+        var da = a.location._distanceMi, db = b.location._distanceMi;
+        if (da == null && db == null) return 0;
+        if (da == null) return 1;
+        if (db == null) return -1;
+        return da - db;
+      });
 
       var hiddenCount = open.length - afterHide.length;
       var distDropped = afterHide.length - afterDist.length;
@@ -3195,12 +4678,22 @@
         (hiddenCount > 0 ? '(' + hiddenCount + ' hidden)' : '') +
         (distDropped > 0 ? (hiddenCount > 0 ? ' · ' : '(') + distDropped + ' outside range' + (hiddenCount > 0 ? '' : ')') : '');
       document.getElementById('restore-hidden-btn').style.display = hiddenCount > 0 ? 'inline-block' : 'none';
+      // Letter pins on map match the filtered list; overlay green ✓ = huntable for weapon/date
+      lastListedHuntLocations = visible.map(function(m) { return m.location; });
       if (!skipMap) {
-        ensureMap().then(function() { updateMapMarkers(visible); });
+        ensureMap().then(function() {
+          updateMapMarkers(visible);
+          drawPinsOnMap();
+          // Keep full public-lands polygons drawn; only ✓ markers depend on open status
+          if (adcnrLandsData && document.getElementById('toggle-adcnr-lands-chk') &&
+              document.getElementById('toggle-adcnr-lands-chk').checked) {
+            drawAdcnrLandsOverlay();
+          }
+        });
       }
 
       if (open.length === 0) {
-        list.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px;font-size:13px;">No open tracts for this date/weapon. Showing current location weather.</div>';
+        list.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px;font-size:13px;">No open tracts for this date/weapon.</div>';
         return;
       }
 
@@ -3326,6 +4819,9 @@
     }
 
     // ========== WEATHER ==========
+    // Bump on each weather request so older in-flight fetches don't overwrite a newer map click
+    var weatherRequestSeq = 0;
+
     async function selectLocation(location, rule) {
       selectedLocationId = location.id;
       selectedSubsectionIndex = null;
@@ -3333,7 +4829,11 @@
       updateAvailableList(true);
       updateEventsList();
       ensureMap().then(function(m) {
-        if (m) { m.panTo([location.lat, location.lng]); plotSubsections(location, rule); }
+        if (m) {
+          // Don't pan for free map-spot clicks (user already clicked there)
+          if (!location.isMapSpot) m.panTo([location.lat, location.lng]);
+          plotSubsections(location, rule);
+        }
       });
       // TVA note for this coordinate (no boundary on map)
       applyTvaToLocation(location, location.lat, location.lng);
@@ -3355,6 +4855,7 @@
     }
 
     async function loadWeatherAndRender(location, rule, subsection) {
+      var reqId = ++weatherRequestSeq;
       document.getElementById('db-blank').style.display = 'none';
       document.getElementById('db-content').style.display = 'none';
       document.getElementById('db-loading').style.display = 'block';
@@ -3365,6 +4866,7 @@
 
       try {
         const weather = await fetchWeather(lat, lng, dateToUse);
+        if (reqId !== weatherRequestSeq) return; // stale click — ignore
         let waterData = null, nearest = null, minDist = 999;
         waterGauges.forEach(st => {
           const d = getDistanceMiles(lat, lng, st.lat, st.lng);
@@ -3374,12 +4876,14 @@
           const today = new Date(); today.setHours(0,0,0,0);
           const sel = new Date(dateToUse); sel.setHours(0,0,0,0);
           waterData = (sel < today) ? generateSimulatedWaterData(nearest, sel) : await fetchWaterDataForStation(nearest);
+          if (reqId !== weatherRequestSeq) return;
           waterData.station = nearest;
           waterData.distance = minDist;
         }
         displayDashboard(location, rule, weather, subsection, waterData, dateToUse, lat, lng);
         renderSubsections(location, rule);
       } catch(err) {
+        if (reqId !== weatherRequestSeq) return;
         console.error('Weather fetch error:', err);
         displayDashboard(location, rule, generateSimulatedWeather(lat, lng, dateToUse), subsection, null, dateToUse, lat, lng);
         renderSubsections(location, rule);
@@ -3551,9 +5055,10 @@
       const moon = calculateMoonPhase(selDate);
       document.getElementById('db-moon-text').innerText = moon.phase + ' (' + moon.illumination + '% lit)';
 
-      // ===== WIND � stable, no jumping =====
+      // ===== WIND - map compass HUD (top center) =====
       let wspd, wdir;
-      if (weather.isCurrent && weather.current) {
+      var windIsCurrent = !!(weather.isCurrent && weather.current);
+      if (windIsCurrent) {
         wspd = weather.current.wind_speed_10m;
         wdir = weather.current.wind_direction_10m;
         document.getElementById('wind-speed-text').innerText = 'Current Wind: ' + Math.round(wspd) + ' MPH from ' + getCardinal(wdir) + ' (Now: ' + Math.round(weather.current.temperature_2m) + ' F)';
@@ -3565,21 +5070,9 @@
         document.getElementById('wind-speed-text').innerText = 'Morning Wind (7 AM): ' + Math.round(wspd) + ' MPH from ' + getCardinal(wdir);
       }
       document.getElementById('scent-drift-text').innerText = 'Scent Drift: towards ' + getCardinal((wdir + 180) % 360);
+      updateMapWindHud(wspd, wdir, windIsCurrent);
 
-      // Snap the needle instantly on first load, then enable smooth transitions
-      const needle = document.getElementById('compass-needle');
-      if (!windInitialized) {
-        needle.style.transition = 'none';
-        needle.style.transform = 'rotate(' + wdir + 'deg)';
-        // force reflow so the browser registers the instant position
-        void needle.offsetWidth;
-        needle.style.transition = 'transform 0.6s ease';
-        windInitialized = true;
-      } else {
-        needle.style.transform = 'rotate(' + wdir + 'deg)';
-      }
-
-      // Hourly table — single innerHTML write
+      // Hourly table - single innerHTML write
       var hourly = weather.hourly;
       var tbody = document.getElementById('hourly-rows');
       var rowsHtml = '';
@@ -3611,7 +5104,7 @@
       if (location.tva) {
         html += '<div style="margin-top:8px;font-size:11px;font-weight:bold;color:#7ec8ff;margin-bottom:4px;">TVA Land</div>' +
           '<div style="background:rgba(52,152,219,0.12);border:1px solid #5b8def;padding:8px;border-radius:6px;">' +
-          location.tva.reservoir + ' — ' + location.tva.recType +
+          location.tva.reservoir + ' - ' + location.tva.recType +
           (location.tva.restricted ? '<br><span style="color:var(--muted);">' + location.tva.restricted + '</span>' : '') +
           '</div>';
       }
@@ -3619,7 +5112,7 @@
         html += '<div style="margin-top:8px;font-size:11px;color:var(--muted);"><i>' + String(location.notes).replace(/\n/g, '<br>') + '</i></div>';
       }
       document.getElementById('mwo-body').innerHTML = html;
-      // Map weather box only when user selects a hunt area — never for GPS "current location"
+      // Map weather box only when user selects a hunt area - never for GPS "current location"
       var isCurrentLoc = !location || location.id == 9999 || location.type === 'Current Location' || usingCurrentLocation;
       var forceBox = !!window._forceMapWeatherOverlay && !isCurrentLoc;
       var fullscreen = document.querySelector('.map-wrapper').classList.contains('fullscreen');
@@ -3630,47 +5123,152 @@
     function renderSubsections(location, rule) {
       const cont = document.getElementById('subsections-list-container');
       cont.innerHTML = '';
-      if (!location.subSections?.length) {
-        cont.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:10px 0;">No stands mapped. Add one above.</div>';
+      var stands = getUserStandsForLocation(location);
+      if (!stands.length) {
+        cont.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:10px 0;">No stands yet. Use <strong>+ Add Stand</strong>, then click the map on this area.</div>';
         return;
       }
-      location.subSections.forEach((sub, i) => {
+      stands.forEach(function(sub) {
+        var i = (location.subSections || []).indexOf(sub);
+        if (i < 0) return;
         const div = document.createElement('div');
         div.className = 'subsection-item' + (selectedSubsectionIndex===i ? ' selected' : '');
-        div.innerHTML = '<div style="flex:1;" onclick="selectSubsection(' + location.id + ',' + i + ')">Stand <strong>' + sub.name + '</strong> <span style="font-size:11px;color:var(--muted);margin-left:8px;">(' + sub.lat.toFixed(5) + ', ' + sub.lng.toFixed(5) + ')</span></div><button onclick="event.stopPropagation();removeSubsection(' + location.id + ',' + i + ')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:11px;">Remove</button>';
+        div.innerHTML = '<div style="flex:1;" onclick="selectSubsection(' + JSON.stringify(String(location.id)) + ',' + i + ')">Stand <strong>' + sub.name + '</strong> <span style="font-size:11px;color:var(--muted);margin-left:8px;">(' + sub.lat.toFixed(5) + ', ' + sub.lng.toFixed(5) + ')</span></div><button onclick="event.stopPropagation();removeSubsection(' + JSON.stringify(String(location.id)) + ',' + i + ')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:11px;">Remove</button>';
         cont.appendChild(div);
       });
     }
-    function promptAddSubsection() {
-      if (!selectedLocationId) return;
-      const name = prompt('Enter stand / blind name:');
-      if (!name?.trim()) return;
-      const coords = prompt('Enter coordinates (lat, lng):', (clickLat&&clickLng) ? clickLat.toFixed(5)+', '+clickLng.toFixed(5) : '');
-      const parsed = extractCoordinates(coords);
-      const loc = locations.find(l => l.id == selectedLocationId);
-      if (loc) {
-        if (!loc.subSections) loc.subSections = [];
-        const final = parsed || { lat: loc.lat+(Math.random()-0.5)*0.02, lng: loc.lng+(Math.random()-0.5)*0.02 };
-        loc.subSections.push({ name: name.trim(), lat: final.lat, lng: final.lng });
-        const matches = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand);
-        const rule = (matches.find(m => m.location.id == selectedLocationId)||{}).rule || {};
-        renderSubsections(loc, rule);
-        plotSubsections(loc, rule);
-        alert('Stand "' + name + '" added!');
+
+    function findAdcnrBoundsForLocation(loc) {
+      if (!loc || !adcnrLandsData || typeof L === 'undefined') return null;
+      var bounds = null;
+      (adcnrLandsData.layers || []).forEach(function(layer) {
+        if (layer.drawOnMap === false) return;
+        (layer.features || []).forEach(function(feat) {
+          var attrs = feat.attributes || {};
+          var name = featureDisplayName(layer, attrs) || layer.label || '';
+          if (!name || !namesRoughMatch(name, loc.name)) return;
+          var latlngs = esriRingsToLatLngs(feat.geometry);
+          if (!latlngs) return;
+          try {
+            var b = L.polygon(latlngs).getBounds();
+            if (!b || !b.isValid()) return;
+            if (!bounds) bounds = b;
+            else bounds.extend(b);
+          } catch (e) { /* ignore */ }
+        });
+      });
+      return bounds;
+    }
+
+    function focusMapOnHuntArea(loc) {
+      return ensureMap().then(function(m) {
+        if (!m || !loc) return m;
+        var bounds = findAdcnrBoundsForLocation(loc);
+        if (bounds && bounds.isValid && bounds.isValid()) {
+          m.fitBounds(bounds.pad(0.1), { maxZoom: 14, animate: true });
+          return m;
+        }
+        if (loc.lat != null && loc.lng != null) {
+          m.setView([loc.lat, loc.lng], 13, { animate: true });
+        }
+        return m;
+      });
+    }
+
+    function cancelStandPlacement() {
+      standPlaceMode = null;
+      var banner = document.getElementById('stand-place-banner');
+      if (banner) {
+        banner.classList.remove('active');
+        banner.style.display = 'none';
+      }
+      var wrap = document.querySelector('.map-wrapper');
+      if (wrap) wrap.classList.remove('stand-placing');
+    }
+    window.cancelStandPlacement = cancelStandPlacement;
+
+    function startStandPlacement(locId, standName) {
+      var loc = locations.find(function(l) { return String(l.id) === String(locId); });
+      if (!loc) return;
+      standPlaceMode = { locId: loc.id, name: standName };
+      var banner = document.getElementById('stand-place-banner');
+      var text = document.getElementById('stand-place-banner-text');
+      if (text) text.textContent = 'Click on the map to place stand "' + standName + '" in ' + loc.name;
+      if (banner) {
+        banner.style.display = 'flex';
+        banner.classList.add('active');
+      }
+      var wrap = document.querySelector('.map-wrapper');
+      if (wrap) wrap.classList.add('stand-placing');
+      // Scroll map into view and zoom to this unit only
+      if (wrap) wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      focusMapOnHuntArea(loc);
+    }
+
+    function placeStandAt(lat, lng) {
+      if (!standPlaceMode) return;
+      var loc = locations.find(function(l) { return String(l.id) === String(standPlaceMode.locId); });
+      var standName = standPlaceMode.name;
+      if (!loc || lat == null || lng == null) {
+        cancelStandPlacement();
+        return;
+      }
+      if (!loc.subSections) loc.subSections = [];
+      loc.subSections.push({ name: standName, lat: lat, lng: lng, userAdded: true });
+      saveUserStands();
+      cancelStandPlacement();
+      var matches = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand);
+      var rule = (matches.find(function(m) { return String(m.location.id) === String(loc.id); }) || {}).rule ||
+        { weapon: 'General', target: 'State limits', limit: '1/day' };
+      selectedLocationId = loc.id;
+      renderSubsections(loc, rule);
+      plotSubsections(loc, rule);
+      // Brief confirmation on map
+      if (map && typeof L !== 'undefined') {
+        L.popup().setLatLng([lat, lng]).setContent('<strong>' + standName + '</strong><br>Stand saved').openOn(map);
+        setTimeout(function() { if (map) map.closePopup(); }, 1600);
       }
     }
+    window.placeStandAt = placeStandAt;
+
+    function promptAddSubsection() {
+      if (!selectedLocationId) {
+        alert('Select a hunt location first, then add a stand.');
+        return;
+      }
+      var loc = locations.find(function(l) { return String(l.id) === String(selectedLocationId); });
+      if (!loc) return;
+      if (loc.id === 9999 || loc.type === 'Current Location') {
+        alert('Pick a WMA, refuge, or other hunt area before adding a stand.');
+        return;
+      }
+      var name = prompt('Stand / blind name:');
+      if (!name || !name.trim()) return;
+      startStandPlacement(loc.id, name.trim());
+    }
+    window.promptAddSubsection = promptAddSubsection;
+
     function removeSubsection(locId, index) {
-      const loc = locations.find(l => l.id == locId);
-      if (loc?.subSections) {
+      const loc = locations.find(function(l) { return String(l.id) === String(locId); });
+      if (loc && loc.subSections && loc.subSections[index] != null) {
+        var standLabel = loc.subSections[index].name || 'this stand';
+        if (!confirm('Delete stand "' + standLabel + '"?')) return;
         loc.subSections.splice(index, 1);
         selectedSubsectionIndex = null;
+        saveUserStands();
+        if (map) map.closePopup();
         const matches = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand);
-        const rule = (matches.find(m => m.location.id == locId)||{}).rule || { weapon:'General', target:'State limits', limit:'1/day' };
+        const rule = (matches.find(function(m) { return String(m.location.id) === String(locId); }) || {}).rule ||
+          { weapon: 'General', target: 'State limits', limit: '1/day' };
         renderSubsections(loc, rule);
         plotSubsections(loc, rule);
-        selectLocation(loc, rule);
+        // Stay on this area after deleting a stand
+        if (String(selectedLocationId) === String(locId)) {
+          selectLocation(loc, rule);
+        }
       }
     }
+    window.removeSubsection = removeSubsection;
     function toggleMapFullscreen() {
       ensureMap().then(function() {
         var w = document.querySelector('.map-wrapper');
@@ -3680,10 +5278,20 @@
         // Weather box only if a real area is selected (not bare current-location)
         var isCur = selectedLocationId == 9999 || usingCurrentLocation;
         document.getElementById('map-weather-overlay').style.display = (full && selectedLocationId && !isCur) ? 'block' : 'none';
+        // Keep / re-apply wind compass for the selected area in fullscreen
+        if (full && lastMapWind.wdir != null) {
+          updateMapWindHud(lastMapWind.wspd, lastMapWind.wdir, lastMapWind.isCurrent);
+        }
         // Legend only appears in fullscreen (and only if overlay is on + not dismissed)
         if (full) adcnrLegendDismissed = false;
         updateAdcnrLegendVisibility();
-        setTimeout(function() { if (map) map.invalidateSize(); }, 300);
+        setTimeout(function() {
+          if (map) map.invalidateSize();
+          // Re-assert needle after layout reflow in fullscreen
+          if (full && lastMapWind.wdir != null) {
+            updateMapWindHud(lastMapWind.wspd, lastMapWind.wdir, lastMapWind.isCurrent);
+          }
+        }, 300);
       });
     }
     function snapToGPS() {
@@ -3704,7 +5312,7 @@
           if (m) {
             m.setView([userLat, userLng], 12);
             setGpsMarker(userLat, userLng);
-            // No auto popup / weather box for current location — only after selecting an area
+            // No auto popup / weather box for current location - only after selecting an area
             if (map) map.closePopup();
           }
         });
@@ -3730,11 +5338,30 @@
 
     // ========== INIT (calendar first; map/Leaflet/USGS deferred until Step 3) ==========
     window.onload = function() {
+      // Phone vs desktop layout (also runs early in <head>; re-apply with body ready)
+      applyDeviceLayout(true);
       calendarTargetDate = new Date();
       selectedDate = new Date();
       renderCalendar();
       setLand('Public');
       updateDistStatus();
+      var _plannerResizeTimer = null;
+      function onViewportChange() {
+        clearTimeout(_plannerResizeTimer);
+        _plannerResizeTimer = setTimeout(function() {
+          applyDeviceLayout(true);
+          syncPlannerCalendarSquare();
+          if (map) {
+            try { map.invalidateSize(); } catch (e) {}
+          }
+        }, 140);
+      }
+      window.addEventListener('resize', onViewportChange);
+      window.addEventListener('orientationchange', onViewportChange);
+      // Esc cancels stand placement mode
+      document.addEventListener('keydown', function(ev) {
+        if (ev.key === 'Escape' && standPlaceMode) cancelStandPlacement();
+      });
       // Prefetch public lands into cache/list (non-blocking)
       loadAdcnrLands(false).catch(function() {});
       // Prefetch GPS without loading the map stack
