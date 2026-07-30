@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>REG SLAYER - Alabama Deer Season Planner v2.9</title>
+  <title>REG SLAYER - Alabama Deer Season Planner v3.0</title>
   <!-- Detect phone vs desktop as early as possible (reduces layout flash) -->
   <script>
     (function () {
@@ -45,7 +45,7 @@
     html, body { height: 100%; }
     body { background: var(--bg); color: var(--ink); margin: 0; padding: 0; line-height: 1.5; min-height: 100vh; display: flex; flex-direction: column; }
 
-    /* ========== BRAND HEADER (v2.9 - large logo fills top bar) ========== */
+    /* ========== BRAND HEADER (v3.0 - large logo fills top bar) ========== */
     .brand-header {
       background:
         linear-gradient(180deg, rgba(13,15,12,0.15) 0%, rgba(13,15,12,0.88) 100%),
@@ -99,7 +99,7 @@
       text-shadow: 0 1px 3px rgba(0,0,0,0.85);
     }
 
-    /* Site links / tagline live in page footer (v2.9) */
+    /* Site links / tagline live in page footer (v3.0) */
     .site-footer {
       margin-top: auto;
       border-top: 1px solid var(--border);
@@ -130,7 +130,7 @@
       padding: 3px 9px; border-radius: 6px; border: 1px solid var(--border);
     }
 
-    /* ========== DESKTOP SHELL (v2.9 - planner+weather left, big map right) ========== */
+    /* ========== DESKTOP SHELL (v3.0 - planner+weather left, big map right) ========== */
     .app-shell {
       max-width: none;
       margin: 0;
@@ -1630,11 +1630,11 @@
   </style>
 </head>
 <body>
-  <!-- Brand header: large logo + small V2.9 at bottom-right of logo -->
+  <!-- Brand header: large logo + small V3.0 at bottom-right of logo -->
   <header class="brand-header" role="banner">
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 2.9">V2.9</span>
+      <span class="brand-version" aria-label="Version 3.0">V3.0</span>
     </div>
   </header>
 
@@ -1920,7 +1920,7 @@
                   <button type="button" class="zone-toggle-btn" id="zone-btn-A" data-zone="A" style="background:#8a8a8a;" onclick="toggleDeerZone('A')" title="Zone A — default statewide" aria-pressed="false">A<span class="zt-sub">off</span></button>
                   <button type="button" class="zone-toggle-btn" id="zone-btn-B" data-zone="B" style="background:#e6d29a;" onclick="toggleDeerZone('B')" title="Zone B — south of US-80 line" aria-pressed="false">B<span class="zt-sub">off</span></button>
                   <button type="button" class="zone-toggle-btn" id="zone-btn-C" data-zone="C" style="background:#e0913c;" onclick="toggleDeerZone('C')" title="Zone C — north-central band" aria-pressed="false">C<span class="zt-sub">off</span></button>
-                  <button type="button" class="zone-toggle-btn" id="zone-btn-D" data-zone="D" style="background:#7dcf9a;" onclick="toggleDeerZone('D')" title="Zone D — Winston/Lawrence pocket" aria-pressed="false">D<span class="zt-sub">off</span></button>
+                  <button type="button" class="zone-toggle-btn" id="zone-btn-D" data-zone="D" style="background:#7dcf9a;" onclick="toggleDeerZone('D')" title="Zone D — Bankhead / Winston–Lawrence pocket" aria-pressed="false">D<span class="zt-sub">off</span></button>
                   <button type="button" class="zone-toggle-btn" id="zone-btn-E" data-zone="E" style="background:#9a8b3a;" onclick="toggleDeerZone('E')" title="Zone E — Calhoun/Cleburne &amp; E. Russell" aria-pressed="false">E<span class="zt-sub">off</span></button>
                 </div>
                 <div class="zone-toggle-actions">
@@ -2021,7 +2021,7 @@
   </div>
   </div><!-- /.app-shell -->
 
-  <!-- Tagline + official links moved to bottom (v2.9) -->
+  <!-- Tagline + official links moved to bottom (v3.0) -->
   <footer class="site-footer" role="contentinfo">
     <div class="site-footer-inner">
       <p>Alabama public &amp; private land · USGS gauges · topo terrain · wind &amp; scent</p>
@@ -2089,7 +2089,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '2.9';
+    const APP_VERSION = '3.0';
     let selectedDate = null, selectedWeapon = null, selectedLand = 'Public', selectedLocationId = null;
     let selectedSubsectionIndex = null, viewFilterMode = 'all', currentSelectedColor = '#e59a18';
     let editingEventId = null, userLat = null, userLng = null;
@@ -3225,7 +3225,7 @@
     const rules = [
       { locId: 5, weapon: "Archery", land: "Either", start: "2026-10-01", end: "2027-01-15", target: "Hunter's Choice", limit: "1/day", notes: "Pre-Rut Nov 10-23 - Peak Rut Nov 24-Dec 8. Bankhead Stalk Land. No dog deer hunting." },
       { locId: 5, weapon: "Archery", land: "Either", start: "2027-01-16", end: "2027-01-27", target: "Antlered Bucks Only", limit: "1 Buck/day" },
-      { locId: 5, weapon: "Gun", land: "Either", start: "2026-11-21", end: "2027-01-27", target: "Bucks Only", limit: "1/day", notes: "Stalk Hunting Only. Lawrence Co (Zone C) gun until Feb 10." },
+      { locId: 5, weapon: "Gun", land: "Either", start: "2026-11-21", end: "2027-01-27", target: "Bucks Only", limit: "1/day", notes: "Stalk hunting only. Most of Bankhead is Zone D (earlier seasons); fringe north of AL-24 / east of AL-157 may be Zone C — confirm Outdoor Alabama." },
       { locId: 5, weapon: "Primitive", land: "Either", start: "2026-11-16", end: "2026-11-20", target: "Hunter's Choice", limit: "1/day" },
       { locId: 1, weapon: "Archery", land: "Either", start: "2026-10-01", end: "2027-01-15", target: "Hunter's Choice", limit: "1/day", notes: "Zone B antler restriction: 4+ points on one side." },
       { locId: 1, weapon: "Archery", land: "Either", start: "2027-01-16", end: "2027-01-27", target: "Antlered Bucks Only", limit: "1 Buck/day" },
@@ -3415,12 +3415,14 @@
         const n = lat >= 34.56;
         return { id: n?3:4, name: n?'Wheeler North Wildlife Refuge':'Wheeler South Wildlife Refuge', type:'Refuge', zone:n?'A':'C', desc:'Federal Wildlife Refuge. Archery-only. NO SUNDAY HUNTING.' };
       }
-      if (lat >= 34.12 && lat <= 34.48 && lng >= -87.62 && lng <= -87.12) {
+      // Bankhead NF / Black Warrior — mostly Zone D (Outdoor Alabama 2025–2026 deer zone map)
+      // BBox covers Winston + S. Lawrence + W. Cullman tip (Jones Chapel / Addison)
+      if (lat >= 34.00 && lat <= 34.50 && lng >= -87.65 && lng <= -87.02) {
         const d = Math.sqrt(Math.pow(lat-34.3411,2)+Math.pow(lng+87.3386,2));
-        // Bankhead core sits in Zone D on the official deer zone map
-        if (d < 0.12) return { id:1, name:'Black Warrior WMA (Bankhead)', type:'WMA', zone:'D', desc:'Bankhead / Zone D area — confirm WMA permit & antler rules.' };
+        if (d < 0.12) return { id:1, name:'Black Warrior WMA (Bankhead)', type:'WMA', zone:'D', desc:'Bankhead / Zone D — confirm WMA permit & Outdoor Alabama seasons.' };
         var zBank = (typeof detectDeerZoneLetter === 'function') ? detectDeerZoneLetter(lat, lng) : 'D';
-        return { id:5, name:'William B. Bankhead National Forest', type:'Forest', zone:zBank, desc:'Stalk-Only Land. Confirm Zone C/D boundary on Outdoor Alabama.' };
+        if (zBank !== 'D' && zBank !== 'C') zBank = 'D';
+        return { id:5, name:'William B. Bankhead National Forest', type:'Forest', zone:zBank, desc:'Stalk-only USFS. Most of Bankhead is Zone D (Winston / S. Lawrence / W. Cullman); fringe may be Zone C — confirm Outdoor Alabama.' };
       }
       if (lat >= 34.78 && lat <= 35.02 && lng >= -86.38 && lng <= -85.92) return { id:2, name:'James D. Martin - Skyline WMA', type:'WMA', zone:'A', desc:'Antler restriction: 3+ points on one side.' };
       if (lat >= 33.12 && lat <= 33.98 && lng >= -86.25 && lng <= -85.45) return { id:6, name:'Talladega National Forest (Talladega)', type:'Forest', zone:'A', desc:'Stalk hunting rules apply.' };
@@ -4975,33 +4977,49 @@
       {
         zone: 'D',
         name: 'Zone D',
-        desc: 'Legal: Moulton (AL-157/24) → AL-157 → Cullman CR-1114 → US-278 Jones Chapel → Helicon Rd → Arley CR-41 → Sipsey Fork → Winston/Walker → AL-5 → Natural Bridge AL-13 → Haleyville AL-195 → CR-93 → Franklin line → AL-24 back to Moulton.',
+        // Source: Outdoor Alabama / eRegulations 2025–2026 deer seasons (legal metes & bounds).
+        // Zone D is the Bankhead / Black Warrior pocket — most of Winston Co. + S. Lawrence + W. Cullman tip.
+        // Prior app ring was too far west (Jones Chapel/Arley wrong), so eastern Bankhead looked like Zone C.
+        desc: 'Bankhead NF / Black Warrior area (Cullman, Lawrence, Morgan, Winston). Legal route: Moulton AL-157/24 → SE AL-157 & Cullman CR-1114 → Jones Chapel US-278 → W Helicon Rd (CR-77) → Arley CR-41 → Sipsey Fork → Winston/Walker line → N AL-5 Natural Bridge → AL-13 Haleyville → AL-195 & CR-93 → Franklin/Winston line → Lawrence/Franklin line → E AL-24 to Moulton. Confirm Outdoor Alabama before hunting.',
         color: '#7dcf9a',
         fillOpacity: 0.28,
         weight: 1.8,
-        label: [34.18, -87.40],
+        label: [34.18, -87.35],
         rings: [[
-          [34.482, -87.293], // Moulton — AL-24 & AL-157
-          [34.420, -87.270],
-          [34.340, -87.250],
-          [34.250, -87.230],
-          [34.160, -87.200], // toward Jones Chapel / US-278
-          [34.100, -87.220],
-          [34.050, -87.280], // Helicon Rd area
-          [34.000, -87.350],
-          [33.960, -87.420], // Arley / CR-41
-          [33.920, -87.500],
-          [33.900, -87.560], // Sipsey Fork / Winston–Walker
-          [33.930, -87.620],
-          [34.000, -87.650],
-          [34.052, -87.603], // Natural Bridge — AL-5 & AL-13
-          [34.120, -87.620],
-          [34.227, -87.621], // Haleyville — AL-13 & AL-195
-          [34.300, -87.580],
-          [34.360, -87.520], // CR-93 / Franklin line
-          [34.430, -87.450],
-          [34.480, -87.380], // AL-24 east to Moulton
-          [34.482, -87.293]
+          // Digitized along 2025–2026 legal highway/river route (slightly padded so boundary towns count inside)
+          [34.490, -87.300], // N of Moulton — AL-24 & AL-157
+          [34.455, -87.255], // AL-157 SE
+          [34.410, -87.200],
+          [34.360, -87.145],
+          [34.310, -87.100],
+          [34.260, -87.065], // Cullman CR-1114 corridor
+          [34.225, -87.040], // E of Jones Chapel
+          [34.200, -87.040], // Jones Chapel / US-278 (SE corner)
+          [34.190, -87.090], // US-278 west
+          [34.180, -87.140], // toward Helicon Rd (Winston CR-77)
+          [34.155, -87.150],
+          [34.120, -87.155], // Helicon
+          [34.090, -87.190], // Helicon Rd west
+          [34.065, -87.225], // Arley — Winston CR-41
+          [34.040, -87.265], // CR-41 → Sipsey Fork
+          [34.015, -87.310],
+          [33.995, -87.370], // Sipsey Fork south
+          [33.982, -87.440], // Winston / Walker County line
+          [33.988, -87.520],
+          [34.010, -87.580], // west to AL-5
+          [34.055, -87.615], // AL-5 north
+          [34.100, -87.625], // Natural Bridge — AL-5 / AL-13
+          [34.165, -87.635], // AL-13 north
+          [34.230, -87.640], // Haleyville — AL-13 / AL-195
+          [34.275, -87.615], // AL-195 north
+          [34.320, -87.580], // Winston CR-93
+          [34.350, -87.540], // Franklin / Winston County line
+          [34.360, -87.480], // east along Franklin/Winston line
+          [34.365, -87.420], // Lawrence / Franklin County line
+          [34.400, -87.385], // north on Lawrence/Franklin line
+          [34.445, -87.350], // to AL-24
+          [34.480, -87.320], // AL-24 east to Moulton
+          [34.490, -87.300]
         ]]
       }
     ];
