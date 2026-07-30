@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>REG SLAYER - Alabama Deer Season Planner v2.8</title>
+  <title>REG SLAYER - Alabama Deer Season Planner v2.9</title>
   <!-- Detect phone vs desktop as early as possible (reduces layout flash) -->
   <script>
     (function () {
@@ -45,7 +45,7 @@
     html, body { height: 100%; }
     body { background: var(--bg); color: var(--ink); margin: 0; padding: 0; line-height: 1.5; min-height: 100vh; display: flex; flex-direction: column; }
 
-    /* ========== BRAND HEADER (v2.8 - large logo fills top bar) ========== */
+    /* ========== BRAND HEADER (v2.9 - large logo fills top bar) ========== */
     .brand-header {
       background:
         linear-gradient(180deg, rgba(13,15,12,0.15) 0%, rgba(13,15,12,0.88) 100%),
@@ -99,7 +99,7 @@
       text-shadow: 0 1px 3px rgba(0,0,0,0.85);
     }
 
-    /* Site links / tagline live in page footer (v2.8) */
+    /* Site links / tagline live in page footer (v2.9) */
     .site-footer {
       margin-top: auto;
       border-top: 1px solid var(--border);
@@ -130,7 +130,7 @@
       padding: 3px 9px; border-radius: 6px; border: 1px solid var(--border);
     }
 
-    /* ========== DESKTOP SHELL (v2.8 - planner+weather left, big map right) ========== */
+    /* ========== DESKTOP SHELL (v2.9 - planner+weather left, big map right) ========== */
     .app-shell {
       max-width: none;
       margin: 0;
@@ -951,6 +951,40 @@
     /* Undo / Finish / Cancel only while a tool is active */
     .map-draw-tools .mdt-tool-only { display: none; }
     .map-draw-tools.tool-active .mdt-tool-only { display: block; }
+    /* Live GPS track — big red Stop when active */
+    .map-draw-tools .mdt-btn.mdt-track-stop {
+      display: block;
+      background: #b91c1c;
+      border-color: #f87171;
+      color: #fff;
+      font-size: 13px;
+      padding: 12px 12px;
+      box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.35), 0 4px 14px rgba(0,0,0,0.5);
+      animation: trackPulse 1.6s ease-in-out infinite;
+    }
+    .map-draw-tools .mdt-btn.mdt-track-stop:hover {
+      background: #dc2626;
+      border-color: #fecaca;
+      color: #fff;
+    }
+    @keyframes trackPulse {
+      0%, 100% { box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.35), 0 4px 14px rgba(0,0,0,0.5); }
+      50% { box-shadow: 0 0 0 4px rgba(185, 28, 28, 0.55), 0 4px 16px rgba(0,0,0,0.55); }
+    }
+    .map-draw-tools.tracking .mdt-track-idle { display: none; }
+    .map-draw-tools:not(.tracking) .mdt-track-stop { display: none !important; }
+    .map-track-live-stats {
+      display: none;
+      background: rgba(127, 29, 29, 0.94);
+      border: 1px solid #f87171;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 11px;
+      color: #fff;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+    .map-draw-tools.tracking .map-track-live-stats { display: block; }
     .map-draw-hint {
       display: none;
       background: rgba(15, 18, 14, 0.94);
@@ -984,9 +1018,11 @@
     }
     .map-wrapper.draw-mode #leaflet-map { cursor: crosshair; }
 
-    /* Save custom shape modal */
-    #shape-save-modal {
-      display: none;
+    /* Save custom shape / edit path modals — never visible until .active is set by user action */
+    #shape-save-modal,
+    #path-edit-modal,
+    .app-prompt-modal {
+      display: none !important;
       position: fixed;
       inset: 0;
       z-index: 200050;
@@ -995,7 +1031,11 @@
       justify-content: center;
       padding: 16px;
     }
-    #shape-save-modal.active { display: flex; }
+    #shape-save-modal.active,
+    #path-edit-modal.active,
+    .app-prompt-modal.active {
+      display: flex !important;
+    }
     .shape-save-card {
       background: var(--panel);
       border: 1px solid var(--border);
@@ -1590,11 +1630,11 @@
   </style>
 </head>
 <body>
-  <!-- Brand header: large logo + small V2.8 at bottom-right of logo -->
+  <!-- Brand header: large logo + small V2.9 at bottom-right of logo -->
   <header class="brand-header" role="banner">
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 2.8">V2.8</span>
+      <span class="brand-version" aria-label="Version 2.9">V2.9</span>
     </div>
   </header>
 
@@ -1904,6 +1944,9 @@
           <div class="map-draw-tools" id="map-draw-tools">
             <button type="button" class="mdt-btn" id="mdt-measure" onclick="startMapMeasure()" title="Click points to measure distance">📏 Measure</button>
             <button type="button" class="mdt-btn" id="mdt-draw" onclick="startMapDrawShape()" title="Click points to draw a shape, then Finish to save">✏️ Draw shape</button>
+            <button type="button" class="mdt-btn mdt-track-idle" id="mdt-track" onclick="toggleGpsTrack()" title="GPS track your movement (battery-friendly)">📍 Track</button>
+            <button type="button" class="mdt-btn mdt-track-stop" id="mdt-track-stop" onclick="toggleGpsTrack()" title="Stop GPS tracking and save the path">⏹ Stop track</button>
+            <div class="map-track-live-stats" id="map-track-live-stats"></div>
             <button type="button" class="mdt-btn mdt-tool-only" id="mdt-undo" onclick="undoMapDrawVertex()" disabled title="Remove last point">↩ Undo point</button>
             <button type="button" class="mdt-btn mdt-tool-only" id="mdt-finish" onclick="finishMapDraw()" disabled title="Finish line or save shape">✓ Finish</button>
             <button type="button" class="mdt-btn mdt-tool-only" id="mdt-cancel" onclick="cancelMapDraw()" disabled title="Cancel drawing">✕ Cancel</button>
@@ -1912,33 +1955,6 @@
           </div>
           <button id="gps-snap-btn" onclick="snapToGPS()" style="position:absolute;bottom:20px;left:20px;z-index:10000;background:var(--green);color:white;border:none;border-radius:6px;padding:8px 12px;font-weight:bold;cursor:pointer;font-size:11px;">Current Location</button>
 
-  <!-- Save drawn shape as custom huntable area -->
-  <div id="shape-save-modal" onclick="if(event.target===this)cancelShapeSaveModal()">
-    <div class="shape-save-card" role="dialog" aria-modal="true" aria-labelledby="shape-save-title">
-      <h3 id="shape-save-title">Save custom hunt area</h3>
-      <div class="ss-meta" id="shape-save-meta">Name this area and choose colors. It will use the deer rules for the land under its center.</div>
-      <label for="shape-name-input">Area name</label>
-      <input type="text" id="shape-name-input" placeholder="e.g. North ridge stand box" maxlength="80" />
-      <label>Line color</label>
-      <div class="shape-color-row">
-        <input type="color" id="shape-line-color" value="#e59a18" />
-        <span style="font-size:11px;color:var(--muted);">Outline of the shape</span>
-      </div>
-      <label>Fill</label>
-      <div class="shape-fill-row">
-        <input type="checkbox" id="shape-fill-enabled" checked />
-        <span>Fill inside (same opacity as public-land overlays)</span>
-      </div>
-      <div class="shape-color-row" id="shape-fill-color-row">
-        <input type="color" id="shape-fill-color" value="#e59a18" />
-        <span style="font-size:11px;color:var(--muted);">Fill color</span>
-      </div>
-      <div class="shape-save-actions">
-        <button type="button" class="ss-save" onclick="confirmSaveCustomShape()">Save area</button>
-        <button type="button" class="ss-cancel" onclick="cancelShapeSaveModal()">Cancel</button>
-      </div>
-    </div>
-  </div>
           <div id="map-weather-overlay" style="display:none;position:absolute;bottom:20px;right:20px;z-index:10001;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:15px;width:300px;box-shadow:0 4px 15px rgba(0,0,0,0.6);max-height:80vh;overflow-y:auto;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
               <strong id="mwo-title" style="font-size:14px;color:#fff;">Weather</strong>
@@ -2005,7 +2021,7 @@
   </div>
   </div><!-- /.app-shell -->
 
-  <!-- Tagline + official links moved to bottom (v2.8) -->
+  <!-- Tagline + official links moved to bottom (v2.9) -->
   <footer class="site-footer" role="contentinfo">
     <div class="site-footer-inner">
       <p>Alabama public &amp; private land · USGS gauges · topo terrain · wind &amp; scent</p>
@@ -2017,9 +2033,63 @@
     </div>
   </footer>
 
+  <!-- Save drawn shape as custom huntable area (hidden until Finish draw prompts it) -->
+  <div id="shape-save-modal" class="app-prompt-modal" hidden style="display:none;" onclick="if(event.target===this)cancelShapeSaveModal()">
+    <div class="shape-save-card" role="dialog" aria-modal="true" aria-labelledby="shape-save-title">
+      <h3 id="shape-save-title">Save custom hunt area</h3>
+      <div class="ss-meta" id="shape-save-meta">Name this area and choose colors. It will use the deer rules for the land under its center.</div>
+      <label for="shape-name-input">Area name</label>
+      <input type="text" id="shape-name-input" placeholder="e.g. North ridge stand box" maxlength="80" />
+      <label>Line color</label>
+      <div class="shape-color-row">
+        <input type="color" id="shape-line-color" value="#e59a18" />
+        <span style="font-size:11px;color:var(--muted);">Outline of the shape</span>
+      </div>
+      <label>Fill</label>
+      <div class="shape-fill-row">
+        <input type="checkbox" id="shape-fill-enabled" checked />
+        <span>Fill inside (same opacity as public-land overlays)</span>
+      </div>
+      <div class="shape-color-row" id="shape-fill-color-row">
+        <input type="color" id="shape-fill-color" value="#e59a18" />
+        <span style="font-size:11px;color:var(--muted);">Fill color</span>
+      </div>
+      <div class="shape-save-actions">
+        <button type="button" class="ss-save" onclick="confirmSaveCustomShape()">Save area</button>
+        <button type="button" class="ss-cancel" onclick="cancelShapeSaveModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit saved measure / GPS track line (hidden until user chooses Edit on a line) -->
+  <div id="path-edit-modal" class="app-prompt-modal" hidden style="display:none;" onclick="if(event.target===this)cancelPathEditModal()">
+    <div class="shape-save-card" role="dialog" aria-modal="true" aria-labelledby="path-edit-title">
+      <h3 id="path-edit-title">Edit line</h3>
+      <div class="ss-meta" id="path-edit-meta">Rename, recolor, adjust distance, or add notes.</div>
+      <label for="path-edit-name">Name</label>
+      <input type="text" id="path-edit-name" placeholder="e.g. Morning walk" maxlength="80" />
+      <label>Line color</label>
+      <div class="shape-color-row">
+        <input type="color" id="path-edit-color" value="#d94136" />
+        <span style="font-size:11px;color:var(--muted);">Path color on the map</span>
+      </div>
+      <label for="path-edit-distance">Distance (miles)</label>
+      <input type="text" id="path-edit-distance" placeholder="e.g. 1.25" inputmode="decimal" />
+      <label for="path-edit-notes">Notes</label>
+      <input type="text" id="path-edit-notes" placeholder="Optional notes…" maxlength="240" />
+      <div class="shape-save-actions">
+        <button type="button" class="ss-save" onclick="confirmPathEdit()">Save</button>
+        <button type="button" class="ss-cancel" onclick="cancelPathEditModal()">Cancel</button>
+      </div>
+      <div class="shape-save-actions" style="margin-top:8px;">
+        <button type="button" class="ss-cancel" style="border-color:var(--danger);color:var(--danger);" onclick="deletePathFromEdit()">Delete line</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '2.8';
+    const APP_VERSION = '2.9';
     let selectedDate = null, selectedWeapon = null, selectedLand = 'Public', selectedLocationId = null;
     let selectedSubsectionIndex = null, viewFilterMode = 'all', currentSelectedColor = '#e59a18';
     let editingEventId = null, userLat = null, userLng = null;
@@ -2066,7 +2136,18 @@
     const CUSTOM_AREAS_KEY = 'alabama_hunt_custom_areas_v1';
     const MEASURED_PATHS_KEY = 'alabama_hunt_measured_paths_v1';
     const CUSTOM_AREA_FILL_OPACITY = 0.30; // match public-land overlay fill feel
-    let measuredPathGroup = null; // saved measure lines on map
+    let measuredPathGroup = null; // saved measure / GPS track lines on map
+    // Live GPS track (battery-friendly)
+    let gpsTrackActive = false;
+    let gpsTrackWatchId = null;
+    let gpsTrackPoints = []; // {lat,lng,t}
+    let gpsTrackStartedAt = null;
+    let gpsTrackLastAcceptedAt = 0;
+    let gpsTrackPreviewLine = null;
+    let pathEditId = null; // measured path / track being edited
+    const GPS_TRACK_MAX_SPEED_MPH = 30;
+    const GPS_TRACK_MIN_MOVE_MI = 0.008; // ~42 ft — ignore GPS jitter
+    const GPS_TRACK_MIN_INTERVAL_MS = 4000; // throttle updates for battery
 
     // Weather + water caches (15 min) and in-flight request dedupe
     let weatherCache = { key: null, data: null, timestamp: 0 };
@@ -5974,6 +6055,22 @@
       refreshMapDrawPreview();
     }
 
+    /** Show/hide full-screen prompt modals (shape save, path edit). Hidden on load until prompted. */
+    function showAppPromptModal(id) {
+      var modal = document.getElementById(id);
+      if (!modal) return;
+      modal.hidden = false;
+      modal.classList.add('active');
+      modal.style.display = 'flex';
+    }
+    function hideAppPromptModal(id) {
+      var modal = document.getElementById(id);
+      if (!modal) return;
+      modal.classList.remove('active');
+      modal.hidden = true;
+      modal.style.display = 'none';
+    }
+
     function cancelMapDraw() {
       mapDrawMode = null;
       mapDrawPoints = [];
@@ -5984,13 +6081,13 @@
       setMapDrawDoubleClickZoom(true);
       clearMapDrawPreview();
       setMapDrawUi();
-      var modal = document.getElementById('shape-save-modal');
-      if (modal) modal.classList.remove('active');
+      hideAppPromptModal('shape-save-modal');
     }
 
     function startMapMeasure() {
       ensureMap().then(function(m) {
         if (!m) return;
+        if (gpsTrackActive) stopGpsTrack(); // save track if long enough
         if (mapDrawMode === 'measure') {
           cancelMapDraw();
           return;
@@ -6012,6 +6109,7 @@
     function startMapDrawShape() {
       ensureMap().then(function(m) {
         if (!m) return;
+        if (gpsTrackActive) stopGpsTrack(); // save track if long enough
         if (mapDrawMode === 'draw') {
           cancelMapDraw();
           return;
@@ -6107,14 +6205,12 @@
         });
       }
       if (fillRow && fillChk) fillRow.style.opacity = fillChk.checked ? '1' : '0.4';
-      var modal = document.getElementById('shape-save-modal');
-      if (modal) modal.classList.add('active');
+      showAppPromptModal('shape-save-modal');
       setTimeout(function() { if (nameInp) nameInp.focus(); }, 50);
     }
 
     function cancelShapeSaveModal() {
-      var modal = document.getElementById('shape-save-modal');
-      if (modal) modal.classList.remove('active');
+      hideAppPromptModal('shape-save-modal');
       pendingShapeRing = null;
       // Stay in draw mode so user can adjust; clear draft if they cancel entirely
       if (mapDrawMode === 'draw') {
@@ -6244,7 +6340,72 @@
       }
     }
 
-    function measuredPathTooltipHtml(path) {
+    function formatDurationMs(ms) {
+      if (ms == null || isNaN(ms) || ms < 0) return '—';
+      var sec = Math.floor(ms / 1000);
+      var h = Math.floor(sec / 3600);
+      var m = Math.floor((sec % 3600) / 60);
+      var s = sec % 60;
+      if (h > 0) return h + 'h ' + m + 'm';
+      if (m > 0) return m + 'm ' + s + 's';
+      return s + 's';
+    }
+
+    function formatClock(msOrIso) {
+      try {
+        var d = typeof msOrIso === 'number' ? new Date(msOrIso) : new Date(msOrIso);
+        if (isNaN(d.getTime())) return '—';
+        return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+      } catch (e) { return '—'; }
+    }
+
+    /**
+     * Nearest location along a timed path to a map latlng.
+     * Returns distance-from-start, elapsed time, and clock time at that point.
+     */
+    function nearestAlongTimedPath(points, latlng) {
+      if (!points || points.length < 2 || !latlng) return null;
+      var best = null;
+      var distAlong = 0;
+      for (var i = 1; i < points.length; i++) {
+        var a = points[i - 1], b = points[i];
+        var segMi = haversineMiles(a.lat, a.lng, b.lat, b.lng);
+        // Project point onto segment (rough geographic lerp by lat/lng)
+        var abLat = b.lat - a.lat, abLng = b.lng - a.lng;
+        var ab2 = abLat * abLat + abLng * abLng;
+        var t = 0;
+        if (ab2 > 1e-18) {
+          t = ((latlng.lat - a.lat) * abLat + (latlng.lng - a.lng) * abLng) / ab2;
+          t = Math.max(0, Math.min(1, t));
+        }
+        var pLat = a.lat + t * abLat;
+        var pLng = a.lng + t * abLng;
+        var d = haversineMiles(latlng.lat, latlng.lng, pLat, pLng);
+        var along = distAlong + segMi * t;
+        var tA = a.t != null ? a.t : null;
+        var tB = b.t != null ? b.t : null;
+        var elapsed = null;
+        var clock = null;
+        if (tA != null && tB != null) {
+          clock = tA + (tB - tA) * t;
+          var t0 = points[0].t != null ? points[0].t : tA;
+          elapsed = clock - t0;
+        } else if (tA != null) {
+          clock = tA;
+          elapsed = points[0].t != null ? (tA - points[0].t) : 0;
+        }
+        if (!best || d < best.d) {
+          best = { d: d, distFromStartMi: along, elapsedMs: elapsed, clockMs: clock, lat: pLat, lng: pLng };
+        }
+        distAlong += segMi;
+      }
+      return best;
+    }
+
+    function measuredPathTooltipHtml(path, along) {
+      var isTrack = path.kind === 'track';
+      var titleColor = path.color || (isTrack ? '#f87171' : '#38bdf8');
+      var title = escHtml(path.name || (isTrack ? 'GPS track' : 'Measured line'));
       var dist = path.distanceMi != null ? formatMiles(path.distanceMi) : formatMiles(pathDistanceMiles(path.points || []));
       var elevLine = 'Elevation: loading…';
       if (path.elev) {
@@ -6263,15 +6424,284 @@
       } else if (path.elevError) {
         elevLine = 'Elevation: unavailable';
       }
+
+      var durationLine = '';
+      if (path.durationMs != null) {
+        durationLine = '<div style="margin-top:3px;">Duration: <strong style="color:#fff;">' + formatDurationMs(path.durationMs) + '</strong></div>';
+      }
+      var speedLine = '';
+      if (path.avgSpeedMph != null && !isNaN(path.avgSpeedMph)) {
+        speedLine = '<div style="margin-top:3px;">Avg speed: <strong style="color:#fff;">' + path.avgSpeedMph.toFixed(1) + ' mph</strong></div>';
+      }
+
+      var alongHtml = '';
+      if (along && isTrack) {
+        alongHtml =
+          '<div style="margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.15);">' +
+            '<div style="font-size:10px;color:#fca5a5;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">At this point</div>' +
+            '<div>From start: <strong style="color:#fff;">' + formatMiles(along.distFromStartMi) + '</strong></div>' +
+            (along.elapsedMs != null
+              ? '<div style="margin-top:2px;">Time into track: <strong style="color:#fff;">' + formatDurationMs(along.elapsedMs) + '</strong></div>'
+              : '') +
+            (along.clockMs != null
+              ? '<div style="margin-top:2px;">Clock: <strong style="color:#fff;">' + formatClock(along.clockMs) + '</strong></div>'
+              : '') +
+          '</div>';
+      } else if (along && !isTrack) {
+        alongHtml =
+          '<div style="margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.15);">' +
+            '<div style="font-size:10px;color:#7dd3fc;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">At this point</div>' +
+            '<div>From start: <strong style="color:#fff;">' + formatMiles(along.distFromStartMi) + '</strong></div>' +
+          '</div>';
+      }
+
+      var notesHtml = path.notes
+        ? '<div style="margin-top:6px;font-size:11px;color:#c5d0be;">' + escHtml(path.notes) + '</div>'
+        : '';
+
       return (
-        '<div style="min-width:160px;line-height:1.4;">' +
-          '<div style="font-weight:800;color:#38bdf8;margin-bottom:4px;">Measured line</div>' +
+        '<div style="min-width:180px;max-width:260px;line-height:1.4;">' +
+          '<div style="font-weight:800;color:' + titleColor + ';margin-bottom:4px;">' + title + '</div>' +
           '<div>Distance: <strong style="color:#fff;">' + dist + '</strong></div>' +
+          durationLine +
+          speedLine +
           '<div style="margin-top:3px;">' + elevLine + '</div>' +
           '<div style="margin-top:5px;font-size:11px;color:#c5d0be;">Added: ' + escHtml(formatAddedDate(path.createdAt)) + '</div>' +
+          notesHtml +
+          alongHtml +
         '</div>'
       );
     }
+
+    // ========== LIVE GPS TRACK (battery-friendly) ==========
+    function updateTrackButtonUi() {
+      var tools = document.getElementById('map-draw-tools');
+      if (tools) tools.classList.toggle('tracking', !!gpsTrackActive);
+      var live = document.getElementById('map-track-live-stats');
+      if (!live) return;
+      if (!gpsTrackActive) {
+        live.innerHTML = '';
+        return;
+      }
+      var dist = pathDistanceMiles(gpsTrackPoints);
+      var elapsed = gpsTrackStartedAt ? (Date.now() - gpsTrackStartedAt) : 0;
+      var hrs = elapsed / 3600000;
+      var avg = hrs > 0.0001 ? (dist / hrs) : 0;
+      live.innerHTML =
+        '<div>Tracking… ' + gpsTrackPoints.length + ' pts</div>' +
+        '<div>' + formatMiles(dist) + ' · ' + formatDurationMs(elapsed) +
+        (avg > 0.05 ? ' · ~' + avg.toFixed(1) + ' mph' : '') + '</div>';
+    }
+
+    function refreshGpsTrackPreview() {
+      if (!map || !mapDrawPreviewLayer) return;
+      // Clear only our track preview if mixed with draw preview — when tracking, draw mode is off
+      if (gpsTrackActive) {
+        mapDrawPreviewLayer.clearLayers();
+        if (gpsTrackPoints.length >= 2) {
+          var latlngs = gpsTrackPoints.map(function(p) { return [p.lat, p.lng]; });
+          L.polyline(latlngs, {
+            color: '#d94136',
+            weight: 4,
+            opacity: 0.95,
+            interactive: false
+          }).addTo(mapDrawPreviewLayer);
+          var last = gpsTrackPoints[gpsTrackPoints.length - 1];
+          L.circleMarker([last.lat, last.lng], {
+            radius: 6, color: '#fff', weight: 2, fillColor: '#d94136', fillOpacity: 1, interactive: false
+          }).addTo(mapDrawPreviewLayer);
+        } else if (gpsTrackPoints.length === 1) {
+          var p0 = gpsTrackPoints[0];
+          L.circleMarker([p0.lat, p0.lng], {
+            radius: 6, color: '#fff', weight: 2, fillColor: '#d94136', fillOpacity: 1, interactive: false
+          }).addTo(mapDrawPreviewLayer);
+        }
+      }
+      updateTrackButtonUi();
+    }
+
+    function onGpsTrackPosition(pos) {
+      if (!gpsTrackActive || !pos || !pos.coords) return;
+      var lat = pos.coords.latitude;
+      var lng = pos.coords.longitude;
+      if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) return;
+      var now = Date.now();
+      var accuracy = pos.coords.accuracy; // meters
+      // Reject very poor fixes to save junk points (and battery from thrashing)
+      if (accuracy != null && accuracy > 80) return;
+
+      userLat = lat;
+      userLng = lng;
+      if (map && gpsMarker) setGpsMarker(lat, lng);
+
+      if (!gpsTrackPoints.length) {
+        gpsTrackPoints.push({ lat: lat, lng: lng, t: now });
+        gpsTrackLastAcceptedAt = now;
+        refreshGpsTrackPreview();
+        if (map) map.setView([lat, lng], Math.max(map.getZoom(), 15));
+        return;
+      }
+
+      var last = gpsTrackPoints[gpsTrackPoints.length - 1];
+      var dMi = haversineMiles(last.lat, last.lng, lat, lng);
+      var dtMs = now - (last.t || gpsTrackLastAcceptedAt || now);
+      var dtHr = dtMs / 3600000;
+
+      // Instant speed check (mph) — auto-stop if faster than 30 mph
+      if (dtMs > 800 && dMi > 0.001) {
+        var speed = dMi / Math.max(dtHr, 1e-9);
+        if (speed > GPS_TRACK_MAX_SPEED_MPH) {
+          showAppCopyToast(
+            '<span class="act">Track stopped</span><br>Speed over ' + GPS_TRACK_MAX_SPEED_MPH +
+            ' mph detected (~' + speed.toFixed(0) + ' mph). Path saved in red.'
+          );
+          stopGpsTrack({ auto: true, reason: 'speed' });
+          return;
+        }
+      }
+
+      // Battery-friendly: require min move OR enough time between points
+      var timeOk = (now - gpsTrackLastAcceptedAt) >= GPS_TRACK_MIN_INTERVAL_MS;
+      var moveOk = dMi >= GPS_TRACK_MIN_MOVE_MI;
+      if (!timeOk && !moveOk) return;
+      // If only time passed but we barely moved, skip (jitter)
+      if (!moveOk && dMi < GPS_TRACK_MIN_MOVE_MI * 0.4) return;
+
+      gpsTrackPoints.push({ lat: lat, lng: lng, t: now });
+      gpsTrackLastAcceptedAt = now;
+      refreshGpsTrackPreview();
+
+      // Gentle follow: only pan if point is near edge
+      try {
+        if (map && !map.getBounds().pad(-0.2).contains([lat, lng])) {
+          map.panTo([lat, lng], { animate: true });
+        }
+      } catch (e) {}
+    }
+
+    function onGpsTrackError(err) {
+      console.warn('GPS track error', err);
+      if (!gpsTrackActive) return;
+      var msg = (err && err.message) ? err.message : 'Location error';
+      if (err && err.code === 1) {
+        showAppCopyToast('<span class="act">Location blocked</span><br>Allow location access to use Track.');
+        stopGpsTrack({ auto: true, reason: 'denied', discard: gpsTrackPoints.length < 2 });
+      } else {
+        // Keep watching; brief notice only
+        updateTrackButtonUi();
+      }
+    }
+
+    function startGpsTrack() {
+      if (!navigator.geolocation) {
+        alert('Geolocation is not supported on this device/browser.');
+        return;
+      }
+      // Stop measure/draw if running
+      if (mapDrawMode) cancelMapDraw();
+
+      ensureMap().then(function(m) {
+        if (!m) {
+          alert('Map is not ready yet.');
+          return;
+        }
+        gpsTrackActive = true;
+        gpsTrackPoints = [];
+        gpsTrackStartedAt = Date.now();
+        gpsTrackLastAcceptedAt = 0;
+        if (map) map.closePopup();
+        clearMapDot();
+
+        // Battery-friendly watch: low power, throttle via our min interval/distance
+        try {
+          gpsTrackWatchId = navigator.geolocation.watchPosition(
+            onGpsTrackPosition,
+            onGpsTrackError,
+            {
+              enableHighAccuracy: false, // lower battery
+              maximumAge: 8000,          // reuse recent fix
+              timeout: 20000
+            }
+          );
+        } catch (e) {
+          gpsTrackActive = false;
+          alert('Could not start GPS tracking.');
+          return;
+        }
+
+        // Seed with last known location if fresh
+        if (userLat != null && userLng != null) {
+          onGpsTrackPosition({
+            coords: { latitude: userLat, longitude: userLng, accuracy: 30 },
+            timestamp: Date.now()
+          });
+        }
+        updateTrackButtonUi();
+        showAppCopyToast('<span class="act">Tracking started</span><br>Low-power GPS on. Tap <strong>Stop track</strong> when done.');
+      });
+    }
+
+    function stopGpsTrack(opts) {
+      opts = opts || {};
+      if (!gpsTrackActive && !gpsTrackWatchId) {
+        updateTrackButtonUi();
+        return;
+      }
+      gpsTrackActive = false;
+      if (gpsTrackWatchId != null && navigator.geolocation) {
+        try { navigator.geolocation.clearWatch(gpsTrackWatchId); } catch (e) {}
+      }
+      gpsTrackWatchId = null;
+
+      var pts = gpsTrackPoints.slice();
+      gpsTrackPoints = [];
+      if (mapDrawPreviewLayer) mapDrawPreviewLayer.clearLayers();
+      updateTrackButtonUi();
+
+      if (opts.discard || pts.length < 2) {
+        if (!opts.discard) {
+          showAppCopyToast('<span class="act">Track too short</span><br>Need at least two GPS points to save a path.');
+        }
+        gpsTrackStartedAt = null;
+        return;
+      }
+
+      var dist = pathDistanceMiles(pts);
+      var endedAt = Date.now();
+      var durationMs = gpsTrackStartedAt ? (endedAt - gpsTrackStartedAt) : 0;
+      var hrs = durationMs / 3600000;
+      var avg = hrs > 0.00005 ? (dist / hrs) : 0;
+      var when = new Date();
+      var name = 'Track ' + when.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+        ' ' + when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+
+      saveMeasuredPath(pts, dist, {
+        kind: 'track',
+        name: name,
+        color: '#d94136',
+        durationMs: durationMs,
+        avgSpeedMph: avg,
+        notes: opts.reason === 'speed' ? 'Auto-stopped: speed exceeded 30 mph.' : ''
+      });
+
+      gpsTrackStartedAt = null;
+      if (!opts.auto) {
+        showAppCopyToast(
+          '<span class="act">Track saved</span><br>' +
+          formatMiles(dist) + ' · ' + formatDurationMs(durationMs) +
+          (avg > 0.05 ? ' · ~' + avg.toFixed(1) + ' mph avg' : '') +
+          '<br>Hover the red line for details. Click it to rename or edit.'
+        );
+      }
+    }
+
+    function toggleGpsTrack() {
+      if (gpsTrackActive) stopGpsTrack();
+      else startGpsTrack();
+    }
+    window.toggleGpsTrack = toggleGpsTrack;
+    window.startGpsTrack = startGpsTrack;
+    window.stopGpsTrack = stopGpsTrack;
 
     /**
      * Fetch elevations (meters) along path points via Open-Meteo, compute gain/loss/net in feet.
@@ -6321,29 +6751,43 @@
       });
     }
 
-    function saveMeasuredPath(points, distanceMi) {
+    function saveMeasuredPath(points, distanceMi, opts) {
+      opts = opts || {};
       if (!points || points.length < 2) return null;
+      var isTrack = opts.kind === 'track';
       var path = {
-        id: 'meas_' + Date.now(),
-        points: points.map(function(p) { return { lat: p.lat, lng: p.lng }; }),
+        id: (isTrack ? 'track_' : 'meas_') + Date.now(),
+        kind: isTrack ? 'track' : (opts.kind || 'measure'),
+        name: opts.name || (isTrack ? 'GPS track' : 'Measured line'),
+        color: opts.color || (isTrack ? '#d94136' : '#38bdf8'),
+        notes: opts.notes || '',
+        points: points.map(function(p) {
+          return { lat: p.lat, lng: p.lng, t: p.t != null ? p.t : undefined };
+        }),
         distanceMi: distanceMi != null ? distanceMi : pathDistanceMiles(points),
+        distanceMiAuto: distanceMi != null ? distanceMi : pathDistanceMiles(points),
+        durationMs: opts.durationMs != null ? opts.durationMs : null,
+        avgSpeedMph: opts.avgSpeedMph != null ? opts.avgSpeedMph : null,
         createdAt: new Date().toISOString(),
         elev: null,
         elevError: false
       };
+      // Duration from point timestamps if not provided
+      if (path.durationMs == null && path.points[0].t != null && path.points[path.points.length - 1].t != null) {
+        path.durationMs = Math.max(0, path.points[path.points.length - 1].t - path.points[0].t);
+      }
+      if (path.avgSpeedMph == null && path.durationMs > 0) {
+        var hrs = path.durationMs / 3600000;
+        if (hrs > 0.00005) path.avgSpeedMph = path.distanceMi / hrs;
+      }
       var paths = loadMeasuredPathsFromStorage();
       paths.push(path);
-      // Cap stored paths so localStorage stays healthy
       if (paths.length > 80) paths = paths.slice(paths.length - 80);
       saveMeasuredPathsToStorage(paths);
       drawMeasuredPathsOnMap();
-      // Async elevation — update storage + tooltip when ready
       fetchPathElevation(path.points).then(function(elev) {
-        if (!elev) {
-          path.elevError = true;
-        } else {
-          path.elev = elev;
-        }
+        if (!elev) path.elevError = true;
+        else path.elev = elev;
         var all = loadMeasuredPathsFromStorage();
         for (var i = 0; i < all.length; i++) {
           if (String(all[i].id) === String(path.id)) {
@@ -6375,36 +6819,51 @@
       var paths = loadMeasuredPathsFromStorage();
       paths.forEach(function(path) {
         if (!path || !path.points || path.points.length < 2) return;
+        var isTrack = path.kind === 'track';
+        var color = path.color || (isTrack ? '#d94136' : '#38bdf8');
         var latlngs = path.points.map(function(p) { return [p.lat, p.lng]; });
         var line = L.polyline(latlngs, {
-          color: '#38bdf8',
-          weight: 4,
+          color: color,
+          weight: isTrack ? 5 : 4,
           opacity: 0.92,
           lineCap: 'round',
           lineJoin: 'round',
           interactive: true,
           bubblingMouseEvents: false
         });
-        var tipHtml = measuredPathTooltipHtml(path);
-        line.bindTooltip(tipHtml, {
+        line.bindTooltip(measuredPathTooltipHtml(path), {
           sticky: true,
           opacity: 0.97,
           className: 'measured-path-tooltip',
           direction: 'top'
         });
-        // Click opens a fuller popup with delete
+        // Hover along line: show distance/time from start at that point
+        line.on('mousemove', function(e) {
+          if (!e || !e.latlng) return;
+          var along = nearestAlongTimedPath(path.points, e.latlng);
+          line.setTooltipContent(measuredPathTooltipHtml(path, along));
+        });
+        line.on('mouseover', function() {
+          try { line.setStyle({ weight: isTrack ? 6 : 5, opacity: 1 }); } catch (e0) {}
+        });
+        line.on('mouseout', function() {
+          try { line.setStyle({ weight: isTrack ? 5 : 4, opacity: 0.92 }); } catch (e1) {}
+          line.setTooltipContent(measuredPathTooltipHtml(path));
+        });
+
         var safeId = escJsStr(path.id);
         var popHtml =
           '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
-            '<div class="mdm-title">Measured line</div>' +
+            '<div class="mdm-title">' + escHtml(path.name || (isTrack ? 'GPS track' : 'Measured line')) + '</div>' +
             '<div class="mdm-sub">' + measuredPathTooltipHtml(path) + '</div>' +
+            '<button type="button" class="mdm-btn pin" onclick="event.preventDefault();event.stopPropagation();window.openPathEditModal(\'' + safeId + '\');return false;">Edit name / color / notes</button>' +
             '<button type="button" class="mdm-btn danger" onclick="event.preventDefault();event.stopPropagation();window.deleteMeasuredPath(\'' + safeId + '\');return false;">Delete line</button>' +
           '</div>';
         line.bindPopup(popHtml, {
           className: 'saved-item-popup map-dot-popup',
           closeButton: true,
           autoPan: true,
-          maxWidth: 300,
+          maxWidth: 320,
           closeOnClick: false
         });
         line.on('popupopen', function() {
@@ -6414,14 +6873,13 @@
             L.DomEvent.disableScrollPropagation(el);
           }
         });
-        // Endpoints
         var start = path.points[0];
         var end = path.points[path.points.length - 1];
         L.circleMarker([start.lat, start.lng], {
-          radius: 5, color: '#fff', weight: 2, fillColor: '#38bdf8', fillOpacity: 1, interactive: false
+          radius: 5, color: '#fff', weight: 2, fillColor: color, fillOpacity: 1, interactive: false
         }).addTo(measuredPathGroup);
         L.circleMarker([end.lat, end.lng], {
-          radius: 5, color: '#fff', weight: 2, fillColor: '#0ea5e9', fillOpacity: 1, interactive: false
+          radius: 5, color: '#fff', weight: 2, fillColor: color, fillOpacity: 1, interactive: false
         }).addTo(measuredPathGroup);
         measuredPathGroup.addLayer(line);
       });
@@ -6431,13 +6889,98 @@
     }
 
     function deleteMeasuredPath(id) {
-      if (!confirm('Delete this measured line?')) return;
+      if (!confirm('Delete this line?')) return;
       var paths = loadMeasuredPathsFromStorage().filter(function(p) { return String(p.id) !== String(id); });
       saveMeasuredPathsToStorage(paths);
       if (map) map.closePopup();
       drawMeasuredPathsOnMap();
+      if (pathEditId && String(pathEditId) === String(id)) cancelPathEditModal();
     }
     window.deleteMeasuredPath = deleteMeasuredPath;
+
+    function openPathEditModal(id) {
+      var paths = loadMeasuredPathsFromStorage();
+      var path = null;
+      for (var i = 0; i < paths.length; i++) {
+        if (String(paths[i].id) === String(id)) { path = paths[i]; break; }
+      }
+      if (!path) {
+        alert('Line not found.');
+        return;
+      }
+      pathEditId = path.id;
+      if (map) map.closePopup();
+      var title = document.getElementById('path-edit-title');
+      if (title) title.textContent = path.kind === 'track' ? 'Edit GPS track' : 'Edit measured line';
+      var meta = document.getElementById('path-edit-meta');
+      if (meta) {
+        meta.innerHTML = 'Distance auto: ' + formatMiles(path.distanceMiAuto != null ? path.distanceMiAuto : path.distanceMi) +
+          (path.durationMs != null ? ' · Duration ' + formatDurationMs(path.durationMs) : '') +
+          (path.avgSpeedMph != null ? ' · Avg ' + path.avgSpeedMph.toFixed(1) + ' mph' : '');
+      }
+      var n = document.getElementById('path-edit-name');
+      var c = document.getElementById('path-edit-color');
+      var d = document.getElementById('path-edit-distance');
+      var notes = document.getElementById('path-edit-notes');
+      if (n) n.value = path.name || '';
+      if (c) c.value = path.color || (path.kind === 'track' ? '#d94136' : '#38bdf8');
+      if (d) d.value = path.distanceMi != null ? String(Math.round(path.distanceMi * 1000) / 1000) : '';
+      if (notes) notes.value = path.notes || '';
+      showAppPromptModal('path-edit-modal');
+      setTimeout(function() { if (n) n.focus(); }, 40);
+    }
+    window.openPathEditModal = openPathEditModal;
+
+    function cancelPathEditModal() {
+      pathEditId = null;
+      hideAppPromptModal('path-edit-modal');
+    }
+    window.cancelPathEditModal = cancelPathEditModal;
+
+    function confirmPathEdit() {
+      if (!pathEditId) return;
+      var n = document.getElementById('path-edit-name');
+      var c = document.getElementById('path-edit-color');
+      var d = document.getElementById('path-edit-distance');
+      var notes = document.getElementById('path-edit-notes');
+      var name = n ? n.value.trim() : '';
+      if (!name) {
+        alert('Please enter a name.');
+        if (n) n.focus();
+        return;
+      }
+      var distVal = d ? parseFloat(String(d.value).replace(/[^0-9.]/g, '')) : NaN;
+      var paths = loadMeasuredPathsFromStorage();
+      for (var i = 0; i < paths.length; i++) {
+        if (String(paths[i].id) === String(pathEditId)) {
+          paths[i].name = name;
+          paths[i].color = (c && c.value) ? c.value : paths[i].color;
+          paths[i].notes = notes ? notes.value.trim() : '';
+          if (!isNaN(distVal) && distVal >= 0) {
+            paths[i].distanceMi = distVal;
+            // Recalc avg speed if we have duration
+            if (paths[i].durationMs > 0) {
+              var hrs = paths[i].durationMs / 3600000;
+              if (hrs > 0.00005) paths[i].avgSpeedMph = distVal / hrs;
+            }
+          }
+          break;
+        }
+      }
+      saveMeasuredPathsToStorage(paths);
+      drawMeasuredPathsOnMap();
+      cancelPathEditModal();
+      showAppCopyToast('<span class="act">Line updated</span><br>' + escHtml(name));
+    }
+    window.confirmPathEdit = confirmPathEdit;
+
+    function deletePathFromEdit() {
+      if (!pathEditId) return;
+      var id = pathEditId;
+      cancelPathEditModal();
+      deleteMeasuredPath(id);
+    }
+    window.deletePathFromEdit = deletePathFromEdit;
 
     function saveCustomAreasToStorage(areas) {
       try {
@@ -6649,8 +7192,7 @@
       }
       pendingShapeRing = null;
       cancelMapDraw();
-      var modal = document.getElementById('shape-save-modal');
-      if (modal) modal.classList.remove('active');
+      hideAppPromptModal('shape-save-modal');
       showAppCopyToast(
         '<span class="act">Area saved: ' + escHtml(name) + '</span><br>' +
         'Added as a hunt area using rules for ' + escHtml(land.label || ('Zone ' + area.zone)) + '.'
