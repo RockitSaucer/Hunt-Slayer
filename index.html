@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>REG SLAYER - Alabama Deer Season Planner v2.4</title>
+  <title>REG SLAYER - Alabama Deer Season Planner v2.5</title>
   <!-- Detect phone vs desktop as early as possible (reduces layout flash) -->
   <script>
     (function () {
@@ -45,7 +45,7 @@
     html, body { height: 100%; }
     body { background: var(--bg); color: var(--ink); margin: 0; padding: 0; line-height: 1.5; min-height: 100vh; display: flex; flex-direction: column; }
 
-    /* ========== BRAND HEADER (v2.4 - large logo fills top bar) ========== */
+    /* ========== BRAND HEADER (v2.5 - large logo fills top bar) ========== */
     .brand-header {
       background:
         linear-gradient(180deg, rgba(13,15,12,0.15) 0%, rgba(13,15,12,0.88) 100%),
@@ -99,7 +99,7 @@
       text-shadow: 0 1px 3px rgba(0,0,0,0.85);
     }
 
-    /* Site links / tagline live in page footer (v2.4) */
+    /* Site links / tagline live in page footer (v2.5) */
     .site-footer {
       margin-top: auto;
       border-top: 1px solid var(--border);
@@ -130,7 +130,7 @@
       padding: 3px 9px; border-radius: 6px; border: 1px solid var(--border);
     }
 
-    /* ========== DESKTOP SHELL (v2.4 - edge-to-edge, minimal side gutter) ========== */
+    /* ========== DESKTOP SHELL (v2.5 - planner+weather left, big map right) ========== */
     .app-shell {
       max-width: none;
       margin: 0;
@@ -140,7 +140,7 @@
     }
     .container {
       display: grid;
-      grid-template-columns: minmax(400px, 0.92fr) minmax(520px, 1.4fr);
+      grid-template-columns: minmax(360px, 0.88fr) minmax(560px, 1.55fr);
       gap: 14px;
       align-items: start;
       width: 100%;
@@ -153,12 +153,57 @@
       padding: 18px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     }
-    #dashboard-container {
-      min-height: calc(100vh - 220px);
+    /* Left: steps 1-3 + weather/water underneath */
+    .card-planner {
+      min-width: 0;
+    }
+    .dashboard-under-steps {
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      min-height: 0;
+      max-height: none;
+      position: static;
+      overflow: visible;
+      background: transparent;
+      border-left: none;
+      border-right: none;
+      border-bottom: none;
+      border-radius: 0;
+      box-shadow: none;
+    }
+    .dashboard-under-steps #db-blank,
+    .dashboard-under-steps #db-loading {
+      padding: 36px 12px !important;
+    }
+    /* Right: large map column */
+    .card-map {
       position: sticky;
-      top: 16px;
-      max-height: calc(100vh - 32px);
-      overflow-y: auto;
+      top: 12px;
+      min-height: calc(100vh - 90px);
+      max-height: calc(100vh - 40px);
+      display: flex;
+      flex-direction: column;
+      padding: 12px 14px 14px;
+      min-width: 0;
+    }
+    .card-map .map-section-block {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      height: 100%;
+    }
+    .card-map .map-wrapper {
+      flex: 1 1 auto;
+      min-height: calc(100vh - 150px);
+      margin-top: 8px;
+    }
+    html.layout-desktop #leaflet-map {
+      height: calc(100vh - 150px) !important;
+      min-height: 520px;
+      width: 100%;
+      background: #e5e3df;
     }
     #leaflet-map { height: min(56vh, 620px); width: 100%; background: #e5e3df; }
     .location-list { max-height: min(300px, 30vh); }
@@ -176,8 +221,8 @@
       html.layout-desktop .app-shell { padding: 12px; }
       html.layout-desktop .brand-logo-wrap { width: min(900px, 96vw); }
       html.layout-desktop .brand-logo { max-height: min(120px, 18vh); }
-      html.layout-desktop #dashboard-container { position: static; max-height: none; min-height: 500px; }
-      html.layout-desktop #leaflet-map { height: 440px; }
+      html.layout-desktop #dashboard-container { position: static; max-height: none; }
+      html.layout-desktop #leaflet-map { height: calc(100vh - 150px) !important; min-height: 480px; }
     }
 
     /* Phone shell via JS class (works even on wider phone landscape) */
@@ -189,8 +234,17 @@
     html.layout-phone .brand-version { font-size: 9px; bottom: 4px; }
     html.layout-phone .site-footer-inner { gap: 6px 10px; }
     html.layout-phone .site-footer-inner p { font-size: 12px; }
-    html.layout-phone #dashboard-container { position: static; max-height: none; min-height: 500px; }
-    html.layout-phone #leaflet-map { height: 440px; }
+    html.layout-phone #dashboard-container,
+    html.layout-phone .dashboard-under-steps {
+      position: static; max-height: none; min-height: 0; margin-top: 16px; padding-top: 14px;
+    }
+    html.layout-phone .card-map {
+      position: static; min-height: 0; max-height: none; order: 2;
+    }
+    html.layout-phone .card-planner { order: 1; }
+    html.layout-phone .container { display: flex; flex-direction: column; }
+    html.layout-phone #leaflet-map { height: 440px !important; min-height: 0 !important; }
+    html.layout-phone .card-map .map-wrapper { min-height: 0; }
     html.layout-phone .location-list { max-height: 250px; }
 
     /* Same phone shell for narrow viewports (desktop browser resized / no early JS) */
@@ -203,8 +257,15 @@
       .brand-version { font-size: 9px; bottom: 4px; }
       .site-footer-inner { gap: 6px 10px; }
       .site-footer-inner p { font-size: 12px; }
-      #dashboard-container { position: static; max-height: none; min-height: 500px; }
-      #leaflet-map { height: 440px; }
+      #dashboard-container,
+      .dashboard-under-steps {
+        position: static; max-height: none; min-height: 0; margin-top: 16px; padding-top: 14px;
+      }
+      .card-map {
+        position: static; min-height: 0; max-height: none;
+      }
+      .card-map .map-wrapper { min-height: 0; }
+      #leaflet-map { height: 440px !important; min-height: 0 !important; }
       .location-list { max-height: 250px; }
     }
     .step-section { margin-bottom: 25px; transition: all 0.3s ease; }
@@ -961,9 +1022,13 @@
     .map-toggle-hunts { background: var(--panel); border: 1px solid var(--border); color: var(--ink); border-radius: 6px; padding: 6px 10px; font-size: 11px; font-weight: bold; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.5); cursor: pointer; user-select: none; }
     .map-toggle-hunts input { cursor: pointer; }
     .map-toggle-hunts.loading { opacity: 0.7; }
-    .map-layer-legend { display: none; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 10px; color: var(--muted); box-shadow: 0 2px 6px rgba(0,0,0,0.5); line-height: 1.45; }
+    .map-layer-legend { display: none; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 11px; color: var(--muted); box-shadow: 0 4px 12px rgba(0,0,0,0.55); line-height: 1.55; max-width: min(280px, calc(100% - 24px)); }
     .map-layer-legend.active { display: block; }
-    .map-layer-legend .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: middle; border: 1px solid rgba(255,255,255,0.35); }
+    .map-layer-legend .swatch {
+      display: inline-block; width: 14px; height: 14px; border-radius: 3px; margin-right: 7px;
+      vertical-align: middle; border: 1px solid rgba(255,255,255,0.55);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15);
+    }
     .map-layer-legend a { color: var(--accent); }
     .current-data-banner { background: rgba(217,65,54,0.15); border: 1px solid var(--danger); color: var(--danger); font-weight: bold; font-size: 13px; padding: 8px 12px; border-radius: 6px; text-align: center; margin-bottom: 10px; display: none; }
     #regs-modal { display: none; position: fixed; inset: 0; z-index: 100000; background: rgba(0,0,0,0.65); align-items: center; justify-content: center; padding: 16px; }
@@ -999,11 +1064,11 @@
   </style>
 </head>
 <body>
-  <!-- Brand header: large logo + small V2.4 at bottom-right of logo -->
+  <!-- Brand header: large logo + small V2.5 at bottom-right of logo -->
   <header class="brand-header" role="banner">
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 2.4">V2.4</span>
+      <span class="brand-version" aria-label="Version 2.5">V2.5</span>
     </div>
   </header>
 
@@ -1037,7 +1102,7 @@
 
   <div class="app-shell">
   <div class="container">
-    <div class="card">
+    <div class="card card-planner">
       <!-- Square calendar (left fixed) + weapons stacked in freed space on the right -->
       <div class="planner-row">
         <div class="planner-cal-col" id="planner-cal-col">
@@ -1148,6 +1213,78 @@
         </div>
       </div>
 
+      <div id="dashboard-container" class="dashboard-under-steps">
+      <div id="db-blank" style="text-align:center;padding:120px 0;color:var(--muted);">
+        <h3>Step 4: Weather & Water Dashboard</h3>
+        <p>Select a date and weapon, then choose a location or use Current Location. Water levels appear only when within 3 miles of a USGS gauge.</p>
+      </div>
+      <div id="db-loading" style="display:none;text-align:center;padding:120px 0;">
+        <div class="loader"></div>
+        <p>Syncing live weather...</p>
+      </div>
+      <div id="db-content" style="display:none;" class="dashboard-grid">
+        <div id="current-data-banner" class="current-data-banner"></div>
+
+        <div class="db-title-block">
+          <h2 id="db-title">Location Name</h2>
+          <span id="db-reg-summary" style="font-weight:bold;color:var(--accent);">Season Open Rules</span>
+          <p id="db-subtitle" style="color:var(--muted);font-size:12.5px;margin:5px 0 0;">Area specifics</p>
+          <div id="weather-source-badge">Source: Open-Meteo</div>
+          <!-- Hidden mirrors kept for any legacy references; live wind UI is on the map -->
+          <div id="wind-speed-text" style="display:none;"></div>
+          <div id="scent-drift-text" style="display:none;"></div>
+        </div>
+        <hr style="border:0;border-top:1px solid var(--border);margin:0;">
+        <div id="db-rules-box" style="background:rgba(229,154,24,0.08);border-left:4px solid var(--accent);padding:12px;border-radius:6px;font-size:13px;">
+          <strong>Field Directives:</strong> <span id="db-rules-text">Active regulations.</span>
+        </div>
+        <div id="db-tva-note" class="tva-note"></div>
+        <div class="subsections-box">
+          <div style="font-weight:bold;font-size:13px;color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between;">
+            <span>LOCATION SUBSECTIONS / STANDS</span>
+            <span style="color:var(--accent);cursor:pointer;font-weight:bold;" onclick="promptAddSubsection()">+ Add Stand</span>
+          </div>
+          <div id="subsections-list-container"></div>
+        </div>
+        <div id="water-gauge-container" class="water-panel" style="display:none;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <strong style="color:var(--water-cyan);font-size:13px;text-transform:uppercase;">USGS Water Level (<span id="water-dist-label">within 3 mi</span>)</strong>
+            <a id="usgs-link-btn" href="https://waterdata.usgs.gov/state/Alabama/" target="_blank" style="color:var(--water-cyan);font-size:11px;">USGS Portal</a>
+          </div>
+          <div style="font-size:12px;color:#fff;margin-top:4px;font-weight:bold;" id="water-station-name">Station</div>
+          <div id="water-date-warning" style="color:var(--danger);font-weight:bold;font-size:11px;margin-top:4px;display:none;"></div>
+          <div class="water-grid">
+            <div class="water-card"><span>Gage Height</span><strong id="water-height-val">-- ft</strong></div>
+            <div class="water-card"><span>Trend</span><strong id="water-trend-val">Steady</strong></div>
+            <div class="water-card"><span>Flood Stage</span><strong id="water-flood-status">Normal</strong></div>
+            <div class="water-card"><span>Discharge</span><strong id="water-flow-val">-- cfs</strong></div>
+          </div>
+        </div>
+        <div>
+          <span class="step-title" style="font-size:11px;">Solunar & Legal Hours</span>
+          <div class="solunar-panel">
+            <div class="solunar-item">Sunrise<strong id="sol-sunrise">--:--</strong></div>
+            <div class="solunar-item">Sunset<strong id="sol-sunset">--:--</strong></div>
+            <div class="solunar-item">Legal Hours<strong id="sol-shooting">--:--</strong></div>
+            <div class="solunar-item" style="grid-column:span 3;background:var(--panel);border:1px solid var(--border);padding:10px;border-radius:6px;margin-top:5px;">
+              Moon: <strong id="db-moon-text" style="display:inline;margin-left:5px;font-size:14px;color:var(--accent);">Unknown</strong>
+            </div>
+          </div>
+        </div>
+        <div>
+          <span class="step-title" style="font-size:11px;">Hourly Forecast (Daylight)</span>
+          <div class="hourly-table-container">
+            <table class="hourly-table">
+              <thead><tr><th>Hour</th><th>Temp</th><th>Rain%</th><th>Precip</th><th>Wind</th></tr></thead>
+              <tbody id="hourly-rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+
+    <div class="card card-map">
       <div class="map-section-block">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
           <span class="step-title" style="font-size:11px;">Alabama Map & Bordering States</span>
@@ -1181,14 +1318,14 @@
                 <strong style="color:#fff;font-size:11px;">Public Lands Key</strong>
                 <button type="button" id="adcnr-legend-close" onclick="dismissAdcnrLegend()" title="Hide legend" style="background:none;border:none;color:var(--muted);cursor:pointer;font-weight:bold;font-size:16px;line-height:1;padding:0 2px;">&times;</button>
               </div>
-              <div><span class="swatch" style="background:rgba(229,154,24,0.55);"></span>ADCNR WMAs</div>
-              <div><span class="swatch" style="background:rgba(72,106,47,0.55);"></span>Forever Wild (map click only)</div>
-              <div><span class="swatch" style="background:rgba(155,89,182,0.55);"></span>Special Opportunity Areas</div>
-              <div><span class="swatch" style="background:rgba(0,188,212,0.55);"></span>Disabled Hunt Areas</div>
-              <div><span class="swatch" style="background:rgba(52,152,219,0.55);"></span>TVA Undeveloped (huntable)</div>
-              <div><span class="swatch" style="background:rgba(46,134,193,0.55);"></span>National Wildlife Refuges</div>
-              <div style="margin-top:6px;"><span class="swatch" style="background:#486a2f;"></span><strong style="color:#9ccc65;">Green pin (✓)</strong> = open for selected weapon &amp; date</div>
-              <div style="margin-top:4px;font-size:9px;">All units shown; list still filters by weapon/date · cached monthly</div>
+              <div><span class="swatch" style="background:#e59a18;"></span><strong style="color:#e59a18;">Orange</strong> — WMAs</div>
+              <div><span class="swatch" style="background:#2f9e4f;"></span><strong style="color:#6fcf8a;">Green</strong> — National Forests &amp; Refuges (NWR)</div>
+              <div><span class="swatch" style="background:#2d8fd9;"></span><strong style="color:#7ec8ff;">Blue</strong> — TVA Undeveloped</div>
+              <div><span class="swatch" style="background:#9b59b6;"></span><strong style="color:#c39bd3;">Purple</strong> — Forever Wild</div>
+              <div><span class="swatch" style="background:#c026d3;"></span><strong style="color:#e879f9;">Magenta</strong> — Special Opportunity Areas</div>
+              <div><span class="swatch" style="background:#14b8a6;"></span><strong style="color:#5eead4;">Teal</strong> — Disabled Hunt Areas (PDHA)</div>
+              <div style="margin-top:6px;"><span class="swatch" style="background:#486a2f;"></span><strong style="color:#9ccc65;">Green pin (✓)</strong> = in your Available Hunts list</div>
+              <div style="margin-top:4px;font-size:9px;">Listed areas use a brighter fill of the same color · ✓ = dropdown only · cached monthly</div>
               <div id="adcnr-cache-status" style="font-size:9px;margin-top:2px;"></div>
             </div>
             <label class="map-toggle-hunts">
@@ -1258,79 +1395,10 @@
       </div>
     </div>
 
-    <div class="card" id="dashboard-container">
-      <div id="db-blank" style="text-align:center;padding:120px 0;color:var(--muted);">
-        <h3>Step 4: Weather & Water Dashboard</h3>
-        <p>Select a date and weapon, then choose a location or use Current Location. Water levels appear only when within 3 miles of a USGS gauge.</p>
-      </div>
-      <div id="db-loading" style="display:none;text-align:center;padding:120px 0;">
-        <div class="loader"></div>
-        <p>Syncing live weather...</p>
-      </div>
-      <div id="db-content" style="display:none;" class="dashboard-grid">
-        <div id="current-data-banner" class="current-data-banner"></div>
-
-        <div class="db-title-block">
-          <h2 id="db-title">Location Name</h2>
-          <span id="db-reg-summary" style="font-weight:bold;color:var(--accent);">Season Open Rules</span>
-          <p id="db-subtitle" style="color:var(--muted);font-size:12.5px;margin:5px 0 0;">Area specifics</p>
-          <div id="weather-source-badge">Source: Open-Meteo</div>
-          <!-- Hidden mirrors kept for any legacy references; live wind UI is on the map -->
-          <div id="wind-speed-text" style="display:none;"></div>
-          <div id="scent-drift-text" style="display:none;"></div>
-        </div>
-        <hr style="border:0;border-top:1px solid var(--border);margin:0;">
-        <div id="db-rules-box" style="background:rgba(229,154,24,0.08);border-left:4px solid var(--accent);padding:12px;border-radius:6px;font-size:13px;">
-          <strong>Field Directives:</strong> <span id="db-rules-text">Active regulations.</span>
-        </div>
-        <div id="db-tva-note" class="tva-note"></div>
-        <div class="subsections-box">
-          <div style="font-weight:bold;font-size:13px;color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between;">
-            <span>LOCATION SUBSECTIONS / STANDS</span>
-            <span style="color:var(--accent);cursor:pointer;font-weight:bold;" onclick="promptAddSubsection()">+ Add Stand</span>
-          </div>
-          <div id="subsections-list-container"></div>
-        </div>
-        <div id="water-gauge-container" class="water-panel" style="display:none;">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <strong style="color:var(--water-cyan);font-size:13px;text-transform:uppercase;">USGS Water Level (<span id="water-dist-label">within 3 mi</span>)</strong>
-            <a id="usgs-link-btn" href="https://waterdata.usgs.gov/state/Alabama/" target="_blank" style="color:var(--water-cyan);font-size:11px;">USGS Portal</a>
-          </div>
-          <div style="font-size:12px;color:#fff;margin-top:4px;font-weight:bold;" id="water-station-name">Station</div>
-          <div id="water-date-warning" style="color:var(--danger);font-weight:bold;font-size:11px;margin-top:4px;display:none;"></div>
-          <div class="water-grid">
-            <div class="water-card"><span>Gage Height</span><strong id="water-height-val">-- ft</strong></div>
-            <div class="water-card"><span>Trend</span><strong id="water-trend-val">Steady</strong></div>
-            <div class="water-card"><span>Flood Stage</span><strong id="water-flood-status">Normal</strong></div>
-            <div class="water-card"><span>Discharge</span><strong id="water-flow-val">-- cfs</strong></div>
-          </div>
-        </div>
-        <div>
-          <span class="step-title" style="font-size:11px;">Solunar & Legal Hours</span>
-          <div class="solunar-panel">
-            <div class="solunar-item">Sunrise<strong id="sol-sunrise">--:--</strong></div>
-            <div class="solunar-item">Sunset<strong id="sol-sunset">--:--</strong></div>
-            <div class="solunar-item">Legal Hours<strong id="sol-shooting">--:--</strong></div>
-            <div class="solunar-item" style="grid-column:span 3;background:var(--panel);border:1px solid var(--border);padding:10px;border-radius:6px;margin-top:5px;">
-              Moon: <strong id="db-moon-text" style="display:inline;margin-left:5px;font-size:14px;color:var(--accent);">Unknown</strong>
-            </div>
-          </div>
-        </div>
-        <div>
-          <span class="step-title" style="font-size:11px;">Hourly Forecast (Daylight)</span>
-          <div class="hourly-table-container">
-            <table class="hourly-table">
-              <thead><tr><th>Hour</th><th>Temp</th><th>Rain%</th><th>Precip</th><th>Wind</th></tr></thead>
-              <tbody id="hourly-rows"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
   </div><!-- /.app-shell -->
 
-  <!-- Tagline + official links moved to bottom (v2.4) -->
+  <!-- Tagline + official links moved to bottom (v2.5) -->
   <footer class="site-footer" role="contentinfo">
     <div class="site-footer-inner">
       <p>Alabama public &amp; private land · USGS gauges · topo terrain · wind &amp; scent</p>
@@ -1344,7 +1412,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '2.4';
+    const APP_VERSION = '2.5';
     let selectedDate = null, selectedWeapon = null, selectedLand = 'Public', selectedLocationId = null;
     let selectedSubsectionIndex = null, viewFilterMode = 'all', currentSelectedColor = '#e59a18';
     let editingEventId = null, userLat = null, userLng = null;
@@ -1400,19 +1468,60 @@
       [-87.600, 30.220], [-88.400, 30.220], [-88.473, 31.000], [-88.450, 32.000],
       [-88.200, 35.008]
     ];
+    /*
+     * Public-land overlay color code (easier to read on topo):
+     *   WMA ........ orange
+     *   NWR / USFS . green  (refuges + national forests)
+     *   TVA ........ blue
+     *   Forever Wild purple
+     *   SOA ........ magenta
+     *   PDHA ....... teal
+     *   NPS ........ brown (if ever drawn)
+     */
+    const PUBLIC_LAND_COLORS = {
+      wma:         { color: '#e59a18', fillOpacity: 0.34, weight: 2.25 },
+      nwr:         { color: '#2f9e4f', fillOpacity: 0.32, weight: 2.25 },
+      usfs:        { color: '#2f9e4f', fillOpacity: 0.16, weight: 1.75 },
+      tva:         { color: '#2d8fd9', fillOpacity: 0.32, weight: 2.25 },
+      foreverWild: { color: '#9b59b6', fillOpacity: 0.28, weight: 2 },
+      soa:         { color: '#c026d3', fillOpacity: 0.30, weight: 2.25 },
+      pdha:        { color: '#14b8a6', fillOpacity: 0.32, weight: 2.25 },
+      nps:         { color: '#a16207', fillOpacity: 0.18, weight: 1.5 }
+    };
+    function publicLandDrawStyle(layerKey) {
+      return PUBLIC_LAND_COLORS[layerKey] || { color: '#94a3b8', fillOpacity: 0.25, weight: 2 };
+    }
+
     const ADCNR_LAYERS = [
+      // Draw large forest outlines first (under other layers); non-interactive so WMAs stay clickable
+      {
+        key: 'usfs', label: 'National Forest', typeLabel: 'National Forest',
+        url: 'https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_ForestSystemBoundaries_01/MapServer/0/query',
+        where: "forestname = 'National Forests in Alabama'",
+        outFields: 'forestname,gis_acres,region,objectid',
+        color: PUBLIC_LAND_COLORS.usfs.color,
+        fillOpacity: PUBLIC_LAND_COLORS.usfs.fillOpacity,
+        weight: PUBLIC_LAND_COLORS.usfs.weight,
+        listMode: 'none', nameFields: ['forestname'],
+        drawOnMap: true, interactive: false, maxOffset: 0.001
+      },
       {
         key: 'wma', label: 'Wildlife Management Area', typeLabel: 'WMA',
         url: ADCNR_BASE + '/WildlifeManagementAreas/MapServer/0/query',
         where: '1=1', outFields: 'Name,Acres,Link,MapYear,OBJECTID',
-        color: '#e59a18', fillOpacity: 0.22, weight: 1.5, listMode: 'unit', nameFields: ['Name'],
+        color: PUBLIC_LAND_COLORS.wma.color,
+        fillOpacity: PUBLIC_LAND_COLORS.wma.fillOpacity,
+        weight: PUBLIC_LAND_COLORS.wma.weight,
+        listMode: 'unit', nameFields: ['Name'],
         splitByZone: true, drawOnMap: true, maxOffset: 0.00005
       },
       {
         key: 'foreverWild', label: 'Forever Wild', typeLabel: 'Forever Wild',
         url: ADCNR_BASE + '/ForeverWildTracts/MapServer/0/query',
         where: '1=1', outFields: 'Name,NameLookup,County,Acres,CanHunt,InWMA,TractInfoL,PMapLink,OBJECTID',
-        color: '#486a2f', fillOpacity: 0.18, weight: 1.25,
+        color: PUBLIC_LAND_COLORS.foreverWild.color,
+        fillOpacity: PUBLIC_LAND_COLORS.foreverWild.fillOpacity,
+        weight: PUBLIC_LAND_COLORS.foreverWild.weight,
         // Never list Forever Wild as hunt destinations - especially tracts inside WMAs
         // (InWMA=Yes). Map polygons stay for click-to-inspect only.
         listMode: 'none',
@@ -1423,14 +1532,20 @@
         key: 'soa', label: 'Special Opportunity Area', typeLabel: 'SOA',
         url: ADCNR_BASE + '/SpecialOpportunityAreas/MapServer/0/query',
         where: '1=1', outFields: 'Name,Acres,PageLink,MapLink,OBJECTID',
-        color: '#9b59b6', fillOpacity: 0.22, weight: 1.5, listMode: 'unit', nameFields: ['Name'],
+        color: PUBLIC_LAND_COLORS.soa.color,
+        fillOpacity: PUBLIC_LAND_COLORS.soa.fillOpacity,
+        weight: PUBLIC_LAND_COLORS.soa.weight,
+        listMode: 'unit', nameFields: ['Name'],
         splitByZone: true, drawOnMap: true, maxOffset: 0.00005
       },
       {
         key: 'pdha', label: 'Physically Disabled Hunting Area', typeLabel: 'PDHA',
         url: ADCNR_BASE + '/PhysicallyDisabledHuntingAreas/MapServer/0/query',
         where: '1=1', outFields: 'Name,Acres,PageLink,MapLink,OBJECTID',
-        color: '#00bcd4', fillOpacity: 0.22, weight: 1.5, listMode: 'unit', nameFields: ['Name'],
+        color: PUBLIC_LAND_COLORS.pdha.color,
+        fillOpacity: PUBLIC_LAND_COLORS.pdha.fillOpacity,
+        weight: PUBLIC_LAND_COLORS.pdha.weight,
+        listMode: 'unit', nameFields: ['Name'],
         splitByZone: false, drawOnMap: true, maxOffset: 0.00005
       },
       {
@@ -1438,7 +1553,10 @@
         url: 'https://services.arcgis.com/w8auYAijfGK1Mydj/arcgis/rest/services/Dispersed_Recreation_Areas/FeatureServer/0/query',
         where: "REC_TYPE = 'Dispersed Recreation'",
         outFields: 'RESERVOIR,REC_TYPE,RESTRICTED,RESERVOIRURL,OBJECTID',
-        color: '#3498db', fillOpacity: 0.20, weight: 1.5, listMode: 'unit', nameFields: ['RESERVOIR'],
+        color: PUBLIC_LAND_COLORS.tva.color,
+        fillOpacity: PUBLIC_LAND_COLORS.tva.fillOpacity,
+        weight: PUBLIC_LAND_COLORS.tva.weight,
+        listMode: 'unit', nameFields: ['RESERVOIR'],
         nameSuffix: ' (TVA)', splitByZone: true, drawOnMap: true, maxOffset: 0.00008
       },
       {
@@ -1446,24 +1564,21 @@
         url: 'https://services.arcgis.com/QVENGdaPbd4LUkLV/arcgis/rest/services/National_Wildlife_Refuge_System_Boundaries/FeatureServer/0/query',
         where: "RSL_TYPE = 'NWR'", useBbox: true,
         outFields: 'ORGNAME,RSL_TYPE,ORGCODE,OBJECTID',
-        color: '#2e86c1', fillOpacity: 0.20, weight: 1.5, listMode: 'unit', nameFields: ['ORGNAME'],
+        color: PUBLIC_LAND_COLORS.nwr.color,
+        fillOpacity: PUBLIC_LAND_COLORS.nwr.fillOpacity,
+        weight: PUBLIC_LAND_COLORS.nwr.weight,
+        listMode: 'unit', nameFields: ['ORGNAME'],
         noSunday: true, splitByZone: true, drawOnMap: true, maxOffset: 0.00005
-      },
-      // National forests / NPS: NOT drawn on map (big outlines block WMA clicks). Forests use built-in list entries.
-      {
-        key: 'usfs', label: 'National Forest', typeLabel: 'National Forest',
-        url: 'https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_ForestSystemBoundaries_01/MapServer/0/query',
-        where: "forestname = 'National Forests in Alabama'",
-        outFields: 'forestname,gis_acres,region,objectid',
-        color: '#27ae60', fillOpacity: 0.15, weight: 1, listMode: 'none', nameFields: ['forestname'],
-        drawOnMap: false, maxOffset: 0.001
       },
       {
         key: 'nps', label: 'National Park Service', typeLabel: 'NPS',
         url: 'https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/USA_Federal_Lands/FeatureServer/0/query',
         where: "Agency = 'National Park Service'", useBbox: true,
         outFields: 'Agency,unit_name,link,OBJECTID',
-        color: '#c0392b', fillOpacity: 0.15, weight: 1, listMode: 'none', nameFields: ['unit_name'],
+        color: PUBLIC_LAND_COLORS.nps.color,
+        fillOpacity: PUBLIC_LAND_COLORS.nps.fillOpacity,
+        weight: PUBLIC_LAND_COLORS.nps.weight,
+        listMode: 'none', nameFields: ['unit_name'],
         drawOnMap: false, notes: 'NPS units usually prohibit hunting.'
       }
     ];
@@ -2263,20 +2378,24 @@
     }
     loadUserStands();
 
-    /** True if a map pin should show for this unit (must appear in Available Hunts list). */
-    function isUnitInListedHunts(name, lat, lng) {
+    /** Name-only match against Available Hunts list (no lat/lng proximity — that leaked distant units). */
+    function isUnitInListedHuntsByNameOnly(name) {
       if (!lastListedHuntLocations || !lastListedHuntLocations.length) return false;
-      var n = String(name || '');
+      var n = String(name || '').trim();
+      if (!n) return false;
       for (var i = 0; i < lastListedHuntLocations.length; i++) {
         var loc = lastListedHuntLocations[i];
-        if (!loc) continue;
-        if (String(loc.id) === String(name)) return true;
-        if (n && loc.name && namesRoughMatch(loc.name, n)) return true;
-        if (lat != null && lng != null && loc.lat != null && loc.lng != null) {
-          if (getDistanceMiles(lat, lng, loc.lat, loc.lng) < 0.75) return true;
-        }
+        if (!loc || !loc.name) continue;
+        if (loc.id === 9999 || loc.type === 'Current Location' || loc.isMapSpot) continue;
+        if (loc.type === 'Statewide') continue;
+        if (namesRoughMatch(loc.name, n)) return true;
       }
       return false;
+    }
+
+    /** @deprecated proximity matching removed — use list-driven checkmarks */
+    function isUnitInListedHunts(name, lat, lng) {
+      return isUnitInListedHuntsByNameOnly(name);
     }
 
     let historicalHunts = JSON.parse(localStorage.getItem('alabama_hunt_historical_hunts') || '[]');
@@ -3205,7 +3324,9 @@
     function mayDrawHuntableFeature(layer, attrs) {
       if (!layer) return false;
       if (layer.drawOnMap === false) return false;
-      if (layer.key === 'usfs' || layer.key === 'nps') return false;
+      // USFS outlines are drawn separately (non-interactive); NPS stays off map
+      if (layer.key === 'nps') return false;
+      if (layer.key === 'usfs') return true;
       var name = featureDisplayName(layer, attrs);
       if (isNonHuntableRefugeName(name)) return false;
       // Federal refuges: whitelist only (excludes Bon Secour, Fern Cave, Sauta Cave, etc.)
@@ -3279,92 +3400,135 @@
       return true;
     }
 
+    /**
+     * Green ✓ markers come ONLY from the Available Hunts dropdown list
+     * (same distance / hide / weapon / date filters). Never from "all open GIS units".
+     */
+    function drawListedHuntCheckmarks() {
+      if (!map || typeof L === 'undefined') return;
+      if (!adcnrOpenPinGroup) adcnrOpenPinGroup = L.layerGroup().addTo(map);
+      adcnrOpenPinGroup.clearLayers();
+
+      var seen = {};
+      (lastListedHuntLocations || []).forEach(function(loc) {
+        if (!loc || loc.lat == null || loc.lng == null) return;
+        if (loc.id === 9999 || loc.type === 'Current Location' || loc.isMapSpot) return;
+        if (loc.type === 'Statewide') return;
+        // One check per list entry id
+        var key = String(loc.id);
+        if (seen[key]) return;
+        seen[key] = true;
+
+        var pin = L.marker([loc.lat, loc.lng], {
+          icon: L.divIcon({
+            className: '',
+            html: '<div style="background:#486a2f;width:18px;height:18px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:bold;">✓</div>',
+            iconSize: [18, 18],
+            iconAnchor: [9, 9]
+          }),
+          zIndexOffset: 400
+        });
+        var safeId = escJsStr ? escJsStr(loc.id) : String(loc.id).replace(/'/g, "\\'");
+        var title = (typeof escHtml === 'function') ? escHtml(loc.name) : String(loc.name || 'Hunt area');
+        pin.bindPopup(
+          '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
+            '<div class="mdm-title">' + title + '</div>' +
+            '<div class="mdm-sub">In your Available Hunts list</div>' +
+            '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.selectLocationById(\'' + safeId + '\',{closePopup:true,showOverlay:true});return false;">Get weather</button>' +
+          '</div>',
+          { className: 'saved-item-popup map-dot-popup', closeButton: true, autoPan: true, maxWidth: 280, closeOnClick: false }
+        );
+        pin.on('popupopen', function() {
+          var el = pin.getPopup() && pin.getPopup().getElement();
+          if (el && typeof L !== 'undefined') {
+            L.DomEvent.disableClickPropagation(el);
+            L.DomEvent.disableScrollPropagation(el);
+          }
+        });
+        adcnrOpenPinGroup.addLayer(pin);
+      });
+    }
+    window.drawListedHuntCheckmarks = drawListedHuntCheckmarks;
+
     function drawAdcnrLandsOverlay() {
       if (!map || !adcnrOverlayGroup || !adcnrLandsData) return;
       adcnrOverlayGroup.clearLayers();
+      // Clear old GIS-derived checks; list-driven checks are drawn separately below
       if (adcnrOpenPinGroup) adcnrOpenPinGroup.clearLayers();
 
-      // One green pin per unit name when open (avoid pin spam on multi-polygons)
-      var openPinKeys = {};
+      // Sort so large non-interactive layers (forests) draw first; clickable units on top
+      var layersToDraw = (adcnrLandsData.layers || []).slice().sort(function(a, b) {
+        var rank = function(k) {
+          if (k === 'usfs') return 0;
+          if (k === 'foreverWild') return 1;
+          if (k === 'tva') return 2;
+          if (k === 'nwr') return 3;
+          if (k === 'soa' || k === 'pdha') return 4;
+          if (k === 'wma') return 5;
+          return 3;
+        };
+        return rank(a.key) - rank(b.key);
+      });
 
-      (adcnrLandsData.layers || []).forEach(function(layer) {
+      layersToDraw.forEach(function(layer) {
         if (layer.drawOnMap === false) return;
-        if (layer.key === 'usfs' || layer.key === 'nps') return;
+        // Forests are drawn (green, non-interactive). NPS stays off the map.
+        if (layer.key === 'nps') return;
         (layer.features || []).forEach(function(feat) {
           var attrs = feat.attributes || {};
-          if (!mayDrawHuntableFeature(layer, attrs)) return;
+          // Forests: draw outline even though mayDrawHuntableFeature historically skipped list use
+          if (layer.key !== 'usfs' && !mayDrawHuntableFeature(layer, attrs)) return;
           var c = geometryCentroid(feat.geometry);
           if (!c || !isInAlabama(c.lat, c.lng)) return;
           var latlngs = esriRingsToLatLngs(feat.geometry);
           if (!latlngs) return;
 
-          // Always draw every eligible public-land polygon when overlay is on.
-          // Green ✓ only when open for selected weapon + date (huntable).
+          // Color-coded by land type (keep hue when unit is in Available Hunts list;
+          // listed units get a brighter fill + thicker outline instead of a forced green).
           var featName = featureDisplayName(layer, attrs) || layer.label || '';
-          var isOpen = !!(selectedDate && selectedWeapon &&
-            isOpenForSelectedWeaponAndDate(layer, attrs, c.lat, c.lng));
+          var inList = layer.key !== 'usfs' && isUnitInListedHuntsByNameOnly(featName);
+          var base = publicLandDrawStyle(layer.key);
+          var stroke = base.color;
+          var fill = base.color;
+          var fillOp = inList ? Math.min(0.48, (base.fillOpacity || 0.3) + 0.12) : (base.fillOpacity != null ? base.fillOpacity : 0.28);
+          var wt = inList ? (base.weight || 2) + 1.25 : (base.weight != null ? base.weight : 2);
+          var interactive = layer.interactive !== false && layer.key !== 'usfs';
 
           var poly = L.polygon(latlngs, {
-            color: isOpen ? '#5d8e3d' : layer.color,
-            weight: isOpen ? 2.5 : (layer.weight != null ? layer.weight : 1.5),
-            opacity: isOpen ? 1 : 0.75,
-            fillColor: isOpen ? '#5d8e3d' : layer.color,
-            fillOpacity: isOpen ? 0.28 : (layer.fillOpacity != null ? Math.min(layer.fillOpacity, 0.14) : 0.12),
-            interactive: true,
+            color: stroke,
+            weight: wt,
+            opacity: inList ? 1 : 0.92,
+            fillColor: fill,
+            fillOpacity: fillOp,
+            interactive: interactive,
             bubblingMouseEvents: false
           });
-          poly.bindPopup(buildAdcnrPopup(layer, attrs));
-          // Click unit: place stand if in place-mode, else load weather
-          poly.on('click', function(e) {
-            if (e && e.originalEvent) L.DomEvent.stopPropagation(e.originalEvent);
-            var clickLatLng = (e && e.latlng) ? e.latlng : L.latLng(c.lat, c.lng);
-            if (standPlaceMode) {
-              placeStandAt(clickLatLng.lat, clickLatLng.lng);
-              return;
-            }
-            selectPublicLandWeather(layer, attrs, clickLatLng.lat, clickLatLng.lng, {
-              closePopup: false,
-              showOverlay: isMapFullscreen()
+          if (interactive) {
+            poly.bindPopup(buildAdcnrPopup(layer, attrs));
+            // Click unit: place stand if in place-mode, else load weather
+            poly.on('click', function(e) {
+              if (e && e.originalEvent) L.DomEvent.stopPropagation(e.originalEvent);
+              var clickLatLng = (e && e.latlng) ? e.latlng : L.latLng(c.lat, c.lng);
+              if (standPlaceMode) {
+                placeStandAt(clickLatLng.lat, clickLatLng.lng);
+                return;
+              }
+              selectPublicLandWeather(layer, attrs, clickLatLng.lat, clickLatLng.lng, {
+                closePopup: false,
+                showOverlay: isMapFullscreen()
+              });
             });
-          });
-          poly.on('popupopen', function() {
-            wireAdcnrPopupWeatherBtn(layer, attrs, c.lat, c.lng);
-          });
-          adcnrOverlayGroup.addLayer(poly);
-
-          if (isOpen && adcnrOpenPinGroup && typeof L !== 'undefined') {
-            var pinKey = (layer.key || '') + '|' + featName.toLowerCase();
-            if (!openPinKeys[pinKey]) {
-              openPinKeys[pinKey] = true;
-              var pin = L.marker([c.lat, c.lng], {
-                icon: L.divIcon({
-                  className: '',
-                  html: '<div style="background:#486a2f;width:18px;height:18px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:bold;">✓</div>',
-                  iconSize: [18, 18],
-                  iconAnchor: [9, 9]
-                }),
-                zIndexOffset: 400
-              });
-              pin.bindPopup(buildAdcnrPopup(layer, attrs));
-              pin.on('click', function() {
-                if (standPlaceMode) {
-                  placeStandAt(c.lat, c.lng);
-                  return;
-                }
-                selectPublicLandWeather(layer, attrs, c.lat, c.lng, {
-                  closePopup: false,
-                  showOverlay: isMapFullscreen()
-                });
-              });
-              pin.on('popupopen', function() {
-                wireAdcnrPopupWeatherBtn(layer, attrs, c.lat, c.lng);
-              });
-              adcnrOpenPinGroup.addLayer(pin);
-            }
+            poly.on('popupopen', function() {
+              wireAdcnrPopupWeatherBtn(layer, attrs, c.lat, c.lng);
+            });
           }
+          adcnrOverlayGroup.addLayer(poly);
+          // NO green ✓ from GIS here — only from drawListedHuntCheckmarks()
         });
       });
       try { adcnrOverlayGroup.bringToBack(); } catch (e) {}
+      // Exactly one ✓ per dropdown list entry
+      drawListedHuntCheckmarks();
     }
 
     /** Keep map overlay in sync with weapon/date when toggle is on. */
@@ -3439,7 +3603,8 @@
       var on = chk && chk.checked;
       if (!on) {
         if (adcnrOverlayGroup) adcnrOverlayGroup.clearLayers();
-        if (adcnrOpenPinGroup) adcnrOpenPinGroup.clearLayers();
+        // Keep ✓ for Available Hunts list only (not all open GIS units)
+        drawListedHuntCheckmarks();
         updateAdcnrLegendVisibility();
         return;
       }
@@ -4678,16 +4843,19 @@
         (hiddenCount > 0 ? '(' + hiddenCount + ' hidden)' : '') +
         (distDropped > 0 ? (hiddenCount > 0 ? ' · ' : '(') + distDropped + ' outside range' + (hiddenCount > 0 ? '' : ')') : '');
       document.getElementById('restore-hidden-btn').style.display = hiddenCount > 0 ? 'inline-block' : 'none';
-      // Letter pins on map match the filtered list; overlay green ✓ = huntable for weapon/date
+      // Exact source of truth for green ✓ pins = filtered dropdown rows only
       lastListedHuntLocations = visible.map(function(m) { return m.location; });
       if (!skipMap) {
         ensureMap().then(function() {
           updateMapMarkers(visible);
           drawPinsOnMap();
-          // Keep full public-lands polygons drawn; only ✓ markers depend on open status
+          // Polygons + list-only checkmarks
           if (adcnrLandsData && document.getElementById('toggle-adcnr-lands-chk') &&
               document.getElementById('toggle-adcnr-lands-chk').checked) {
-            drawAdcnrLandsOverlay();
+            drawAdcnrLandsOverlay(); // ends with drawListedHuntCheckmarks()
+          } else {
+            // Overlay off: still show ✓ for list entries so distance filter is obvious
+            drawListedHuntCheckmarks();
           }
         });
       }
