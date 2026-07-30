@@ -877,11 +877,43 @@
     .map-dot-menu .mdm-btn.stand { background: #1f6f9f; }
     .map-dot-menu .mdm-btn.hunt { background: #2a5f9e; }
     .map-dot-menu .mdm-btn.pin { background: #a35f0c; }
+    .map-dot-menu .mdm-btn.share { background: #0f766e; }
+    .map-dot-menu .mdm-btn.share.copied { background: #15803d; }
     .map-dot-menu .mdm-btn.danger {
       background: #a32922;
       margin-top: 4px;
     }
     .map-dot-menu .mdm-btn.danger:hover { filter: brightness(1.1); }
+    /* Brief toast when a Google Maps link is copied */
+    .app-copy-toast {
+      position: fixed;
+      left: 50%;
+      bottom: 28px;
+      transform: translateX(-50%) translateY(12px);
+      z-index: 200000;
+      max-width: min(420px, calc(100vw - 24px));
+      background: rgba(15, 18, 14, 0.96);
+      border: 1px solid var(--accent);
+      color: #fff;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.35;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.55);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      text-align: center;
+    }
+    .app-copy-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .app-copy-toast .act {
+      color: var(--accent);
+      font-weight: 800;
+    }
     /* Reuse same readable menu style for pin / stand / hunt popups */
     .saved-item-popup .leaflet-popup-content-wrapper {
       background: #0f120e;
@@ -5003,6 +5035,7 @@
           '<button type="button" class="mdm-btn stand" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'stand\');return false;">Add stand</button>' +
           '<button type="button" class="mdm-btn hunt" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'hunt\');return false;">Add hunt</button>' +
           '<button type="button" class="mdm-btn pin" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'pin\');return false;">Add pin</button>' +
+          '<button type="button" class="mdm-btn share" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'share\');return false;">Share location</button>' +
         '</div>'
       );
     }
@@ -5211,6 +5244,11 @@
           }, 50);
           return false;
         }
+
+        if (act === 'share') {
+          shareLocationLink(clickLat, clickLng, detected.name || 'Map spot');
+          return false;
+        }
       } catch (err) {
         console.error('Map spot action failed:', act, err);
         alert('Something went wrong with that action. Try again.');
@@ -5218,6 +5256,112 @@
       return false;
     }
     window.handleMapDotAction = handleMapDotAction;
+
+    /** Google Maps link for a coordinate (opens pin at lat/lng). */
+    function googleMapsShareUrl(lat, lng) {
+      var la = Number(lat), lo = Number(lng);
+      if (isNaN(la) || isNaN(lo)) return '';
+      return 'https://www.google.com/maps?q=' + la.toFixed(6) + ',' + lo.toFixed(6);
+    }
+
+    function showAppCopyToast(messageHtml) {
+      var el = document.getElementById('app-copy-toast');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'app-copy-toast';
+        el.className = 'app-copy-toast';
+        el.setAttribute('role', 'status');
+        document.body.appendChild(el);
+      }
+      el.innerHTML = messageHtml;
+      el.classList.add('show');
+      clearTimeout(showAppCopyToast._t);
+      showAppCopyToast._t = setTimeout(function() {
+        el.classList.remove('show');
+      }, 3200);
+    }
+
+    function copyTextToClipboard(text) {
+      if (!text) return Promise.reject(new Error('No text'));
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        return navigator.clipboard.writeText(text);
+      }
+      return new Promise(function(resolve, reject) {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = text;
+          ta.setAttribute('readonly', '');
+          ta.style.position = 'fixed';
+          ta.style.left = '-9999px';
+          ta.style.top = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          ta.setSelectionRange(0, text.length);
+          var ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          if (ok) resolve();
+          else reject(new Error('Copy command failed'));
+        } catch (e) {
+          reject(e);
+        }
+      });
+    }
+
+    /**
+     * Build Google Maps link for lat/lng, copy to clipboard, show confirmation.
+     * Used from free map-dots and saved pins.
+     */
+    function shareLocationLink(lat, lng, label) {
+      var la = Number(lat), lo = Number(lng);
+      if (isNaN(la) || isNaN(lo)) {
+        alert('No coordinates available to share.');
+        return false;
+      }
+      var url = googleMapsShareUrl(la, lo);
+      var title = label ? String(label) : 'Hunt location';
+      copyTextToClipboard(url).then(function() {
+        showAppCopyToast(
+          '<span class="act">Link copied!</span><br>' +
+          'Google Maps pin ready to paste into a text or email.<br>' +
+          '<span style="font-size:11px;color:#c5d0be;word-break:break-all;">' + escHtml(url) + '</span>'
+        );
+        // Brief visual feedback on the share button in an open popup
+        try {
+          var btns = document.querySelectorAll('.mdm-btn.share');
+          for (var i = 0; i < btns.length; i++) {
+            var b = btns[i];
+            if (!b._origShareLabel) b._origShareLabel = b.textContent;
+            b.textContent = 'Copied!';
+            b.classList.add('copied');
+            (function(btn) {
+              setTimeout(function() {
+                btn.textContent = btn._origShareLabel || 'Share location';
+                btn.classList.remove('copied');
+              }, 1800);
+            })(b);
+          }
+        } catch (uiErr) {}
+      }).catch(function() {
+        // Fallback: show link and try prompt so user can still copy
+        showAppCopyToast(
+          '<span class="act">Copy this Google Maps link:</span><br>' +
+          '<span style="font-size:11px;color:#c5d0be;word-break:break-all;">' + escHtml(url) + '</span>'
+        );
+        try { window.prompt('Copy this Google Maps link:', url); } catch (pErr) {}
+      });
+      return false;
+    }
+    window.shareLocationLink = shareLocationLink;
+
+    function shareSavedPinLocation(id) {
+      var loc = locations.find(function(l) { return String(l.id) === String(id); });
+      if (!loc || loc.lat == null || loc.lng == null) {
+        alert('Pin location not found.');
+        return false;
+      }
+      return shareLocationLink(loc.lat, loc.lng, loc.name || 'Pin');
+    }
+    window.shareSavedPinLocation = shareSavedPinLocation;
 
     function setGpsMarker(lat, lng) {
       if (!map || typeof L === 'undefined') return;
