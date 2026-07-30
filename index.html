@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>REG SLAYER - Alabama Deer Season Planner v2.5</title>
+  <title>REG SLAYER - Alabama Deer Season Planner v2.6</title>
   <!-- Detect phone vs desktop as early as possible (reduces layout flash) -->
   <script>
     (function () {
@@ -45,7 +45,7 @@
     html, body { height: 100%; }
     body { background: var(--bg); color: var(--ink); margin: 0; padding: 0; line-height: 1.5; min-height: 100vh; display: flex; flex-direction: column; }
 
-    /* ========== BRAND HEADER (v2.5 - large logo fills top bar) ========== */
+    /* ========== BRAND HEADER (v2.6 - large logo fills top bar) ========== */
     .brand-header {
       background:
         linear-gradient(180deg, rgba(13,15,12,0.15) 0%, rgba(13,15,12,0.88) 100%),
@@ -99,7 +99,7 @@
       text-shadow: 0 1px 3px rgba(0,0,0,0.85);
     }
 
-    /* Site links / tagline live in page footer (v2.5) */
+    /* Site links / tagline live in page footer (v2.6) */
     .site-footer {
       margin-top: auto;
       border-top: 1px solid var(--border);
@@ -130,7 +130,7 @@
       padding: 3px 9px; border-radius: 6px; border: 1px solid var(--border);
     }
 
-    /* ========== DESKTOP SHELL (v2.5 - planner+weather left, big map right) ========== */
+    /* ========== DESKTOP SHELL (v2.6 - planner+weather left, big map right) ========== */
     .app-shell {
       max-width: none;
       margin: 0;
@@ -226,46 +226,127 @@
     }
 
     /* Phone shell via JS class (works even on wider phone landscape) */
-    html.layout-phone .app-shell { max-width: 1250px; padding: 16px 14px 20px; margin: 0 auto; }
-    html.layout-phone .container { grid-template-columns: 1fr; gap: 16px; }
+    html.layout-phone .app-shell {
+      max-width: none;
+      width: 100%;
+      padding: 10px 0 18px;
+      margin: 0;
+    }
+    html.layout-phone .container {
+      display: flex;
+      flex-direction: column;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      width: 100%;
+    }
     html.layout-phone .brand-header { padding: 12px 14px 10px; position: relative; }
     html.layout-phone .brand-logo-wrap { width: 92vw; padding-right: 36px; }
     html.layout-phone .brand-logo { max-height: 72px; }
     html.layout-phone .brand-version { font-size: 9px; bottom: 4px; }
-    html.layout-phone .site-footer-inner { gap: 6px 10px; }
+    html.layout-phone .site-footer-inner { gap: 6px 10px; padding-left: 12px; padding-right: 12px; }
     html.layout-phone .site-footer-inner p { font-size: 12px; }
     html.layout-phone #dashboard-container,
     html.layout-phone .dashboard-under-steps {
       position: static; max-height: none; min-height: 0; margin-top: 16px; padding-top: 14px;
     }
-    html.layout-phone .card-map {
-      position: static; min-height: 0; max-height: none; order: 2;
+    /* Planner keeps side inset; map goes edge-to-edge for full phone width */
+    html.layout-phone .card-planner {
+      order: 1;
+      margin: 0 10px;
+      width: auto;
     }
-    html.layout-phone .card-planner { order: 1; }
-    html.layout-phone .container { display: flex; flex-direction: column; }
-    html.layout-phone #leaflet-map { height: 440px !important; min-height: 0 !important; }
-    html.layout-phone .card-map .map-wrapper { min-height: 0; }
+    html.layout-phone .card-map {
+      position: static;
+      min-height: 0;
+      max-height: none;
+      order: 2;
+      width: 100%;
+      margin: 0;
+      padding: 10px 0 12px;
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+    }
+    html.layout-phone .card-map .map-section-block { width: 100%; }
+    html.layout-phone .card-map .map-section-block > div:first-child {
+      padding: 0 12px;
+    }
+    html.layout-phone .card-map .map-wrapper {
+      min-height: min(58vh, 560px);
+      margin-top: 8px;
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+      width: 100%;
+    }
+    html.layout-phone #leaflet-map {
+      height: min(58vh, 560px) !important;
+      min-height: 360px !important;
+      width: 100% !important;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    html.layout-phone .card-map .map-wrapper {
+      -webkit-touch-callout: none;
+    }
     html.layout-phone .location-list { max-height: 250px; }
 
     /* Same phone shell for narrow viewports (desktop browser resized / no early JS) */
     @media (max-width: 950px) {
-      .app-shell { max-width: 1250px; padding: 16px 14px 20px; margin: 0 auto; }
-      .container { grid-template-columns: 1fr; gap: 16px; }
+      .app-shell {
+        max-width: none;
+        width: 100%;
+        padding: 10px 0 18px;
+        margin: 0;
+      }
+      .container {
+        display: flex;
+        flex-direction: column;
+        grid-template-columns: 1fr;
+        gap: 12px;
+        width: 100%;
+      }
       .brand-header { padding: 12px 14px 10px; position: relative; }
       .brand-logo-wrap { width: 92vw; padding-right: 36px; }
       .brand-logo { max-height: 72px; }
       .brand-version { font-size: 9px; bottom: 4px; }
-      .site-footer-inner { gap: 6px 10px; }
+      .site-footer-inner { gap: 6px 10px; padding-left: 12px; padding-right: 12px; }
       .site-footer-inner p { font-size: 12px; }
       #dashboard-container,
       .dashboard-under-steps {
         position: static; max-height: none; min-height: 0; margin-top: 16px; padding-top: 14px;
       }
-      .card-map {
-        position: static; min-height: 0; max-height: none;
+      .card-planner {
+        margin: 0 10px;
+        width: auto;
       }
-      .card-map .map-wrapper { min-height: 0; }
-      #leaflet-map { height: 440px !important; min-height: 0 !important; }
+      .card-map {
+        position: static;
+        min-height: 0;
+        max-height: none;
+        width: 100%;
+        margin: 0;
+        padding: 10px 0 12px;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+      }
+      .card-map .map-section-block { width: 100%; }
+      .card-map .map-section-block > div:first-child { padding: 0 12px; }
+      .card-map .map-wrapper {
+        min-height: min(58vh, 560px);
+        margin-top: 8px;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        width: 100%;
+      }
+      #leaflet-map {
+        height: min(58vh, 560px) !important;
+        min-height: 360px !important;
+        width: 100% !important;
+      }
       .location-list { max-height: 250px; }
     }
     .step-section { margin-bottom: 25px; transition: all 0.3s ease; }
@@ -830,14 +911,32 @@
     .db-title-block h2 { margin: 0 0 2px; font-size: 1.5em; line-height: 1.25; }
     #weather-source-badge { font-size: 10px; color: var(--muted); margin-top: 4px; }
 
-    /* Map wind compass HUD - top center, compact */
-    .map-wind-hud {
-      display: none;
+    /* Top-center bar: wind compass + combined Layers menu (basemap + overlays) */
+    .map-top-center {
       position: absolute;
       top: 10px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 10005;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      max-width: calc(100% - 120px);
+      pointer-events: none;
+    }
+    .map-wrapper.fullscreen .map-top-center {
+      z-index: 100050;
+      top: 16px;
+      max-width: calc(100% - 140px);
+    }
+    /* Map wind compass HUD - sits next to Layers */
+    .map-wind-hud {
+      display: none;
+      position: static;
+      transform: none;
+      left: auto;
+      top: auto;
+      z-index: auto;
       align-items: center;
       gap: 8px;
       background: rgba(22, 26, 18, 0.92);
@@ -846,15 +945,142 @@
       padding: 6px 10px 6px 8px;
       box-shadow: 0 4px 14px rgba(0,0,0,0.45);
       pointer-events: none;
-      max-width: min(280px, calc(100% - 140px));
+      max-width: min(280px, 52vw);
+      flex-shrink: 1;
+      min-width: 0;
     }
     .map-wind-hud.active { display: flex; }
-    /* Stay on top of Leaflet chrome in fullscreen */
     .map-wrapper.fullscreen .map-wind-hud {
-      z-index: 100050;
-      top: 16px;
-      max-width: min(320px, calc(100% - 160px));
+      max-width: min(320px, 48vw);
     }
+
+    /* Combined basemap + overlay menu (next to compass) */
+    .map-layers-menu {
+      position: relative;
+      pointer-events: auto;
+      flex-shrink: 0;
+      z-index: 10006;
+    }
+    .map-layers-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(22, 26, 18, 0.95);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+      white-space: nowrap;
+      line-height: 1.2;
+    }
+    .map-layers-toggle-btn:hover,
+    .map-layers-menu.open .map-layers-toggle-btn,
+    .map-layers-menu:hover .map-layers-toggle-btn {
+      border-color: var(--accent);
+      background: rgba(32, 38, 26, 0.98);
+    }
+    .map-layers-toggle-btn .ml-caret {
+      font-size: 10px;
+      color: var(--muted);
+      transition: transform 0.15s ease;
+    }
+    .map-layers-menu.open .map-layers-toggle-btn .ml-caret,
+    .map-layers-menu:hover .map-layers-toggle-btn .ml-caret {
+      transform: rotate(180deg);
+      color: var(--accent);
+    }
+    .map-layers-panel {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      min-width: 240px;
+      max-width: min(300px, calc(100vw - 24px));
+      max-height: min(70vh, 520px);
+      overflow-y: auto;
+      background: rgba(15, 18, 14, 0.98);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px 12px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.6);
+      z-index: 10007;
+    }
+    /* Invisible bridge so hover doesn't drop when moving from button → panel */
+    .map-layers-panel::before {
+      content: '';
+      position: absolute;
+      top: -10px;
+      left: 0;
+      right: 0;
+      height: 10px;
+    }
+    /* Hover (desktop) or .open (click/tap) reveals options */
+    .map-layers-menu:hover .map-layers-panel,
+    .map-layers-menu.open .map-layers-panel {
+      display: block;
+    }
+    .map-layers-panel .ml-section {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin: 10px 0 6px;
+    }
+    .map-layers-panel .ml-section:first-child { margin-top: 2px; }
+    .map-layers-panel .ml-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      background: var(--panel-light);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink);
+      cursor: pointer;
+      user-select: none;
+      margin-bottom: 6px;
+      line-height: 1.3;
+    }
+    .map-layers-panel .ml-option:hover { border-color: var(--accent); }
+    .map-layers-panel .ml-option input {
+      margin: 2px 0 0;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .map-layers-panel .ml-option.loading { opacity: 0.7; }
+    .map-layers-panel .ml-option .ml-opt-text { min-width: 0; }
+    .map-layers-panel .ml-option .ml-opt-sub {
+      display: block;
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .map-fs-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 10000;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 11px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .map-fs-btn:hover { border-color: var(--accent); }
+    .map-wrapper.fullscreen .map-fs-btn { z-index: 100040; top: 16px; right: 16px; }
     .stand-place-banner {
       position: absolute;
       top: 10px;
@@ -1018,11 +1244,18 @@
     .loader { border: 4px solid var(--panel-light); border-top: 4px solid var(--accent); border-radius: 50%; width: 35px; height: 35px; animation: spin 1s linear infinite; margin: 30px auto; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     @keyframes pulse { 0% { transform: scale(0.9); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(0.9); opacity: 0.8; } }
-    .map-toggles { position: absolute; bottom: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 6px; align-items: stretch; max-width: min(260px, calc(100% - 40px)); }
-    .map-toggle-hunts { background: var(--panel); border: 1px solid var(--border); color: var(--ink); border-radius: 6px; padding: 6px 10px; font-size: 11px; font-weight: bold; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.5); cursor: pointer; user-select: none; }
-    .map-toggle-hunts input { cursor: pointer; }
-    .map-toggle-hunts.loading { opacity: 0.7; }
-    .map-layer-legend { display: none; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 11px; color: var(--muted); box-shadow: 0 4px 12px rgba(0,0,0,0.55); line-height: 1.55; max-width: min(280px, calc(100% - 24px)); }
+    /* Legend lives inside the Layers panel (shown when public lands is on) */
+    .map-layer-legend {
+      display: none;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.55;
+      margin-top: 4px;
+    }
     .map-layer-legend.active { display: block; }
     .map-layer-legend .swatch {
       display: inline-block; width: 14px; height: 14px; border-radius: 3px; margin-right: 7px;
@@ -1030,6 +1263,132 @@
       box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15);
     }
     .map-layer-legend a { color: var(--accent); }
+    /* Per-zone color toggles in Layers menu */
+    .zone-toggles {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .zone-toggle-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 8px 4px 7px;
+      border-radius: 8px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      color: #111;
+      line-height: 1.1;
+      user-select: none;
+      opacity: 0.42;
+      filter: grayscale(0.35);
+      transition: opacity 0.12s, filter 0.12s, box-shadow 0.12s, border-color 0.12s;
+      box-shadow: none;
+    }
+    .zone-toggle-btn .zt-sub {
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      opacity: 0.85;
+    }
+    .zone-toggle-btn.on {
+      opacity: 1;
+      filter: none;
+      border-color: rgba(255,255,255,0.55);
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.35);
+    }
+    .zone-toggle-btn:hover { filter: brightness(1.06); }
+    .zone-toggle-btn.on:hover { filter: brightness(1.08); }
+    .zone-toggle-hint {
+      font-size: 9px;
+      color: var(--muted);
+      line-height: 1.35;
+      margin-top: 8px;
+    }
+    .zone-toggle-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .zone-toggle-actions button {
+      flex: 1;
+      background: var(--panel-light);
+      border: 1px solid var(--border);
+      color: var(--ink);
+      border-radius: 6px;
+      padding: 5px 6px;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .zone-toggle-actions button:hover { border-color: var(--accent); color: #fff; }
+    /* Public-land type toggles (same on/off chrome as zone toggles) */
+    .pl-toggles {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .pl-toggle-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      padding: 8px 4px 6px;
+      border-radius: 8px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: #111;
+      line-height: 1.15;
+      user-select: none;
+      opacity: 0.42;
+      filter: grayscale(0.35);
+      transition: opacity 0.12s, filter 0.12s, box-shadow 0.12s, border-color 0.12s;
+      text-align: center;
+    }
+    .pl-toggle-btn .pl-sub {
+      font-size: 8px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      opacity: 0.9;
+    }
+    .pl-toggle-btn.on {
+      opacity: 1;
+      filter: none;
+      border-color: rgba(255,255,255,0.55);
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.35);
+    }
+    .pl-toggle-btn:hover { filter: brightness(1.06); }
+    .pl-toggle-btn.on:hover { filter: brightness(1.08); }
+    /* State zone letter badges on map */
+    .state-zone-label { background: transparent !important; border: none !important; }
+    .state-zone-label .sz-label {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid;
+      background: rgba(12, 14, 10, 0.72);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.45);
+      line-height: 1;
+    }
     .current-data-banner { background: rgba(217,65,54,0.15); border: 1px solid var(--danger); color: var(--danger); font-weight: bold; font-size: 13px; padding: 8px 12px; border-radius: 6px; text-align: center; margin-bottom: 10px; display: none; }
     #regs-modal { display: none; position: fixed; inset: 0; z-index: 100000; background: rgba(0,0,0,0.65); align-items: center; justify-content: center; padding: 16px; }
     #regs-modal.active { display: flex; }
@@ -1064,11 +1423,11 @@
   </style>
 </head>
 <body>
-  <!-- Brand header: large logo + small V2.5 at bottom-right of logo -->
+  <!-- Brand header: large logo + small V2.6 at bottom-right of logo -->
   <header class="brand-header" role="banner">
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 2.5">V2.5</span>
+      <span class="brand-version" aria-label="Version 2.6">V2.6</span>
     </div>
   </header>
 
@@ -1291,14 +1650,79 @@
         </div>
         <div class="map-wrapper">
           <!-- Compact wind compass for selected area (top center) -->
-          <div id="map-wind-hud" class="map-wind-hud" aria-live="polite">
-            <div class="compass" title="Wind direction">
-              <div class="compass-needle" id="compass-needle"></div>
+          <!-- Compass + combined Layers menu (basemap + overlays) sit together top-center -->
+          <div class="map-top-center" id="map-top-center">
+            <div id="map-wind-hud" class="map-wind-hud" aria-live="polite">
+              <div class="compass" title="Wind direction">
+                <div class="compass-needle" id="compass-needle"></div>
+              </div>
+              <div class="map-wind-meta">
+                <div class="mw-speed" id="map-wind-speed">-- mph</div>
+                <div class="mw-dir" id="map-wind-dir">from -</div>
+                <div class="mw-scent" id="map-scent-text">Scent → -</div>
+              </div>
             </div>
-            <div class="map-wind-meta">
-              <div class="mw-speed" id="map-wind-speed">-- mph</div>
-              <div class="mw-dir" id="map-wind-dir">from -</div>
-              <div class="mw-scent" id="map-scent-text">Scent → -</div>
+            <div class="map-layers-menu" id="map-layers-menu">
+              <button type="button" class="map-layers-toggle-btn" id="map-layers-toggle-btn" aria-expanded="false" aria-controls="map-layers-panel" title="Map base & overlays">
+                Layers <span class="ml-caret" aria-hidden="true">▾</span>
+              </button>
+              <div class="map-layers-panel" id="map-layers-panel" role="group" aria-label="Map layers">
+                <div class="ml-section">Base map</div>
+                <label class="ml-option">
+                  <input type="radio" name="map-basemap" id="basemap-topo" value="topo" checked onchange="setMapBasemap('topo')">
+                  <span class="ml-opt-text">USGS Topography<span class="ml-opt-sub">Terrain / contours</span></span>
+                </label>
+                <label class="ml-option">
+                  <input type="radio" name="map-basemap" id="basemap-street" value="street" onchange="setMapBasemap('street')">
+                  <span class="ml-opt-text">Roads &amp; Waterways<span class="ml-opt-sub">Street map</span></span>
+                </label>
+                <label class="ml-option">
+                  <input type="radio" name="map-basemap" id="basemap-satellite" value="satellite" onchange="setMapBasemap('satellite')">
+                  <span class="ml-opt-text">Satellite<span class="ml-opt-sub">High-def imagery (same style as ADCNR DCNR map)</span></span>
+                </label>
+
+                <div class="ml-section">Overlays</div>
+                <label class="ml-option">
+                  <input type="checkbox" id="toggle-prev-hunts-chk" onchange="drawHuntsOnMap()">
+                  <span class="ml-opt-text">Past Hunts<span class="ml-opt-sub">Your logged hunt pins</span></span>
+                </label>
+
+                <div class="ml-section">Public lands</div>
+                <div class="pl-toggles" id="pl-toggles" role="group" aria-label="Toggle public land types">
+                  <button type="button" class="pl-toggle-btn on" id="pl-btn-wma" data-pl="wma" style="background:#e59a18;" onclick="togglePublicLandType('wma')" title="Wildlife Management Areas" aria-pressed="true">WMA<span class="pl-sub">on</span></button>
+                  <button type="button" class="pl-toggle-btn on" id="pl-btn-forestNwr" data-pl="forestNwr" style="background:#2f9e4f;color:#fff;" onclick="togglePublicLandType('forestNwr')" title="National Forests &amp; NWR" aria-pressed="true">Forest/NWR<span class="pl-sub">on</span></button>
+                  <button type="button" class="pl-toggle-btn on" id="pl-btn-tva" data-pl="tva" style="background:#2d8fd9;color:#fff;" onclick="togglePublicLandType('tva')" title="TVA Undeveloped" aria-pressed="true">TVA<span class="pl-sub">on</span></button>
+                  <button type="button" class="pl-toggle-btn on" id="pl-btn-foreverWild" data-pl="foreverWild" style="background:#9b59b6;color:#fff;" onclick="togglePublicLandType('foreverWild')" title="Forever Wild" aria-pressed="true">FW<span class="pl-sub">on</span></button>
+                  <button type="button" class="pl-toggle-btn on" id="pl-btn-soa" data-pl="soa" style="background:#c026d3;color:#fff;" onclick="togglePublicLandType('soa')" title="Special Opportunity Areas" aria-pressed="true">SOA<span class="pl-sub">on</span></button>
+                  <button type="button" class="pl-toggle-btn on" id="pl-btn-pdha" data-pl="pdha" style="background:#14b8a6;color:#fff;" onclick="togglePublicLandType('pdha')" title="Disabled Hunt Areas (PDHA)" aria-pressed="true">PDHA<span class="pl-sub">on</span></button>
+                  <button type="button" class="pl-toggle-btn on" id="pl-btn-listPins" data-pl="listPins" style="background:#486a2f;color:#fff;" onclick="togglePublicLandType('listPins')" title="Green ✓ pins for Available Hunts list" aria-pressed="true">✓ List<span class="pl-sub">on</span></button>
+                </div>
+                <div class="zone-toggle-actions">
+                  <button type="button" onclick="setAllPublicLandTypes(true)">All on</button>
+                  <button type="button" onclick="setAllPublicLandTypes(false)">All off</button>
+                </div>
+                <div class="zone-toggle-hint">Tap a color to show/hide that land type. All on by default. ✓ List = units in your Available Hunts dropdown.</div>
+                <div id="adcnr-cache-status" style="font-size:9px;margin-top:6px;color:var(--muted);"></div>
+                <!-- Hidden master for legacy; driven by any public-land type being on -->
+                <input type="checkbox" id="toggle-adcnr-lands-chk" checked style="display:none;" aria-hidden="true">
+                <span id="toggle-adcnr-label" style="display:none;" aria-hidden="true"></span>
+
+                <div class="ml-section">Deer season zones</div>
+                <div class="zone-toggles" id="zone-toggles" role="group" aria-label="Toggle deer season zones">
+                  <button type="button" class="zone-toggle-btn" id="zone-btn-A" data-zone="A" style="background:#8a8a8a;" onclick="toggleDeerZone('A')" title="Zone A — default statewide" aria-pressed="false">A<span class="zt-sub">off</span></button>
+                  <button type="button" class="zone-toggle-btn" id="zone-btn-B" data-zone="B" style="background:#e6d29a;" onclick="toggleDeerZone('B')" title="Zone B — south of US-80 line" aria-pressed="false">B<span class="zt-sub">off</span></button>
+                  <button type="button" class="zone-toggle-btn" id="zone-btn-C" data-zone="C" style="background:#e0913c;" onclick="toggleDeerZone('C')" title="Zone C — north-central band" aria-pressed="false">C<span class="zt-sub">off</span></button>
+                  <button type="button" class="zone-toggle-btn" id="zone-btn-D" data-zone="D" style="background:#7dcf9a;" onclick="toggleDeerZone('D')" title="Zone D — Winston/Lawrence pocket" aria-pressed="false">D<span class="zt-sub">off</span></button>
+                  <button type="button" class="zone-toggle-btn" id="zone-btn-E" data-zone="E" style="background:#9a8b3a;" onclick="toggleDeerZone('E')" title="Zone E — Calhoun/Cleburne &amp; E. Russell" aria-pressed="false">E<span class="zt-sub">off</span></button>
+                </div>
+                <div class="zone-toggle-actions">
+                  <button type="button" onclick="setAllDeerZones(true)">All on</button>
+                  <button type="button" onclick="setAllDeerZones(false)">All off</button>
+                </div>
+                <div class="zone-toggle-hint">Tap a color to show/hide that zone. Off by default — turn on only what you need. Confirm Outdoor Alabama before hunting.</div>
+                <!-- Hidden master flag; driven by any zone being on -->
+                <input type="checkbox" id="toggle-state-zones-chk" style="display:none;" aria-hidden="true">
+              </div>
             </div>
           </div>
           <!-- Stand placement: click map after + Add Stand -->
@@ -1306,32 +1730,9 @@
             <span id="stand-place-banner-text">Click the map to place your stand</span>
             <button type="button" id="stand-place-cancel" onclick="cancelStandPlacement()" style="background:none;border:1px solid var(--border);color:var(--ink);border-radius:4px;padding:3px 8px;cursor:pointer;font-size:11px;font-weight:600;">Cancel</button>
           </div>
-          <button id="map-maximize-btn" onclick="toggleMapFullscreen()" style="position:absolute;top:10px;right:10px;z-index:10000;background:var(--panel);border:1px solid var(--border);color:var(--accent);border-radius:6px;padding:6px 12px;font-weight:bold;cursor:pointer;font-size:11px;">Full Screen</button>
-          <button id="map-minimize-btn" onclick="toggleMapFullscreen()" style="position:absolute;top:10px;right:10px;z-index:10000;background:var(--panel);border:1px solid var(--border);color:var(--accent);border-radius:6px;padding:6px 12px;font-weight:bold;cursor:pointer;font-size:11px;display:none;">Minimize</button>
+          <button id="map-maximize-btn" class="map-fs-btn" onclick="toggleMapFullscreen()" type="button">Full Screen</button>
+          <button id="map-minimize-btn" class="map-fs-btn" onclick="toggleMapFullscreen()" type="button" style="display:none;">Minimize</button>
           <button id="gps-snap-btn" onclick="snapToGPS()" style="position:absolute;bottom:20px;left:20px;z-index:10000;background:var(--green);color:white;border:none;border-radius:6px;padding:8px 12px;font-weight:bold;cursor:pointer;font-size:11px;">Current Location</button>
-          <div class="map-toggles">
-            <label class="map-toggle-hunts" id="toggle-adcnr-label" title="State, TVA, and federal public lands open for your selected weapon & date">
-              <input type="checkbox" id="toggle-adcnr-lands-chk" onchange="toggleAdcnrLandsOverlay()" checked> Public Lands Overlay
-            </label>
-            <div id="adcnr-layer-legend" class="map-layer-legend">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;">
-                <strong style="color:#fff;font-size:11px;">Public Lands Key</strong>
-                <button type="button" id="adcnr-legend-close" onclick="dismissAdcnrLegend()" title="Hide legend" style="background:none;border:none;color:var(--muted);cursor:pointer;font-weight:bold;font-size:16px;line-height:1;padding:0 2px;">&times;</button>
-              </div>
-              <div><span class="swatch" style="background:#e59a18;"></span><strong style="color:#e59a18;">Orange</strong> — WMAs</div>
-              <div><span class="swatch" style="background:#2f9e4f;"></span><strong style="color:#6fcf8a;">Green</strong> — National Forests &amp; Refuges (NWR)</div>
-              <div><span class="swatch" style="background:#2d8fd9;"></span><strong style="color:#7ec8ff;">Blue</strong> — TVA Undeveloped</div>
-              <div><span class="swatch" style="background:#9b59b6;"></span><strong style="color:#c39bd3;">Purple</strong> — Forever Wild</div>
-              <div><span class="swatch" style="background:#c026d3;"></span><strong style="color:#e879f9;">Magenta</strong> — Special Opportunity Areas</div>
-              <div><span class="swatch" style="background:#14b8a6;"></span><strong style="color:#5eead4;">Teal</strong> — Disabled Hunt Areas (PDHA)</div>
-              <div style="margin-top:6px;"><span class="swatch" style="background:#486a2f;"></span><strong style="color:#9ccc65;">Green pin (✓)</strong> = in your Available Hunts list</div>
-              <div style="margin-top:4px;font-size:9px;">Listed areas use a brighter fill of the same color · ✓ = dropdown only · cached monthly</div>
-              <div id="adcnr-cache-status" style="font-size:9px;margin-top:2px;"></div>
-            </div>
-            <label class="map-toggle-hunts">
-              <input type="checkbox" id="toggle-prev-hunts-chk" onchange="drawHuntsOnMap()"> Past Hunts
-            </label>
-          </div>
           <div id="map-weather-overlay" style="display:none;position:absolute;bottom:20px;right:20px;z-index:10001;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:15px;width:300px;box-shadow:0 4px 15px rgba(0,0,0,0.6);max-height:80vh;overflow-y:auto;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
               <strong id="mwo-title" style="font-size:14px;color:#fff;">Weather</strong>
@@ -1398,7 +1799,7 @@
   </div>
   </div><!-- /.app-shell -->
 
-  <!-- Tagline + official links moved to bottom (v2.5) -->
+  <!-- Tagline + official links moved to bottom (v2.6) -->
   <footer class="site-footer" role="contentinfo">
     <div class="site-footer-inner">
       <p>Alabama public &amp; private land · USGS gauges · topo terrain · wind &amp; scent</p>
@@ -1412,7 +1813,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '2.5';
+    const APP_VERSION = '2.6';
     let selectedDate = null, selectedWeapon = null, selectedLand = 'Public', selectedLocationId = null;
     let selectedSubsectionIndex = null, viewFilterMode = 'all', currentSelectedColor = '#e59a18';
     let editingEventId = null, userLat = null, userLng = null;
@@ -1424,6 +1825,7 @@
     let adcnrOpenPinGroup = null; // green pins on units open for selected weapon/date
     let adcnrLandsData = null;    // cached payload in memory
     let adcnrLoading = null;
+    let stateZonesGroup = null;   // Alabama deer season zones A–E (light fill overlay)
     let tempClickMarker = null, gpsMarker = null, clickLat = null, clickLng = null;
     // Distance filter (list only)
     let distRadiusMiles = 50;
@@ -1494,6 +1896,88 @@
     function publicLandDrawStyle(layerKey) {
       return PUBLIC_LAND_COLORS[layerKey] || { color: '#94a3b8', fillOpacity: 0.25, weight: 2 };
     }
+
+    /**
+     * Per public-land type visibility — all ON at launch.
+     * forestNwr controls both USFS outlines and NWR fills (same green key).
+     * listPins = green ✓ for Available Hunts list rows.
+     */
+    var publicLandTypeVisible = {
+      wma: true,
+      forestNwr: true,
+      tva: true,
+      foreverWild: true,
+      soa: true,
+      pdha: true,
+      listPins: true
+    };
+
+    function isPublicLandLayerKeyVisible(layerKey) {
+      if (layerKey === 'usfs' || layerKey === 'nwr') return !!publicLandTypeVisible.forestNwr;
+      if (layerKey === 'nps') return false;
+      return !!publicLandTypeVisible[layerKey];
+    }
+
+    function anyPublicLandFillVisible() {
+      return !!(publicLandTypeVisible.wma || publicLandTypeVisible.forestNwr ||
+        publicLandTypeVisible.tva || publicLandTypeVisible.foreverWild ||
+        publicLandTypeVisible.soa || publicLandTypeVisible.pdha);
+    }
+
+    function anyPublicLandTypeVisible() {
+      return anyPublicLandFillVisible() || !!publicLandTypeVisible.listPins;
+    }
+
+    function syncPublicLandMasterCheckbox() {
+      var chk = document.getElementById('toggle-adcnr-lands-chk');
+      if (chk) chk.checked = anyPublicLandTypeVisible();
+    }
+
+    function updatePublicLandToggleUI() {
+      Object.keys(publicLandTypeVisible).forEach(function(key) {
+        var btn = document.getElementById('pl-btn-' + key);
+        if (!btn) return;
+        var on = !!publicLandTypeVisible[key];
+        btn.classList.toggle('on', on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        var sub = btn.querySelector('.pl-sub');
+        if (sub) sub.textContent = on ? 'on' : 'off';
+      });
+      syncPublicLandMasterCheckbox();
+    }
+
+    function togglePublicLandType(key) {
+      key = String(key || '');
+      if (!publicLandTypeVisible.hasOwnProperty(key)) return;
+      publicLandTypeVisible[key] = !publicLandTypeVisible[key];
+      updatePublicLandToggleUI();
+      // Redraw fills and/or list pins
+      if (anyPublicLandFillVisible() || publicLandTypeVisible.listPins) {
+        syncPublicLandsOverlay({ showLoading: !adcnrLandsData && anyPublicLandFillVisible() });
+      } else {
+        if (adcnrOverlayGroup) adcnrOverlayGroup.clearLayers();
+        if (adcnrOpenPinGroup) adcnrOpenPinGroup.clearLayers();
+      }
+      // List pins only change
+      if (key === 'listPins' && map && adcnrOpenPinGroup) {
+        if (publicLandTypeVisible.listPins) drawListedHuntCheckmarks();
+        else adcnrOpenPinGroup.clearLayers();
+      }
+    }
+    window.togglePublicLandType = togglePublicLandType;
+
+    function setAllPublicLandTypes(on) {
+      on = !!on;
+      Object.keys(publicLandTypeVisible).forEach(function(k) { publicLandTypeVisible[k] = on; });
+      updatePublicLandToggleUI();
+      if (on) {
+        syncPublicLandsOverlay({ showLoading: !adcnrLandsData });
+      } else {
+        if (adcnrOverlayGroup) adcnrOverlayGroup.clearLayers();
+        if (adcnrOpenPinGroup) adcnrOpenPinGroup.clearLayers();
+      }
+    }
+    window.setAllPublicLandTypes = setAllPublicLandTypes;
 
     const ADCNR_LAYERS = [
       // Draw large forest outlines first (under other layers); non-interactive so WMAs stay clickable
@@ -2598,17 +3082,31 @@
       }
       if (lat >= 34.12 && lat <= 34.48 && lng >= -87.62 && lng <= -87.12) {
         const d = Math.sqrt(Math.pow(lat-34.3411,2)+Math.pow(lng+87.3386,2));
-        if (d < 0.12) return { id:1, name:'Black Warrior WMA (Bankhead)', type:'WMA', zone:'B', desc:'Zone B antler restrictions: 4+ points on one side.' };
-        return { id:5, name:'William B. Bankhead National Forest', type:'Forest', zone:'D', desc:'Stalk-Only Land. Winston Co Zone D / Lawrence Co Zone C.' };
+        // Bankhead core sits in Zone D on the official deer zone map
+        if (d < 0.12) return { id:1, name:'Black Warrior WMA (Bankhead)', type:'WMA', zone:'D', desc:'Bankhead / Zone D area — confirm WMA permit & antler rules.' };
+        var zBank = (typeof detectDeerZoneLetter === 'function') ? detectDeerZoneLetter(lat, lng) : 'D';
+        return { id:5, name:'William B. Bankhead National Forest', type:'Forest', zone:zBank, desc:'Stalk-Only Land. Confirm Zone C/D boundary on Outdoor Alabama.' };
       }
       if (lat >= 34.78 && lat <= 35.02 && lng >= -86.38 && lng <= -85.92) return { id:2, name:'James D. Martin - Skyline WMA', type:'WMA', zone:'A', desc:'Antler restriction: 3+ points on one side.' };
       if (lat >= 33.12 && lat <= 33.98 && lng >= -86.25 && lng <= -85.45) return { id:6, name:'Talladega National Forest (Talladega)', type:'Forest', zone:'A', desc:'Stalk hunting rules apply.' };
       if (lat >= 32.78 && lat <= 33.18 && lng >= -87.55 && lng <= -87.12) return { id:7, name:'Talladega National Forest (Oakmulgee)', type:'Forest', zone:'A', desc:'Stalk hunting rules apply.' };
-      if (lat >= 34.0 && lat <= 34.5 && lng >= -87.6 && lng <= -86.8) return { id:13, name:'Statewide Zone D', type:'Statewide', zone:'D', desc:'Northwest Alabama.' };
-      if ((lat >= 33.5 && lat <= 34.3 && lng >= -85.8 && lng <= -85.0) || (lat >= 31.8 && lat <= 32.4 && lng >= -85.4 && lng <= -85.0)) return { id:14, name:'Statewide Zone E', type:'Statewide', zone:'E', desc:'East Alabama.' };
-      if (lat >= 33.8 && lat <= 34.6 && lng >= -87.0 && lng <= -85.8) return { id:12, name:'Statewide Zone C', type:'Statewide', zone:'C', desc:'North-Central Alabama.' };
-      if (lat <= 32.5 && lng <= -86.2) return { id:11, name:'Statewide Zone B', type:'Statewide', zone:'B', desc:'South Alabama.' };
-      return { id:10, name:'Statewide Zone A', type:'Statewide', zone:'A', desc:'North, Central, and Southeast Alabama.' };
+      // Statewide zone from Outdoor Alabama–based polygons (same as map overlay)
+      var zoneLetter = (typeof detectDeerZoneLetter === 'function') ? detectDeerZoneLetter(lat, lng) : 'A';
+      var zoneMeta = {
+        A: { id: 10, desc: 'North, central, and southeast Alabama (incl. Houston Co.).' },
+        B: { id: 11, desc: 'Southern Alabama (generally south of US Hwy 80).' },
+        C: { id: 12, desc: 'North-central band (Jefferson–Cullman–Marshall–Etowah).' },
+        D: { id: 13, desc: 'Winston / Lawrence pocket (Bankhead area).' },
+        E: { id: 14, desc: 'Calhoun–Cleburne or eastern Russell County.' }
+      };
+      var meta = zoneMeta[zoneLetter] || zoneMeta.A;
+      return {
+        id: meta.id,
+        name: 'Statewide Zone ' + zoneLetter,
+        type: 'Statewide',
+        zone: zoneLetter,
+        desc: meta.desc
+      };
     }
 
     // ========== TVA UNDEVELOPED RECREATION LANDS (no boundary draw) ==========
@@ -2798,8 +3296,23 @@
       });
     }
 
+    function paintPublicLandsIfMapReady() {
+      if (!map || !adcnrLandsData) return;
+      if (typeof isPublicLandsOverlayWanted === 'function' && !isPublicLandsOverlayWanted()) return;
+      if (!adcnrOverlayGroup) {
+        try { adcnrOverlayGroup = L.layerGroup().addTo(map); } catch (e) { return; }
+      } else if (map && !map.hasLayer(adcnrOverlayGroup)) {
+        adcnrOverlayGroup.addTo(map);
+      }
+      try { drawAdcnrLandsOverlay(); } catch (drawErr) { console.warn(drawErr); }
+    }
+
     function loadAdcnrLands(forceRefresh) {
-      if (!forceRefresh && adcnrLandsData) return Promise.resolve(adcnrLandsData);
+      if (!forceRefresh && adcnrLandsData) {
+        // Data already in memory — still paint if map is open (first-open race)
+        paintPublicLandsIfMapReady();
+        return Promise.resolve(adcnrLandsData);
+      }
 
       if (!forceRefresh) {
         var cached = readAdcnrCache();
@@ -2807,6 +3320,7 @@
           adcnrLandsData = cached;
           updateAdcnrCacheStatus(cached.timestamp);
           syncPublicLandsToLocations(cached);
+          paintPublicLandsIfMapReady();
           return Promise.resolve(cached);
         }
       }
@@ -2824,6 +3338,8 @@
         updateAdcnrCacheStatus(payload.timestamp, 'fresh download');
         syncPublicLandsToLocations(payload);
         adcnrLoading = null;
+        // If map is already open and overlay is checked, paint as soon as data arrives
+        paintPublicLandsIfMapReady();
         return payload;
       }).catch(function(err) {
         adcnrLoading = null;
@@ -2833,6 +3349,7 @@
           adcnrLandsData = stale;
           updateAdcnrCacheStatus(stale.timestamp, 'offline - stale cache');
           syncPublicLandsToLocations(stale);
+          paintPublicLandsIfMapReady();
           return stale;
         }
         updateAdcnrCacheStatus(null, 'load failed');
@@ -2906,7 +3423,7 @@
       // Always show map/rules link: unit PDF when available, otherwise official hub that should have it
       html += '<a href="' + mapHref + '" target="_blank" rel="noopener" style="display:block;text-align:center;padding:7px 10px;background:var(--panel-light);border:1px solid var(--border);border-radius:6px;font-size:11px;font-weight:600;color:var(--accent);text-decoration:none;">' + mapLabel + '</a>';
       html += '</div>';
-      html += '<div style="margin-top:8px;font-size:10px;color:var(--muted);line-height:1.35;">Double-click to drop a pin/dot here (then click the dot for pin actions + these links).</div>';
+      html += '<div style="margin-top:8px;font-size:10px;color:var(--muted);line-height:1.35;">Desktop: double-click to drop a pin/dot. Phone: press and hold. Then tap the orange dot for pin actions + these links.</div>';
       return html;
     }
 
@@ -3001,13 +3518,16 @@
       // Show compact map weather card only in fullscreen; small mode updates the right dashboard
       if (opts.showOverlay || isMapFullscreen()) window._forceMapWeatherOverlay = true;
       if (map && opts.closePopup !== false) map.closePopup();
-      selectLocation(loc, rule);
+      // Map-driven weather should not yank the page away from the map (esp. phone)
+      var skipScroll = opts.skipScroll !== undefined ? !!opts.skipScroll : isPhoneLayout();
+      selectLocation(loc, rule, { skipScroll: skipScroll });
     }
     window.selectPublicLandWeather = selectPublicLandWeather;
 
     /** Weather for a free map click (boundary detect + optional TVA). Always uses exact lat/lng. */
-    function selectWeatherAtMapPoint(lat, lng, detected, tva) {
+    function selectWeatherAtMapPoint(lat, lng, detected, tva, opts) {
       if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) return;
+      opts = opts || {};
       ensureHuntContext();
       detected = detected || detectBoundaryAndZone(lat, lng);
       // Unique id per click so each map spot reloads weather (do not reuse zone id)
@@ -3037,9 +3557,11 @@
       isShowingCurrentData = false;
       isHistorical = getDaysFromToday(selectedDate) < 0;
       // Keep compass / weather HUD visible for map clicks (including fullscreen)
-      window._forceMapWeatherOverlay = !!isMapFullscreen();
+      window._forceMapWeatherOverlay = !!isMapFullscreen() || !!opts.showOverlay;
       // Load weather at this exact coordinate (dashboard + map wind compass)
-      selectLocation(clickLoc, openRule);
+      // Default: never auto-scroll away from the map for map-spot weather
+      var skipScroll = opts.skipScroll !== undefined ? !!opts.skipScroll : true;
+      selectLocation(clickLoc, openRule, { skipScroll: skipScroll });
     }
     window.selectWeatherAtMapPoint = selectWeatherAtMapPoint;
 
@@ -3450,6 +3972,8 @@
       if (!map || typeof L === 'undefined') return;
       if (!adcnrOpenPinGroup) adcnrOpenPinGroup = L.layerGroup().addTo(map);
       adcnrOpenPinGroup.clearLayers();
+      // Respect Layers menu "✓ List" toggle
+      if (typeof publicLandTypeVisible !== 'undefined' && !publicLandTypeVisible.listPins) return;
 
       var seen = {};
       (lastListedHuntLocations || []).forEach(function(loc) {
@@ -3498,6 +4022,13 @@
       // Clear old GIS-derived checks; list-driven checks are drawn separately below
       if (adcnrOpenPinGroup) adcnrOpenPinGroup.clearLayers();
 
+      if (!anyPublicLandFillVisible()) {
+        // No polygon types on — still may show list ✓ pins
+        if (publicLandTypeVisible.listPins) drawListedHuntCheckmarks();
+        updatePublicLandToggleUI();
+        return;
+      }
+
       // Sort so large non-interactive layers (forests) draw first; clickable units on top
       var layersToDraw = (adcnrLandsData.layers || []).slice().sort(function(a, b) {
         var rank = function(k) {
@@ -3516,6 +4047,8 @@
         if (layer.drawOnMap === false) return;
         // Forests are drawn (green, non-interactive). NPS stays off the map.
         if (layer.key === 'nps') return;
+        // Per-type toggle (Layers menu color buttons)
+        if (!isPublicLandLayerKeyVisible(layer.key)) return;
         (layer.features || []).forEach(function(feat) {
           var attrs = feat.attributes || {};
           // Forests: draw outline even though mayDrawHuntableFeature historically skipped list use
@@ -3547,34 +4080,104 @@
           });
           if (interactive) {
             poly.bindPopup(buildAdcnrPopup(layer, attrs));
-            // Click unit: place stand if in place-mode, else open public-land menu + weather
-            poly.on('click', function(e) {
-              if (e && e.originalEvent) L.DomEvent.stopPropagation(e.originalEvent);
-              var clickLatLng = (e && e.latlng) ? e.latlng : L.latLng(c.lat, c.lng);
-              if (standPlaceMode) {
-                placeStandAt(clickLatLng.lat, clickLatLng.lng);
-                return;
+            // Per-polygon long-press state (phone: hold to drop pin/dot)
+            poly._lpTimer = null;
+            poly._lpFired = false;
+            poly._lpStart = null;
+
+            function clearPolyLongPress() {
+              if (poly._lpTimer) {
+                clearTimeout(poly._lpTimer);
+                poly._lpTimer = null;
               }
-              setLastClickPublicLand(layer, attrs, clickLatLng.lat, clickLatLng.lng);
-              selectPublicLandWeather(layer, attrs, clickLatLng.lat, clickLatLng.lng, {
-                closePopup: false,
-                showOverlay: isMapFullscreen()
-              });
-            });
-            // Double-click unit: dismiss overlay popup and drop free map-dot (pin menu)
-            poly.on('dblclick', function(e) {
-              if (e && e.originalEvent) {
-                L.DomEvent.stop(e);
-                L.DomEvent.preventDefault(e.originalEvent);
-              }
-              var clickLatLng = (e && e.latlng) ? e.latlng : L.latLng(c.lat, c.lng);
+              poly._lpStart = null;
+            }
+
+            function dropPinOnPublicLand(clickLatLng) {
               if (standPlaceMode) {
                 placeStandAt(clickLatLng.lat, clickLatLng.lng);
                 return;
               }
               if (map) map.closePopup();
               setLastClickPublicLand(layer, attrs, clickLatLng.lat, clickLatLng.lng);
-              placeOrMoveMapDot(clickLatLng);
+              placeOrMoveMapDot(clickLatLng, { skipWeather: isPhoneLayout() });
+              try {
+                if (navigator.vibrate) navigator.vibrate(18);
+              } catch (vibErr) {}
+            }
+
+            // Phone: press-and-hold (~0.55s) on overlay to place pin/dot
+            poly.on('touchstart', function(e) {
+              if (!isPhoneLayout()) return;
+              var oe = e && e.originalEvent;
+              if (!oe || (oe.touches && oe.touches.length > 1)) return;
+              clearPolyLongPress();
+              poly._lpFired = false;
+              var t = oe.touches && oe.touches[0];
+              poly._lpStart = t ? { x: t.clientX, y: t.clientY } : null;
+              var clickLatLng = (e && e.latlng) ? e.latlng : L.latLng(c.lat, c.lng);
+              poly._lpTimer = setTimeout(function() {
+                poly._lpTimer = null;
+                poly._lpFired = true;
+                dropPinOnPublicLand(clickLatLng);
+              }, 550);
+            });
+            poly.on('touchmove', function(e) {
+              if (!poly._lpTimer || !poly._lpStart) return;
+              var oe = e && e.originalEvent;
+              var t = oe && oe.touches && oe.touches[0];
+              if (!t) return;
+              var dx = t.clientX - poly._lpStart.x;
+              var dy = t.clientY - poly._lpStart.y;
+              // Cancel long-press if finger moved (user is panning)
+              if ((dx * dx + dy * dy) > 100) clearPolyLongPress();
+            });
+            poly.on('touchend touchcancel', function() {
+              clearPolyLongPress();
+            });
+
+            // Click unit: place stand if in place-mode, else open public-land menu
+            poly.on('click', function(e) {
+              if (e && e.originalEvent) L.DomEvent.stopPropagation(e.originalEvent);
+              // Swallow the click that follows a long-press drop
+              if (poly._lpFired) {
+                poly._lpFired = false;
+                if (map) map.closePopup();
+                if (e && e.originalEvent) L.DomEvent.preventDefault(e.originalEvent);
+                return;
+              }
+              var clickLatLng = (e && e.latlng) ? e.latlng : L.latLng(c.lat, c.lng);
+              if (standPlaceMode) {
+                placeStandAt(clickLatLng.lat, clickLatLng.lng);
+                return;
+              }
+              setLastClickPublicLand(layer, attrs, clickLatLng.lat, clickLatLng.lng);
+              // Phone: keep the map focused — popup only (weather when user taps the button)
+              if (isPhoneLayout()) return;
+              selectPublicLandWeather(layer, attrs, clickLatLng.lat, clickLatLng.lng, {
+                closePopup: false,
+                showOverlay: isMapFullscreen(),
+                skipScroll: true
+              });
+            });
+            // Desktop: double-click unit to drop free map-dot (pin menu)
+            poly.on('dblclick', function(e) {
+              if (isPhoneLayout()) return; // phones use long-press instead
+              if (e && e.originalEvent) {
+                L.DomEvent.stop(e);
+                L.DomEvent.preventDefault(e.originalEvent);
+              }
+              var clickLatLng = (e && e.latlng) ? e.latlng : L.latLng(c.lat, c.lng);
+              dropPinOnPublicLand(clickLatLng);
+            });
+            // Suppress long-press callout / context menu on mobile overlays
+            poly.on('contextmenu', function(e) {
+              if (e && e.originalEvent) L.DomEvent.preventDefault(e.originalEvent);
+              if (isPhoneLayout() && e && e.latlng) {
+                // Some browsers only fire contextmenu on hold — treat as pin drop
+                if (!poly._lpFired) dropPinOnPublicLand(e.latlng);
+                poly._lpFired = true;
+              }
             });
             poly.on('popupopen', function() {
               wireAdcnrPopupWeatherBtn(layer, attrs, c.lat, c.lng);
@@ -3584,37 +4187,68 @@
           // NO green ✓ from GIS here — only from drawListedHuntCheckmarks()
         });
       });
-      try { adcnrOverlayGroup.bringToBack(); } catch (e) {}
-      // Exactly one ✓ per dropdown list entry
-      drawListedHuntCheckmarks();
+      // Above zone tint + dark AL vignette; markers stay in markerPane on top
+      try {
+        if (stateZonesGroup) stateZonesGroup.bringToBack();
+      } catch (ez) {}
+      try { adcnrOverlayGroup.bringToFront(); } catch (e) {}
+      // Exactly one ✓ per dropdown list entry (if that toggle is on)
+      if (publicLandTypeVisible.listPins) drawListedHuntCheckmarks();
+      try {
+        if (adcnrOpenPinGroup) adcnrOpenPinGroup.bringToFront();
+      } catch (e2) {}
+      updatePublicLandToggleUI();
     }
 
-    /** Keep map overlay in sync with weapon/date when toggle is on. */
-    function refreshPublicLandsOverlayIfOn() {
-      var chk = document.getElementById('toggle-adcnr-lands-chk');
-      if (!chk || !chk.checked) return;
-      if (!map || !adcnrOverlayGroup) {
-        // Map not ready yet - ensureMap + load will draw
-        if (selectedWeapon) {
-          ensureMap().then(function() {
-            loadAdcnrLands(false).then(function() {
-              drawAdcnrLandsOverlay();
-              updateAdcnrLegendVisibility();
-            }).catch(function() {});
-          });
-        }
-        return;
+    function isPublicLandsOverlayWanted() {
+      // True if any fill type or list pins should show
+      return anyPublicLandTypeVisible();
+    }
+
+    /**
+     * Reliable path to show public-land polygons when any type toggle is ON.
+     * Safe to call many times: map not ready, data loading, or already drawn.
+     */
+    function syncPublicLandsOverlay(opts) {
+      opts = opts || {};
+      if (!isPublicLandsOverlayWanted() && !opts.forceOn) {
+        if (adcnrOverlayGroup) adcnrOverlayGroup.clearLayers();
+        if (adcnrOpenPinGroup) adcnrOpenPinGroup.clearLayers();
+        updatePublicLandToggleUI();
+        return Promise.resolve(false);
       }
-      if (adcnrLandsData) drawAdcnrLandsOverlay();
-      else {
-        loadAdcnrLands(false).then(function() {
+      return ensureMap().then(function(m) {
+        if (!m) return false;
+        if (!adcnrOverlayGroup) adcnrOverlayGroup = L.layerGroup().addTo(map);
+        else if (!map.hasLayer(adcnrOverlayGroup)) adcnrOverlayGroup.addTo(map);
+        if (!adcnrOpenPinGroup) adcnrOpenPinGroup = L.layerGroup().addTo(map);
+        else if (!map.hasLayer(adcnrOpenPinGroup)) adcnrOpenPinGroup.addTo(map);
+
+        var showLoading = opts.showLoading !== false && anyPublicLandFillVisible();
+        if (showLoading) setAdcnrToggleLoading(true);
+        return loadAdcnrLands(!!opts.forceRefresh).then(function() {
           drawAdcnrLandsOverlay();
-          updateAdcnrLegendVisibility();
-        }).catch(function() {});
-      }
+          if (showLoading) setAdcnrToggleLoading(false);
+          updatePublicLandToggleUI();
+          try { map.invalidateSize(false); } catch (invErr) {}
+          return true;
+        }).catch(function(err) {
+          if (showLoading) setAdcnrToggleLoading(false);
+          console.warn('Public lands overlay sync failed:', err);
+          updatePublicLandToggleUI();
+          return false;
+        });
+      });
+    }
+    window.syncPublicLandsOverlay = syncPublicLandsOverlay;
+
+    /** Keep map overlay in sync with weapon/date when any type is on. */
+    function refreshPublicLandsOverlayIfOn() {
+      if (!isPublicLandsOverlayWanted()) return;
+      syncPublicLandsOverlay({ showLoading: !adcnrLandsData && anyPublicLandFillVisible() });
     }
 
-    let adcnrLegendDismissed = false; // user closed legend with X in this session
+    let adcnrLegendDismissed = false; // legacy no-op flag
 
     function isMapFullscreen() {
       var w = document.querySelector('.map-wrapper');
@@ -3631,21 +4265,22 @@
       L.DomEvent.disableClickPropagation(btn);
       L.DomEvent.on(btn, 'click', function(ev) {
         L.DomEvent.stop(ev);
-        selectPublicLandWeather(layer, attrs, lat, lng, { closePopup: true, showOverlay: isMapFullscreen() });
+        // Intentional weather button: allow scroll to dashboard on phone
+        selectPublicLandWeather(layer, attrs, lat, lng, {
+          closePopup: true,
+          showOverlay: isMapFullscreen(),
+          skipScroll: false
+        });
       });
     }
 
     function updateAdcnrLegendVisibility() {
-      var legend = document.getElementById('adcnr-layer-legend');
-      var chk = document.getElementById('toggle-adcnr-lands-chk');
-      if (!legend) return;
-      var show = !!(chk && chk.checked && isMapFullscreen() && !adcnrLegendDismissed);
-      legend.classList.toggle('active', show);
+      // Legend replaced by color toggles — keep master checkbox in sync
+      updatePublicLandToggleUI();
     }
 
     function dismissAdcnrLegend() {
       adcnrLegendDismissed = true;
-      updateAdcnrLegendVisibility();
     }
     window.dismissAdcnrLegend = dismissAdcnrLegend;
 
@@ -3653,47 +4288,464 @@
       var label = document.getElementById('toggle-adcnr-label');
       var chk = document.getElementById('toggle-adcnr-lands-chk');
       if (label) label.classList.toggle('loading', !!isLoading);
-      if (chk) chk.disabled = !!isLoading;
+      // Don't disable master chk (hidden); dim public-land buttons while loading
+      var panel = document.getElementById('pl-toggles');
+      if (panel) panel.style.opacity = isLoading ? '0.65' : '';
+      if (chk) { /* master is driven by toggles */ }
     }
 
     function toggleAdcnrLandsOverlay() {
       var chk = document.getElementById('toggle-adcnr-lands-chk');
-      var on = chk && chk.checked;
-      if (!on) {
-        if (adcnrOverlayGroup) adcnrOverlayGroup.clearLayers();
-        // Keep ✓ for Available Hunts list only (not all open GIS units)
-        drawListedHuntCheckmarks();
-        updateAdcnrLegendVisibility();
-        return;
-      }
-      // Re-show legend when overlay is turned back on (if fullscreen)
-      adcnrLegendDismissed = false;
-      updateAdcnrLegendVisibility();
-      ensureMap().then(function(m) {
-        if (!m) {
-          if (chk) chk.checked = false;
-          updateAdcnrLegendVisibility();
-          return;
-        }
-        if (!adcnrOverlayGroup) adcnrOverlayGroup = L.layerGroup().addTo(map);
-        else if (!map.hasLayer(adcnrOverlayGroup)) adcnrOverlayGroup.addTo(map);
-        if (!adcnrOpenPinGroup) adcnrOpenPinGroup = L.layerGroup().addTo(map);
-        else if (!map.hasLayer(adcnrOpenPinGroup)) adcnrOpenPinGroup.addTo(map);
-        setAdcnrToggleLoading(true);
-        updateAdcnrCacheStatus(adcnrLandsData && adcnrLandsData.timestamp, 'loading…');
-        loadAdcnrLands(false).then(function() {
-          drawAdcnrLandsOverlay();
-          setAdcnrToggleLoading(false);
-          updateAdcnrLegendVisibility();
-        }).catch(function() {
-          setAdcnrToggleLoading(false);
-          if (chk) chk.checked = false;
-          updateAdcnrLegendVisibility();
-          alert('Could not load public land boundaries. Check your connection and try again.');
-        });
-      });
+      var on = chk ? !!chk.checked : anyPublicLandTypeVisible();
+      setAllPublicLandTypes(on);
     }
     window.toggleAdcnrLandsOverlay = toggleAdcnrLandsOverlay;
+
+    /**
+     * Clean Alabama state outline [lat, lng] — map mask + zone clipping.
+     * NW (MS/TN) → east TN → south GA/Chattahoochee → west FL → north MS.
+     */
+    var AL_STATE_RING = [
+      [34.995, -88.200], [34.995, -87.800], [34.995, -87.200], [34.995, -86.600],
+      [34.995, -86.000], [34.995, -85.605],
+      [34.850, -85.540], [34.500, -85.520], [34.100, -85.470], [33.700, -85.400],
+      [33.400, -85.340], [33.100, -85.250], [32.800, -85.120], [32.500, -85.000],
+      [32.250, -84.940], [32.000, -85.000], [31.600, -85.000], [31.200, -85.000],
+      [30.997, -85.002],
+      [30.997, -85.400], [30.997, -85.900], [30.997, -86.400], [30.900, -87.000],
+      [30.600, -87.400], [30.350, -87.550], [30.250, -87.600],
+      [30.220, -88.050], [30.280, -88.300], [30.400, -88.400],
+      [30.800, -88.440], [31.200, -88.455], [31.700, -88.450], [32.200, -88.440],
+      [32.407, -88.417], [32.900, -88.390], [33.400, -88.360], [33.900, -88.300],
+      [34.400, -88.250], [34.750, -88.220], [34.995, -88.200]
+    ];
+
+    /**
+     * Per-zone visibility — all OFF at launch. User turns on only what they need.
+     * Master checkbox #toggle-state-zones-chk is kept in sync (any zone on = checked).
+     */
+    var deerZoneVisible = { A: false, B: false, C: false, D: false, E: false };
+
+    /**
+     * Deer zones from Outdoor Alabama / Ala. Admin. Code legal boundary routes.
+     * Vertices follow named highways/rivers in the regs (approx. map-grade waypoints).
+     * Always confirm current Outdoor Alabama text before hunting.
+     * Draw order: A → B → C → E → D
+     */
+    var AL_DEER_ZONE_DEFS = [
+      {
+        zone: 'A',
+        name: 'Zone A',
+        desc: 'Default statewide zone. Everything in Alabama not in Zones B, C, D, or E (includes Houston Co.).',
+        color: '#8a8a8a',
+        fillOpacity: 0.15,
+        weight: 1.25,
+        label: [33.25, -86.90],
+        rings: [AL_STATE_RING.slice()]
+      },
+      {
+        zone: 'B',
+        name: 'Zone B',
+        desc: 'Legal: south/west of US-80 → Selma → AL River → I-65 → I-85 → AL-169 → US-431 → Russell roads → US-82 → Chattahoochee → AL-10 → Henry roads → US-431 → Ross Clark → US-231 → FL line, then west to MS and north to US-80. Houston Co. is Zone A (east of US-231).',
+        color: '#e6d29a',
+        fillOpacity: 0.24,
+        weight: 1.6,
+        label: [31.45, -87.30],
+        // Dense northern legal line + state border close (FL→MS→US-80)
+        rings: [[
+          // MS line @ US Hwy 80 (Sumter Co.)
+          [32.4075, -88.4170],
+          [32.4300, -88.2000],
+          [32.4700, -88.0000],
+          [32.5100, -87.8380], // Demopolis / US-80
+          [32.4900, -87.5000],
+          [32.4500, -87.2500],
+          [32.4070, -87.0210], // Selma US-80
+          [32.4050, -86.9500], // US-80 Bypass → AL River
+          [32.4000, -86.8000],
+          [32.3950, -86.6000],
+          [32.3850, -86.4500],
+          [32.3750, -86.3500], // AL River toward I-65
+          [32.3600, -86.3200],
+          [32.3430, -86.3090], // I-65 / I-85 interchange (Montgomery)
+          [32.3800, -86.1500],
+          [32.4300, -85.9500],
+          [32.4800, -85.7000],
+          [32.5200, -85.5500],
+          [32.5480, -85.4470], // I-85 Exit 60 — AL Hwy 169 (Lee Co.)
+          [32.5200, -85.4000],
+          [32.4900, -85.3700],
+          [32.4600, -85.3500], // AL-169 → US-431 / AL-1
+          [32.4000, -85.3200],
+          [32.3400, -85.2900], // US-431 south toward AL-26
+          [32.3000, -85.2700],
+          [32.2600, -85.2900], // AL-26 west (Russell)
+          [32.2400, -85.3400],
+          [32.2200, -85.3800], // Russell CR 65 area
+          [32.1800, -85.3700],
+          [32.1400, -85.3500], // CR 4 / CR 49 corridor
+          [32.0800, -85.3200],
+          [32.0200, -85.2800],
+          [31.9600, -85.2200],
+          [31.8910, -85.1750], // approach US-82 (west of Eufaula Zone E)
+          [31.8910, -85.1200],
+          [31.8910, -85.0550], // US-82 @ Chattahoochee River
+          [31.8200, -85.0550],
+          [31.7500, -85.0550],
+          [31.7050, -85.0550], // Chattahoochee @ AL Hwy 10
+          [31.7000, -85.1500],
+          [31.6900, -85.2500], // AL-10 west (Henry)
+          [31.6500, -85.3200],
+          [31.5800, -85.3600], // Henry CR 57 / 99 corridor
+          [31.4800, -85.3800],
+          [31.3800, -85.3900],
+          [31.3000, -85.3900], // US-431 toward Dothan
+          [31.2500, -85.3900],
+          [31.2230, -85.3900], // Ross Clark Circle (Dothan)
+          [31.2150, -85.3700],
+          [31.2100, -85.3500], // Ross Clark → US-231
+          [31.1500, -85.4000],
+          [31.0800, -85.4500],
+          [31.0010, -85.5080], // US-231 @ Alabama/Florida line
+          // FL border west → MS border north → close at US-80
+          [30.9970, -85.7000],
+          [30.9970, -86.1000],
+          [30.9970, -86.5000],
+          [30.9970, -86.9000],
+          [30.8500, -87.2000],
+          [30.5500, -87.4500],
+          [30.3200, -87.5500],
+          [30.2500, -87.6000],
+          [30.2200, -88.0000],
+          [30.2800, -88.2800],
+          [30.4000, -88.4000],
+          [30.8000, -88.4400],
+          [31.2000, -88.4550],
+          [31.7000, -88.4500],
+          [32.1000, -88.4400],
+          [32.4075, -88.4170]
+        ]]
+      },
+      {
+        zone: 'C',
+        name: 'Zone C',
+        desc: 'Legal N-central band in Blount, Cullman, Etowah, Jefferson, Lawrence, Morgan, Marshall, St. Clair, Winston (and described Marion/Walker fringe). Excludes Zone D pocket.',
+        color: '#e0913c',
+        fillOpacity: 0.24,
+        weight: 1.75,
+        label: [33.90, -86.55],
+        // Digitized to official map orange region + legal county set (inside AL only)
+        rings: [[
+          // West/NW: Colbert–Lawrence & Franklin–Lawrence lines (Colbert/Franklin stay A)
+          [34.705, -87.575],
+          [34.720, -87.350],
+          [34.715, -87.100],
+          [34.700, -86.850],
+          [34.680, -86.600], // N Morgan (S of Limestone/Madison = A)
+          [34.640, -86.400],
+          [34.560, -86.200], // Morgan / Marshall
+          [34.450, -86.050], // Guntersville area (S of Jackson = A)
+          [34.320, -85.920],
+          [34.200, -85.820], // Etowah / Gadsden
+          [34.080, -85.770],
+          [33.980, -85.780], // Etowah S — stop before Calhoun Zone E
+          [33.880, -85.850],
+          [33.750, -85.950], // St. Clair E
+          [33.600, -86.100],
+          [33.480, -86.280],
+          [33.400, -86.480], // Jefferson SE (Shelby = A)
+          [33.350, -86.700],
+          [33.340, -86.950], // S Birmingham
+          [33.380, -87.150],
+          [33.450, -87.320], // Jefferson / Walker edge (Walker bulk = A)
+          [33.550, -87.420],
+          [33.700, -87.500], // Winston S
+          [33.850, -87.560],
+          [34.050, -87.590], // Winston W / Lawrence (Marion bulk = A)
+          [34.250, -87.590],
+          [34.450, -87.580],
+          [34.600, -87.575],
+          [34.705, -87.575]
+        ]]
+      },
+      {
+        zone: 'E',
+        name: 'Zone E',
+        desc: 'Legal: (1) Calhoun/Cherokee/Cleburne — I-20 & AL-21 → AL-9 Piedmont → US-278 → GA line → I-20. (2) Barbour/Russell — US-82 & US-431 Eufaula → US-431 → US-280 → Chattahoochee → US-82.',
+        color: '#9a8b3a',
+        fillOpacity: 0.26,
+        weight: 1.6,
+        label: [33.78, -85.55],
+        label2: [32.15, -85.05],
+        rings: [
+          // NE pocket — I-20 / AL-21 / AL-9 / US-278 / GA / I-20
+          [
+            [33.596, -85.854], // I-20 & AL Hwy 21 (Oxford/Anniston)
+            [33.700, -85.820],
+            [33.800, -85.780],
+            [33.900, -85.700],
+            [33.924, -85.611], // Piedmont — AL-21 / AL-9
+            [33.970, -85.580],
+            [34.013, -85.567], // AL-9 / US-278
+            [34.014, -85.500],
+            [34.014, -85.419], // US-278 @ GA line
+            [33.900, -85.350],
+            [33.750, -85.300],
+            [33.600, -85.280],
+            [33.552, -85.283], // I-20 @ GA line
+            [33.560, -85.450],
+            [33.570, -85.650],
+            [33.580, -85.780],
+            [33.596, -85.854]
+          ],
+          // SE pocket — Eufaula / Phenix City (US-431 – US-280 – river – US-82)
+          [
+            [31.891, -85.145], // US-82 & US-431 Eufaula
+            [32.050, -85.110],
+            [32.200, -85.080],
+            [32.350, -85.055],
+            [32.470, -85.036], // US-431 / US-280 (Phenix City)
+            [32.470, -84.995],
+            [32.470, -84.987], // US-280 @ Chattahoochee
+            [32.300, -84.995],
+            [32.100, -85.020],
+            [31.891, -85.055], // Chattahoochee @ US-82
+            [31.891, -85.100],
+            [31.891, -85.145]
+          ]
+        ]
+      },
+      {
+        zone: 'D',
+        name: 'Zone D',
+        desc: 'Legal: Moulton (AL-157/24) → AL-157 → Cullman CR-1114 → US-278 Jones Chapel → Helicon Rd → Arley CR-41 → Sipsey Fork → Winston/Walker → AL-5 → Natural Bridge AL-13 → Haleyville AL-195 → CR-93 → Franklin line → AL-24 back to Moulton.',
+        color: '#7dcf9a',
+        fillOpacity: 0.28,
+        weight: 1.8,
+        label: [34.18, -87.40],
+        rings: [[
+          [34.482, -87.293], // Moulton — AL-24 & AL-157
+          [34.420, -87.270],
+          [34.340, -87.250],
+          [34.250, -87.230],
+          [34.160, -87.200], // toward Jones Chapel / US-278
+          [34.100, -87.220],
+          [34.050, -87.280], // Helicon Rd area
+          [34.000, -87.350],
+          [33.960, -87.420], // Arley / CR-41
+          [33.920, -87.500],
+          [33.900, -87.560], // Sipsey Fork / Winston–Walker
+          [33.930, -87.620],
+          [34.000, -87.650],
+          [34.052, -87.603], // Natural Bridge — AL-5 & AL-13
+          [34.120, -87.620],
+          [34.227, -87.621], // Haleyville — AL-13 & AL-195
+          [34.300, -87.580],
+          [34.360, -87.520], // CR-93 / Franklin line
+          [34.430, -87.450],
+          [34.480, -87.380], // AL-24 east to Moulton
+          [34.482, -87.293]
+        ]]
+      }
+    ];
+
+    /** Ray-cast point-in-ring. ring = [[lat,lng], ...] */
+    function pointInLatLngRing(lat, lng, ring) {
+      if (!ring || ring.length < 3) return false;
+      var inside = false;
+      for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        var yi = ring[i][0], xi = ring[i][1];
+        var yj = ring[j][0], xj = ring[j][1];
+        var intersect = ((yi > lat) !== (yj > lat)) &&
+          (lng < (xj - xi) * (lat - yi) / ((yj - yi) || 1e-12) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    function isInsideAlabama(lat, lng) {
+      return pointInLatLngRing(lat, lng, AL_STATE_RING);
+    }
+
+    /** Keep vertices inside AL (snap strays to outline). */
+    function clampRingToAlabama(ring) {
+      if (!ring || ring.length < 3) return ring;
+      var out = [];
+      var last = null;
+      for (var i = 0; i < ring.length; i++) {
+        var lat = ring[i][0], lng = ring[i][1];
+        if (!isInsideAlabama(lat, lng)) {
+          var best = AL_STATE_RING[0], bestD = Infinity;
+          for (var s = 0; s < AL_STATE_RING.length; s++) {
+            var dlat = AL_STATE_RING[s][0] - lat;
+            var dlng = AL_STATE_RING[s][1] - lng;
+            var d = dlat * dlat + dlng * dlng;
+            if (d < bestD) { bestD = d; best = AL_STATE_RING[s]; }
+          }
+          lat = best[0];
+          lng = best[1];
+        }
+        if (last && Math.abs(last[0] - lat) < 1e-7 && Math.abs(last[1] - lng) < 1e-7) continue;
+        last = [lat, lng];
+        out.push(last);
+      }
+      if (out.length >= 3) {
+        var f = out[0], e = out[out.length - 1];
+        if (Math.abs(f[0] - e[0]) > 1e-7 || Math.abs(f[1] - e[1]) > 1e-7) out.push([f[0], f[1]]);
+      }
+      return out.length >= 4 ? out : ring;
+    }
+
+    /** Zone letter from polygons (D → E → C → B → A). */
+    function detectDeerZoneLetter(lat, lng) {
+      if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) return 'A';
+      if (!isInsideAlabama(lat, lng)) return 'A';
+      var order = ['D', 'E', 'C', 'B'];
+      for (var o = 0; o < order.length; o++) {
+        var letter = order[o];
+        for (var zi = 0; zi < AL_DEER_ZONE_DEFS.length; zi++) {
+          var z = AL_DEER_ZONE_DEFS[zi];
+          if (z.zone !== letter) continue;
+          for (var ri = 0; ri < (z.rings || []).length; ri++) {
+            if (pointInLatLngRing(lat, lng, z.rings[ri])) return letter;
+          }
+        }
+      }
+      return 'A';
+    }
+
+    function anyDeerZoneVisible() {
+      return !!(deerZoneVisible.A || deerZoneVisible.B || deerZoneVisible.C || deerZoneVisible.D || deerZoneVisible.E);
+    }
+
+    function isStateZonesOverlayWanted() {
+      return anyDeerZoneVisible();
+    }
+
+    function syncDeerZoneMasterCheckbox() {
+      var chk = document.getElementById('toggle-state-zones-chk');
+      if (chk) chk.checked = anyDeerZoneVisible();
+    }
+
+    function updateDeerZoneToggleUI() {
+      ['A', 'B', 'C', 'D', 'E'].forEach(function(letter) {
+        var btn = document.getElementById('zone-btn-' + letter);
+        if (!btn) return;
+        var on = !!deerZoneVisible[letter];
+        btn.classList.toggle('on', on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        var sub = btn.querySelector('.zt-sub');
+        if (sub) sub.textContent = on ? 'on' : 'off';
+      });
+      syncDeerZoneMasterCheckbox();
+    }
+
+    function drawStateZonesOverlay() {
+      if (!map) return;
+      if (!stateZonesGroup) {
+        stateZonesGroup = L.layerGroup().addTo(map);
+      } else if (!map.hasLayer(stateZonesGroup)) {
+        stateZonesGroup.addTo(map);
+      }
+      stateZonesGroup.clearLayers();
+
+      if (!anyDeerZoneVisible()) {
+        updateDeerZoneToggleUI();
+        return;
+      }
+
+      // A → B → C → E → D so special zones sit on top of A/C
+      AL_DEER_ZONE_DEFS.forEach(function(z) {
+        if (!deerZoneVisible[z.zone]) return;
+        (z.rings || []).forEach(function(ring) {
+          if (!ring || ring.length < 3) return;
+          var safeRing = (z.zone === 'A') ? AL_STATE_RING.slice() : clampRingToAlabama(ring);
+          if (!safeRing || safeRing.length < 3) return;
+          // Close ring for Leaflet
+          var closed = safeRing.slice();
+          var a0 = closed[0], aN = closed[closed.length - 1];
+          if (a0[0] !== aN[0] || a0[1] !== aN[1]) closed.push([a0[0], a0[1]]);
+          var poly = L.polygon(closed, {
+            color: z.color,
+            weight: z.weight != null ? z.weight : 1.5,
+            opacity: 0.9,
+            fillColor: z.color,
+            fillOpacity: z.fillOpacity != null ? z.fillOpacity : 0.18,
+            interactive: true,
+            bubblingMouseEvents: false,
+            className: 'state-zone-poly zone-' + z.zone,
+            smoothFactor: 1.15
+          });
+          poly.bindPopup(
+            '<strong style="color:' + z.color + ';">Deer Season ' + z.name + '</strong>' +
+            '<br><span style="font-size:12px;color:#c5d0be;">' + (z.desc || '') + '</span>' +
+            '<br><span style="font-size:10px;color:#8d9c84;">Boundary routes from Outdoor Alabama legal text · confirm current regs before hunting</span>'
+          );
+          stateZonesGroup.addLayer(poly);
+        });
+
+        function addZoneLabel(latlng, letter) {
+          if (!latlng || !isInsideAlabama(latlng[0], latlng[1])) return;
+          stateZonesGroup.addLayer(L.marker(latlng, {
+            interactive: false,
+            keyboard: false,
+            icon: L.divIcon({
+              className: 'state-zone-label',
+              html: '<div class="sz-label" style="border-color:' + z.color + ';color:' + z.color + ';">' + letter + '</div>',
+              iconSize: [28, 28],
+              iconAnchor: [14, 14]
+            })
+          }));
+        }
+        if (z.label) addZoneLabel(z.label, z.zone);
+        if (z.label2) addZoneLabel(z.label2, z.zone);
+      });
+
+      try { stateZonesGroup.bringToBack(); } catch (e) {}
+      try {
+        if (adcnrOverlayGroup && map.hasLayer(adcnrOverlayGroup)) adcnrOverlayGroup.bringToFront();
+        if (adcnrOpenPinGroup && map.hasLayer(adcnrOpenPinGroup)) adcnrOpenPinGroup.bringToFront();
+      } catch (e2) {}
+      updateDeerZoneToggleUI();
+    }
+
+    function ensureStateZonesDrawn() {
+      return ensureMap().then(function(m) {
+        if (!m) return false;
+        if (!stateZonesGroup) stateZonesGroup = L.layerGroup().addTo(map);
+        else if (!map.hasLayer(stateZonesGroup)) stateZonesGroup.addTo(map);
+        drawStateZonesOverlay();
+        return true;
+      });
+    }
+
+    function toggleDeerZone(letter) {
+      letter = String(letter || '').toUpperCase();
+      if (!deerZoneVisible.hasOwnProperty(letter)) return;
+      deerZoneVisible[letter] = !deerZoneVisible[letter];
+      updateDeerZoneToggleUI();
+      ensureStateZonesDrawn();
+    }
+    window.toggleDeerZone = toggleDeerZone;
+
+    function setAllDeerZones(on) {
+      on = !!on;
+      deerZoneVisible = { A: on, B: on, C: on, D: on, E: on };
+      updateDeerZoneToggleUI();
+      if (on) ensureStateZonesDrawn();
+      else if (stateZonesGroup) {
+        stateZonesGroup.clearLayers();
+      }
+    }
+    window.setAllDeerZones = setAllDeerZones;
+
+    /** Legacy: master toggle — All on / All off */
+    function toggleStateZonesOverlay() {
+      var chk = document.getElementById('toggle-state-zones-chk');
+      var on = chk ? !!chk.checked : anyDeerZoneVisible();
+      setAllDeerZones(on);
+    }
+    window.toggleStateZonesOverlay = toggleStateZonesOverlay;
 
     // ========== MAP (lazy Leaflet + single default basemap) ==========
     function loadLeaflet() {
@@ -3732,15 +4784,104 @@
       });
     }
 
+    // Basemap layers (switched from the Layers menu next to the compass — not Leaflet's top-right control)
+    let mapBasemaps = null; // { topo, street, satellite }
+    let activeBasemapKey = 'topo';
+
+    function setMapBasemap(key) {
+      if (!map || !mapBasemaps) return;
+      if (key !== 'topo' && key !== 'street' && key !== 'satellite') key = 'topo';
+      Object.keys(mapBasemaps).forEach(function(k) {
+        var layer = mapBasemaps[k];
+        if (!layer) return;
+        if (k === key) {
+          if (!map.hasLayer(layer)) map.addLayer(layer);
+        } else if (map.hasLayer(layer)) {
+          map.removeLayer(layer);
+        }
+      });
+      activeBasemapKey = key;
+      var topoRadio = document.getElementById('basemap-topo');
+      var streetRadio = document.getElementById('basemap-street');
+      var satRadio = document.getElementById('basemap-satellite');
+      if (topoRadio) topoRadio.checked = (key === 'topo');
+      if (streetRadio) streetRadio.checked = (key === 'street');
+      if (satRadio) satRadio.checked = (key === 'satellite');
+    }
+    window.setMapBasemap = setMapBasemap;
+
+    function wireMapLayersMenu() {
+      var menu = document.getElementById('map-layers-menu');
+      var btn = document.getElementById('map-layers-toggle-btn');
+      if (!menu || !btn || btn._wiredLayersMenu) return;
+      btn._wiredLayersMenu = true;
+
+      function setOpen(open) {
+        menu.classList.toggle('open', !!open);
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
+
+      btn.addEventListener('click', function(ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        setOpen(!menu.classList.contains('open'));
+      });
+
+      // Keep panel open while interacting with options
+      var panel = document.getElementById('map-layers-panel');
+      if (panel) {
+        panel.addEventListener('click', function(ev) { ev.stopPropagation(); });
+      }
+
+      // Click outside closes (touch-friendly; hover still works on desktop via CSS)
+      document.addEventListener('click', function(ev) {
+        if (!menu.classList.contains('open')) return;
+        if (menu.contains(ev.target)) return;
+        setOpen(false);
+      });
+
+      // Escape closes
+      document.addEventListener('keydown', function(ev) {
+        if (ev.key === 'Escape' && menu.classList.contains('open')) setOpen(false);
+      });
+    }
+    window.wireMapLayersMenu = wireMapLayersMenu;
+
     function initMap() {
       if (typeof L === 'undefined' || map) return;
-      // USGS topo is default; roads available as secondary basemap
-      var topo = L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16, attribution: 'USGS' });
-      var street = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap & CARTO', maxZoom: 20 });
-      map = L.map('leaflet-map', { center: [32.7794, -86.8287], zoom: 7, layers: [topo], maxBounds: [[24,-92.5],[37,-79.5]], maxBoundsViscosity: 1.0, minZoom: 6, preferCanvas: true });
-      L.control.layers({ 'USGS Topography': topo, 'Roads and Waterways': street }, null, { collapsed: true }).addTo(map);
+      // USGS topo default; street + satellite (Esri World Imagery — same basemap as ADCNR DCNR viewer)
+      var topo = L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 16,
+        attribution: 'USGS'
+      });
+      var street = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap & CARTO',
+        maxZoom: 20
+      });
+      // Esri World Imagery — high-def aerial (DCNR map uses basemap: "satellite")
+      // Alabama-only look comes from the existing dark state vignette / AL hole mask
+      var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        maxNativeZoom: 19,
+        attribution: 'Esri, Maxar, Earthstar Geographics, and the GIS User Community'
+      });
+      mapBasemaps = { topo: topo, street: street, satellite: satellite };
+      activeBasemapKey = 'topo';
+      map = L.map('leaflet-map', {
+        center: [32.7794, -86.8287],
+        zoom: 7,
+        layers: [topo],
+        maxBounds: [[24, -92.5], [37, -79.5]],
+        maxBoundsViscosity: 1.0,
+        minZoom: 6,
+        preferCanvas: true
+      });
+      // Basemap + overlay toggles live in #map-layers-menu next to the compass (not Leaflet layers control)
+      wireMapLayersMenu();
+      setMapBasemap(activeBasemapKey);
 
-      // ADCNR polygons first (under markers so pins stay clickable)
+      // Zone tint under public lands; ADCNR polygons under markers so pins stay clickable
+      stateZonesGroup = L.layerGroup().addTo(map);
       adcnrOverlayGroup = L.layerGroup().addTo(map);
       adcnrOpenPinGroup = L.layerGroup().addTo(map); // green ✓ pins for open units
       mapMarkerGroup = L.layerGroup().addTo(map);
@@ -3749,12 +4890,14 @@
       huntMarkerGroup = L.layerGroup().addTo(map);
       pinMarkerGroup = L.layerGroup().addTo(map);
 
-      var alBoundary = [
-        [35.008, -88.200], [35.008, -85.605], [34.500, -85.500], [32.300, -84.892],
-        [32.000, -85.000], [30.250, -85.190], [31.000, -85.190], [31.000, -87.600],
-        [30.220, -87.600], [30.220, -88.400], [31.000, -88.473], [32.000, -88.450],
-        [35.008, -88.200]
-      ];
+      // Same outline as zone clipping so fills never spill past the state line
+      var alBoundary = AL_STATE_RING.slice();
+      if (alBoundary.length && (
+        alBoundary[0][0] !== alBoundary[alBoundary.length - 1][0] ||
+        alBoundary[0][1] !== alBoundary[alBoundary.length - 1][1]
+      )) {
+        alBoundary.push([alBoundary[0][0], alBoundary[0][1]]);
+      }
       var outer = [[-90, -180], [-90, 180], [90, 180], [90, -180], [-90, -180]];
       L.polygon([outer, alBoundary], { color: '#0a0c08', weight: 2, fillColor: '#020302', fillOpacity: 0.88, interactive: false }).addTo(map);
       L.polyline(alBoundary, { color: '#e59a18', weight: 2, opacity: 0.7, interactive: false }).addTo(map);
@@ -3765,13 +4908,30 @@
       fetchRealTimeGauges(false);
       loadTvaLands(); // silent preload - never drawn on map
 
-      // Public Lands Overlay defaults ON - load polygons open for selected weapon/date
-      var adcnrChk = document.getElementById('toggle-adcnr-lands-chk');
-      if (adcnrChk && adcnrChk.checked && selectedWeapon) {
-        loadAdcnrLands(false).then(function() {
-          drawAdcnrLandsOverlay();
-          updateAdcnrLegendVisibility();
-        }).catch(function() {});
+      // Public Lands Overlay defaults ON — always paint when checked (weapon not required)
+      if (isPublicLandsOverlayWanted()) {
+        // Defer one tick so the map container has size, then load/draw
+        setTimeout(function() {
+          syncPublicLandsOverlay({ showLoading: !adcnrLandsData });
+        }, 0);
+        // Second pass after layout/GPS view settles (fixes "checkbox on but empty" first open)
+        setTimeout(function() {
+          if (isPublicLandsOverlayWanted() && map && adcnrLandsData) {
+            if (!adcnrOverlayGroup || !adcnrOverlayGroup.getLayers().length) {
+              drawAdcnrLandsOverlay();
+            }
+          } else if (isPublicLandsOverlayWanted()) {
+            syncPublicLandsOverlay({ showLoading: false });
+          }
+        }, 700);
+      }
+      // Deer zones default all ON — draw as soon as map is ready
+      updateDeerZoneToggleUI();
+      if (anyDeerZoneVisible()) {
+        setTimeout(function() { drawStateZonesOverlay(); }, 50);
+        setTimeout(function() {
+          if (anyDeerZoneVisible()) drawStateZonesOverlay();
+        }, 500);
       }
 
       if (userLat != null && userLng != null) {
@@ -3787,9 +4947,29 @@
         }
         // Free map click (not on public-land polygon) - clear unit context
         lastClickPublicLand = null;
-        // Place / move a clean map dot - no zone or lat/long UI
-        placeOrMoveMapDot(e.latlng);
+        // Place / move a clean map dot - on phone skip auto-weather (stays on map)
+        placeOrMoveMapDot(e.latlng, { skipWeather: isPhoneLayout() });
       });
+
+      // After basemap finishes, re-sync overlay (first open race fix)
+      map.whenReady(function() {
+        if (isPublicLandsOverlayWanted()) {
+          syncPublicLandsOverlay({ showLoading: false });
+        }
+      });
+
+      // Fix tile / container sizing on phone (map often starts with wrong width)
+      setTimeout(function() {
+        try {
+          if (map) map.invalidateSize(true);
+        } catch (invErr) {}
+      }, 200);
+      setTimeout(function() {
+        try {
+          if (map) map.invalidateSize(true);
+          if (isPublicLandsOverlayWanted() && adcnrLandsData) drawAdcnrLandsOverlay();
+        } catch (invErr2) {}
+      }, 600);
     }
 
     // Inline onclick is reliable inside Leaflet popups (DOM rebuilds strip JS listeners)
@@ -3839,8 +5019,13 @@
         if (act === 'weather') {
           selectPublicLandWeather(pl.layer, pl.attrs || {}, lat, lng, {
             closePopup: true,
-            showOverlay: isMapFullscreen()
+            showOverlay: isMapFullscreen(),
+            skipScroll: false
           });
+          if (isPhoneLayout()) {
+            var dashPl = document.getElementById('dashboard-container');
+            if (dashPl) setTimeout(function() { dashPl.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150);
+          }
           return false;
         }
         if (act === 'regs') {
@@ -3862,9 +5047,14 @@
     }
     window.handleMapDotPublicLandAction = handleMapDotPublicLandAction;
 
-    /** Drop a clean accent dot on the map (no lat/long/zone). Click the dot for actions. */
-    function placeOrMoveMapDot(latlng) {
+    /**
+     * Drop a clean accent dot on the map (no lat/long/zone). Click the dot for actions.
+     * opts.skipWeather: place pin only (used on phone so the page does not jump to weather)
+     */
+    function placeOrMoveMapDot(latlng, opts) {
       if (!map || typeof L === 'undefined') return;
+      opts = opts || {};
+      var skipWeather = !!opts.skipWeather;
       clickLat = latlng.lat;
       clickLng = latlng.lng;
       lastClickTva = null;
@@ -3910,15 +5100,18 @@
         });
       }
 
-      // Always refresh weather + compass for this exact map click
+      // Desktop: refresh weather + compass for this map click.
+      // Phone: stay on the map — user taps "Get weather" on the orange dot when ready.
       var detected = detectBoundaryAndZone(clickLat, clickLng);
-      selectWeatherAtMapPoint(clickLat, clickLng, detected, null);
+      if (!skipWeather) {
+        selectWeatherAtMapPoint(clickLat, clickLng, detected, null);
+      }
 
       // Silent TVA lookup; if still on this spot, attach TVA note without blocking first weather paint
       queryTvaLand(clickLat, clickLng).then(function(tva) {
         if (clickLat !== latlng.lat || clickLng !== latlng.lng) return;
         lastClickTva = tva;
-        if (tva && selectedLocationId && String(selectedLocationId).indexOf('mapspot_') === 0) {
+        if (!skipWeather && tva && selectedLocationId && String(selectedLocationId).indexOf('mapspot_') === 0) {
           // Update TVA banner on dashboard if this map spot is still selected
           var title = document.getElementById('db-title');
           if (title && document.getElementById('db-content') &&
@@ -3939,9 +5132,17 @@
 
         if (act === 'weather') {
           ensureHuntContext();
-          selectWeatherAtMapPoint(clickLat, clickLng, detected, lastClickTva);
+          // Explicit "Get weather" from the orange-dot menu — OK to show dashboard
+          selectWeatherAtMapPoint(clickLat, clickLng, detected, lastClickTva, {
+            skipScroll: false,
+            showOverlay: isMapFullscreen()
+          });
           if (isMapFullscreen()) window._forceMapWeatherOverlay = true;
           if (map) map.closePopup();
+          if (isPhoneLayout()) {
+            var dashW = document.getElementById('dashboard-container');
+            if (dashW) setTimeout(function() { dashW.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150);
+          }
           return false;
         }
 
@@ -4396,6 +5597,15 @@
         document.body.setAttribute('data-layout', next);
       }
       window.__REG_SLAYER_IS_PHONE__ = phone;
+      // Leaflet often keeps a wrong tile width after layout mode changes
+      if (map) {
+        setTimeout(function() {
+          try { map.invalidateSize(true); } catch (e) {}
+        }, 80);
+        setTimeout(function() {
+          try { map.invalidateSize(true); } catch (e2) {}
+        }, 350);
+      }
       return next;
     }
     window.applyDeviceLayout = applyDeviceLayout;
@@ -4640,13 +5850,10 @@
       document.getElementById('step-3-section').classList.add('active');
       selectedLocationId = null; selectedSubsectionIndex = null;
       lastVisibleMarkerKey = '';
-      // Load public land list (ADCNR/TVA/federal) into location options; cache ~30 days
-      loadAdcnrLands(false).then(function() {
-        refreshPublicLandsOverlayIfOn();
-      }).catch(function() {});
+      // Load public land list + always (re)draw overlay if the checkbox is on
       ensureMap().then(function() {
         updateAvailableList();
-        refreshPublicLandsOverlayIfOn();
+        syncPublicLandsOverlay({ showLoading: !adcnrLandsData });
         var open = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand);
         if (open.length === 0 && currentLocationObj) {
           isShowingCurrentData = true;
@@ -4965,13 +6172,13 @@
         ensureMap().then(function() {
           updateMapMarkers(visible);
           drawPinsOnMap();
-          // Polygons + list-only checkmarks
-          if (adcnrLandsData && document.getElementById('toggle-adcnr-lands-chk') &&
-              document.getElementById('toggle-adcnr-lands-chk').checked) {
-            drawAdcnrLandsOverlay(); // ends with drawListedHuntCheckmarks()
-          } else {
-            // Overlay off: still show ✓ for list entries so distance filter is obvious
+          // Polygons + list-only checkmarks (respect per-type toggles)
+          if (adcnrLandsData && anyPublicLandFillVisible()) {
+            drawAdcnrLandsOverlay(); // ends with drawListedHuntCheckmarks if listPins on
+          } else if (publicLandTypeVisible.listPins) {
             drawListedHuntCheckmarks();
+          } else if (adcnrOpenPinGroup) {
+            adcnrOpenPinGroup.clearLayers();
           }
         });
       }
@@ -5072,12 +6279,14 @@
         window._forceMapWeatherOverlay = true;
       }
 
-      selectLocation(loc, rule);
+      selectLocation(loc, rule, { skipScroll: !!opts.skipScroll });
 
-      // Scroll dashboard into view on smaller layouts
-      var dash = document.getElementById('dashboard-container');
-      if (dash && window.innerWidth < 950) {
-        setTimeout(function() { dash.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150);
+      // Scroll to weather only for list picks on phone (not map taps)
+      if (!opts.skipScroll && isPhoneLayout()) {
+        var dash = document.getElementById('dashboard-container');
+        if (dash) {
+          setTimeout(function() { dash.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150);
+        }
       }
     }
     // Expose for any leftover inline handlers
@@ -5106,7 +6315,8 @@
     // Bump on each weather request so older in-flight fetches don't overwrite a newer map click
     var weatherRequestSeq = 0;
 
-    async function selectLocation(location, rule) {
+    async function selectLocation(location, rule, opts) {
+      opts = opts || {};
       selectedLocationId = location.id;
       selectedSubsectionIndex = null;
       document.querySelectorAll('.location-item').forEach(function(el) { el.classList.remove('selected'); });
@@ -5566,7 +6776,7 @@
         if (full && lastMapWind.wdir != null) {
           updateMapWindHud(lastMapWind.wspd, lastMapWind.wdir, lastMapWind.isCurrent);
         }
-        // Legend only appears in fullscreen (and only if overlay is on + not dismissed)
+        // Re-show public-lands key in Layers panel when entering fullscreen
         if (full) adcnrLegendDismissed = false;
         updateAdcnrLegendVisibility();
         setTimeout(function() {
@@ -5629,6 +6839,10 @@
       renderCalendar();
       setLand('Public');
       updateDistStatus();
+      // Layers menu (basemap + overlays) next to compass — wire before map loads
+      wireMapLayersMenu();
+      updatePublicLandToggleUI();
+      updateDeerZoneToggleUI();
       var _plannerResizeTimer = null;
       function onViewportChange() {
         clearTimeout(_plannerResizeTimer);
@@ -5646,8 +6860,12 @@
       document.addEventListener('keydown', function(ev) {
         if (ev.key === 'Escape' && standPlaceMode) cancelStandPlacement();
       });
-      // Prefetch public lands into cache/list (non-blocking)
-      loadAdcnrLands(false).catch(function() {});
+      // Prefetch public lands into cache/list; paint overlay once map exists if still checked
+      loadAdcnrLands(false).then(function() {
+        if (map && isPublicLandsOverlayWanted()) {
+          syncPublicLandsOverlay({ showLoading: false });
+        }
+      }).catch(function() {});
       // Prefetch GPS without loading the map stack
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function(pos) {
