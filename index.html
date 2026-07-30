@@ -3722,10 +3722,16 @@
           // Skip nested Forever Wild / tracts flagged as inside a WMA
           if (isForeverWildInWmaAttr(attrs)) return;
 
+          // Never list tracts GIS marks as non-huntable
+          if (explicitCanHuntFlag(attrs) === false) return;
+          // Park / preserve style names need explicit CanHunt=Yes
+          if (looksLikeNonHuntingPublicName(name) && explicitCanHuntFlag(attrs) !== true) return;
+
           if (layer.minAcres) {
             var acres0 = attrs.Acres != null ? attrs.Acres : 0;
-            var canHunt = attrs.CanHunt != null ? String(attrs.CanHunt).toLowerCase() : '';
-            var allow = acres0 >= layer.minAcres || canHunt === 'yes' || canHunt === 'y' || canHunt === 'true';
+            var ch = explicitCanHuntFlag(attrs);
+            // Prefer explicit hunt permission; otherwise keep acre threshold for generic tracts
+            var allow = ch === true || (ch !== false && acres0 >= layer.minAcres);
             if (!allow) return;
           }
 
@@ -3916,21 +3922,86 @@
       return attrName(attrs || {}, layer.nameFields || ['Name']) || '';
     }
 
-    /** Gate base eligibility: unit type known open to deer hunting (not weapon/date yet). */
+    /**
+     * Explicit GIS "can hunt" signal from Forever Wild / similar attributes.
+     * Returns: true | false | null (null = field missing / unknown — not affirmative).
+     */
+    function explicitCanHuntFlag(attrs) {
+      if (!attrs) return null;
+      var raw = attrs.CanHunt;
+      if (raw == null || raw === '') return null;
+      var s = String(raw).trim().toLowerCase();
+      if (!s || s === 'null' || s === 'n/a' || s === 'na' || s === 'unknown' || s === 'u') return null;
+      if (s === 'yes' || s === 'y' || s === 'true' || s === '1' || s === 'hunt' || s === 'huntable' || s === 'open') return true;
+      if (s === 'no' || s === 'n' || s === 'false' || s === '0' || s === 'closed' || s === 'prohibited') return false;
+      // Unexpected value — treat as unknown (do not highlight as huntable)
+      return null;
+    }
+
+    /**
+     * Names that are typically non-hunting conservation / park additions unless
+     * GIS explicitly says CanHunt=Yes (e.g. MSP Dughill West, state park tracts).
+     */
+    function looksLikeNonHuntingPublicName(name) {
+      if (!name) return false;
+      var n = String(name);
+      // Monte Sano / Oak Mountain / state park style Forever Wild additions
+      if (/\bmsp\b|\bomsp\b/i.test(n)) return true;
+      if (/state\s*park|\bsp\b[\s\-–—]|[\s\-–—]sp\b/i.test(n)) return true;
+      if (/nature\s*preserve|nature\s*center|botanical|arboretum/i.test(n)) return true;
+      if (/weeks\s*bay|ruffner\s*mountain|turkey\s*creek\s*nature/i.test(n)) return true;
+      if (/city\s*park|county\s*park|municipal/i.test(n)) return true;
+      return false;
+    }
+
+    /**
+     * Gate map highlighting: only show land we can affirm is huntable.
+     * Policy: if there is no legislation / GIS form saying you CAN hunt, do not highlight.
+     */
     function mayDrawHuntableFeature(layer, attrs) {
       if (!layer) return false;
       if (layer.drawOnMap === false) return false;
-      // USFS outlines are drawn separately (non-interactive); NPS stays off map
+      // NPS units almost never allow hunting
       if (layer.key === 'nps') return false;
-      if (layer.key === 'usfs') return true;
+
+      attrs = attrs || {};
       var name = featureDisplayName(layer, attrs);
+      var canHunt = explicitCanHuntFlag(attrs);
+
+      // Hard reject when GIS says No
+      if (canHunt === false) return false;
+
+      // Known non-huntable federal refuges
       if (isNonHuntableRefugeName(name)) return false;
-      // Federal refuges: whitelist only (excludes Bon Secour, Fern Cave, Sauta Cave, etc.)
+
+      // National forests: open under statewide/public rules (stalk / general forest) — keep outline
+      if (layer.key === 'usfs') return true;
+
+      // Federal refuges: whitelist only (must have deer-hunt profile / allow list)
       if (layer.key === 'nwr' || layer.typeLabel === 'NWR' || layer.typeLabel === 'Refuge') {
         return isHuntableDeerRefugeName(name);
       }
-      // Forever Wild is map-only click info and not a list destination; still require date/weapon check below
-      return true;
+
+      // Forever Wild: only highlight when CanHunt is explicitly Yes.
+      // MSP Dughill West Addition and similar park/preserve tracts have null CanHunt — hide them.
+      if (layer.key === 'foreverWild' || layer.typeLabel === 'Forever Wild') {
+        if (canHunt === true) return true;
+        // InWMA=Yes alone is not enough to highlight the FW tract as its own huntable unit
+        // (the parent WMA already shows). Require CanHunt=Yes for FW polygons.
+        return false;
+      }
+
+      // Park / preserve style names without affirmative CanHunt — do not highlight
+      if (looksLikeNonHuntingPublicName(name) && canHunt !== true) return false;
+
+      // WMA, SOA, PDHA, TVA: managed hunting programs / public recreation lands with known hunt use
+      // (still blocked above if CanHunt is explicitly No)
+      if (layer.key === 'wma' || layer.key === 'soa' || layer.key === 'pdha' || layer.key === 'tva') {
+        return true;
+      }
+
+      // Unknown layer type: only if GIS explicitly allows hunting
+      return canHunt === true;
     }
 
     /**
@@ -4083,8 +4154,8 @@
         if (!isPublicLandLayerKeyVisible(layer.key)) return;
         (layer.features || []).forEach(function(feat) {
           var attrs = feat.attributes || {};
-          // Forests: draw outline even though mayDrawHuntableFeature historically skipped list use
-          if (layer.key !== 'usfs' && !mayDrawHuntableFeature(layer, attrs)) return;
+          // Only draw polygons we can affirm are huntable (see mayDrawHuntableFeature)
+          if (!mayDrawHuntableFeature(layer, attrs)) return;
           var c = geometryCentroid(feat.geometry);
           if (!c || !isInAlabama(c.lat, c.lng)) return;
           var latlngs = esriRingsToLatLngs(feat.geometry);
@@ -5506,6 +5577,7 @@
             '<div class="mdm-title">Pin</div>' +
             '<div class="mdm-sub">' + escHtml(loc.name) + '</div>' +
             '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.selectSavedPin(\'' + safeId + '\');return false;">Get weather</button>' +
+            '<button type="button" class="mdm-btn share" onclick="event.preventDefault();event.stopPropagation();window.shareSavedPinLocation(\'' + safeId + '\');return false;">Share location</button>' +
             '<button type="button" class="mdm-btn danger" onclick="event.preventDefault();event.stopPropagation();window.deletePin(\'' + safeId + '\');return false;">Delete pin</button>' +
           '</div>';
         m.bindPopup(popupHtml, { className: 'saved-item-popup map-dot-popup', closeButton: true, autoPan: true, maxWidth: 280, closeOnClick: false });
