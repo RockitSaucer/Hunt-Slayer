@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Alabama Deer Hunting App v2.0</title>
+  <title>Alabama Deer Hunting App v2.1</title>
   <!-- Leaflet loaded on demand when Step 3 / map is first needed (faster first paint) -->
   <style>
     :root {
@@ -99,6 +99,32 @@
     .map-layer-legend .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: middle; border: 1px solid rgba(255,255,255,0.35); }
     .map-layer-legend a { color: var(--accent); }
     .current-data-banner { background: rgba(217,65,54,0.15); border: 1px solid var(--danger); color: var(--danger); font-weight: bold; font-size: 13px; padding: 8px 12px; border-radius: 6px; text-align: center; margin-bottom: 10px; display: none; }
+    #regs-modal { display: none; position: fixed; inset: 0; z-index: 100000; background: rgba(0,0,0,0.65); align-items: center; justify-content: center; padding: 16px; }
+    #regs-modal.active { display: flex; }
+    .regs-modal-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; max-width: 520px; width: 100%; max-height: min(85vh, 720px); overflow: auto; box-shadow: 0 12px 40px rgba(0,0,0,0.55); padding: 18px 18px 16px; color: var(--ink); }
+    .regs-modal-card h3 { margin: 0 0 4px; color: #fff; font-size: 17px; }
+    .regs-modal-jurisdiction { font-size: 11px; color: var(--accent); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+    .regs-modal-section { margin-top: 12px; }
+    .regs-modal-section h4 { margin: 0 0 6px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .regs-modal-card ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.45; }
+    .regs-modal-card li { margin-bottom: 6px; }
+    .regs-modal-card a { color: var(--accent); }
+    .regs-link-row { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+    .regs-link-btn { display: block; text-align: center; background: var(--panel-light); border: 1px solid var(--border); color: var(--ink); text-decoration: none; border-radius: 8px; padding: 9px 12px; font-size: 12px; font-weight: 600; }
+    .regs-link-btn:hover { border-color: var(--accent); color: #fff; }
+    .regs-link-btn.primary { background: rgba(229,154,24,0.15); border-color: var(--accent); color: var(--accent); }
+    .regs-disclaimer { font-size: 11px; color: var(--muted); margin-top: 12px; line-height: 1.4; }
+    #regs-modal-closed-banner {
+      display: none; margin: 12px 0 4px; padding: 14px 12px; border-radius: 8px;
+      background: rgba(217, 65, 54, 0.18); border: 2px solid var(--danger);
+      color: #ff6b5e; font-size: 18px; font-weight: 900; text-align: center;
+      letter-spacing: 0.02em; line-height: 1.3; text-transform: uppercase;
+    }
+    #regs-modal-closed-banner.active { display: block; }
+    #regs-modal-closed-detail {
+      display: none; margin: 0 0 8px; font-size: 12px; color: #f0a8a2; text-align: center; line-height: 1.4;
+    }
+    #regs-modal-closed-detail.active { display: block; }
     .tva-note { display: none; margin-top: 8px; padding: 8px 10px; border-radius: 6px; border: 1px solid #5b8def; background: rgba(52,152,219,0.12); font-size: 12px; color: #cfe4f8; line-height: 1.4; }
     .tva-note.active { display: block; }
     .tva-note strong { color: #7ec8ff; }
@@ -108,10 +134,10 @@
 <body>
   <header>
     <div>
-      <h1>Southeastern Deer Season & Scent Planner (v2.0)</h1>
+      <h1>Southeastern Deer Season & Scent Planner (v2.1)</h1>
       <p>Alabama public and private land boundaries, USGS water level gauges, topographic terrain, and microclimate wind matrices.</p>
       <p style="font-size:12px; margin-top:6px;">
-        <span class="version-badge">v2.0 Efficiency</span>
+        <span class="version-badge">v2.1</span>
         <span class="version-badge">Ruleset: 2026-2027 Season</span>
         <a href="https://waterdata.usgs.gov/state/Alabama/" target="_blank">USGS Water Data</a> |
         <a href="https://www.outdooralabama.com/seasons-and-bag-limits/deer-season" target="_blank">Alabama Outdoor Regulations</a> |
@@ -120,6 +146,34 @@
       </p>
     </div>
   </header>
+
+  <!-- Deer regulations detail panel (opened from map overlay Details) -->
+  <div id="regs-modal" onclick="if(event.target===this)closeDeerRegsPanel()">
+    <div class="regs-modal-card" role="dialog" aria-modal="true" aria-labelledby="regs-modal-title">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+        <div>
+          <h3 id="regs-modal-title">Deer hunting regulations</h3>
+          <div class="regs-modal-jurisdiction" id="regs-modal-jurisdiction">—</div>
+        </div>
+        <button type="button" onclick="closeDeerRegsPanel()" title="Close" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;font-weight:bold;line-height:1;padding:0 2px;">&times;</button>
+      </div>
+      <div id="regs-modal-closed-banner" role="alert">Cannot hunt this area</div>
+      <div id="regs-modal-closed-detail"></div>
+      <div class="regs-modal-section">
+        <h4 id="regs-modal-day-label">Condensed deer rules (selected day)</h4>
+        <ul id="regs-modal-bullets"></ul>
+      </div>
+      <div class="regs-modal-section">
+        <h4>Legislation &amp; official sources</h4>
+        <div class="regs-link-row" id="regs-modal-legislation"></div>
+      </div>
+      <div class="regs-modal-section" id="regs-modal-oa-section" style="display:none;">
+        <h4>Outdoor Alabama — this area</h4>
+        <div class="regs-link-row" id="regs-modal-oa"></div>
+      </div>
+      <p class="regs-disclaimer">Summary only for planning. Always verify the current AREA permit, refuge brochure, and full code before hunting. Seasons and weapons can change by year and unit.</p>
+    </div>
+  </div>
 
   <div class="container">
     <div class="card">
@@ -195,13 +249,13 @@
             <select id="dist-radius-select" onchange="setDistRadius(this.value)" style="flex:1;min-width:140px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--panel);color:var(--ink);font-size:13px;">
               <option value="0">Any distance</option>
               <option value="25">25 miles</option>
-              <option value="50">50 miles</option>
-              <option value="100" selected>100 miles</option>
+              <option value="50" selected>50 miles</option>
+              <option value="100">100 miles</option>
               <option value="150">150 miles</option>
               <option value="200">200 miles</option>
             </select>
           </div>
-          <div id="dist-status" style="font-size:11px;color:var(--muted);margin-top:8px;">Using GPS when available · default 100 mi</div>
+          <div id="dist-status" style="font-size:11px;color:var(--muted);margin-top:8px;">Using GPS when available · default 50 mi</div>
         </div>
         <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;margin-bottom:10px;background:rgba(255,255,255,0.02);padding:8px 10px;border-radius:8px;border:1px solid var(--border);">
           <div style="display:flex;gap:6px;">
@@ -221,8 +275,8 @@
           <button id="map-minimize-btn" onclick="toggleMapFullscreen()" style="position:absolute;top:10px;right:10px;z-index:10000;background:var(--panel);border:1px solid var(--border);color:var(--accent);border-radius:6px;padding:6px 12px;font-weight:bold;cursor:pointer;font-size:11px;display:none;">Minimize</button>
           <button id="gps-snap-btn" onclick="snapToGPS()" style="position:absolute;bottom:20px;left:20px;z-index:10000;background:var(--green);color:white;border:none;border-radius:6px;padding:8px 12px;font-weight:bold;cursor:pointer;font-size:11px;">Current Location</button>
           <div class="map-toggles">
-            <label class="map-toggle-hunts" id="toggle-adcnr-label" title="State, TVA, and federal public lands (cached ~30 days)">
-              <input type="checkbox" id="toggle-adcnr-lands-chk" onchange="toggleAdcnrLandsOverlay()"> Public Lands Overlay
+            <label class="map-toggle-hunts" id="toggle-adcnr-label" title="State, TVA, and federal public lands open for your selected weapon & date">
+              <input type="checkbox" id="toggle-adcnr-lands-chk" onchange="toggleAdcnrLandsOverlay()" checked> Public Lands Overlay
             </label>
             <div id="adcnr-layer-legend" class="map-layer-legend">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;">
@@ -235,11 +289,12 @@
               <div><span class="swatch" style="background:rgba(0,188,212,0.55);"></span>Disabled Hunt Areas</div>
               <div><span class="swatch" style="background:rgba(52,152,219,0.55);"></span>TVA Undeveloped (huntable)</div>
               <div><span class="swatch" style="background:rgba(46,134,193,0.55);"></span>National Wildlife Refuges</div>
-              <div style="margin-top:4px;font-size:9px;">Fullscreen only · huntable units · cached monthly</div>
+              <div style="margin-top:6px;"><span class="swatch" style="background:#486a2f;"></span><strong style="color:#9ccc65;">Green pin (✓)</strong> = open for selected weapon &amp; date</div>
+              <div style="margin-top:4px;font-size:9px;">All units shown; list still filters by weapon/date · cached monthly</div>
               <div id="adcnr-cache-status" style="font-size:9px;margin-top:2px;"></div>
             </div>
             <label class="map-toggle-hunts">
-              <input type="checkbox" id="toggle-prev-hunts-chk" onchange="drawHuntsOnMap()" checked> Past Hunts
+              <input type="checkbox" id="toggle-prev-hunts-chk" onchange="drawHuntsOnMap()"> Past Hunts
             </label>
           </div>
           <div id="map-weather-overlay" style="display:none;position:absolute;bottom:20px;right:20px;z-index:10001;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:15px;width:300px;box-shadow:0 4px 15px rgba(0,0,0,0.6);max-height:80vh;overflow-y:auto;">
@@ -393,11 +448,12 @@
     let map = null, mapReady = false, leafletLoading = null;
     let mapMarkerGroup = null, standMarkerGroup = null, gaugeMarkerGroup = null, huntMarkerGroup = null, pinMarkerGroup = null;
     let adcnrOverlayGroup = null; // WMA / public lands polygons (ADCNR)
+    let adcnrOpenPinGroup = null; // green pins on units open for selected weapon/date
     let adcnrLandsData = null;    // cached payload in memory
     let adcnrLoading = null;
     let tempClickMarker = null, gpsMarker = null, clickLat = null, clickLng = null;
     // Distance filter (list only)
-    let distRadiusMiles = 100;
+    let distRadiusMiles = 50;
     let distOriginMode = 'gps'; // 'gps' | 'zip'
     let distOriginLat = null, distOriginLng = null, distOriginLabel = '';
     let distZip = '';
@@ -502,31 +558,689 @@
       }
     ];
 
-    // Explicit deer-weapon profiles for units that must NOT inherit generic WMA gun seasons
-    // (e.g. Swan Creek / Mallard-Fox Creek are archery deer only per Outdoor Alabama AREA permit)
+    // Explicit deer-weapon profiles (Outdoor Alabama + 50 CFR §32.20 Alabama NWR hunt regs).
+    // Fields: allow, archeryOnly, noHuntDays (weekday names), huntDaysOnly, antlerRestriction, seasons[]
     const UNIT_DEER_PROFILES = [
       {
         match: /swan\s*creek|mallard|fox\s*creek/i,
         allow: ['Archery'],
+        archeryOnly: true,
+        antlerRestriction: 'Statewide antlered buck bag applies; unit permit may add restrictions — confirm AREA map.',
         seasons: [
-          { weapon: 'Archery', land: 'Either', start: '2026-10-15', end: '2026-11-22', target: "Hunter's Choice", limit: '2/day', notes: 'Swan Creek / Mallard-Fox Creek: DEER ARCHERY ONLY (no gun or primitive deer). Waterfowl/small game separate. WMA permit required.' }
+          { weapon: 'Archery', land: 'Either', start: '2026-10-15', end: '2026-11-22', target: "Hunter's Choice", limit: '2/day (1 antlered + 1 unantlered)', notes: 'Deer archery only. No gun or primitive deer.' }
         ]
       },
       {
         match: /wheeler/i,
-        allow: ['Archery'],
+        allow: ['Archery', 'Primitive'],
+        archeryOnly: false,
+        noHuntDays: ['Sunday'],
+        antlerRestriction: 'Follow refuge brochure / state limits; no organized drives.',
         seasons: [
-          { weapon: 'Archery', land: 'Either', start: '2026-10-15', end: '2027-02-15', target: 'Either Sex', limit: 'State limits', notes: 'Wheeler NWR: Archery only. NO SUNDAY HUNTING. Confirm unit-specific maps.' }
+          { weapon: 'Archery', land: 'Either', start: '2026-10-15', end: '2027-02-15', target: 'Either Sex', limit: 'State daily limits', notes: 'Archery equipment only (plus flintlock season).' },
+          { weapon: 'Primitive', land: 'Either', start: '2026-10-15', end: '2027-02-15', target: 'Either Sex', limit: 'State daily limits', notes: 'Flintlock .40 cal or larger only — not modern gun.' }
         ]
       },
       {
-        match: /bon\s*secour|cahaba\s*river\s*national|choctaw\s*national|eufaula|fern\s*cave|grand\s*bay|key\s*cave|mountain\s*longleaf|paint\s*rock|sauta\s*cave|watercress\s*darter/i,
+        match: /cahaba\s*river/i,
         allow: ['Archery'],
+        archeryOnly: true,
+        antlerRestriction: 'Antlered bucks typically require 3+ points (1"+) on one beam on the associated WMA — confirm current AREA permit.',
         seasons: [
-          { weapon: 'Archery', land: 'Either', start: '2026-10-15', end: '2027-02-10', target: 'Unit-specific', limit: 'State / refuge limits', notes: 'Federal NWR — often archery-only or special seasons. Confirm Outdoor Alabama / FWS before hunting. No gun deer assumed.' }
+          { weapon: 'Archery', land: 'Either', start: '2026-10-15', end: '2027-02-10', target: "Hunter's Choice", limit: '1 deer/day', notes: 'DEER ARCHERY ONLY on Cahaba River NWR (no gun deer).' }
+        ]
+      },
+      {
+        match: /choctaw/i,
+        allow: ['Archery'],
+        archeryOnly: true,
+        antlerRestriction: 'Confirm SOA/refuge brochure for buck rules.',
+        seasons: [
+          { weapon: 'Archery', land: 'Either', start: '2026-10-15', end: '2027-02-10', target: 'Unit rules', limit: 'Unit limits', notes: 'Archery deer only except limited SOA muzzleloader (quota).' }
+        ]
+      },
+      {
+        match: /eufaula/i,
+        allow: ['Archery'],
+        archeryOnly: true,
+        antlerRestriction: 'Confirm signed refuge hunt brochure for bag/antler rules.',
+        seasons: [
+          { weapon: 'Archery', land: 'Either', start: '2026-10-15', end: '2027-02-10', target: 'Unit rules', limit: 'Unit limits', notes: 'Big game archery-only (except limited youth gun lottery).' }
+        ]
+      },
+      {
+        match: /key\s*cave/i,
+        allow: ['Archery'],
+        archeryOnly: true,
+        huntDaysOnly: ['Monday', 'Tuesday', 'Friday', 'Saturday'],
+        antlerRestriction: 'Confirm Seven Mile Island / Key Cave permit for bag/antler rules.',
+        seasons: [
+          { weapon: 'Archery', land: 'Either', start: '2026-10-15', end: '2027-02-10', target: 'Unit rules', limit: 'Unit limits', notes: 'Deer archery only (no firearms for deer).' }
+        ]
+      },
+      {
+        match: /mountain\s*longleaf/i,
+        allow: ['Archery', 'Gun', 'Primitive'],
+        archeryOnly: false,
+        antlerRestriction: 'Choccolocco WMA rules typically require 4+ points on one antler for bucks (confirm current permit).',
+        seasons: [
+          { weapon: 'Archery', land: 'Either', start: '2026-10-15', end: '2027-02-10', target: "Hunter's Choice", limit: '1 deer/day', notes: 'Under Choccolocco WMA permit; some city-limit segments archery-only.' },
+          { weapon: 'Primitive', land: 'Either', start: '2026-11-16', end: '2026-11-20', target: "Hunter's Choice", limit: '1 deer/day', notes: 'Confirm current Choccolocco / ML NWR permit dates.' },
+          { weapon: 'Gun', land: 'Either', start: '2026-11-21', end: '2027-02-10', target: 'Bucks / unit rules', limit: '1 deer/day', notes: 'Confirm current Choccolocco gun schedule and open segments.' }
+        ]
+      },
+      {
+        match: /grand\s*bay/i,
+        allow: ['Archery'],
+        archeryOnly: true,
+        antlerRestriction: 'Confirm current FWS Grand Bay hunt brochure.',
+        seasons: [
+          { weapon: 'Archery', land: 'Either', start: '2026-10-15', end: '2027-02-10', target: 'Unit rules', limit: 'Unit limits', notes: 'Confirm open units/weapons on current brochure.' }
+        ]
+      },
+      {
+        match: /black\s*warrior/i,
+        allow: ['Archery', 'Gun', 'Primitive'],
+        archeryOnly: false,
+        antlerRestriction: 'Zone B: antlered bucks must have 4+ points on one side (WMA rule).',
+        seasons: [
+          { weapon: 'Archery', land: 'Either', start: '2026-10-01', end: '2027-01-15', target: "Hunter's Choice", limit: '1/day', notes: 'Pre-rut/peak windows on AREA permit.' },
+          { weapon: 'Archery', land: 'Either', start: '2027-01-16', end: '2027-01-27', target: 'Antlered Bucks Only', limit: '1 buck/day' },
+          { weapon: 'Primitive', land: 'Either', start: '2026-11-02', end: '2026-11-06', target: "Hunter's Choice", limit: '1/day' },
+          { weapon: 'Gun', land: 'Either', start: '2026-11-07', end: '2026-11-08', target: "Hunter's Choice", limit: '1/day', notes: 'Gun doe hunt — mandatory check station.' },
+          { weapon: 'Gun', land: 'Either', start: '2026-11-19', end: '2026-11-22', target: 'Bucks Only', limit: '1/day', notes: 'Zone B gun bucks; antler rule applies.' }
+        ]
+      },
+      {
+        match: /skyline|james\s*d\.?\s*martin/i,
+        allow: ['Archery', 'Gun', 'Primitive'],
+        archeryOnly: false,
+        antlerRestriction: 'Antlered bucks: 3+ points on one side (Skyline WMA).',
+        seasons: [
+          { weapon: 'Archery', land: 'Either', start: '2026-10-15', end: '2027-02-10', target: "Hunter's Choice", limit: '1/day' },
+          { weapon: 'Primitive', land: 'Either', start: '2026-11-16', end: '2026-11-20', target: "Hunter's Choice", limit: '1/day' },
+          { weapon: 'Gun', land: 'Either', start: '2026-12-10', end: '2026-12-13', target: 'Bucks Only', limit: '1/day' }
         ]
       }
     ];
+
+    // Alabama NWR units with NO big-game/deer hunting (50 CFR 32.20 or not listed) — never map/list
+    const NON_HUNTABLE_REFUGE_MATCH = /bon\s*secour|fern\s*cave|sauta\s*cave|watercress\s*darter|paint\s*rock\s*river/i;
+
+    // Official legislation + Outdoor Alabama hubs (most current published sources)
+    const LEGISLATION = {
+      stateWMA: {
+        label: 'Ala. Admin. Code r. 220-2-.55 — WMA Rules',
+        url: 'https://admincode.legislature.state.al.us/api/rule/220-2-.55'
+      },
+      stateDeer: {
+        label: 'Outdoor Alabama — Deer Season & Bag Limits',
+        url: 'https://www.outdooralabama.com/seasons-and-bag-limits/deer-season'
+      },
+      stateWMAIndex: {
+        label: 'Outdoor Alabama — Wildlife Management Areas',
+        url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas'
+      },
+      stateWMARulesPage: {
+        label: 'Outdoor Alabama — WMA Rules Overview',
+        url: 'https://www.outdooralabama.com/hunting/wma-rules'
+      },
+      federalNWR: {
+        label: '50 CFR § 32.20 — Alabama National Wildlife Refuges (hunting)',
+        url: 'https://www.ecfr.gov/current/title-50/chapter-I/subchapter-C/part-32/subpart-B/section-32.20'
+      },
+      federalPart32: {
+        label: '50 CFR Part 32 — Hunting & Fishing on NWRs',
+        url: 'https://www.ecfr.gov/current/title-50/chapter-I/subchapter-C/part-32'
+      },
+      tvaLands: {
+        label: 'TVA — Undeveloped Public Lands Recreation Rules',
+        url: 'https://www.tva.com/environment/recreation/recreation-on-undeveloped-tva-public-lands'
+      },
+      tvaMap: {
+        label: 'TVA Undeveloped Recreation Map',
+        url: 'https://www.arcgis.com/apps/Embed/index.html?webmap=b110b866ffec492cb95e5c62b1a4f40f'
+      }
+    };
+
+    // Outdoor Alabama pages / permit hubs for specific state units (when known)
+    const OA_AREA_PAGES = [
+      { match: /black\s*warrior/i, label: 'Outdoor Alabama — Black Warrior WMA area info', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
+      { match: /skyline|james\s*d\.?\s*martin/i, label: 'Outdoor Alabama — Skyline WMA area info', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
+      { match: /swan\s*creek|mallard|fox\s*creek/i, label: 'Outdoor Alabama — Swan Creek / Mallard-Fox Creek', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
+      { match: /cahaba/i, label: 'Outdoor Alabama — Cahaba River WMA / Refuge', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
+      { match: /choccolocco|mountain\s*longleaf/i, label: 'Outdoor Alabama — Choccolocco / Mountain Longleaf', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
+      { match: /forever\s*wild/i, label: 'Alabama Forever Wild', url: 'https://www.alabamaforeverwild.com/' },
+      { match: /special\s*opportunity|soa/i, label: 'Outdoor Alabama — Special Opportunity Areas', url: 'https://www.outdooralabama.com/hunting/special-opportunity-areas' }
+    ];
+
+    // Preferred map / rules destinations by unit (used under the regs button on map popup)
+    const AREA_MAP_RULES_LINKS = [
+      { match: /wheeler/i, label: 'Wheeler NWR — hunting map & rules', url: 'https://www.fws.gov/refuge/wheeler/visit-us/activities/hunting' },
+      { match: /cahaba\s*river/i, label: 'Cahaba River NWR — hunting map & rules', url: 'https://www.fws.gov/refuge/cahaba-river/visit-us/activities/hunting' },
+      { match: /choctaw/i, label: 'Choctaw NWR — hunting map & rules', url: 'https://www.fws.gov/refuge/choctaw/visit-us/activities/hunting' },
+      { match: /eufaula/i, label: 'Eufaula NWR — hunting map & rules', url: 'https://www.fws.gov/refuge/eufaula/visit-us/activities/hunting' },
+      { match: /key\s*cave/i, label: 'Key Cave NWR — hunting map & rules', url: 'https://www.fws.gov/refuge/key-cave/visit-us/activities/hunting' },
+      { match: /mountain\s*longleaf/i, label: 'Mountain Longleaf NWR — hunting map & rules', url: 'https://www.fws.gov/refuge/mountain-longleaf/visit-us/activities/hunting' },
+      { match: /grand\s*bay/i, label: 'Grand Bay NWR — hunting map & rules', url: 'https://www.fws.gov/refuge/grand-bay/visit-us/activities/hunting' },
+      { match: /swan\s*creek|mallard|fox\s*creek/i, label: 'Outdoor Alabama — WMA maps & AREA permits', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
+      { match: /black\s*warrior/i, label: 'Outdoor Alabama — WMA maps & AREA permits', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
+      { match: /skyline|james\s*d\.?\s*martin/i, label: 'Outdoor Alabama — WMA maps & AREA permits', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' },
+      { match: /choccolocco/i, label: 'Outdoor Alabama — WMA maps & AREA permits', url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas' }
+    ];
+
+    /**
+     * Best available map / rules link for a unit.
+     * Prefer GIS map/permit PDF, then known unit pages, then the official hub that should host them.
+     */
+    function resolveAreaMapRulesLink(layer, name, attrs) {
+      attrs = attrs || {};
+      var layerKey = (layer && layer.key) || '';
+      var n = name || '';
+
+      // 1) GIS-provided map / AREA permit (most current unit PDF when present)
+      var gisCandidates = [
+        { url: attrs.MapLink || attrs.PMapLink || attrs.Link2, label: 'Area map / AREA permit (PDF)' },
+        { url: attrs.Link || attrs.PageLink, label: 'Area rules & map (ADCNR link)' },
+        { url: attrs.TractInfoL, label: 'Tract information / map' }
+      ];
+      for (var i = 0; i < gisCandidates.length; i++) {
+        if (gisCandidates[i].url && String(gisCandidates[i].url).indexOf('http') === 0) {
+          return { url: gisCandidates[i].url, label: gisCandidates[i].label, source: 'gis' };
+        }
+      }
+
+      // 2) Known unit-specific FWS / OA map-rules pages
+      for (var j = 0; j < AREA_MAP_RULES_LINKS.length; j++) {
+        if (AREA_MAP_RULES_LINKS[j].match.test(n)) {
+          return { url: AREA_MAP_RULES_LINKS[j].url, label: AREA_MAP_RULES_LINKS[j].label, source: 'known' };
+        }
+      }
+
+      // 3) Fallbacks by land type — sites that SHOULD have the map & regs
+      if (layerKey === 'nwr' || /national\s*wildlife\s*refuge|\bnwr\b/i.test(n)) {
+        return {
+          url: 'https://www.fws.gov/our-facilities?state_name=Alabama&field_facility_purpose_value=National%20Wildlife%20Refuge',
+          label: 'FWS — find this refuge hunting map & brochure',
+          source: 'fallback'
+        };
+      }
+      if (layerKey === 'tva' || /\btva\b/i.test(n)) {
+        return {
+          url: LEGISLATION.tvaMap.url,
+          label: 'TVA Undeveloped Recreation Map (rules on TVA site)',
+          source: 'fallback'
+        };
+      }
+      if (layerKey === 'soa' || /special\s*opportunity/i.test(n)) {
+        return {
+          url: 'https://www.outdooralabama.com/hunting/special-opportunity-areas',
+          label: 'Outdoor Alabama — Special Opportunity Areas (maps & regs)',
+          source: 'fallback'
+        };
+      }
+      if (layerKey === 'pdha' || /physically\s*disabled/i.test(n)) {
+        return {
+          url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas',
+          label: 'Outdoor Alabama — PDHA / WMA maps & permits',
+          source: 'fallback'
+        };
+      }
+      if (layerKey === 'foreverWild') {
+        return {
+          url: 'https://www.alabamaforeverwild.com/',
+          label: 'Alabama Forever Wild — tract info & maps',
+          source: 'fallback'
+        };
+      }
+      // Default state WMA / public land
+      return {
+        url: 'https://www.outdooralabama.com/hunting/wildlife-management-areas',
+        label: 'Outdoor Alabama — WMA maps, AREA permits & rules',
+        source: 'fallback'
+      };
+    }
+
+    function isNonHuntableRefugeName(name) {
+      return !!(name && NON_HUNTABLE_REFUGE_MATCH.test(name));
+    }
+
+    /** True only if this federal refuge is known open to deer hunting (any weapon). */
+    function isHuntableDeerRefugeName(name) {
+      if (!name || isNonHuntableRefugeName(name)) return false;
+      var p = findUnitDeerProfile(name);
+      return !!(p && p.allow && p.allow.length);
+    }
+
+    function classifyLandJurisdiction(layerKey, name) {
+      var n = name || '';
+      if (layerKey === 'nwr' || /national\s*wildlife\s*refuge|\bnwr\b/i.test(n)) return 'federal';
+      if (layerKey === 'tva' || /\btva\b/i.test(n)) return 'tva';
+      if (layerKey === 'usfs' || /national\s*forest/i.test(n)) return 'federal';
+      if (layerKey === 'nps' || /national\s*park|national\s*monument|national\s*preserve/i.test(n)) return 'federal';
+      return 'state'; // WMA, SOA, PDHA, Forever Wild, etc.
+    }
+
+    function formatSeasonLine(s) {
+      var w = s.weapon || 'General';
+      var dates = (s.start && s.end) ? (s.start + ' → ' + s.end) : 'See current permit';
+      var target = s.target ? ('; · ' + s.target) : '';
+      var limit = s.limit ? ('; · Bag: ' + s.limit) : '';
+      return w + ': ' + dates + target + limit + (s.notes ? ' — ' + s.notes : '');
+    }
+
+    function isoDateStr(d) {
+      var x = d || selectedDate || new Date();
+      if (!(x instanceof Date) || isNaN(x.getTime())) x = new Date();
+      var y = x.getFullYear(), m = x.getMonth() + 1, day = x.getDate();
+      return y + '-' + String(m).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+    }
+
+    function weekdayName(d) {
+      var x = d || selectedDate || new Date();
+      return x.toLocaleDateString('en-US', { weekday: 'long' });
+    }
+
+    function prettyDate(d) {
+      var x = d || selectedDate || new Date();
+      return x.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function seasonCoversDate(s, ds) {
+      return !!(s && s.start && s.end && ds >= s.start && ds <= s.end);
+    }
+
+    function weaponMatchesSeason(weapon, seasonWeapon) {
+      if (!weapon || weapon === 'Either') return true;
+      if (weapon === 'Gun') return seasonWeapon === 'Gun' || seasonWeapon === 'Primitive';
+      return seasonWeapon === weapon;
+    }
+
+    function extractAntlerFromText(text) {
+      if (!text) return null;
+      var t = String(text);
+      if (/4\s*\+?\s*points|four\s*\+?\s*points|4\+\s*points/i.test(t)) return 'Antler restriction: typically 4+ points on one side (confirm current permit).';
+      if (/3\s*\+?\s*points|three\s*\+?\s*points|3\+\s*points/i.test(t)) return 'Antler restriction: typically 3+ points on one side (confirm current permit).';
+      if (/antlered bucks only/i.test(t)) return 'Sex rule: antlered bucks only for this segment.';
+      if (/hunter'?s choice|either sex/i.test(t)) return 'Sex rule: hunter\'s choice / either sex (within bag).';
+      return null;
+    }
+
+    function seasonsFromBuiltin(name) {
+      var builtin = locations.find(function(l) {
+        return !l.isPublicLand && !l.isPin && l.id !== 9999 && l.type !== 'Statewide' && namesRoughMatch(l.name, name);
+      });
+      if (!builtin) return { seasons: [], builtin: null };
+      var seasons = rules.filter(function(r) { return r.locId == builtin.id; }).map(function(r) {
+        return {
+          weapon: r.weapon,
+          land: r.land,
+          start: r.start,
+          end: r.end,
+          target: r.target,
+          limit: r.limit,
+          notes: r.notes || ''
+        };
+      });
+      return { seasons: seasons, builtin: builtin };
+    }
+
+    function unitClosedOnSelectedDay(profile, dateObj) {
+      var day = weekdayName(dateObj);
+      if (profile && profile.noHuntDays && profile.noHuntDays.indexOf(day) !== -1) {
+        return 'No hunting on ' + day + 's on this unit.';
+      }
+      if (profile && profile.huntDaysOnly && profile.huntDaysOnly.length) {
+        if (profile.huntDaysOnly.indexOf(day) === -1) {
+          return 'Hunting only on ' + profile.huntDaysOnly.join(', ') + ' — not on ' + day + 's.';
+        }
+      }
+      return null;
+    }
+
+    function buildCondensedDeerBullets(name, layerKey, attrs) {
+      var bullets = [];
+      var dateObj = selectedDate || new Date();
+      var ds = isoDateStr(dateObj);
+      var weapon = selectedWeapon || 'Either';
+      var land = selectedLand || 'Public';
+      var profile = findUnitDeerProfile(name);
+      var fromBuiltin = seasonsFromBuiltin(name);
+      var seasons = (profile && profile.seasons && profile.seasons.length)
+        ? profile.seasons.slice()
+        : fromBuiltin.seasons.slice();
+      var canHuntToday = false;
+      var closedReason = '';
+      var statusKnown = false; // true when we could determine open/closed from coded data
+
+      // —— Selected day / weapon context ——
+      bullets.push('Selected day: ' + prettyDate(dateObj) + '.');
+      if (weapon && weapon !== 'Either') {
+        bullets.push('Your selected weapon filter: ' + weapon + '.');
+      } else {
+        bullets.push('Weapon filter: Either (showing all legal deer weapons for this unit).');
+      }
+
+      // —— Always-archery / allowed weapons ——
+      if (profile && profile.archeryOnly) {
+        bullets.push('This unit is ARCHERY ONLY for deer (no modern gun deer season).');
+      } else if (profile && profile.allow && profile.allow.length) {
+        bullets.push('Deer weapons allowed on this unit: ' + profile.allow.join(', ') + '.');
+      } else if (seasons.length) {
+        var allowed = [];
+        seasons.forEach(function(s) {
+          if (s.weapon && allowed.indexOf(s.weapon) === -1 && s.weapon !== 'Youth') allowed.push(s.weapon);
+        });
+        if (allowed.length) bullets.push('Deer weapons with scheduled seasons here: ' + allowed.join(', ') + '.');
+      }
+
+      // Weapon never legal on this unit (e.g. Gun on archery-only)
+      if (weapon && weapon !== 'Either' && profile && profile.allow && profile.allow.length) {
+        var weaponOk = profile.allow.indexOf(weapon) !== -1 ||
+          (weapon === 'Gun' && profile.allow.indexOf('Primitive') !== -1);
+        // For Gun, only allow if Gun is in list (Primitive alone is not modern gun)
+        if (weapon === 'Gun') weaponOk = profile.allow.indexOf('Gun') !== -1;
+        if (weapon === 'Primitive') weaponOk = profile.allow.indexOf('Primitive') !== -1 || profile.allow.indexOf('Gun') !== -1;
+        if (!weaponOk) {
+          statusKnown = true;
+          canHuntToday = false;
+          closedReason = weapon + ' deer hunting is not allowed on this unit' +
+            (profile.archeryOnly ? ' (archery only for deer)' : ' (allowed: ' + profile.allow.join(', ') + ')') + '.';
+        }
+      }
+
+      // —— Specific days you cannot hunt ——
+      var closedMsg = unitClosedOnSelectedDay(profile, dateObj);
+      if (closedMsg) {
+        bullets.push(closedMsg);
+        statusKnown = true;
+        canHuntToday = false;
+        closedReason = closedMsg;
+      }
+      if (!closedMsg && profile && profile.noHuntDays && profile.noHuntDays.length) {
+        bullets.push('Closed days (every week): ' + profile.noHuntDays.join(', ') + '.');
+      }
+      if (profile && profile.huntDaysOnly && profile.huntDaysOnly.length) {
+        bullets.push('Hunt days only: ' + profile.huntDaysOnly.join(', ') + '.');
+      }
+
+      // —— Open on selected day? ——
+      var openToday = seasons.filter(function(s) {
+        if (!seasonCoversDate(s, ds)) return false;
+        if (s.land && s.land !== 'Either' && s.land !== land) return false;
+        if (s.weapon === 'Youth') return false;
+        return weaponMatchesSeason(weapon, s.weapon);
+      });
+
+      if (closedMsg) {
+        bullets.push('Status on selected day: CLOSED for deer hunting.');
+      } else if (!seasons.length) {
+        // Generic unit without coded calendar — do not claim a hard red closed unless weapon is known illegal
+        if (layerKey === 'wma' || /wildlife\s*management\s*area|\bwma\b/i.test(name || '')) {
+          bullets.push('Status on selected day: check the current Outdoor Alabama AREA permit for this WMA (weapon seasons are unit-specific).');
+          bullets.push('Bag limit / antler rules: printed on the AREA permit — often 1 deer/day with unit antler restrictions.');
+          bullets.push('Some WMAs are archery-only for deer; never assume gun is open.');
+        } else if (layerKey === 'tva') {
+          var zoneArchery = { weapon: 'Archery', start: '2026-10-15', end: '2027-02-10', target: "Hunter's Choice", limit: 'Statewide daily limits' };
+          var zoneGun = { weapon: 'Gun', start: '2026-11-21', end: '2027-02-10', target: "Hunter's Choice", limit: 'Statewide daily limits', notes: 'Private-land statewide gun dates often differ from public — confirm zone.' };
+          var openTva = [zoneArchery, zoneGun].filter(function(s) {
+            return seasonCoversDate(s, ds) && weaponMatchesSeason(weapon, s.weapon);
+          });
+          if (openTva.length) {
+            statusKnown = true;
+            canHuntToday = true;
+            openTva.forEach(function(s) {
+              bullets.push('Likely OPEN today for ' + s.weapon + ' under statewide zone seasons · Bag: ' + s.limit + ' · ' + (s.target || ''));
+            });
+          } else {
+            statusKnown = true;
+            canHuntToday = false;
+            closedReason = 'No statewide deer season open for ' + (weapon === 'Either' ? 'deer weapons' : weapon) + ' on ' + prettyDate(dateObj) + '.';
+            bullets.push('Status on selected day: no statewide deer weapon season matched — CLOSED for deer (confirm Outdoor Alabama zone calendar).');
+          }
+          bullets.push('Antler restrictions: follow statewide zone rules for your zone on Outdoor Alabama.');
+        } else if (layerKey === 'soa') {
+          bullets.push('Status on selected day: SOA deer hunts are limited-quota / special dates only — open only if you are drawn for this day.');
+          bullets.push('Bag limit & antler rules: SOA permit specific (not full statewide by default).');
+        } else if (layerKey === 'foreverWild') {
+          bullets.push('Status on selected day: if this tract is inside a WMA, use that WMA’s AREA permit for open/closed and bag rules.');
+          bullets.push('If not in a WMA, confirm Forever Wild posted rules / CanHunt before hunting.');
+        } else {
+          bullets.push('Status on selected day: verify on the current official permit/brochure for this unit.');
+        }
+      } else if (!openToday.length) {
+        statusKnown = true;
+        canHuntToday = false;
+        var wLabel = weapon === 'Either' ? 'listed weapons' : weapon;
+        closedReason = 'Cannot hunt with ' + wLabel + ' on ' + prettyDate(dateObj) + ' — no open deer season for that weapon on this unit.';
+        bullets.push('Status on selected day: NO deer season open for ' + wLabel + ' on this unit.');
+        var upcoming = seasons.filter(function(s) {
+          return s.end >= ds && weaponMatchesSeason(weapon, s.weapon) && s.weapon !== 'Youth';
+        }).slice(0, 4);
+        if (upcoming.length) {
+          bullets.push('Scheduled deer segments (for reference):');
+          upcoming.forEach(function(s) { bullets.push(formatSeasonLine(s)); });
+        }
+      } else {
+        // Coded season is open for this weapon today (unless day-of-week closure already blocked)
+        statusKnown = true;
+        if (closedMsg) {
+          canHuntToday = false;
+          if (!closedReason) closedReason = closedMsg;
+        } else {
+          canHuntToday = true;
+          closedReason = '';
+          bullets.push('Status on selected day: OPEN for deer with the weapon(s) below.');
+          openToday.forEach(function(s) {
+            bullets.push(
+              '• ' + s.weapon +
+              ' · Bag: ' + (s.limit || 'see permit') +
+              ' · ' + (s.target || 'see permit') +
+              (s.notes ? ' — ' + s.notes : '')
+            );
+          });
+        }
+      }
+
+      // Weapon never legal on unit wins over season calendar
+      if (closedReason && /not allowed on this unit/i.test(closedReason)) {
+        canHuntToday = false;
+        statusKnown = true;
+      }
+      if (closedMsg) {
+        canHuntToday = false;
+        statusKnown = true;
+        if (!closedReason) closedReason = closedMsg;
+      }
+
+      // —— Antler restrictions ——
+      var antler = (profile && profile.antlerRestriction) || null;
+      if (!antler) {
+        openToday.forEach(function(s) {
+          if (!antler) antler = extractAntlerFromText((s.target || '') + ' ' + (s.notes || ''));
+        });
+      }
+      if (!antler && seasons.length) {
+        seasons.forEach(function(s) {
+          if (!antler) antler = extractAntlerFromText((s.target || '') + ' ' + (s.notes || ''));
+        });
+      }
+      if (antler) bullets.push(antler);
+      else if (seasons.length || profile) bullets.push('Antler restrictions: none coded for this unit — still confirm AREA permit / refuge brochure.');
+
+      // —— Bag limit highlight for today ——
+      if (openToday.length && canHuntToday) {
+        var bags = openToday.map(function(s) { return s.weapon + ': ' + (s.limit || 'see permit'); });
+        bullets.push('Daily bag (selected day): ' + bags.join('; ') + '.');
+      }
+
+      // —— Unit type reminders ——
+      if (layerKey === 'wma' || /wildlife\s*management\s*area|\bwma\b/i.test(name || '')) {
+        bullets.push('WMA hunters: follow Ala. Admin. Code r. 220-2-.55 and the signed Outdoor Alabama map/permit; daily check-in required.');
+      }
+      if (layerKey === 'nwr') {
+        bullets.push('Federal NWR: must also follow 50 CFR § 32.20 and the current refuge hunt brochure.');
+      }
+
+      if (attrs && attrs.RESTRICTED) bullets.push('GIS note: ' + attrs.RESTRICTED);
+
+      if (!closedReason && statusKnown && !canHuntToday) {
+        closedReason = 'Cannot hunt with ' + (weapon === 'Either' ? 'deer weapons' : weapon) +
+          ' on ' + prettyDate(dateObj) + ' at this area.';
+      }
+
+      return {
+        bullets: bullets,
+        canHuntToday: canHuntToday,
+        statusKnown: statusKnown,
+        closedReason: closedReason || ''
+      };
+    }
+
+    function buildDeerRegsInfo(name, layerKey, attrs) {
+      attrs = attrs || {};
+      var jurisdiction = classifyLandJurisdiction(layerKey, name);
+      var condensed = buildCondensedDeerBullets(name, layerKey, attrs);
+      var bullets = condensed.bullets;
+      var legislation = [];
+      var outdoorAlabama = [];
+
+      if (jurisdiction === 'federal') {
+        legislation.push(LEGISLATION.federalNWR);
+        legislation.push(LEGISLATION.federalPart32);
+        // State permit often still required when refuge is managed with WMA overlay
+        if (/cahaba|mountain\s*longleaf|key\s*cave|choccolocco/i.test(name || '')) {
+          legislation.push(LEGISLATION.stateWMA);
+          outdoorAlabama.push(LEGISLATION.stateWMAIndex);
+        }
+      } else if (jurisdiction === 'tva') {
+        legislation.push(LEGISLATION.tvaLands);
+        legislation.push(LEGISLATION.stateDeer);
+        outdoorAlabama.push(LEGISLATION.stateDeer);
+      } else {
+        // State lands (WMA, SOA, PDHA, Forever Wild, etc.)
+        legislation.push(LEGISLATION.stateWMA);
+        legislation.push(LEGISLATION.stateDeer);
+        outdoorAlabama.push(LEGISLATION.stateWMAIndex);
+        outdoorAlabama.push(LEGISLATION.stateWMARulesPage);
+        outdoorAlabama.push(LEGISLATION.stateDeer);
+      }
+
+      // Area-specific Outdoor Alabama / permit links
+      OA_AREA_PAGES.forEach(function(p) {
+        if (p.match.test(name || '') || p.match.test(layerKey || '')) {
+          outdoorAlabama.push({ label: p.label, url: p.url });
+        }
+      });
+      // GIS-provided links (often the current map/permit PDF)
+      var gisLink = attrs.Link || attrs.PageLink || attrs.TractInfoL || attrs.MapLink || attrs.PMapLink || attrs.Link2 || '';
+      if (gisLink) {
+        outdoorAlabama.push({ label: 'Current map / AREA permit (from ADCNR GIS)', url: gisLink });
+      }
+      if (attrs.RESERVOIRURL) {
+        outdoorAlabama.push({ label: 'TVA reservoir information', url: attrs.RESERVOIRURL });
+      }
+
+      // Dedupe by URL
+      function dedupe(arr) {
+        var seen = {};
+        return arr.filter(function(x) {
+          if (!x || !x.url || seen[x.url]) return false;
+          seen[x.url] = true;
+          return true;
+        });
+      }
+
+      return {
+        name: name || 'Hunting area',
+        jurisdiction: jurisdiction,
+        jurisdictionLabel: jurisdiction === 'federal' ? 'Federal land (USFWS / NWR)'
+          : jurisdiction === 'tva' ? 'TVA public land + Alabama deer seasons'
+          : 'State of Alabama public hunting land',
+        bullets: bullets,
+        canHuntToday: condensed.canHuntToday,
+        statusKnown: condensed.statusKnown,
+        closedReason: condensed.closedReason,
+        legislation: dedupe(legislation),
+        outdoorAlabama: jurisdiction === 'federal' ? dedupe(outdoorAlabama) : dedupe(outdoorAlabama)
+      };
+    }
+
+    window.__regsCache = window.__regsCache || {};
+
+    function openDeerRegsFromCache(cacheId) {
+      var entry = window.__regsCache[cacheId];
+      if (!entry) return;
+      openDeerRegsPanel(entry.name, entry.layerKey, entry.attrs);
+    }
+
+    function openDeerRegsPanel(name, layerKey, attrs) {
+      attrs = attrs || {};
+      var info = buildDeerRegsInfo(name, layerKey, attrs);
+      document.getElementById('regs-modal-title').textContent = info.name;
+      document.getElementById('regs-modal-jurisdiction').textContent = info.jurisdictionLabel;
+      var dayLabel = document.getElementById('regs-modal-day-label');
+      if (dayLabel) {
+        dayLabel.textContent = 'Condensed deer rules — ' + prettyDate(selectedDate || new Date()) +
+          (selectedWeapon ? ' · ' + selectedWeapon : '');
+      }
+
+      // Big red banner when this weapon/day is not legal on the unit
+      var banner = document.getElementById('regs-modal-closed-banner');
+      var bannerDetail = document.getElementById('regs-modal-closed-detail');
+      var showClosed = !!(info.statusKnown && !info.canHuntToday);
+      if (banner) {
+        if (showClosed) {
+          var w = selectedWeapon && selectedWeapon !== 'Either' ? selectedWeapon : 'the selected weapon';
+          banner.textContent = 'Cannot hunt with ' + w + ' on this area today';
+          banner.classList.add('active');
+        } else {
+          banner.textContent = '';
+          banner.classList.remove('active');
+        }
+      }
+      if (bannerDetail) {
+        if (showClosed && info.closedReason) {
+          bannerDetail.textContent = info.closedReason;
+          bannerDetail.classList.add('active');
+        } else {
+          bannerDetail.textContent = '';
+          bannerDetail.classList.remove('active');
+        }
+      }
+
+      var ul = document.getElementById('regs-modal-bullets');
+      ul.innerHTML = info.bullets.map(function(b) {
+        return '<li>' + String(b).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</li>';
+      }).join('');
+
+      var leg = document.getElementById('regs-modal-legislation');
+      leg.innerHTML = info.legislation.map(function(l, i) {
+        var cls = i === 0 ? 'regs-link-btn primary' : 'regs-link-btn';
+        return '<a class="' + cls + '" href="' + l.url + '" target="_blank" rel="noopener">' + l.label + '</a>';
+      }).join('');
+
+      var oaSec = document.getElementById('regs-modal-oa-section');
+      var oa = document.getElementById('regs-modal-oa');
+      if (info.jurisdiction === 'state' || info.jurisdiction === 'tva' || (info.outdoorAlabama && info.outdoorAlabama.length)) {
+        oaSec.style.display = 'block';
+        oa.innerHTML = (info.outdoorAlabama || []).map(function(l) {
+          return '<a class="regs-link-btn" href="' + l.url + '" target="_blank" rel="noopener">' + l.label + '</a>';
+        }).join('') || '<span style="font-size:12px;color:var(--muted);">See Outdoor Alabama WMA index for area maps/permits.</span>';
+      } else {
+        oaSec.style.display = 'none';
+        oa.innerHTML = '';
+      }
+
+      document.getElementById('regs-modal').classList.add('active');
+    }
+
+    function closeDeerRegsPanel() {
+      document.getElementById('regs-modal').classList.remove('active');
+    }
+    window.openDeerRegsPanel = openDeerRegsPanel;
+    window.openDeerRegsFromCache = openDeerRegsFromCache;
+    window.closeDeerRegsPanel = closeDeerRegsPanel;
 
     const calendarEvents = {
       "2026-11-14": [{ id: "e1", text: "Bankhead Camp Opening", color: "#e59a18", locationId: 5, weapon: "Primitive", land: "Public" }],
@@ -1041,6 +1755,7 @@
     }
 
     function buildAdcnrPopup(layer, attrs) {
+      attrs = attrs || {};
       var name = attrName(attrs, layer.nameFields || ['Name']) || layer.label;
       var acres = attrs.Acres != null ? attrs.Acres : attrs.gis_acres;
       var html = '<strong style="color:' + layer.color + ';">' + layer.label + '</strong><br><strong>' + name + '</strong>';
@@ -1052,10 +1767,31 @@
       if (attrs.CanHunt != null && attrs.CanHunt !== '') html += '<br>Can hunt: ' + attrs.CanHunt;
       if (attrs.InWMA) html += '<br>In WMA: ' + attrs.InWMA;
       if (layer.notes) html += '<br><span style="color:var(--accent);">' + layer.notes + '</span>';
-      var link = attrs.Link || attrs.PageLink || attrs.TractInfoL || attrs.RESERVOIRURL || attrs.link || '';
-      var mapLink = attrs.MapLink || attrs.PMapLink || attrs.Link2 || '';
-      if (link) html += '<br><a href="' + link + '" target="_blank" rel="noopener" style="color:#e59a18;">Details</a>';
-      if (mapLink) html += (link ? ' · ' : '<br>') + '<a href="' + mapLink + '" target="_blank" rel="noopener" style="color:#e59a18;">Map PDF</a>';
+
+      // Cache payload so popup HTML does not embed raw JSON
+      var slim = {
+        Link: attrs.Link || attrs.PageLink || '',
+        MapLink: attrs.MapLink || attrs.PMapLink || attrs.Link2 || '',
+        TractInfoL: attrs.TractInfoL || '',
+        RESERVOIRURL: attrs.RESERVOIRURL || '',
+        RESTRICTED: attrs.RESTRICTED || '',
+        CanHunt: attrs.CanHunt || '',
+        InWMA: attrs.InWMA || '',
+        County: attrs.County || ''
+      };
+      var cacheId = 'regs_' + Math.random().toString(36).slice(2, 10);
+      window.__regsCache = window.__regsCache || {};
+      window.__regsCache[cacheId] = { name: name, layerKey: layer.key || 'wma', attrs: slim };
+
+      var mapRules = resolveAreaMapRulesLink(layer, name, attrs);
+      var mapHref = String(mapRules.url || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+      var mapLabel = String(mapRules.label || 'Area map & rules').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+      html += '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px;">';
+      html += '<button type="button" style="width:100%;padding:7px 10px;background:var(--accent);color:#000;border:none;border-radius:6px;font-weight:bold;font-size:11px;cursor:pointer;" onclick="openDeerRegsFromCache(\'' + cacheId + '\')">Deer rules &amp; legislation</button>';
+      // Always show map/rules link: unit PDF when available, otherwise official hub that should have it
+      html += '<a href="' + mapHref + '" target="_blank" rel="noopener" style="display:block;text-align:center;padding:7px 10px;background:var(--panel-light);border:1px solid var(--border);border-radius:6px;font-size:11px;font-weight:600;color:var(--accent);text-decoration:none;">' + mapLabel + '</a>';
+      html += '</div>';
       return html;
     }
 
@@ -1174,6 +1910,12 @@
           var name = attrName(attrs, layer.nameFields || ['Name']);
           if (!name) return;
           name = normalizeUnitName(name);
+
+          // Never list non-huntable refuges (or any NWR not on the deer-hunt whitelist)
+          if (layer.key === 'nwr' || layer.typeLabel === 'NWR') {
+            if (!isHuntableDeerRefugeName(name)) return;
+          }
+          if (isNonHuntableRefugeName(name)) return;
 
           // Skip nested Forever Wild / tracts flagged as inside a WMA
           if (isForeverWildInWmaAttr(attrs)) return;
@@ -1368,33 +2110,169 @@
       return d <= distRadiusMiles;
     }
 
+    function featureDisplayName(layer, attrs) {
+      return attrName(attrs || {}, layer.nameFields || ['Name']) || '';
+    }
+
+    /** Gate base eligibility: unit type known open to deer hunting (not weapon/date yet). */
+    function mayDrawHuntableFeature(layer, attrs) {
+      if (!layer) return false;
+      if (layer.drawOnMap === false) return false;
+      if (layer.key === 'usfs' || layer.key === 'nps') return false;
+      var name = featureDisplayName(layer, attrs);
+      if (isNonHuntableRefugeName(name)) return false;
+      // Federal refuges: whitelist only (excludes Bon Secour, Fern Cave, Sauta Cave, etc.)
+      if (layer.key === 'nwr' || layer.typeLabel === 'NWR' || layer.typeLabel === 'Refuge') {
+        return isHuntableDeerRefugeName(name);
+      }
+      // Forever Wild is map-only click info and not a list destination; still require date/weapon check below
+      return true;
+    }
+
+    /**
+     * Legislation check: is this unit open for the currently selected weapon + date?
+     * Used for map overlay and consistent with list filtering.
+     */
+    function isOpenForSelectedWeaponAndDate(layer, attrs, lat, lng) {
+      if (!selectedDate || !selectedWeapon) return false;
+      if (!layer || !mayDrawHuntableFeature(layer, attrs)) return false;
+      if (lat == null || lng == null || !isInAlabama(lat, lng)) return false;
+
+      var name = featureDisplayName(layer, attrs) || layer.label || '';
+      // Nested Forever Wild inside a WMA: not a separate huntable destination
+      if (layer.key === 'foreverWild' && isForeverWildInWmaAttr(attrs)) return false;
+
+      var zone = detectBoundaryAndZone(lat, lng).zone || 'A';
+      var loc = {
+        name: name,
+        unitName: name,
+        type: layer.typeLabel || layer.label || 'Public',
+        zone: zone,
+        lat: lat,
+        lng: lng,
+        isPublicLand: true,
+        landSource: layer.key,
+        noSunday: !!layer.noSunday || layer.key === 'nwr',
+        notes: publicLandRuleNotes(layer, attrs || {}),
+        gisAttrs: attrs || {}
+      };
+
+      // Forever Wild (map-only layer): only show if statewide/public rules open for weapon/date
+      // and not nested in WMA. Use zone rules path similar to TVA.
+      if (layer.key === 'foreverWild') {
+        var dsFw = isoDateStr(selectedDate);
+        var landFw = selectedLand || 'Public';
+        if (landFw === 'Private') return false;
+        var zoneIdFw = statewideLocIdForZone(zone);
+        var fwMatched = matchRulesForLocId(zoneIdFw, selectedDate, selectedWeapon, landFw, dsFw);
+        if (!fwMatched.length) {
+          fwMatched = rules.filter(function(r) {
+            if (r.locId != zoneIdFw) return false;
+            if (dsFw < r.start || dsFw > r.end) return false;
+            if (r.land !== 'Either' && r.land !== 'Public' && r.land !== landFw) return false;
+            if (selectedWeapon !== 'Either') {
+              if (selectedWeapon === 'Gun' && r.weapon !== 'Gun' && r.weapon !== 'Primitive') return false;
+              if (selectedWeapon !== 'Gun' && r.weapon !== selectedWeapon) return false;
+            }
+            return true;
+          });
+        }
+        // Day closures don't apply to FW profiles; still require an open season
+        return fwMatched.length > 0;
+      }
+
+      var ds = isoDateStr(selectedDate);
+      var matched = findRulesForPublicLand(loc, selectedDate, selectedWeapon, selectedLand || 'Public', ds);
+      if (!matched.length) return false;
+
+      // Extra day-of-week closures from unit profiles (e.g. Wheeler Sundays, Key Cave weekdays)
+      var profile = findUnitDeerProfile(name);
+      if (unitClosedOnSelectedDay(profile, selectedDate)) return false;
+
+      return true;
+    }
+
     function drawAdcnrLandsOverlay() {
       if (!map || !adcnrOverlayGroup || !adcnrLandsData) return;
       adcnrOverlayGroup.clearLayers();
+      if (adcnrOpenPinGroup) adcnrOpenPinGroup.clearLayers();
+
+      // One green pin per unit name when open (avoid pin spam on multi-polygons)
+      var openPinKeys = {};
+
       (adcnrLandsData.layers || []).forEach(function(layer) {
-        // Skip forests/NPS and any layer marked not for map (prevents blocking WMA clicks)
         if (layer.drawOnMap === false) return;
         if (layer.key === 'usfs' || layer.key === 'nps') return;
         (layer.features || []).forEach(function(feat) {
+          var attrs = feat.attributes || {};
+          if (!mayDrawHuntableFeature(layer, attrs)) return;
           var c = geometryCentroid(feat.geometry);
           if (!c || !isInAlabama(c.lat, c.lng)) return;
           var latlngs = esriRingsToLatLngs(feat.geometry);
           if (!latlngs) return;
+
+          // Show ALL eligible public lands; green pin + brighter fill if open for selected weapon/date
+          var isOpen = !!(selectedDate && selectedWeapon &&
+            isOpenForSelectedWeaponAndDate(layer, attrs, c.lat, c.lng));
+
           var poly = L.polygon(latlngs, {
-            color: layer.color,
-            weight: layer.weight != null ? layer.weight : 1.5,
-            opacity: 0.95,
-            fillColor: layer.color,
-            fillOpacity: layer.fillOpacity != null ? layer.fillOpacity : 0.18,
+            color: isOpen ? '#5d8e3d' : layer.color,
+            weight: isOpen ? 2.5 : (layer.weight != null ? layer.weight : 1.5),
+            opacity: isOpen ? 1 : 0.75,
+            fillColor: isOpen ? '#5d8e3d' : layer.color,
+            fillOpacity: isOpen ? 0.28 : (layer.fillOpacity != null ? Math.min(layer.fillOpacity, 0.14) : 0.12),
             interactive: true,
             bubblingMouseEvents: false
           });
-          poly.bindPopup(buildAdcnrPopup(layer, feat.attributes || {}));
+          poly.bindPopup(buildAdcnrPopup(layer, attrs));
           adcnrOverlayGroup.addLayer(poly);
+
+          if (isOpen && adcnrOpenPinGroup && typeof L !== 'undefined') {
+            var name = featureDisplayName(layer, attrs) || layer.label || '';
+            var pinKey = (layer.key || '') + '|' + name.toLowerCase();
+            if (!openPinKeys[pinKey]) {
+              openPinKeys[pinKey] = true;
+              var pin = L.marker([c.lat, c.lng], {
+                icon: L.divIcon({
+                  className: '',
+                  html: '<div style="background:#486a2f;width:18px;height:18px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:bold;">✓</div>',
+                  iconSize: [18, 18],
+                  iconAnchor: [9, 9]
+                }),
+                zIndexOffset: 400
+              });
+              pin.bindPopup(buildAdcnrPopup(layer, attrs));
+              adcnrOpenPinGroup.addLayer(pin);
+            }
+          }
         });
       });
-      // Keep under pins/markers so map UI stays clickable
       try { adcnrOverlayGroup.bringToBack(); } catch (e) {}
+    }
+
+    /** Keep map overlay in sync with weapon/date when toggle is on. */
+    function refreshPublicLandsOverlayIfOn() {
+      var chk = document.getElementById('toggle-adcnr-lands-chk');
+      if (!chk || !chk.checked) return;
+      if (!map || !adcnrOverlayGroup) {
+        // Map not ready yet — ensureMap + load will draw
+        if (selectedWeapon) {
+          ensureMap().then(function() {
+            loadAdcnrLands(false).then(function() {
+              drawAdcnrLandsOverlay();
+              updateAdcnrLegendVisibility();
+            }).catch(function() {});
+          });
+        }
+        return;
+      }
+      if (adcnrLandsData) drawAdcnrLandsOverlay();
+      else {
+        loadAdcnrLands(false).then(function() {
+          drawAdcnrLandsOverlay();
+          updateAdcnrLegendVisibility();
+        }).catch(function() {});
+      }
     }
 
     let adcnrLegendDismissed = false; // user closed legend with X in this session
@@ -1430,6 +2308,7 @@
       var on = chk && chk.checked;
       if (!on) {
         if (adcnrOverlayGroup) adcnrOverlayGroup.clearLayers();
+        if (adcnrOpenPinGroup) adcnrOpenPinGroup.clearLayers();
         updateAdcnrLegendVisibility();
         return;
       }
@@ -1444,6 +2323,8 @@
         }
         if (!adcnrOverlayGroup) adcnrOverlayGroup = L.layerGroup().addTo(map);
         else if (!map.hasLayer(adcnrOverlayGroup)) adcnrOverlayGroup.addTo(map);
+        if (!adcnrOpenPinGroup) adcnrOpenPinGroup = L.layerGroup().addTo(map);
+        else if (!map.hasLayer(adcnrOpenPinGroup)) adcnrOpenPinGroup.addTo(map);
         setAdcnrToggleLoading(true);
         updateAdcnrCacheStatus(adcnrLandsData && adcnrLandsData.timestamp, 'loading…');
         loadAdcnrLands(false).then(function() {
@@ -1507,6 +2388,7 @@
 
       // ADCNR polygons first (under markers so pins stay clickable)
       adcnrOverlayGroup = L.layerGroup().addTo(map);
+      adcnrOpenPinGroup = L.layerGroup().addTo(map); // green ✓ pins for open units
       mapMarkerGroup = L.layerGroup().addTo(map);
       standMarkerGroup = L.layerGroup().addTo(map);
       gaugeMarkerGroup = L.layerGroup().addTo(map);
@@ -1524,10 +2406,19 @@
       L.polyline(alBoundary, { color: '#e59a18', weight: 2, opacity: 0.7, interactive: false }).addTo(map);
 
       drawWaterGaugesOnMap(true);
-      drawHuntsOnMap();
+      drawHuntsOnMap(); // respects Past Hunts checkbox (off by default)
       drawPinsOnMap();
       fetchRealTimeGauges(false);
       loadTvaLands(); // silent preload — never drawn on map
+
+      // Public Lands Overlay defaults ON — load polygons open for selected weapon/date
+      var adcnrChk = document.getElementById('toggle-adcnr-lands-chk');
+      if (adcnrChk && adcnrChk.checked && selectedWeapon) {
+        loadAdcnrLands(false).then(function() {
+          drawAdcnrLandsOverlay();
+          updateAdcnrLegendVisibility();
+        }).catch(function() {});
+      }
 
       if (userLat != null && userLng != null) {
         map.setView([userLat, userLng], 9);
@@ -1609,8 +2500,10 @@
       if (gpsMarker) {
         gpsMarker.setLatLng([lat, lng]);
       } else {
-        gpsMarker = L.marker([lat, lng], { icon: icon }).addTo(map).bindPopup('You are here');
+        // Blue dot only — no auto "You are here" popup
+        gpsMarker = L.marker([lat, lng], { icon: icon }).addTo(map);
       }
+      if (map) map.closePopup();
     }
 
     function cancelToastForm() {
@@ -1928,6 +2821,7 @@
         }
         if (!selectedWeapon) { lockStep3(); return; }
         updateAvailableList();
+        refreshPublicLandsOverlayIfOn();
         return;
       }
 
@@ -1942,6 +2836,7 @@
       }
 
       updateAvailableList();
+      refreshPublicLandsOverlayIfOn();
 
       if (selectedLocationId && !usingCurrentLocation) {
         const loc = locations.find(l => l.id == selectedLocationId);
@@ -2066,9 +2961,12 @@
       selectedLocationId = null; selectedSubsectionIndex = null;
       lastVisibleMarkerKey = '';
       // Load public land list (ADCNR/TVA/federal) into location options; cache ~30 days
-      loadAdcnrLands(false).catch(function() {});
+      loadAdcnrLands(false).then(function() {
+        refreshPublicLandsOverlayIfOn();
+      }).catch(function() {});
       ensureMap().then(function() {
         updateAvailableList();
+        refreshPublicLandsOverlayIfOn();
         var open = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand);
         if (open.length === 0 && currentLocationObj) {
           isShowingCurrentData = true;
@@ -2090,6 +2988,7 @@
         pub.classList.remove('active'); pub.style.flex='0 0 auto'; pub.style.fontSize='10px'; pub.style.padding='4px 10px'; pub.style.opacity='0.6';
       }
       updateAvailableList();
+      refreshPublicLandsOverlayIfOn();
     }
     function lockStep3() {
       document.getElementById('step-3-section').classList.add('locked');
@@ -2157,32 +3056,31 @@
       if (loc.noSunday && date.getDay() === 0) return [];
       if (!isInAlabama(loc.lat, loc.lng)) return [];
 
-      // 1) Explicit profile by name (Swan Creek, Mallard-Fox, certain NWRs)
+      // Hard block non-huntable refuges (Bon Secour, Fern Cave, Sauta Cave, Watercress Darter, etc.)
+      if (isNonHuntableRefugeName(loc.name) || isNonHuntableRefugeName(loc.unitName)) return [];
+
+      // Federal NWR: require whitelist profile — no generic "assume archery" for unknown refuges
+      if (loc.landSource === 'nwr' || loc.type === 'NWR' || (loc.type === 'Refuge' && !loc.id)) {
+        if (!isHuntableDeerRefugeName(loc.name) && !isHuntableDeerRefugeName(loc.unitName)) return [];
+      }
+
+      // 1) Explicit profile by name (weapon-specific seasons)
       var profile = findUnitDeerProfile(loc.name) || findUnitDeerProfile(loc.unitName);
       if (profile) {
         return profileSeasonsOpen(profile, date, weapon, land, ds);
       }
 
-      // 2) Built-in unit with dedicated rules (Black Warrior, Wheeler, Bankhead, etc.)
+      // 2) Built-in unit with dedicated rules (Black Warrior, Wheeler North/South, Bankhead, etc.)
       var builtin = locations.find(function(l) {
         return !l.isPublicLand && !l.isPin && l.id !== 9999 && l.type !== 'Statewide' && namesRoughMatch(l.name, loc.name);
       });
       if (builtin) {
+        // Built-in Refuge entries still weapon-check via rules table
         return matchRulesForLocId(builtin.id, date, weapon, land, ds);
       }
 
-      // 3) National Wildlife Refuges without profile: archery only, never gun/primitive deer
-      if (loc.landSource === 'nwr' || loc.type === 'NWR' || loc.type === 'Refuge') {
-        if (weapon === 'Gun' || weapon === 'Primitive') return [];
-        var nwrWeapon = weapon === 'Either' ? 'Archery' : weapon;
-        if (nwrWeapon !== 'Archery') return [];
-        var nwrRules = matchRulesForLocId(statewideLocIdForZone(loc.zone), date, 'Archery', land, ds);
-        return nwrRules.map(function(r) {
-          return Object.assign({}, r, {
-            notes: (loc.notes ? loc.notes + ' ' : '') + (r.notes || '') + ' Federal refuge — confirm FWS/Outdoor Alabama unit rules. No gun deer assumed.'
-          });
-        });
-      }
+      // 3) Unknown NWR with no profile: DO NOT list (hunting not verified)
+      if (loc.landSource === 'nwr' || loc.type === 'NWR') return [];
 
       // 4) Other public GIS (WMA/SOA/PDHA/FW/TVA): use ONLY statewide zone rules that already
       //    apply to this land type — do NOT copy Black Warrior / Talladega gun calendars.
@@ -2721,8 +3619,11 @@
         html += '<div style="margin-top:8px;font-size:11px;color:var(--muted);"><i>' + String(location.notes).replace(/\n/g, '<br>') + '</i></div>';
       }
       document.getElementById('mwo-body').innerHTML = html;
-      // Show map weather card in fullscreen, or whenever Select was used from a pin/popup
-      var showOverlay = window._forceMapWeatherOverlay || document.querySelector('.map-wrapper').classList.contains('fullscreen');
+      // Map weather box only when user selects a hunt area — never for GPS "current location"
+      var isCurrentLoc = !location || location.id == 9999 || location.type === 'Current Location' || usingCurrentLocation;
+      var forceBox = !!window._forceMapWeatherOverlay && !isCurrentLoc;
+      var fullscreen = document.querySelector('.map-wrapper').classList.contains('fullscreen');
+      var showOverlay = forceBox || (fullscreen && selectedLocationId && !isCurrentLoc);
       document.getElementById('map-weather-overlay').style.display = showOverlay ? 'block' : 'none';
       window._forceMapWeatherOverlay = false;
     }
@@ -2776,7 +3677,9 @@
         var full = w.classList.toggle('fullscreen');
         document.getElementById('map-maximize-btn').style.display = full ? 'none' : 'block';
         document.getElementById('map-minimize-btn').style.display = full ? 'block' : 'none';
-        document.getElementById('map-weather-overlay').style.display = (full && selectedLocationId) ? 'block' : 'none';
+        // Weather box only if a real area is selected (not bare current-location)
+        var isCur = selectedLocationId == 9999 || usingCurrentLocation;
+        document.getElementById('map-weather-overlay').style.display = (full && selectedLocationId && !isCur) ? 'block' : 'none';
         // Legend only appears in fullscreen (and only if overlay is on + not dismissed)
         if (full) adcnrLegendDismissed = false;
         updateAdcnrLegendVisibility();
@@ -2793,13 +3696,24 @@
         usingCurrentLocation = true;
         isShowingCurrentData = true;
         isHistorical = false;
+        distOriginLat = userLat;
+        distOriginLng = userLng;
+        distOriginLabel = 'My Location';
+        updateDistStatus();
         ensureMap().then(function(m) {
-          if (m) { m.setView([userLat, userLng], 12); setGpsMarker(userLat, userLng); if (gpsMarker) gpsMarker.openPopup(); }
+          if (m) {
+            m.setView([userLat, userLng], 12);
+            setGpsMarker(userLat, userLng);
+            // No auto popup / weather box for current location — only after selecting an area
+            if (map) map.closePopup();
+          }
         });
+        document.getElementById('map-weather-overlay').style.display = 'none';
         var dateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
         var tid = detected.zone==='A' ? 10 : 11;
         var rule = rules.find(function(r) { return r.locId==tid && dateStr>=r.start && dateStr<=r.end; }) || { weapon:'General', target:'Statewide Rules', limit:'Statewide Limit', notes:'Check regulations.' };
         selectLocation(currentLocationObj, rule);
+        updateAvailableList();
       }, function(err) { alert('Geolocation failed: ' + err.message); });
     }
     function initializeFallback(lat, lng) {
