@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>REG SLAYER - Alabama Deer Season Planner v2.6</title>
+  <title>REG SLAYER - Alabama Deer Season Planner v2.7</title>
   <!-- Detect phone vs desktop as early as possible (reduces layout flash) -->
   <script>
     (function () {
@@ -45,7 +45,7 @@
     html, body { height: 100%; }
     body { background: var(--bg); color: var(--ink); margin: 0; padding: 0; line-height: 1.5; min-height: 100vh; display: flex; flex-direction: column; }
 
-    /* ========== BRAND HEADER (v2.6 - large logo fills top bar) ========== */
+    /* ========== BRAND HEADER (v2.7 - large logo fills top bar) ========== */
     .brand-header {
       background:
         linear-gradient(180deg, rgba(13,15,12,0.15) 0%, rgba(13,15,12,0.88) 100%),
@@ -99,7 +99,7 @@
       text-shadow: 0 1px 3px rgba(0,0,0,0.85);
     }
 
-    /* Site links / tagline live in page footer (v2.6) */
+    /* Site links / tagline live in page footer (v2.7) */
     .site-footer {
       margin-top: auto;
       border-top: 1px solid var(--border);
@@ -130,7 +130,7 @@
       padding: 3px 9px; border-radius: 6px; border: 1px solid var(--border);
     }
 
-    /* ========== DESKTOP SHELL (v2.6 - planner+weather left, big map right) ========== */
+    /* ========== DESKTOP SHELL (v2.7 - planner+weather left, big map right) ========== */
     .app-shell {
       max-width: none;
       margin: 0;
@@ -914,6 +914,133 @@
       color: var(--accent);
       font-weight: 800;
     }
+
+    /* Map measure / draw tools (Google Maps–style) */
+    .map-draw-tools {
+      position: absolute;
+      top: 52px;
+      left: 10px;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-width: min(200px, calc(100% - 20px));
+      pointer-events: auto;
+    }
+    .map-wrapper.fullscreen .map-draw-tools { z-index: 100040; top: 58px; left: 16px; }
+    .map-draw-tools .mdt-btn {
+      background: rgba(22, 26, 18, 0.95);
+      border: 1px solid var(--border);
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      text-align: left;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      line-height: 1.25;
+    }
+    .map-draw-tools .mdt-btn:hover { border-color: var(--accent); color: #fff; }
+    .map-draw-tools .mdt-btn.active {
+      border-color: var(--accent);
+      background: rgba(229, 154, 24, 0.18);
+      color: var(--accent);
+    }
+    .map-draw-tools .mdt-btn:disabled { opacity: 0.45; cursor: default; }
+    .map-draw-hint {
+      display: none;
+      background: rgba(15, 18, 14, 0.94);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.4;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .map-draw-hint.active { display: block; }
+    .map-draw-hint strong { color: var(--accent); }
+    .map-draw-stats {
+      display: none;
+      background: rgba(15, 18, 14, 0.94);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 11px;
+      color: #fff;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+    .map-draw-stats.active { display: block; }
+    html.layout-phone .map-draw-tools { top: auto; bottom: 70px; left: 10px; }
+    .map-wrapper.draw-mode #leaflet-map { cursor: crosshair; }
+
+    /* Save custom shape modal */
+    #shape-save-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 200050;
+      background: rgba(0,0,0,0.65);
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    #shape-save-modal.active { display: flex; }
+    .shape-save-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      max-width: 420px;
+      width: 100%;
+      padding: 16px 16px 14px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.55);
+      color: var(--ink);
+      max-height: min(90vh, 640px);
+      overflow-y: auto;
+    }
+    .shape-save-card h3 { margin: 0 0 6px; color: #fff; font-size: 16px; }
+    .shape-save-card .ss-meta { font-size: 11px; color: var(--muted); margin-bottom: 12px; line-height: 1.4; }
+    .shape-save-card label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin: 10px 0 5px; }
+    .shape-save-card input[type="text"] {
+      width: 100%; box-sizing: border-box; background: var(--panel-light); border: 1px solid var(--border);
+      color: var(--ink); border-radius: 6px; padding: 8px 10px; font-size: 13px;
+    }
+    .shape-color-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .shape-color-row input[type="color"] {
+      width: 40px; height: 32px; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--panel-light); padding: 2px; cursor: pointer;
+    }
+    .shape-save-actions { display: flex; gap: 8px; margin-top: 14px; }
+    .shape-save-actions button {
+      flex: 1; border-radius: 8px; padding: 9px 10px; font-weight: 800; font-size: 12px; cursor: pointer; border: none;
+    }
+    .shape-save-actions .ss-save { background: var(--accent); color: #000; }
+    .shape-save-actions .ss-cancel { background: var(--panel-light); color: var(--muted); border: 1px solid var(--border); }
+    .shape-fill-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink); margin-top: 4px; }
+    .shape-fill-row input { cursor: pointer; }
+    /* Hover cards for measured lines / custom shapes */
+    .measured-path-tooltip {
+      background: rgba(15, 18, 14, 0.96) !important;
+      border: 1px solid #38bdf8 !important;
+      border-radius: 8px !important;
+      color: #e8efe4 !important;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.5) !important;
+      padding: 8px 10px !important;
+      font-size: 12px !important;
+    }
+    .measured-path-tooltip::before { border-top-color: #38bdf8 !important; }
+    .custom-area-tooltip {
+      background: rgba(15, 18, 14, 0.96) !important;
+      border: 1px solid var(--accent) !important;
+      border-radius: 8px !important;
+      color: #e8efe4 !important;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.5) !important;
+      padding: 8px 10px !important;
+      font-size: 12px !important;
+    }
+    .custom-area-tooltip::before { border-top-color: var(--accent) !important; }
     /* Reuse same readable menu style for pin / stand / hunt popups */
     .saved-item-popup .leaflet-popup-content-wrapper {
       background: #0f120e;
@@ -1455,11 +1582,11 @@
   </style>
 </head>
 <body>
-  <!-- Brand header: large logo + small V2.6 at bottom-right of logo -->
+  <!-- Brand header: large logo + small V2.7 at bottom-right of logo -->
   <header class="brand-header" role="banner">
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 2.6">V2.6</span>
+      <span class="brand-version" aria-label="Version 2.7">V2.7</span>
     </div>
   </header>
 
@@ -1765,7 +1892,45 @@
           </div>
           <button id="map-maximize-btn" class="map-fs-btn" onclick="toggleMapFullscreen()" type="button">Full Screen</button>
           <button id="map-minimize-btn" class="map-fs-btn" onclick="toggleMapFullscreen()" type="button" style="display:none;">Minimize</button>
+          <!-- Measure / draw tools (distance lines + saveable hunt shapes) -->
+          <div class="map-draw-tools" id="map-draw-tools">
+            <button type="button" class="mdt-btn" id="mdt-measure" onclick="startMapMeasure()" title="Click points to measure distance">📏 Measure</button>
+            <button type="button" class="mdt-btn" id="mdt-draw" onclick="startMapDrawShape()" title="Click points to draw a shape, then Finish to save">✏️ Draw shape</button>
+            <button type="button" class="mdt-btn" id="mdt-undo" onclick="undoMapDrawVertex()" disabled title="Remove last point">↩ Undo point</button>
+            <button type="button" class="mdt-btn" id="mdt-finish" onclick="finishMapDraw()" disabled title="Finish line or save shape">✓ Finish</button>
+            <button type="button" class="mdt-btn" id="mdt-cancel" onclick="cancelMapDraw()" disabled title="Cancel drawing">✕ Cancel</button>
+            <div class="map-draw-hint" id="map-draw-hint"></div>
+            <div class="map-draw-stats" id="map-draw-stats"></div>
+          </div>
           <button id="gps-snap-btn" onclick="snapToGPS()" style="position:absolute;bottom:20px;left:20px;z-index:10000;background:var(--green);color:white;border:none;border-radius:6px;padding:8px 12px;font-weight:bold;cursor:pointer;font-size:11px;">Current Location</button>
+
+  <!-- Save drawn shape as custom huntable area -->
+  <div id="shape-save-modal" onclick="if(event.target===this)cancelShapeSaveModal()">
+    <div class="shape-save-card" role="dialog" aria-modal="true" aria-labelledby="shape-save-title">
+      <h3 id="shape-save-title">Save custom hunt area</h3>
+      <div class="ss-meta" id="shape-save-meta">Name this area and choose colors. It will use the deer rules for the land under its center.</div>
+      <label for="shape-name-input">Area name</label>
+      <input type="text" id="shape-name-input" placeholder="e.g. North ridge stand box" maxlength="80" />
+      <label>Line color</label>
+      <div class="shape-color-row">
+        <input type="color" id="shape-line-color" value="#e59a18" />
+        <span style="font-size:11px;color:var(--muted);">Outline of the shape</span>
+      </div>
+      <label>Fill</label>
+      <div class="shape-fill-row">
+        <input type="checkbox" id="shape-fill-enabled" checked />
+        <span>Fill inside (same opacity as public-land overlays)</span>
+      </div>
+      <div class="shape-color-row" id="shape-fill-color-row">
+        <input type="color" id="shape-fill-color" value="#e59a18" />
+        <span style="font-size:11px;color:var(--muted);">Fill color</span>
+      </div>
+      <div class="shape-save-actions">
+        <button type="button" class="ss-save" onclick="confirmSaveCustomShape()">Save area</button>
+        <button type="button" class="ss-cancel" onclick="cancelShapeSaveModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
           <div id="map-weather-overlay" style="display:none;position:absolute;bottom:20px;right:20px;z-index:10001;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:15px;width:300px;box-shadow:0 4px 15px rgba(0,0,0,0.6);max-height:80vh;overflow-y:auto;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
               <strong id="mwo-title" style="font-size:14px;color:#fff;">Weather</strong>
@@ -1832,7 +1997,7 @@
   </div>
   </div><!-- /.app-shell -->
 
-  <!-- Tagline + official links moved to bottom (v2.6) -->
+  <!-- Tagline + official links moved to bottom (v2.7) -->
   <footer class="site-footer" role="contentinfo">
     <div class="site-footer-inner">
       <p>Alabama public &amp; private land · USGS gauges · topo terrain · wind &amp; scent</p>
@@ -1846,7 +2011,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '2.6';
+    const APP_VERSION = '2.7';
     let selectedDate = null, selectedWeapon = null, selectedLand = 'Public', selectedLocationId = null;
     let selectedSubsectionIndex = null, viewFilterMode = 'all', currentSelectedColor = '#e59a18';
     let editingEventId = null, userLat = null, userLng = null;
@@ -1878,6 +2043,19 @@
     let lastListedHuntLocations = [];
     // Map-click stand placement: { locId, name } while active
     let standPlaceMode = null;
+
+    // Measure / draw-shape tools
+    // mode: null | 'measure' | 'draw'
+    let mapDrawMode = null;
+    let mapDrawPoints = []; // [{lat,lng}, ...]
+    let mapDrawPreviewLayer = null; // L.layerGroup for draft line/poly + vertices
+    let mapDrawMouseLatLng = null;
+    let customAreaGroup = null; // saved user shapes on map
+    let pendingShapeRing = null; // ring awaiting save modal
+    const CUSTOM_AREAS_KEY = 'alabama_hunt_custom_areas_v1';
+    const MEASURED_PATHS_KEY = 'alabama_hunt_measured_paths_v1';
+    const CUSTOM_AREA_FILL_OPACITY = 0.30; // match public-land overlay fill feel
+    let measuredPathGroup = null; // saved measure lines on map
 
     // Weather + water caches (15 min) and in-flight request dedupe
     let weatherCache = { key: null, data: null, timestamp: 0 };
@@ -3402,6 +3580,11 @@
         writeAdcnrCache(payload);
         updateAdcnrCacheStatus(payload.timestamp, 'fresh download');
         syncPublicLandsToLocations(payload);
+        // Re-bind land context for custom shapes after GIS load
+        try {
+          loadCustomAreasIntoLocations();
+          drawCustomAreasOnMap();
+        } catch (caErr) {}
         adcnrLoading = null;
         // If map is already open and overlay is checked, paint as soon as data arrives
         paintPublicLandsIfMapReady();
@@ -3728,7 +3911,8 @@
     // Forever Wild is never listed (map-only). Tracts inside WMAs never become list destinations.
     function syncPublicLandsToLocations(payload) {
       for (var i = locations.length - 1; i >= 0; i--) {
-        if (locations[i].isPublicLand) locations.splice(i, 1);
+        // Keep user-drawn custom areas; only clear GIS-imported public land rows
+        if (locations[i].isPublicLand && !locations[i].isCustomArea) locations.splice(i, 1);
       }
 
       var wmaRings = buildWmaRingsIndex(payload);
@@ -5040,6 +5224,9 @@
       gaugeMarkerGroup = L.layerGroup().addTo(map);
       huntMarkerGroup = L.layerGroup().addTo(map);
       pinMarkerGroup = L.layerGroup().addTo(map);
+      customAreaGroup = L.layerGroup().addTo(map);
+      measuredPathGroup = L.layerGroup().addTo(map);
+      mapDrawPreviewLayer = L.layerGroup().addTo(map);
 
       // Same outline as zone clipping so fills never spill past the state line
       var alBoundary = AL_STATE_RING.slice();
@@ -5056,6 +5243,9 @@
       drawWaterGaugesOnMap(true);
       drawHuntsOnMap(); // respects Past Hunts checkbox (off by default)
       drawPinsOnMap();
+      loadCustomAreasIntoLocations();
+      drawCustomAreasOnMap();
+      drawMeasuredPathsOnMap();
       fetchRealTimeGauges(false);
       loadTvaLands(); // silent preload - never drawn on map
 
@@ -5096,10 +5286,31 @@
           placeStandAt(e.latlng.lat, e.latlng.lng);
           return;
         }
+        // Measure / draw shape tools take priority over free map-dot placement
+        if (mapDrawMode) {
+          addMapDrawVertex(e.latlng);
+          return;
+        }
         // Free map click (not on public-land polygon) - clear unit context
         lastClickPublicLand = null;
         // Place / move a clean map dot - on phone skip auto-weather (stays on map)
         placeOrMoveMapDot(e.latlng, { skipWeather: isPhoneLayout() });
+      });
+
+      map.on('mousemove', function(e) {
+        if (!mapDrawMode || !e || !e.latlng) return;
+        mapDrawMouseLatLng = e.latlng;
+        refreshMapDrawPreview();
+      });
+
+      map.on('dblclick', function(e) {
+        if (!mapDrawMode) return;
+        if (e && e.originalEvent) {
+          L.DomEvent.stop(e);
+          L.DomEvent.preventDefault(e.originalEvent);
+        }
+        // Double-click finishes measure or shape (same as Finish button)
+        finishMapDraw();
       });
 
       // After basemap finishes, re-sync overlay (first open race fix)
@@ -5375,6 +5586,864 @@
       return false;
     }
     window.handleMapDotAction = handleMapDotAction;
+
+    // ========== MEASURE / DRAW CUSTOM HUNT AREAS ==========
+    function haversineMiles(lat1, lng1, lat2, lng2) {
+      var R = 3958.7613;
+      var toRad = Math.PI / 180;
+      var dLat = (lat2 - lat1) * toRad;
+      var dLng = (lng2 - lng1) * toRad;
+      var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+      return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+    }
+
+    function pathDistanceMiles(points) {
+      var total = 0;
+      for (var i = 1; i < points.length; i++) {
+        total += haversineMiles(points[i - 1].lat, points[i - 1].lng, points[i].lat, points[i].lng);
+      }
+      return total;
+    }
+
+    function formatMiles(mi) {
+      if (mi == null || isNaN(mi)) return '—';
+      if (mi < 0.1) return (mi * 5280).toFixed(0) + ' ft';
+      if (mi < 10) return mi.toFixed(2) + ' mi';
+      return mi.toFixed(1) + ' mi';
+    }
+
+    function ringCentroid(ring) {
+      if (!ring || !ring.length) return null;
+      var slat = 0, slng = 0, n = 0;
+      for (var i = 0; i < ring.length; i++) {
+        if (ring[i] && ring[i].length >= 2) {
+          slat += ring[i][0];
+          slng += ring[i][1];
+          n++;
+        }
+      }
+      if (!n) return null;
+      return { lat: slat / n, lng: slng / n };
+    }
+
+    function setMapDrawUi() {
+      var measuring = mapDrawMode === 'measure';
+      var drawing = mapDrawMode === 'draw';
+      var active = !!(measuring || drawing);
+      var wrap = document.querySelector('.map-wrapper');
+      if (wrap) wrap.classList.toggle('draw-mode', active);
+      var bMeas = document.getElementById('mdt-measure');
+      var bDraw = document.getElementById('mdt-draw');
+      var bUndo = document.getElementById('mdt-undo');
+      var bFin = document.getElementById('mdt-finish');
+      var bCan = document.getElementById('mdt-cancel');
+      var hint = document.getElementById('map-draw-hint');
+      var stats = document.getElementById('map-draw-stats');
+      if (bMeas) bMeas.classList.toggle('active', measuring);
+      if (bDraw) bDraw.classList.toggle('active', drawing);
+      var hasDraft = mapDrawPoints.length > 0 || !!(mapDrawPreviewLayer && mapDrawPreviewLayer.getLayers && mapDrawPreviewLayer.getLayers().length);
+      if (bUndo) bUndo.disabled = !active || mapDrawPoints.length === 0;
+      if (bFin) bFin.disabled = !active || mapDrawPoints.length < (drawing ? 3 : 2);
+      // Allow Cancel whenever a draft path is on screen (including finished measure preview)
+      if (bCan) bCan.disabled = !active && !hasDraft;
+      if (hint) {
+        if (measuring) {
+          hint.classList.add('active');
+          hint.innerHTML = '<strong>Measure:</strong> Click points along a path. Distance updates live. Finish or double-click to end.';
+        } else if (drawing) {
+          hint.classList.add('active');
+          hint.innerHTML = '<strong>Draw shape:</strong> Click 3+ corners of your area. Finish or double-click to name &amp; save as a hunt area.';
+        } else {
+          hint.classList.remove('active');
+          hint.innerHTML = '';
+        }
+      }
+      if (stats) {
+        if (active && mapDrawPoints.length) {
+          var pts = mapDrawPoints.slice();
+          if (mapDrawMouseLatLng && pts.length) {
+            pts = pts.concat([{ lat: mapDrawMouseLatLng.lat, lng: mapDrawMouseLatLng.lng }]);
+          }
+          var dist = pathDistanceMiles(pts);
+          var line = formatMiles(dist);
+          if (drawing && mapDrawPoints.length >= 3) {
+            stats.innerHTML = mapDrawPoints.length + ' points · perimeter ~' + line;
+          } else {
+            stats.innerHTML = mapDrawPoints.length + ' point' + (mapDrawPoints.length === 1 ? '' : 's') + ' · ' + line;
+          }
+          stats.classList.add('active');
+        } else if (active) {
+          stats.innerHTML = 'Click the map to place the first point';
+          stats.classList.add('active');
+        } else {
+          stats.classList.remove('active');
+          stats.innerHTML = '';
+        }
+      }
+    }
+
+    function clearMapDrawPreview() {
+      if (mapDrawPreviewLayer) mapDrawPreviewLayer.clearLayers();
+    }
+
+    function refreshMapDrawPreview() {
+      if (!map || !mapDrawPreviewLayer) return;
+      clearMapDrawPreview();
+      if (!mapDrawPoints.length) {
+        setMapDrawUi();
+        return;
+      }
+      var color = mapDrawMode === 'measure' ? '#38bdf8' : '#e59a18';
+      var latlngs = mapDrawPoints.map(function(p) { return [p.lat, p.lng]; });
+      if (mapDrawMouseLatLng) {
+        latlngs = latlngs.concat([[mapDrawMouseLatLng.lat, mapDrawMouseLatLng.lng]]);
+      }
+      // Draft line
+      L.polyline(latlngs, {
+        color: color,
+        weight: 3,
+        opacity: 0.95,
+        dashArray: mapDrawMode === 'measure' ? '6 6' : null,
+        interactive: false
+      }).addTo(mapDrawPreviewLayer);
+      // Soft fill preview for closed shape
+      if (mapDrawMode === 'draw' && mapDrawPoints.length >= 3) {
+        var fillPts = mapDrawPoints.map(function(p) { return [p.lat, p.lng]; });
+        L.polygon(fillPts, {
+          color: color,
+          weight: 1,
+          fillColor: color,
+          fillOpacity: 0.12,
+          interactive: false
+        }).addTo(mapDrawPreviewLayer);
+      }
+      // Vertices
+      mapDrawPoints.forEach(function(p, idx) {
+        L.circleMarker([p.lat, p.lng], {
+          radius: idx === 0 ? 6 : 5,
+          color: '#fff',
+          weight: 2,
+          fillColor: color,
+          fillOpacity: 1,
+          interactive: false
+        }).addTo(mapDrawPreviewLayer);
+      });
+      // Segment distance labels (measure mode)
+      if (mapDrawMode === 'measure' && mapDrawPoints.length >= 2) {
+        for (var i = 1; i < mapDrawPoints.length; i++) {
+          var a = mapDrawPoints[i - 1], b = mapDrawPoints[i];
+          var mid = { lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 };
+          var seg = haversineMiles(a.lat, a.lng, b.lat, b.lng);
+          L.marker([mid.lat, mid.lng], {
+            interactive: false,
+            icon: L.divIcon({
+              className: '',
+              html: '<div style="background:rgba(15,18,14,0.88);border:1px solid #38bdf8;color:#fff;font-size:10px;font-weight:700;padding:2px 5px;border-radius:4px;white-space:nowrap;">' + formatMiles(seg) + '</div>',
+              iconSize: [70, 18],
+              iconAnchor: [35, 9]
+            })
+          }).addTo(mapDrawPreviewLayer);
+        }
+      }
+      setMapDrawUi();
+    }
+
+    function addMapDrawVertex(latlng) {
+      if (!mapDrawMode || !latlng) return;
+      mapDrawPoints.push({ lat: latlng.lat, lng: latlng.lng });
+      refreshMapDrawPreview();
+    }
+
+    function undoMapDrawVertex() {
+      if (!mapDrawPoints.length) return;
+      mapDrawPoints.pop();
+      refreshMapDrawPreview();
+    }
+
+    function cancelMapDraw() {
+      mapDrawMode = null;
+      mapDrawPoints = [];
+      mapDrawMouseLatLng = null;
+      pendingShapeRing = null;
+      clearMapDrawPreview();
+      setMapDrawUi();
+      var modal = document.getElementById('shape-save-modal');
+      if (modal) modal.classList.remove('active');
+    }
+
+    function startMapMeasure() {
+      ensureMap().then(function(m) {
+        if (!m) return;
+        if (mapDrawMode === 'measure') {
+          cancelMapDraw();
+          return;
+        }
+        mapDrawMode = 'measure';
+        mapDrawPoints = [];
+        mapDrawMouseLatLng = null;
+        if (map) map.closePopup();
+        clearMapDot();
+        refreshMapDrawPreview();
+        setMapDrawUi();
+      });
+    }
+    window.startMapMeasure = startMapMeasure;
+
+    function startMapDrawShape() {
+      ensureMap().then(function(m) {
+        if (!m) return;
+        if (mapDrawMode === 'draw') {
+          cancelMapDraw();
+          return;
+        }
+        mapDrawMode = 'draw';
+        mapDrawPoints = [];
+        mapDrawMouseLatLng = null;
+        if (map) map.closePopup();
+        clearMapDot();
+        refreshMapDrawPreview();
+        setMapDrawUi();
+      });
+    }
+    window.startMapDrawShape = startMapDrawShape;
+    window.undoMapDrawVertex = undoMapDrawVertex;
+    window.cancelMapDraw = cancelMapDraw;
+
+    function finishMapDraw() {
+      if (!mapDrawMode) return;
+      if (mapDrawMode === 'measure') {
+        if (mapDrawPoints.length < 2) {
+          alert('Add at least two points to measure a distance.');
+          return;
+        }
+        var total = pathDistanceMiles(mapDrawPoints);
+        var pts = mapDrawPoints.map(function(p) { return { lat: p.lat, lng: p.lng }; });
+        // Persist line on map (hover for distance / elevation / date)
+        saveMeasuredPath(pts, total);
+        showAppCopyToast(
+          '<span class="act">Distance: ' + formatMiles(total) + '</span><br>' +
+          'Line saved on the map — hover it for distance, elevation change, and date added.'
+        );
+        mapDrawMode = null;
+        mapDrawPoints = [];
+        mapDrawMouseLatLng = null;
+        clearMapDrawPreview();
+        setMapDrawUi();
+        return;
+      }
+      if (mapDrawMode === 'draw') {
+        if (mapDrawPoints.length < 3) {
+          alert('Add at least three points to form a shape.');
+          return;
+        }
+        // Build closed ring [lat,lng]
+        var ring = mapDrawPoints.map(function(p) { return [p.lat, p.lng]; });
+        var first = ring[0], last = ring[ring.length - 1];
+        if (first[0] !== last[0] || first[1] !== last[1]) ring.push([first[0], first[1]]);
+        pendingShapeRing = ring;
+        openShapeSaveModal(ring);
+      }
+    }
+    window.finishMapDraw = finishMapDraw;
+
+    function openShapeSaveModal(ring) {
+      var c = ringCentroid(ring);
+      var landInfo = c ? resolveLandContextAtPoint(c.lat, c.lng) : null;
+      var meta = document.getElementById('shape-save-meta');
+      if (meta) {
+        var perim = 0;
+        for (var i = 1; i < ring.length; i++) {
+          perim += haversineMiles(ring[i - 1][0], ring[i - 1][1], ring[i][0], ring[i][1]);
+        }
+        var landLine = landInfo
+          ? ('Rules will follow: <strong style="color:var(--accent);">' + escHtml(landInfo.label) + '</strong> · Zone ' + escHtml(landInfo.zone) + '.')
+          : 'Rules will follow the statewide deer zone under the shape center.';
+        meta.innerHTML = landLine + ' Perimeter ~' + formatMiles(perim) + '.';
+      }
+      var nameInp = document.getElementById('shape-name-input');
+      if (nameInp) {
+        nameInp.value = landInfo && landInfo.unitName
+          ? (landInfo.unitName + ' — custom area')
+          : '';
+      }
+      var fillChk = document.getElementById('shape-fill-enabled');
+      var fillRow = document.getElementById('shape-fill-color-row');
+      if (fillChk && !fillChk._wiredFill) {
+        fillChk._wiredFill = true;
+        fillChk.addEventListener('change', function() {
+          if (fillRow) fillRow.style.opacity = fillChk.checked ? '1' : '0.4';
+        });
+      }
+      if (fillRow && fillChk) fillRow.style.opacity = fillChk.checked ? '1' : '0.4';
+      var modal = document.getElementById('shape-save-modal');
+      if (modal) modal.classList.add('active');
+      setTimeout(function() { if (nameInp) nameInp.focus(); }, 50);
+    }
+
+    function cancelShapeSaveModal() {
+      var modal = document.getElementById('shape-save-modal');
+      if (modal) modal.classList.remove('active');
+      pendingShapeRing = null;
+      // Stay in draw mode so user can adjust; clear draft if they cancel entirely
+      if (mapDrawMode === 'draw') {
+        // keep points so they can finish again
+        setMapDrawUi();
+      }
+    }
+    window.cancelShapeSaveModal = cancelShapeSaveModal;
+
+    /**
+     * Infer land type / unit under a point so custom areas inherit real-world rules.
+     */
+    function resolveLandContextAtPoint(lat, lng) {
+      var zoneInfo = detectBoundaryAndZone(lat, lng);
+      var zone = (zoneInfo && zoneInfo.zone) || 'A';
+      var best = null;
+
+      // Prefer official public-land polygon under the point
+      if (adcnrLandsData && adcnrLandsData.layers) {
+        var layers = adcnrLandsData.layers || [];
+        for (var li = 0; li < layers.length; li++) {
+          var layer = layers[li];
+          if (!layer || layer.drawOnMap === false || layer.key === 'nps' || layer.key === 'usfs') continue;
+          var feats = layer.features || [];
+          for (var fi = 0; fi < feats.length; fi++) {
+            var attrs = feats[fi].attributes || {};
+            if (!mayDrawHuntableFeature(layer, attrs)) continue;
+            var rings = feats[fi].geometry && feats[fi].geometry.rings;
+            if (!rings) continue;
+            var inside = false;
+            for (var ri = 0; ri < rings.length; ri++) {
+              if (pointInRing(lng, lat, rings[ri])) { inside = true; break; }
+            }
+            if (!inside) continue;
+            var uname = featureDisplayName(layer, attrs) || layer.label || 'Public land';
+            // Prefer more specific units (WMA over large forests already skipped)
+            var rank = (layer.key === 'wma' || layer.key === 'soa' || layer.key === 'pdha') ? 3
+              : (layer.key === 'nwr' || layer.key === 'usace') ? 2
+              : (layer.key === 'tva' || layer.key === 'foreverWild') ? 1 : 0;
+            if (!best || rank >= best.rank) {
+              best = {
+                rank: rank,
+                landSource: layer.key,
+                type: layer.typeLabel || layer.label || 'Public',
+                unitName: uname,
+                label: uname + ' (' + (layer.typeLabel || layer.key) + ')',
+                zone: zone,
+                notes: publicLandRuleNotes(layer, attrs),
+                gisAttrs: attrs
+              };
+            }
+          }
+        }
+      }
+
+      if (best) return best;
+
+      // Built-in named areas near point (fallback)
+      if (zoneInfo && zoneInfo.type && zoneInfo.type !== 'Statewide') {
+        return {
+          rank: 0,
+          landSource: zoneInfo.type === 'Refuge' ? 'nwr' : (zoneInfo.type === 'WMA' ? 'wma' : 'custom'),
+          type: zoneInfo.type,
+          unitName: zoneInfo.name,
+          label: zoneInfo.name + ' · Zone ' + zone,
+          zone: zone,
+          notes: zoneInfo.desc || ('Deer rules for Zone ' + zone + ' apply. Confirm landowner / posted rules.'),
+          gisAttrs: null
+        };
+      }
+
+      return {
+        rank: 0,
+        landSource: 'custom',
+        type: 'Custom Area',
+        unitName: null,
+        label: 'Statewide Zone ' + zone + ' (public/private rules for that zone)',
+        zone: zone,
+        notes: 'Custom drawn area. Inherits Zone ' + zone + ' deer seasons for the selected weapon. Confirm landowner / public-land rules before hunting.',
+        gisAttrs: null
+      };
+    }
+
+    function loadCustomAreasFromStorage() {
+      try {
+        var raw = localStorage.getItem(CUSTOM_AREAS_KEY);
+        if (!raw) return [];
+        var arr = JSON.parse(raw);
+        return Array.isArray(arr) ? arr : [];
+      } catch (e) { return []; }
+    }
+
+    // ----- Persistent measured / drawn lines (hover for stats) -----
+    function loadMeasuredPathsFromStorage() {
+      try {
+        var raw = localStorage.getItem(MEASURED_PATHS_KEY);
+        if (!raw) return [];
+        var arr = JSON.parse(raw);
+        return Array.isArray(arr) ? arr : [];
+      } catch (e) { return []; }
+    }
+
+    function saveMeasuredPathsToStorage(paths) {
+      try {
+        localStorage.setItem(MEASURED_PATHS_KEY, JSON.stringify(paths || []));
+      } catch (e) {
+        console.warn('Could not save measured paths', e);
+      }
+    }
+
+    function formatElevFt(ft) {
+      if (ft == null || isNaN(ft)) return '—';
+      var n = Math.round(ft);
+      var sign = n > 0 ? '+' : '';
+      return sign + n.toLocaleString() + ' ft';
+    }
+
+    function formatAddedDate(iso) {
+      try {
+        var d = iso ? new Date(iso) : new Date();
+        if (isNaN(d.getTime())) d = new Date();
+        return d.toLocaleDateString(undefined, {
+          year: 'numeric', month: 'short', day: 'numeric'
+        }) + ' · ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      } catch (e) {
+        return 'Unknown date';
+      }
+    }
+
+    function measuredPathTooltipHtml(path) {
+      var dist = path.distanceMi != null ? formatMiles(path.distanceMi) : formatMiles(pathDistanceMiles(path.points || []));
+      var elevLine = 'Elevation: loading…';
+      if (path.elev) {
+        var net = path.elev.netFt;
+        var gain = path.elev.gainFt;
+        var loss = path.elev.lossFt;
+        var start = path.elev.startFt;
+        var end = path.elev.endFt;
+        elevLine =
+          'Elevation change: <strong style="color:#fff;">' + formatElevFt(net) + ' net</strong>' +
+          '<br><span style="color:#c5d0be;">Gain ' + formatElevFt(gain).replace('+','') +
+          ' · Loss ' + formatElevFt(-Math.abs(loss || 0)).replace('+','') +
+          (start != null && end != null
+            ? ' · Start ' + Math.round(start) + ' ft → End ' + Math.round(end) + ' ft'
+            : '') + '</span>';
+      } else if (path.elevError) {
+        elevLine = 'Elevation: unavailable';
+      }
+      return (
+        '<div style="min-width:160px;line-height:1.4;">' +
+          '<div style="font-weight:800;color:#38bdf8;margin-bottom:4px;">Measured line</div>' +
+          '<div>Distance: <strong style="color:#fff;">' + dist + '</strong></div>' +
+          '<div style="margin-top:3px;">' + elevLine + '</div>' +
+          '<div style="margin-top:5px;font-size:11px;color:#c5d0be;">Added: ' + escHtml(formatAddedDate(path.createdAt)) + '</div>' +
+        '</div>'
+      );
+    }
+
+    /**
+     * Fetch elevations (meters) along path points via Open-Meteo, compute gain/loss/net in feet.
+     */
+    function fetchPathElevation(points) {
+      if (!points || points.length < 2) {
+        return Promise.resolve(null);
+      }
+      // Cap samples to keep URL reasonable (sample evenly if many vertices)
+      var sample = points;
+      if (points.length > 40) {
+        sample = [];
+        var step = (points.length - 1) / 39;
+        for (var i = 0; i < 40; i++) {
+          sample.push(points[Math.round(i * step)]);
+        }
+      }
+      var lats = sample.map(function(p) { return p.lat; }).join(',');
+      var lngs = sample.map(function(p) { return p.lng; }).join(',');
+      var url = 'https://api.open-meteo.com/v1/elevation?latitude=' + encodeURIComponent(lats) +
+        '&longitude=' + encodeURIComponent(lngs);
+      return fetch(url).then(function(res) {
+        if (!res.ok) throw new Error('elevation ' + res.status);
+        return res.json();
+      }).then(function(data) {
+        var elevM = data && data.elevation;
+        if (!elevM || !elevM.length) throw new Error('no elevation');
+        var elevFt = elevM.map(function(m) { return m == null ? null : m * 3.28084; });
+        var gain = 0, loss = 0;
+        for (var i = 1; i < elevFt.length; i++) {
+          if (elevFt[i] == null || elevFt[i - 1] == null) continue;
+          var d = elevFt[i] - elevFt[i - 1];
+          if (d > 0) gain += d;
+          else loss += -d;
+        }
+        var startFt = elevFt[0];
+        var endFt = elevFt[elevFt.length - 1];
+        var netFt = (startFt != null && endFt != null) ? (endFt - startFt) : null;
+        return {
+          startFt: startFt,
+          endFt: endFt,
+          netFt: netFt,
+          gainFt: gain,
+          lossFt: loss,
+          samples: elevFt.length
+        };
+      });
+    }
+
+    function saveMeasuredPath(points, distanceMi) {
+      if (!points || points.length < 2) return null;
+      var path = {
+        id: 'meas_' + Date.now(),
+        points: points.map(function(p) { return { lat: p.lat, lng: p.lng }; }),
+        distanceMi: distanceMi != null ? distanceMi : pathDistanceMiles(points),
+        createdAt: new Date().toISOString(),
+        elev: null,
+        elevError: false
+      };
+      var paths = loadMeasuredPathsFromStorage();
+      paths.push(path);
+      // Cap stored paths so localStorage stays healthy
+      if (paths.length > 80) paths = paths.slice(paths.length - 80);
+      saveMeasuredPathsToStorage(paths);
+      drawMeasuredPathsOnMap();
+      // Async elevation — update storage + tooltip when ready
+      fetchPathElevation(path.points).then(function(elev) {
+        if (!elev) {
+          path.elevError = true;
+        } else {
+          path.elev = elev;
+        }
+        var all = loadMeasuredPathsFromStorage();
+        for (var i = 0; i < all.length; i++) {
+          if (String(all[i].id) === String(path.id)) {
+            all[i].elev = path.elev;
+            all[i].elevError = path.elevError;
+            break;
+          }
+        }
+        saveMeasuredPathsToStorage(all);
+        drawMeasuredPathsOnMap();
+      }).catch(function() {
+        path.elevError = true;
+        var all2 = loadMeasuredPathsFromStorage();
+        for (var j = 0; j < all2.length; j++) {
+          if (String(all2[j].id) === String(path.id)) {
+            all2[j].elevError = true;
+            break;
+          }
+        }
+        saveMeasuredPathsToStorage(all2);
+        drawMeasuredPathsOnMap();
+      });
+      return path;
+    }
+
+    function drawMeasuredPathsOnMap() {
+      if (!map || !measuredPathGroup) return;
+      measuredPathGroup.clearLayers();
+      var paths = loadMeasuredPathsFromStorage();
+      paths.forEach(function(path) {
+        if (!path || !path.points || path.points.length < 2) return;
+        var latlngs = path.points.map(function(p) { return [p.lat, p.lng]; });
+        var line = L.polyline(latlngs, {
+          color: '#38bdf8',
+          weight: 4,
+          opacity: 0.92,
+          lineCap: 'round',
+          lineJoin: 'round',
+          interactive: true,
+          bubblingMouseEvents: false
+        });
+        var tipHtml = measuredPathTooltipHtml(path);
+        line.bindTooltip(tipHtml, {
+          sticky: true,
+          opacity: 0.97,
+          className: 'measured-path-tooltip',
+          direction: 'top'
+        });
+        // Click opens a fuller popup with delete
+        var safeId = escJsStr(path.id);
+        var popHtml =
+          '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
+            '<div class="mdm-title">Measured line</div>' +
+            '<div class="mdm-sub">' + measuredPathTooltipHtml(path) + '</div>' +
+            '<button type="button" class="mdm-btn danger" onclick="event.preventDefault();event.stopPropagation();window.deleteMeasuredPath(\'' + safeId + '\');return false;">Delete line</button>' +
+          '</div>';
+        line.bindPopup(popHtml, {
+          className: 'saved-item-popup map-dot-popup',
+          closeButton: true,
+          autoPan: true,
+          maxWidth: 300,
+          closeOnClick: false
+        });
+        line.on('popupopen', function() {
+          var el = line.getPopup() && line.getPopup().getElement();
+          if (el) {
+            L.DomEvent.disableClickPropagation(el);
+            L.DomEvent.disableScrollPropagation(el);
+          }
+        });
+        // Endpoints
+        var start = path.points[0];
+        var end = path.points[path.points.length - 1];
+        L.circleMarker([start.lat, start.lng], {
+          radius: 5, color: '#fff', weight: 2, fillColor: '#38bdf8', fillOpacity: 1, interactive: false
+        }).addTo(measuredPathGroup);
+        L.circleMarker([end.lat, end.lng], {
+          radius: 5, color: '#fff', weight: 2, fillColor: '#0ea5e9', fillOpacity: 1, interactive: false
+        }).addTo(measuredPathGroup);
+        measuredPathGroup.addLayer(line);
+      });
+    }
+
+    function deleteMeasuredPath(id) {
+      if (!confirm('Delete this measured line?')) return;
+      var paths = loadMeasuredPathsFromStorage().filter(function(p) { return String(p.id) !== String(id); });
+      saveMeasuredPathsToStorage(paths);
+      if (map) map.closePopup();
+      drawMeasuredPathsOnMap();
+    }
+    window.deleteMeasuredPath = deleteMeasuredPath;
+
+    function saveCustomAreasToStorage(areas) {
+      try {
+        localStorage.setItem(CUSTOM_AREAS_KEY, JSON.stringify(areas || []));
+      } catch (e) {
+        console.warn('Could not save custom areas', e);
+        alert('Could not save area (storage full?).');
+      }
+    }
+
+    function loadCustomAreasIntoLocations() {
+      // Remove previous custom-area location entries, then re-add from storage
+      for (var i = locations.length - 1; i >= 0; i--) {
+        if (locations[i] && locations[i].isCustomArea) locations.splice(i, 1);
+      }
+      var areas = loadCustomAreasFromStorage();
+      areas.forEach(function(area) {
+        if (!area || !area.ring || area.ring.length < 3) return;
+        var c = ringCentroid(area.ring) || { lat: area.lat, lng: area.lng };
+        var land = resolveLandContextAtPoint(c.lat, c.lng);
+        locations.push({
+          id: area.id,
+          name: area.name || 'Custom area',
+          type: land.type || 'Custom Area',
+          zone: land.zone || 'A',
+          lat: c.lat,
+          lng: c.lng,
+          color: area.lineColor || '#e59a18',
+          lineColor: area.lineColor || '#e59a18',
+          fillColor: area.fillColor || null,
+          fillEnabled: !!area.fillEnabled,
+          ring: area.ring,
+          isCustomArea: true,
+          isPublicLand: true,
+          landSource: land.landSource || 'custom',
+          unitName: land.unitName || area.name,
+          notes: (area.notes ? area.notes + ' ' : '') + (land.notes || ''),
+          gisAttrs: land.gisAttrs || null,
+          subSections: []
+        });
+      });
+    }
+
+    function customAreaPerimeterMiles(ring) {
+      if (!ring || ring.length < 2) return 0;
+      var t = 0;
+      for (var i = 1; i < ring.length; i++) {
+        t += haversineMiles(ring[i - 1][0], ring[i - 1][1], ring[i][0], ring[i][1]);
+      }
+      return t;
+    }
+
+    function customAreaTooltipHtml(area) {
+      var perim = area.perimeterMi != null ? area.perimeterMi : customAreaPerimeterMiles(area.ring);
+      var elevLine = 'Elevation: loading…';
+      if (area.elev) {
+        elevLine =
+          'Elevation change: <strong style="color:#fff;">' + formatElevFt(area.elev.netFt) + ' net</strong>' +
+          '<br><span style="color:#c5d0be;">Gain ' + formatElevFt(area.elev.gainFt).replace('+','') +
+          ' · Loss ' + formatElevFt(-Math.abs(area.elev.lossFt || 0)).replace('+','') + '</span>';
+      } else if (area.elevError) {
+        elevLine = 'Elevation: unavailable';
+      }
+      return (
+        '<div style="min-width:160px;line-height:1.4;">' +
+          '<div style="font-weight:800;color:var(--accent);margin-bottom:4px;">' + escHtml(area.name || 'Custom area') + '</div>' +
+          '<div>Perimeter: <strong style="color:#fff;">' + formatMiles(perim) + '</strong></div>' +
+          '<div style="margin-top:3px;">' + elevLine + '</div>' +
+          '<div style="margin-top:5px;font-size:11px;color:#c5d0be;">Added: ' + escHtml(formatAddedDate(area.createdAt)) + '</div>' +
+        '</div>'
+      );
+    }
+
+    function drawCustomAreasOnMap() {
+      if (!map || !customAreaGroup) return;
+      customAreaGroup.clearLayers();
+      // Prefer storage records (have elev + createdAt); fall back to location entries
+      var stored = {};
+      loadCustomAreasFromStorage().forEach(function(a) {
+        if (a && a.id) stored[String(a.id)] = a;
+      });
+      locations.filter(function(l) { return l && l.isCustomArea && l.ring && l.ring.length >= 3; }).forEach(function(area) {
+        var meta = stored[String(area.id)] || area;
+        var line = area.lineColor || area.color || meta.lineColor || '#e59a18';
+        var fillOn = (area.fillEnabled != null ? area.fillEnabled : meta.fillEnabled) && (area.fillColor || meta.fillColor);
+        var fillColor = area.fillColor || meta.fillColor || line;
+        var poly = L.polygon(area.ring, {
+          color: line,
+          weight: 2.5,
+          opacity: 0.95,
+          fillColor: fillOn ? fillColor : line,
+          fillOpacity: fillOn ? CUSTOM_AREA_FILL_OPACITY : 0.05,
+          interactive: true,
+          bubblingMouseEvents: false
+        });
+        var tipData = {
+          name: area.name || meta.name,
+          ring: area.ring,
+          perimeterMi: meta.perimeterMi,
+          elev: meta.elev,
+          elevError: meta.elevError,
+          createdAt: meta.createdAt || area.createdAt
+        };
+        poly.bindTooltip(customAreaTooltipHtml(tipData), {
+          sticky: true,
+          opacity: 0.97,
+          className: 'custom-area-tooltip',
+          direction: 'top'
+        });
+        var safeId = escJsStr(area.id);
+        var popupHtml =
+          '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
+            '<div class="mdm-title">Custom area</div>' +
+            '<div class="mdm-sub">' + customAreaTooltipHtml(tipData) +
+              (area.unitName ? '<br><span style="color:#c5d0be;">On: ' + escHtml(area.unitName) + '</span>' : '') +
+              '<br>Zone ' + escHtml(area.zone) +
+            '</div>' +
+            '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.selectLocationById(\'' + safeId + '\',{closePopup:true,showOverlay:true});return false;">Get weather / rules</button>' +
+            '<button type="button" class="mdm-btn share" onclick="event.preventDefault();event.stopPropagation();window.shareLocationLink(' + Number(area.lat) + ',' + Number(area.lng) + ',\'' + escJsStr(area.name) + '\');return false;">Share location</button>' +
+            '<button type="button" class="mdm-btn danger" onclick="event.preventDefault();event.stopPropagation();window.deleteCustomArea(\'' + safeId + '\');return false;">Delete area</button>' +
+          '</div>';
+        poly.bindPopup(popupHtml, { className: 'saved-item-popup map-dot-popup', closeButton: true, autoPan: true, maxWidth: 300, closeOnClick: false });
+        poly.on('popupopen', function() {
+          var el = poly.getPopup() && poly.getPopup().getElement();
+          if (el) {
+            L.DomEvent.disableClickPropagation(el);
+            L.DomEvent.disableScrollPropagation(el);
+          }
+        });
+        customAreaGroup.addLayer(poly);
+      });
+    }
+
+    function confirmSaveCustomShape() {
+      if (!pendingShapeRing || pendingShapeRing.length < 4) {
+        alert('Shape is incomplete. Draw at least 3 corners, then Finish.');
+        return;
+      }
+      var nameEl = document.getElementById('shape-name-input');
+      var name = nameEl ? nameEl.value.trim() : '';
+      if (!name) {
+        alert('Please enter a name for this area.');
+        if (nameEl) nameEl.focus();
+        return;
+      }
+      var lineColor = (document.getElementById('shape-line-color') || {}).value || '#e59a18';
+      var fillEnabled = !!(document.getElementById('shape-fill-enabled') || {}).checked;
+      var fillColor = (document.getElementById('shape-fill-color') || {}).value || lineColor;
+      var c = ringCentroid(pendingShapeRing);
+      if (!c) {
+        alert('Could not compute area center.');
+        return;
+      }
+      var land = resolveLandContextAtPoint(c.lat, c.lng);
+      var ringCopy = pendingShapeRing.slice();
+      var perimeterMi = customAreaPerimeterMiles(ringCopy);
+      var area = {
+        id: 'custom_' + Date.now(),
+        name: name,
+        lat: c.lat,
+        lng: c.lng,
+        ring: ringCopy,
+        lineColor: lineColor,
+        fillColor: fillEnabled ? fillColor : null,
+        fillEnabled: fillEnabled,
+        zone: land.zone || 'A',
+        landSource: land.landSource || 'custom',
+        unitName: land.unitName || null,
+        notes: land.notes || '',
+        createdAt: new Date().toISOString(),
+        perimeterMi: perimeterMi,
+        elev: null,
+        elevError: false
+      };
+      var areas = loadCustomAreasFromStorage();
+      areas.push(area);
+      saveCustomAreasToStorage(areas);
+      loadCustomAreasIntoLocations();
+      drawCustomAreasOnMap();
+      // Elevation along boundary (async) for hover stats
+      var elevPts = ringCopy.map(function(pt) { return { lat: pt[0], lng: pt[1] }; });
+      fetchPathElevation(elevPts).then(function(elev) {
+        var all = loadCustomAreasFromStorage();
+        for (var i = 0; i < all.length; i++) {
+          if (String(all[i].id) === String(area.id)) {
+            if (elev) all[i].elev = elev;
+            else all[i].elevError = true;
+            break;
+          }
+        }
+        saveCustomAreasToStorage(all);
+        drawCustomAreasOnMap();
+      }).catch(function() {
+        var all2 = loadCustomAreasFromStorage();
+        for (var j = 0; j < all2.length; j++) {
+          if (String(all2[j].id) === String(area.id)) {
+            all2[j].elevError = true;
+            break;
+          }
+        }
+        saveCustomAreasToStorage(all2);
+        drawCustomAreasOnMap();
+      });
+      if (typeof updateAvailableList === 'function' && selectedDate && selectedWeapon) {
+        updateAvailableList();
+      }
+      pendingShapeRing = null;
+      cancelMapDraw();
+      var modal = document.getElementById('shape-save-modal');
+      if (modal) modal.classList.remove('active');
+      showAppCopyToast(
+        '<span class="act">Area saved: ' + escHtml(name) + '</span><br>' +
+        'Added as a hunt area using rules for ' + escHtml(land.label || ('Zone ' + area.zone)) + '.'
+      );
+      // Select it if possible
+      try {
+        if (typeof selectLocationById === 'function') {
+          selectLocationById(area.id, { closePopup: true, showOverlay: false, skipScroll: true });
+        }
+      } catch (selErr) {}
+    }
+    window.confirmSaveCustomShape = confirmSaveCustomShape;
+
+    function deleteCustomArea(id) {
+      if (!confirm('Delete this custom hunt area?')) return;
+      var areas = loadCustomAreasFromStorage().filter(function(a) { return String(a.id) !== String(id); });
+      saveCustomAreasToStorage(areas);
+      for (var i = locations.length - 1; i >= 0; i--) {
+        if (locations[i] && String(locations[i].id) === String(id)) locations.splice(i, 1);
+      }
+      if (String(selectedLocationId) === String(id)) {
+        selectedLocationId = null;
+        if (typeof resetDashboard === 'function') resetDashboard();
+      }
+      if (map) map.closePopup();
+      drawCustomAreasOnMap();
+      if (typeof updateAvailableList === 'function' && selectedDate && selectedWeapon) updateAvailableList();
+    }
+    window.deleteCustomArea = deleteCustomArea;
 
     /** Google Maps link for a coordinate (opens pin at lat/lng). */
     function googleMapsShareUrl(lat, lng) {
@@ -6292,8 +7361,8 @@
         }
       }
 
-      // TVA / Forever Wild / SOA / PDHA / USACE: statewide public-compatible only (no forest gun template)
-      if (!matched.length && (loc.landSource === 'tva' || loc.landSource === 'foreverWild' || loc.landSource === 'soa' || loc.landSource === 'pdha' || loc.landSource === 'usace' || loc.type === 'USACE')) {
+      // TVA / Forever Wild / SOA / PDHA / USACE / custom drawn areas: statewide public-compatible only
+      if (!matched.length && (loc.landSource === 'tva' || loc.landSource === 'foreverWild' || loc.landSource === 'soa' || loc.landSource === 'pdha' || loc.landSource === 'usace' || loc.type === 'USACE' || loc.landSource === 'custom' || loc.isCustomArea)) {
         matched = rules.filter(function(r) {
           if (r.locId != zoneId) return false;
           if (ds < r.start || ds > r.end) return false;
@@ -6304,11 +7373,19 @@
           }
           return true;
         }).map(function(r) {
-          if (loc.landSource !== 'usace' && loc.type !== 'USACE') return r;
-          return Object.assign({}, r, {
-            notes: ((loc.notes ? loc.notes + ' ' : '') + (r.notes || '') +
-              ' USACE project rules & free permit may apply — confirm Mobile District / lake office before hunting.').trim()
-          });
+          if (loc.landSource === 'usace' || loc.type === 'USACE') {
+            return Object.assign({}, r, {
+              notes: ((loc.notes ? loc.notes + ' ' : '') + (r.notes || '') +
+                ' USACE project rules & free permit may apply — confirm Mobile District / lake office before hunting.').trim()
+            });
+          }
+          if (loc.isCustomArea || loc.landSource === 'custom') {
+            return Object.assign({}, r, {
+              notes: ((loc.notes ? loc.notes + ' ' : '') + (r.notes || '') +
+                ' Custom drawn area — inherits rules for the land/zone under its center. Confirm access & posted rules.').trim()
+            });
+          }
+          return r;
         });
       }
 
@@ -6330,9 +7407,9 @@
             // built-ins are all in AL; still guard
           }
         }
-        if (loc.isPublicLand) {
+        if (loc.isPublicLand || loc.isCustomArea) {
           // Forever Wild never appears as a hunt destination; use the containing WMA instead
-          if (loc.landSource === 'foreverWild' || loc.type === 'Forever Wild') return;
+          if (!loc.isCustomArea && (loc.landSource === 'foreverWild' || loc.type === 'Forever Wild')) return;
           if (loc.gisAttrs && isForeverWildInWmaAttr(loc.gisAttrs)) return;
           var pubMatched = findRulesForPublicLand(loc, date, weapon, land, ds);
           if (!pubMatched.length) return; // not open for this weapon/day
