@@ -1727,6 +1727,7 @@
                   <button type="button" class="pl-toggle-btn on" id="pl-btn-foreverWild" data-pl="foreverWild" style="background:#9b59b6;color:#fff;" onclick="togglePublicLandType('foreverWild')" title="Forever Wild" aria-pressed="true">FW<span class="pl-sub">on</span></button>
                   <button type="button" class="pl-toggle-btn on" id="pl-btn-soa" data-pl="soa" style="background:#c026d3;color:#fff;" onclick="togglePublicLandType('soa')" title="Special Opportunity Areas" aria-pressed="true">SOA<span class="pl-sub">on</span></button>
                   <button type="button" class="pl-toggle-btn on" id="pl-btn-pdha" data-pl="pdha" style="background:#14b8a6;color:#fff;" onclick="togglePublicLandType('pdha')" title="Disabled Hunt Areas (PDHA)" aria-pressed="true">PDHA<span class="pl-sub">on</span></button>
+                  <button type="button" class="pl-toggle-btn on" id="pl-btn-usace" data-pl="usace" style="background:#6b7c3a;color:#fff;" onclick="togglePublicLandType('usace')" title="U.S. Army Corps of Engineers open recreation / hunting project lands" aria-pressed="true">USACE<span class="pl-sub">on</span></button>
                   <button type="button" class="pl-toggle-btn on" id="pl-btn-listPins" data-pl="listPins" style="background:#486a2f;color:#fff;" onclick="togglePublicLandType('listPins')" title="Green ✓ pins for Available Hunts list" aria-pressed="true">✓ List<span class="pl-sub">on</span></button>
                 </div>
                 <div class="zone-toggle-actions">
@@ -1893,7 +1894,7 @@
 
     // Public lands overlay + list (ADCNR, TVA, federal) - cached ~30 days
     const ADCNR_BASE = 'https://conservationgis.alabama.gov/adcnrweb/rest/services';
-    const ADCNR_CACHE_KEY = 'alabama_hunt_public_lands_v3';
+    const ADCNR_CACHE_KEY = 'alabama_hunt_public_lands_v4'; // v4: adds USACE Corps open-access lands
     const ADCNR_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
     const HIDDEN_LOCS_KEY = 'alabama_hunt_hidden_locations_v1';
     const USER_STANDS_KEY = 'alabama_hunt_user_stands_v1';
@@ -1913,6 +1914,7 @@
      *   Forever Wild purple
      *   SOA ........ magenta
      *   PDHA ....... teal
+     *   USACE ...... olive drab (Army Corps open recreation lands)
      *   NPS ........ brown (if ever drawn)
      */
     const PUBLIC_LAND_COLORS = {
@@ -1923,6 +1925,7 @@
       foreverWild: { color: '#9b59b6', fillOpacity: 0.28, weight: 2 },
       soa:         { color: '#c026d3', fillOpacity: 0.30, weight: 2.25 },
       pdha:        { color: '#14b8a6', fillOpacity: 0.32, weight: 2.25 },
+      usace:       { color: '#6b7c3a', fillOpacity: 0.32, weight: 2.25 },
       nps:         { color: '#a16207', fillOpacity: 0.18, weight: 1.5 }
     };
     function publicLandDrawStyle(layerKey) {
@@ -1941,6 +1944,7 @@
       foreverWild: true,
       soa: true,
       pdha: true,
+      usace: true,
       listPins: true
     };
 
@@ -1953,7 +1957,8 @@
     function anyPublicLandFillVisible() {
       return !!(publicLandTypeVisible.wma || publicLandTypeVisible.forestNwr ||
         publicLandTypeVisible.tva || publicLandTypeVisible.foreverWild ||
-        publicLandTypeVisible.soa || publicLandTypeVisible.pdha);
+        publicLandTypeVisible.soa || publicLandTypeVisible.pdha ||
+        publicLandTypeVisible.usace);
     }
 
     function anyPublicLandTypeVisible() {
@@ -2099,6 +2104,27 @@
         weight: PUBLIC_LAND_COLORS.nps.weight,
         listMode: 'none', nameFields: ['unit_name'],
         drawOnMap: false, notes: 'NPS units usually prohibit hunting.'
+      },
+      // U.S. Army Corps of Engineers — PAD-US open-access recreation / project lands in Alabama
+      // (Mobile District lakes, Walter F. George, West Point, etc.). Hunting often allowed
+      // under Corps project rules + Alabama seasons; free permits may be required by project.
+      {
+        key: 'usace', label: 'USACE Corps Land', typeLabel: 'USACE',
+        url: 'https://services.arcgis.com/v01gqwM5QqNysAAi/arcgis/rest/services/Manager_Name_PADUS/FeatureServer/0/query',
+        // OA = open access; REC/PUB = recreation/public designations (exclude mitigation banks NCA/LCA)
+        where: "Mang_Name = 'USACE' AND State_Nm = 'AL' AND Pub_Access = 'OA' AND (Des_Tp = 'REC' OR Des_Tp = 'PUB')",
+        useBbox: true,
+        outFields: 'Mang_Name,Unit_Nm,Loc_Nm,State_Nm,Des_Tp,Pub_Access,FeatClass,GIS_Acres,OBJECTID',
+        color: PUBLIC_LAND_COLORS.usace.color,
+        fillOpacity: PUBLIC_LAND_COLORS.usace.fillOpacity,
+        weight: PUBLIC_LAND_COLORS.usace.weight,
+        listMode: 'unit',
+        nameFields: ['Unit_Nm', 'Loc_Nm'],
+        nameSuffix: ' (USACE)',
+        splitByZone: true,
+        drawOnMap: true,
+        maxOffset: 0.00015,
+        notes: 'U.S. Army Corps of Engineers project land. Hunting rules vary by lake/project — free Corps hunting permit often required. Confirm Mobile District / project office maps and Alabama seasons before hunting.'
       }
     ];
 
@@ -2334,6 +2360,13 @@
         return {
           url: 'https://www.alabamaforeverwild.com/',
           label: 'Alabama Forever Wild - tract info & maps',
+          source: 'fallback'
+        };
+      }
+      if (layerKey === 'usace' || /corps\s*of\s*engineers|\busace\b/i.test(n)) {
+        return {
+          url: 'https://www.sam.usace.army.mil/Missions/Civil-Works/Recreation/',
+          label: 'USACE Mobile District - recreation & hunting project info',
           source: 'fallback'
         };
       }
@@ -3362,7 +3395,7 @@
       adcnrLoading = Promise.all(ADCNR_LAYERS.map(fetchAdcnrLayer)).then(function(layers) {
         var payload = {
           timestamp: Date.now(),
-          source: 'ADCNR + TVA + USFWS + USFS + NPS',
+          source: 'ADCNR + TVA + USFWS + USFS + USACE (PAD-US) + NPS',
           layers: layers
         };
         adcnrLandsData = payload;
@@ -3624,6 +3657,7 @@
       if (layer.key === 'nwr') return 'Federal NWR - check refuge-specific hunt rules. Often archery-only or special seasons. No Sunday hunting on some units.';
       if (layer.key === 'usfs') return 'National Forest - stalk / general forest rules vary by district. Confirm zone and county regulations.';
       if (layer.key === 'tva') return 'TVA Undeveloped Recreation Land - max 14-day stay rules apply. Confirm local reservoir rules.';
+      if (layer.key === 'usace') return 'U.S. Army Corps of Engineers project land. Hunting rules and free permits vary by lake/project (Mobile District). Confirm Corps maps + Alabama seasons; stay out of developed recreation sites and dam safety zones.';
       if (layer.key === 'nps') return 'National Park Service unit - hunting usually prohibited. Verify before hunting.';
       return 'Public land from official GIS. Always verify current regulations.';
     }
@@ -3994,6 +4028,19 @@
       // Park / preserve style names without affirmative CanHunt — do not highlight
       if (looksLikeNonHuntingPublicName(name) && canHunt !== true) return false;
 
+      // USACE: only open-access recreation/public designations (where clause already filters;
+      // double-check so cached junk / parks never paint as huntable)
+      if (layer.key === 'usace' || layer.typeLabel === 'USACE') {
+        var access = attrs.Pub_Access != null ? String(attrs.Pub_Access).trim().toUpperCase() : '';
+        var des = attrs.Des_Tp != null ? String(attrs.Des_Tp).trim().toUpperCase() : '';
+        // OA = open access in PAD-US; REC/PUB = recreation / public land designations
+        if (access && access !== 'OA') return false;
+        if (des && des !== 'REC' && des !== 'PUB') return false;
+        // Developed park-only names without broader recreation project context
+        if (/mitigation|wetland\s*bank|critical\s*habitat/i.test(name || '')) return false;
+        return true;
+      }
+
       // WMA, SOA, PDHA, TVA: managed hunting programs / public recreation lands with known hunt use
       // (still blocked above if CanHunt is explicitly No)
       if (layer.key === 'wma' || layer.key === 'soa' || layer.key === 'pdha' || layer.key === 'tva') {
@@ -4138,6 +4185,7 @@
           if (k === 'usfs') return 0;
           if (k === 'foreverWild') return 1;
           if (k === 'tva') return 2;
+          if (k === 'usace') return 2.5;
           if (k === 'nwr') return 3;
           if (k === 'soa' || k === 'pdha') return 4;
           if (k === 'wma') return 5;
@@ -6244,8 +6292,8 @@
         }
       }
 
-      // TVA / Forever Wild / SOA / PDHA: statewide public-compatible only (no forest gun template)
-      if (!matched.length && (loc.landSource === 'tva' || loc.landSource === 'foreverWild' || loc.landSource === 'soa' || loc.landSource === 'pdha')) {
+      // TVA / Forever Wild / SOA / PDHA / USACE: statewide public-compatible only (no forest gun template)
+      if (!matched.length && (loc.landSource === 'tva' || loc.landSource === 'foreverWild' || loc.landSource === 'soa' || loc.landSource === 'pdha' || loc.landSource === 'usace' || loc.type === 'USACE')) {
         matched = rules.filter(function(r) {
           if (r.locId != zoneId) return false;
           if (ds < r.start || ds > r.end) return false;
@@ -6255,6 +6303,12 @@
             if (weapon !== 'Gun' && r.weapon !== weapon) return false;
           }
           return true;
+        }).map(function(r) {
+          if (loc.landSource !== 'usace' && loc.type !== 'USACE') return r;
+          return Object.assign({}, r, {
+            notes: ((loc.notes ? loc.notes + ' ' : '') + (r.notes || '') +
+              ' USACE project rules & free permit may apply — confirm Mobile District / lake office before hunting.').trim()
+          });
         });
       }
 
