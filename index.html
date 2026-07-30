@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>REG SLAYER - Alabama Deer Season Planner v2.7</title>
+  <title>REG SLAYER - Alabama Deer Season Planner v2.8</title>
   <!-- Detect phone vs desktop as early as possible (reduces layout flash) -->
   <script>
     (function () {
@@ -45,7 +45,7 @@
     html, body { height: 100%; }
     body { background: var(--bg); color: var(--ink); margin: 0; padding: 0; line-height: 1.5; min-height: 100vh; display: flex; flex-direction: column; }
 
-    /* ========== BRAND HEADER (v2.7 - large logo fills top bar) ========== */
+    /* ========== BRAND HEADER (v2.8 - large logo fills top bar) ========== */
     .brand-header {
       background:
         linear-gradient(180deg, rgba(13,15,12,0.15) 0%, rgba(13,15,12,0.88) 100%),
@@ -99,7 +99,7 @@
       text-shadow: 0 1px 3px rgba(0,0,0,0.85);
     }
 
-    /* Site links / tagline live in page footer (v2.7) */
+    /* Site links / tagline live in page footer (v2.8) */
     .site-footer {
       margin-top: auto;
       border-top: 1px solid var(--border);
@@ -130,7 +130,7 @@
       padding: 3px 9px; border-radius: 6px; border: 1px solid var(--border);
     }
 
-    /* ========== DESKTOP SHELL (v2.7 - planner+weather left, big map right) ========== */
+    /* ========== DESKTOP SHELL (v2.8 - planner+weather left, big map right) ========== */
     .app-shell {
       max-width: none;
       margin: 0;
@@ -915,10 +915,10 @@
       font-weight: 800;
     }
 
-    /* Map measure / draw tools (Google Maps–style) */
+    /* Map measure / draw tools — left side, below Leaflet zoom (+/−) controls */
     .map-draw-tools {
       position: absolute;
-      top: 52px;
+      top: 100px; /* clear default Leaflet zoom bar (top-left ~70–90px) */
       left: 10px;
       z-index: 10000;
       display: flex;
@@ -927,7 +927,7 @@
       max-width: min(200px, calc(100% - 20px));
       pointer-events: auto;
     }
-    .map-wrapper.fullscreen .map-draw-tools { z-index: 100040; top: 58px; left: 16px; }
+    .map-wrapper.fullscreen .map-draw-tools { z-index: 100040; top: 110px; left: 16px; }
     .map-draw-tools .mdt-btn {
       background: rgba(22, 26, 18, 0.95);
       border: 1px solid var(--border);
@@ -948,6 +948,9 @@
       color: var(--accent);
     }
     .map-draw-tools .mdt-btn:disabled { opacity: 0.45; cursor: default; }
+    /* Undo / Finish / Cancel only while a tool is active */
+    .map-draw-tools .mdt-tool-only { display: none; }
+    .map-draw-tools.tool-active .mdt-tool-only { display: block; }
     .map-draw-hint {
       display: none;
       background: rgba(15, 18, 14, 0.94);
@@ -973,7 +976,12 @@
       line-height: 1.35;
     }
     .map-draw-stats.active { display: block; }
-    html.layout-phone .map-draw-tools { top: auto; bottom: 70px; left: 10px; }
+    /* Phone: keep clear of Current Location + bottom controls */
+    html.layout-phone .map-draw-tools {
+      top: auto;
+      bottom: 72px;
+      left: 10px;
+    }
     .map-wrapper.draw-mode #leaflet-map { cursor: crosshair; }
 
     /* Save custom shape modal */
@@ -1582,11 +1590,11 @@
   </style>
 </head>
 <body>
-  <!-- Brand header: large logo + small V2.7 at bottom-right of logo -->
+  <!-- Brand header: large logo + small V2.8 at bottom-right of logo -->
   <header class="brand-header" role="banner">
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 2.7">V2.7</span>
+      <span class="brand-version" aria-label="Version 2.8">V2.8</span>
     </div>
   </header>
 
@@ -1896,11 +1904,11 @@
           <div class="map-draw-tools" id="map-draw-tools">
             <button type="button" class="mdt-btn" id="mdt-measure" onclick="startMapMeasure()" title="Click points to measure distance">📏 Measure</button>
             <button type="button" class="mdt-btn" id="mdt-draw" onclick="startMapDrawShape()" title="Click points to draw a shape, then Finish to save">✏️ Draw shape</button>
-            <button type="button" class="mdt-btn" id="mdt-undo" onclick="undoMapDrawVertex()" disabled title="Remove last point">↩ Undo point</button>
-            <button type="button" class="mdt-btn" id="mdt-finish" onclick="finishMapDraw()" disabled title="Finish line or save shape">✓ Finish</button>
-            <button type="button" class="mdt-btn" id="mdt-cancel" onclick="cancelMapDraw()" disabled title="Cancel drawing">✕ Cancel</button>
-            <div class="map-draw-hint" id="map-draw-hint"></div>
-            <div class="map-draw-stats" id="map-draw-stats"></div>
+            <button type="button" class="mdt-btn mdt-tool-only" id="mdt-undo" onclick="undoMapDrawVertex()" disabled title="Remove last point">↩ Undo point</button>
+            <button type="button" class="mdt-btn mdt-tool-only" id="mdt-finish" onclick="finishMapDraw()" disabled title="Finish line or save shape">✓ Finish</button>
+            <button type="button" class="mdt-btn mdt-tool-only" id="mdt-cancel" onclick="cancelMapDraw()" disabled title="Cancel drawing">✕ Cancel</button>
+            <div class="map-draw-hint mdt-tool-only" id="map-draw-hint"></div>
+            <div class="map-draw-stats mdt-tool-only" id="map-draw-stats"></div>
           </div>
           <button id="gps-snap-btn" onclick="snapToGPS()" style="position:absolute;bottom:20px;left:20px;z-index:10000;background:var(--green);color:white;border:none;border-radius:6px;padding:8px 12px;font-weight:bold;cursor:pointer;font-size:11px;">Current Location</button>
 
@@ -1997,7 +2005,7 @@
   </div>
   </div><!-- /.app-shell -->
 
-  <!-- Tagline + official links moved to bottom (v2.7) -->
+  <!-- Tagline + official links moved to bottom (v2.8) -->
   <footer class="site-footer" role="contentinfo">
     <div class="site-footer-inner">
       <p>Alabama public &amp; private land · USGS gauges · topo terrain · wind &amp; scent</p>
@@ -2011,7 +2019,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '2.7';
+    const APP_VERSION = '2.8';
     let selectedDate = null, selectedWeapon = null, selectedLand = 'Public', selectedLocationId = null;
     let selectedSubsectionIndex = null, viewFilterMode = 'all', currentSelectedColor = '#e59a18';
     let editingEventId = null, userLat = null, userLng = null;
@@ -2052,6 +2060,9 @@
     let mapDrawMouseLatLng = null;
     let customAreaGroup = null; // saved user shapes on map
     let pendingShapeRing = null; // ring awaiting save modal
+    let mapDrawLastClickAt = 0; // for reliable double-click finish
+    let mapDrawLastClickLatLng = null;
+    let mapDrawDblZoomWasEnabled = true;
     const CUSTOM_AREAS_KEY = 'alabama_hunt_custom_areas_v1';
     const MEASURED_PATHS_KEY = 'alabama_hunt_measured_paths_v1';
     const CUSTOM_AREA_FILL_OPACITY = 0.30; // match public-land overlay fill feel
@@ -4473,6 +4484,16 @@
 
             // Click unit: place stand if in place-mode, else open public-land menu
             poly.on('click', function(e) {
+              // Measure / draw tools own the map — never open overlay popups
+              if (mapDrawMode === 'measure' || mapDrawMode === 'draw') {
+                if (e && e.originalEvent) {
+                  L.DomEvent.stopPropagation(e.originalEvent);
+                  L.DomEvent.preventDefault(e.originalEvent);
+                }
+                if (map) map.closePopup();
+                if (e && e.latlng) handleMapDrawToolClick(e.latlng, e);
+                return;
+              }
               if (e && e.originalEvent) L.DomEvent.stopPropagation(e.originalEvent);
               // Swallow the click that follows a long-press drop
               if (poly._lpFired) {
@@ -4497,6 +4518,14 @@
             });
             // Desktop: double-click unit to drop free map-dot (pin menu)
             poly.on('dblclick', function(e) {
+              if (mapDrawMode === 'measure' || mapDrawMode === 'draw') {
+                if (e && e.originalEvent) {
+                  L.DomEvent.stop(e);
+                  if (e.originalEvent.preventDefault) e.originalEvent.preventDefault();
+                }
+                endMapDrawFromDoubleClick();
+                return;
+              }
               if (isPhoneLayout()) return; // phones use long-press instead
               if (e && e.originalEvent) {
                 L.DomEvent.stop(e);
@@ -4507,6 +4536,10 @@
             });
             // Suppress long-press callout / context menu on mobile overlays
             poly.on('contextmenu', function(e) {
+              if (mapDrawMode === 'measure' || mapDrawMode === 'draw') {
+                if (e && e.originalEvent) L.DomEvent.preventDefault(e.originalEvent);
+                return;
+              }
               if (e && e.originalEvent) L.DomEvent.preventDefault(e.originalEvent);
               if (isPhoneLayout() && e && e.latlng) {
                 // Some browsers only fire contextmenu on hold — treat as pin drop
@@ -4515,6 +4548,10 @@
               }
             });
             poly.on('popupopen', function() {
+              if (mapDrawMode === 'measure' || mapDrawMode === 'draw') {
+                if (map) map.closePopup();
+                return;
+              }
               wireAdcnrPopupWeatherBtn(layer, attrs, c.lat, c.lng);
             });
           }
@@ -4533,6 +4570,10 @@
         if (adcnrOpenPinGroup) adcnrOpenPinGroup.bringToFront();
       } catch (e2) {}
       updatePublicLandToggleUI();
+      // Mid-measure/draw: new polygons must not steal clicks / open popups
+      if (mapDrawMode === 'measure' || mapDrawMode === 'draw') {
+        applyMapDrawInteractionLock();
+      }
     }
 
     function isPublicLandsOverlayWanted() {
@@ -5042,6 +5083,9 @@
         if (adcnrOpenPinGroup && map.hasLayer(adcnrOpenPinGroup)) adcnrOpenPinGroup.bringToFront();
       } catch (e2) {}
       updateDeerZoneToggleUI();
+      if (mapDrawMode === 'measure' || mapDrawMode === 'draw') {
+        applyMapDrawInteractionLock();
+      }
     }
 
     function ensureStateZonesDrawn() {
@@ -5288,7 +5332,7 @@
         }
         // Measure / draw shape tools take priority over free map-dot placement
         if (mapDrawMode) {
-          addMapDrawVertex(e.latlng);
+          handleMapDrawToolClick(e.latlng, e);
           return;
         }
         // Free map click (not on public-land polygon) - clear unit context
@@ -5303,14 +5347,15 @@
         refreshMapDrawPreview();
       });
 
+      // Double-click ends measure/draw (same as Finish button). Zoom is disabled while tools are active.
       map.on('dblclick', function(e) {
         if (!mapDrawMode) return;
         if (e && e.originalEvent) {
           L.DomEvent.stop(e);
-          L.DomEvent.preventDefault(e.originalEvent);
+          if (e.originalEvent.preventDefault) e.originalEvent.preventDefault();
         }
-        // Double-click finishes measure or shape (same as Finish button)
-        finishMapDraw();
+        // Second click of the double-click usually already added a vertex — drop the duplicate, then finish
+        endMapDrawFromDoubleClick();
       });
 
       // After basemap finishes, re-sync overlay (first open race fix)
@@ -5628,12 +5673,116 @@
       return { lat: slat / n, lng: slng / n };
     }
 
+    /**
+     * While Measure / Draw is active, kill clicks on WMAs, zones, pins, etc.
+     * so only the tool receives map clicks (no popups / tooltips from overlays).
+     * Works with Leaflet Canvas + SVG (preferCanvas maps).
+     */
+    function setLayerClickable(layer, clickable) {
+      if (!layer) return;
+      try {
+        if (layer.options) layer.options.interactive = !!clickable;
+        // SVG / DivIcon DOM
+        if (layer.getElement) {
+          var el = layer.getElement();
+          if (el && el.style) el.style.pointerEvents = clickable ? '' : 'none';
+        }
+        if (layer._path && layer._path.style) {
+          layer._path.style.pointerEvents = clickable ? '' : 'none';
+        }
+        if (layer._icon && layer._icon.style) {
+          layer._icon.style.pointerEvents = clickable ? '' : 'none';
+        }
+        if (layer._shadow && layer._shadow.style) {
+          layer._shadow.style.pointerEvents = clickable ? '' : 'none';
+        }
+        // Nested marker icon content
+        if (layer._icon && layer._icon.querySelectorAll) {
+          var kids = layer._icon.querySelectorAll('*');
+          for (var i = 0; i < kids.length; i++) {
+            if (kids[i].style) kids[i].style.pointerEvents = clickable ? '' : 'none';
+          }
+        }
+        if (!clickable) {
+          try {
+            if (layer.closePopup) layer.closePopup();
+            if (layer.closeTooltip) layer.closeTooltip();
+            if (layer.unbindTooltip && layer.getTooltip && layer.getTooltip()) {
+              // Keep tooltip bound; interactive=false prevents open. Do not unbind permanently.
+            }
+          } catch (e0) {}
+        }
+      } catch (e) {}
+    }
+
+    function applyMapDrawInteractionLock() {
+      var lock = !!(mapDrawMode === 'measure' || mapDrawMode === 'draw');
+      if (map) {
+        try {
+          map.closePopup();
+          if (map.closeTooltip) map.closeTooltip();
+        } catch (e1) {}
+      }
+      // All clickable map overlays / markers that should not steal tool clicks
+      var groups = [
+        adcnrOverlayGroup,
+        adcnrOpenPinGroup,
+        stateZonesGroup,
+        customAreaGroup,
+        measuredPathGroup,
+        pinMarkerGroup,
+        huntMarkerGroup,
+        mapMarkerGroup,
+        standMarkerGroup,
+        gaugeMarkerGroup
+      ];
+      // Leave mapDrawPreviewLayer fully interactive (false) — it's visual only
+      groups.forEach(function(g) {
+        if (!g || typeof g.eachLayer !== 'function') return;
+        g.eachLayer(function(layer) {
+          setLayerClickable(layer, !lock);
+        });
+      });
+      // Hard block: while locked, ignore popupopen from any leftover handlers
+      if (map) {
+        if (lock && !map._drawPopupBlocker) {
+          map._drawPopupBlocker = function(e) {
+            if (mapDrawMode === 'measure' || mapDrawMode === 'draw') {
+              try {
+                if (e && e.popup && e.popup._source && e.popup._source.closePopup) {
+                  e.popup._source.closePopup();
+                }
+                map.closePopup();
+              } catch (e2) {}
+            }
+          };
+          map.on('popupopen', map._drawPopupBlocker);
+          map._drawTooltipBlocker = function() {
+            if (mapDrawMode === 'measure' || mapDrawMode === 'draw') {
+              try { if (map.closeTooltip) map.closeTooltip(); } catch (e3) {}
+            }
+          };
+          map.on('tooltipopen', map._drawTooltipBlocker);
+        } else if (!lock && map._drawPopupBlocker) {
+          map.off('popupopen', map._drawPopupBlocker);
+          map._drawPopupBlocker = null;
+          if (map._drawTooltipBlocker) {
+            map.off('tooltipopen', map._drawTooltipBlocker);
+            map._drawTooltipBlocker = null;
+          }
+        }
+      }
+    }
+
     function setMapDrawUi() {
       var measuring = mapDrawMode === 'measure';
       var drawing = mapDrawMode === 'draw';
       var active = !!(measuring || drawing);
       var wrap = document.querySelector('.map-wrapper');
       if (wrap) wrap.classList.toggle('draw-mode', active);
+      var tools = document.getElementById('map-draw-tools');
+      if (tools) tools.classList.toggle('tool-active', active);
+      applyMapDrawInteractionLock();
       var bMeas = document.getElementById('mdt-measure');
       var bDraw = document.getElementById('mdt-draw');
       var bUndo = document.getElementById('mdt-undo');
@@ -5651,10 +5800,10 @@
       if (hint) {
         if (measuring) {
           hint.classList.add('active');
-          hint.innerHTML = '<strong>Measure:</strong> Click points along a path. Distance updates live. Finish or double-click to end.';
+          hint.innerHTML = '<strong>Measure:</strong> Click points along a path. <strong>Double-click</strong> or press <strong>Finish</strong> to end the line.';
         } else if (drawing) {
           hint.classList.add('active');
-          hint.innerHTML = '<strong>Draw shape:</strong> Click 3+ corners of your area. Finish or double-click to name &amp; save as a hunt area.';
+          hint.innerHTML = '<strong>Draw shape:</strong> Click 3+ corners. <strong>Double-click</strong> or press <strong>Finish</strong> to name &amp; save.';
         } else {
           hint.classList.remove('active');
           hint.innerHTML = '';
@@ -5756,6 +5905,69 @@
       refreshMapDrawPreview();
     }
 
+    /** Disable Leaflet zoom-on-double-click while measuring/drawing so Finish via double-click works. */
+    function setMapDrawDoubleClickZoom(enabled) {
+      if (!map || !map.doubleClickZoom) return;
+      try {
+        if (enabled) {
+          if (mapDrawDblZoomWasEnabled) map.doubleClickZoom.enable();
+        } else {
+          mapDrawDblZoomWasEnabled = map.doubleClickZoom.enabled ? map.doubleClickZoom.enabled() : true;
+          map.doubleClickZoom.disable();
+        }
+      } catch (e) {}
+    }
+
+    /**
+     * Single click = add vertex; quick second click near the first = finish (same as Finish button).
+     * More reliable than map 'dblclick' alone (works over canvas overlays).
+     */
+    function handleMapDrawToolClick(latlng, e) {
+      if (!mapDrawMode || !latlng) return;
+      var now = Date.now();
+      var isDouble = false;
+      if (mapDrawLastClickAt && (now - mapDrawLastClickAt) < 400 && mapDrawLastClickLatLng) {
+        var dMi = haversineMiles(
+          mapDrawLastClickLatLng.lat, mapDrawLastClickLatLng.lng,
+          latlng.lat, latlng.lng
+        );
+        // Same-ish spot within ~80 ft counts as double-click finish
+        if (dMi < 0.015) isDouble = true;
+      }
+      mapDrawLastClickAt = now;
+      mapDrawLastClickLatLng = { lat: latlng.lat, lng: latlng.lng };
+
+      if (isDouble) {
+        if (e && e.originalEvent) {
+          try {
+            L.DomEvent.stopPropagation(e.originalEvent);
+            L.DomEvent.preventDefault(e.originalEvent);
+          } catch (err) {}
+        }
+        endMapDrawFromDoubleClick();
+        return;
+      }
+      addMapDrawVertex(latlng);
+    }
+
+    /** Double-click finish: drop accidental last vertex from the 2nd click, then finish. */
+    function endMapDrawFromDoubleClick() {
+      if (!mapDrawMode) return;
+      // The second click of a double-click usually already added a near-duplicate point
+      if (mapDrawPoints.length >= 2) {
+        var a = mapDrawPoints[mapDrawPoints.length - 1];
+        var b = mapDrawPoints[mapDrawPoints.length - 2];
+        if (a && b && haversineMiles(a.lat, a.lng, b.lat, b.lng) < 0.02) {
+          mapDrawPoints.pop();
+          refreshMapDrawPreview();
+        }
+      }
+      mapDrawLastClickAt = 0;
+      mapDrawLastClickLatLng = null;
+      finishMapDraw();
+    }
+    window.endMapDrawFromDoubleClick = endMapDrawFromDoubleClick;
+
     function undoMapDrawVertex() {
       if (!mapDrawPoints.length) return;
       mapDrawPoints.pop();
@@ -5767,6 +5979,9 @@
       mapDrawPoints = [];
       mapDrawMouseLatLng = null;
       pendingShapeRing = null;
+      mapDrawLastClickAt = 0;
+      mapDrawLastClickLatLng = null;
+      setMapDrawDoubleClickZoom(true);
       clearMapDrawPreview();
       setMapDrawUi();
       var modal = document.getElementById('shape-save-modal');
@@ -5783,6 +5998,9 @@
         mapDrawMode = 'measure';
         mapDrawPoints = [];
         mapDrawMouseLatLng = null;
+        mapDrawLastClickAt = 0;
+        mapDrawLastClickLatLng = null;
+        setMapDrawDoubleClickZoom(false);
         if (map) map.closePopup();
         clearMapDot();
         refreshMapDrawPreview();
@@ -5801,6 +6019,9 @@
         mapDrawMode = 'draw';
         mapDrawPoints = [];
         mapDrawMouseLatLng = null;
+        mapDrawLastClickAt = 0;
+        mapDrawLastClickLatLng = null;
+        setMapDrawDoubleClickZoom(false);
         if (map) map.closePopup();
         clearMapDot();
         refreshMapDrawPreview();
@@ -5811,11 +6032,18 @@
     window.undoMapDrawVertex = undoMapDrawVertex;
     window.cancelMapDraw = cancelMapDraw;
 
+    /**
+     * End the current measure line or finish the shape.
+     * Called by the Finish button or double-click.
+     */
     function finishMapDraw() {
       if (!mapDrawMode) return;
+      mapDrawLastClickAt = 0;
+      mapDrawLastClickLatLng = null;
+
       if (mapDrawMode === 'measure') {
         if (mapDrawPoints.length < 2) {
-          alert('Add at least two points to measure a distance.');
+          alert('Add at least two points to measure a distance, then double-click or press Finish.');
           return;
         }
         var total = pathDistanceMiles(mapDrawPoints);
@@ -5829,13 +6057,14 @@
         mapDrawMode = null;
         mapDrawPoints = [];
         mapDrawMouseLatLng = null;
+        setMapDrawDoubleClickZoom(true);
         clearMapDrawPreview();
         setMapDrawUi();
         return;
       }
       if (mapDrawMode === 'draw') {
         if (mapDrawPoints.length < 3) {
-          alert('Add at least three points to form a shape.');
+          alert('Add at least three points to form a shape, then double-click or press Finish.');
           return;
         }
         // Build closed ring [lat,lng]
@@ -5844,6 +6073,7 @@
         if (first[0] !== last[0] || first[1] !== last[1]) ring.push([first[0], first[1]]);
         pendingShapeRing = ring;
         openShapeSaveModal(ring);
+        // Leave draw mode active until save/cancel so user can still cancel points if they dismiss modal without saving
       }
     }
     window.finishMapDraw = finishMapDraw;
@@ -6195,6 +6425,9 @@
         }).addTo(measuredPathGroup);
         measuredPathGroup.addLayer(line);
       });
+      if (mapDrawMode === 'measure' || mapDrawMode === 'draw') {
+        applyMapDrawInteractionLock();
+      }
     }
 
     function deleteMeasuredPath(id) {
@@ -6336,6 +6569,9 @@
         });
         customAreaGroup.addLayer(poly);
       });
+      if (mapDrawMode === 'measure' || mapDrawMode === 'draw') {
+        applyMapDrawInteractionLock();
+      }
     }
 
     function confirmSaveCustomShape() {
