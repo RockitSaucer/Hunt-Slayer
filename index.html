@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>REG SLAYER - Alabama Deer Season Planner v3.3</title>
+  <title>REG SLAYER - Alabama Deer Season Planner v3.5</title>
   <!-- Detect phone vs desktop as early as possible (reduces layout flash) -->
   <script>
     (function () {
@@ -45,7 +45,7 @@
     html, body { height: 100%; }
     body { background: var(--bg); color: var(--ink); margin: 0; padding: 0; line-height: 1.5; min-height: 100vh; display: flex; flex-direction: column; }
 
-    /* ========== BRAND HEADER (v3.3 - large logo fills top bar) ========== */
+    /* ========== BRAND HEADER (v3.5 - large logo fills top bar) ========== */
     .brand-header {
       background:
         linear-gradient(180deg, rgba(13,15,12,0.15) 0%, rgba(13,15,12,0.88) 100%),
@@ -99,7 +99,7 @@
       text-shadow: 0 1px 3px rgba(0,0,0,0.85);
     }
 
-    /* Site links / tagline live in page footer (v3.3) */
+    /* Site links / tagline live in page footer (v3.5) */
     .site-footer {
       margin-top: auto;
       border-top: 1px solid var(--border);
@@ -130,7 +130,7 @@
       padding: 3px 9px; border-radius: 6px; border: 1px solid var(--border);
     }
 
-    /* ========== DESKTOP SHELL (v3.3 - planner+weather left, big map right) ========== */
+    /* ========== DESKTOP SHELL (v3.5 - planner+weather left, big map right) ========== */
     .app-shell {
       max-width: none;
       margin: 0;
@@ -1272,6 +1272,131 @@
       color: #fca5a5;
     }
 
+    /* Radar control — top bar next to wind compass (not in Tools) */
+    .map-radar-control {
+      pointer-events: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 5px;
+      width: 168px;
+      max-width: min(168px, 46vw);
+      flex-shrink: 0;
+      min-width: 168px;
+      box-sizing: border-box;
+    }
+    .map-radar-toggle {
+      background: rgba(22, 26, 18, 0.94);
+      border: 1px solid var(--border);
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      line-height: 1.2;
+      white-space: nowrap;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .map-radar-toggle:hover { border-color: #38bdf8; color: #fff; }
+    .map-radar-control.radar-on .map-radar-toggle {
+      border-color: #38bdf8;
+      background: rgba(56, 189, 248, 0.18);
+      color: #7dd3fc;
+    }
+    /* Fixed-size time box — only date/time; never resizes as the loop runs */
+    .map-radar-hud {
+      display: none;
+      background: rgba(8, 16, 28, 0.94);
+      border: 1px solid #38bdf8;
+      border-radius: 8px;
+      padding: 8px 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.45);
+      line-height: 1.25;
+      width: 100%;
+      height: 58px;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    .map-radar-control.radar-on .map-radar-hud { display: block; }
+    .map-radar-control.radar-on.has-current-note .map-radar-hud {
+      height: 78px;
+    }
+    .map-radar-hud .mrh-label {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #7dd3fc;
+      margin-bottom: 3px;
+      height: 12px;
+      line-height: 12px;
+    }
+    .map-radar-hud .mrh-clock {
+      font-size: 12px;
+      font-weight: 800;
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum" 1;
+      letter-spacing: 0.01em;
+      height: 30px;
+      line-height: 1.25;
+      overflow: hidden;
+      white-space: normal;
+      word-break: keep-all;
+    }
+    /* Hidden from UI — kept for internal/debug if needed */
+    .map-radar-hud .mrh-meta {
+      display: none !important;
+    }
+    .map-radar-hud .mrh-current-note {
+      display: none;
+      margin-top: 4px;
+      padding-top: 4px;
+      border-top: 1px solid rgba(56, 189, 248, 0.35);
+      font-size: 9px;
+      font-weight: 800;
+      color: #fde68a;
+      line-height: 1.25;
+      height: 22px;
+      overflow: hidden;
+    }
+    .map-radar-control.has-current-note .map-radar-hud .mrh-current-note {
+      display: block;
+    }
+    .map-radar-stop {
+      display: none;
+      background: #0e7490;
+      border: 1px solid #22d3ee;
+      color: #fff;
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-size: 10px;
+      font-weight: 800;
+      cursor: pointer;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .map-radar-control.radar-on .map-radar-stop { display: block; }
+    .map-radar-stop:hover { background: #0891b2; color: #fff; }
+    html.layout-phone .map-radar-control {
+      width: 150px;
+      min-width: 150px;
+      max-width: min(150px, 42vw);
+    }
+    html.layout-phone .map-radar-toggle { font-size: 10px; padding: 6px 8px; }
+    html.layout-phone .map-radar-hud { height: 54px; }
+    html.layout-phone .map-radar-control.radar-on.has-current-note .map-radar-hud { height: 74px; }
+    html.layout-phone .map-radar-hud .mrh-clock { font-size: 11px; height: 28px; }
+    /* While radar runs, tiles never capture clicks */
+    .leaflet-layer.radar-frame-layer {
+      pointer-events: none;
+    }
+
     /* Live GPS track — big red Stop when active */
     .map-draw-tools .mdt-btn.mdt-track-stop {
       display: block;
@@ -1355,6 +1480,25 @@
       z-index: 2147483001;
     }
     .map-wrapper.draw-mode #leaflet-map { cursor: crosshair; }
+
+    /* LiDAR basemaps: className is on the Leaflet layer container */
+    .leaflet-layer.basemap-lidar-blend {
+      mix-blend-mode: multiply;
+      opacity: 0.55 !important;
+      pointer-events: none;
+    }
+    .leaflet-layer.basemap-lidar-tiles {
+      /* slight boost so ditches/ridges read on phone screens */
+      filter: contrast(1.08) brightness(1.02);
+    }
+    /* Smooth scale when overzooming past native LiDAR tile depth */
+    .leaflet-layer.basemap-lidar-tiles .leaflet-tile,
+    .leaflet-layer.basemap-lidar-blend .leaflet-tile {
+      image-rendering: auto;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .leaflet-layer.basemap-lidar-tiles { filter: none; }
+    }
 
     /* Save custom shape / edit path modals — never visible until .active is set by user action */
     #shape-save-modal,
@@ -2009,11 +2153,11 @@
   </style>
 </head>
 <body>
-  <!-- Brand header: large logo + small V3.3 at bottom-right of logo -->
+  <!-- Brand header: large logo + small V3.5 at bottom-right of logo -->
   <header class="brand-header" role="banner">
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 3.3">V3.3</span>
+      <span class="brand-version" aria-label="Version 3.5">V3.5</span>
     </div>
   </header>
 
@@ -2248,7 +2392,17 @@
                 <div class="mw-scent" id="map-scent-text">Scent → -</div>
               </div>
             </div>
-            
+            <!-- Live radar sits beside the compass (not in Tools) -->
+            <div class="map-radar-control" id="map-radar-control">
+              <button type="button" class="map-radar-toggle" id="map-radar-toggle" onclick="toggleMapRadar()" title="Animated weather radar — last hour, ~5 min steps">Radar</button>
+              <div class="map-radar-hud" id="map-radar-hud" aria-live="polite">
+                <div class="mrh-label">Radar time</div>
+                <div class="mrh-clock" id="map-radar-clock">—</div>
+                <div class="mrh-meta" id="map-radar-meta" hidden aria-hidden="true"></div>
+                <div class="mrh-current-note" id="map-radar-current-note">Radar is current</div>
+              </div>
+              <button type="button" class="map-radar-stop" id="map-radar-stop" onclick="stopMapRadar()" title="Stop radar loop">Stop radar</button>
+            </div>
           </div>
           <!-- Stand placement: click map after + Add Stand -->
           <div id="stand-place-banner" class="stand-place-banner" style="display:none;" role="status">
@@ -2292,6 +2446,10 @@
                           <label class="ml-option">
                             <input type="radio" name="map-basemap" id="basemap-satellite" value="satellite" onchange="setMapBasemap('satellite')">
                             <span class="ml-opt-text">Satellite<span class="ml-opt-sub">High-def imagery (same style as ADCNR DCNR map)</span></span>
+                          </label>
+                          <label class="ml-option">
+                            <input type="radio" name="map-basemap" id="basemap-lidar" value="lidar" onchange="setMapBasemap('lidar')">
+                            <span class="ml-opt-text">LiDAR Terrain<span class="ml-opt-sub">Hillshade from LiDAR DEMs — zoom in stays visible</span></span>
                           </label>
           
                           <div class="ml-section">Overlays</div>
@@ -2406,7 +2564,7 @@
   </div>
   </div><!-- /.app-shell -->
 
-  <!-- Tagline + official links moved to bottom (v3.3) -->
+  <!-- Tagline + official links moved to bottom (v3.5) -->
   <footer class="site-footer" role="contentinfo">
     <div class="site-footer-inner">
       <p>Alabama public &amp; private land · USGS gauges · topo terrain · wind &amp; scent</p>
@@ -2474,7 +2632,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '3.3';
+    const APP_VERSION = '3.5';
     let selectedDate = null, selectedWeapon = null, selectedLand = 'Public', selectedLocationId = null;
     let selectedSubsectionIndex = null, viewFilterMode = 'all', currentSelectedColor = '#e59a18';
     let editingEventId = null, userLat = null, userLng = null;
@@ -4965,6 +5123,7 @@
 
             // Click unit: place stand if in place-mode, else open public-land menu
             poly.on('click', function(e) {
+              if (typeof mapRadarActive !== 'undefined' && mapRadarActive) return;
               // Measure / draw tools own the map — never open overlay popups
               if (mapDrawMode === 'measure' || mapDrawMode === 'draw') {
                 if (e && e.originalEvent) {
@@ -5693,12 +5852,13 @@
     }
 
     // Basemap layers (switched from the Layers menu next to the compass — not Leaflet's top-right control)
-    let mapBasemaps = null; // { topo, street, satellite }
+    let mapBasemaps = null; // { topo, street, satellite, lidar }
     let activeBasemapKey = 'topo';
+    var BASEMAP_KEYS = { topo: 1, street: 1, satellite: 1, lidar: 1 };
 
     function setMapBasemap(key) {
       if (!map || !mapBasemaps) return;
-      if (key !== 'topo' && key !== 'street' && key !== 'satellite') key = 'topo';
+      if (!BASEMAP_KEYS[key]) key = 'topo';
       Object.keys(mapBasemaps).forEach(function(k) {
         var layer = mapBasemaps[k];
         if (!layer) return;
@@ -5712,9 +5872,26 @@
       var topoRadio = document.getElementById('basemap-topo');
       var streetRadio = document.getElementById('basemap-street');
       var satRadio = document.getElementById('basemap-satellite');
+      var lidarRadio = document.getElementById('basemap-lidar');
       if (topoRadio) topoRadio.checked = (key === 'topo');
       if (streetRadio) streetRadio.checked = (key === 'street');
       if (satRadio) satRadio.checked = (key === 'satellite');
+      if (lidarRadio) lidarRadio.checked = (key === 'lidar');
+      // LiDAR supports deep overzoom
+      try {
+        if (key === 'lidar') {
+          if (map.setMaxZoom) map.setMaxZoom(20);
+          if (!window._lidarZoomHintShown) {
+            window._lidarZoomHintShown = true;
+            if (typeof showAppCopyToast === 'function') {
+              showAppCopyToast(
+                '<span class="act">LiDAR terrain on</span><br>' +
+                'Best detail ~12–16×. Keep zooming — tiles scale past native depth instead of blanking out.'
+              );
+            }
+          }
+        }
+      } catch (eLidarHint) {}
     }
     window.setMapBasemap = setMapBasemap;
 
@@ -5755,7 +5932,7 @@
     }
     window.wireMapLayersMenu = wireMapLayersMenu;
 
-    /** Open/close Measure·Draw·Track drawer under the Tools tab */
+    /** Open/close Measure·Draw·Track·Radar drawer under the Tools tab */
     function setMapToolsMenuOpen(open) {
       var tools = document.getElementById('map-draw-tools');
       var btn = document.getElementById('mdt-tools-toggle');
@@ -5805,6 +5982,10 @@
 
       document.addEventListener('keydown', function(ev) {
         if (ev.key !== 'Escape') return;
+        if (typeof mapRadarActive !== 'undefined' && mapRadarActive) {
+          stopMapRadar();
+          return;
+        }
         if (!tools.classList.contains('tools-open')) return;
         if (tools.classList.contains('tool-active') || tools.classList.contains('tracking')) return;
         setMapToolsMenuOpen(false);
@@ -5814,23 +5995,64 @@
 
     function initMap() {
       if (typeof L === 'undefined' || map) return;
+      // Shared tile opts: limit work on mobile (no retina 4× tile spam; small buffer; idle updates)
+      var phoneTiles = (typeof isPhoneLayout === 'function' && isPhoneLayout());
+      var tilePerf = {
+        updateWhenIdle: phoneTiles,
+        updateWhenZooming: !phoneTiles,
+        keepBuffer: phoneTiles ? 1 : 2,
+        detectRetina: false,
+        crossOrigin: true
+      };
       // USGS topo default; street + satellite (Esri World Imagery — same basemap as ADCNR DCNR viewer)
-      var topo = L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}', {
+      var topo = L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}', Object.assign({
         maxZoom: 16,
         attribution: 'USGS'
-      });
-      var street = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      }, tilePerf));
+      var street = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', Object.assign({
         attribution: '&copy; OpenStreetMap & CARTO',
         maxZoom: 20
-      });
+      }, tilePerf));
       // Esri World Imagery — high-def aerial (DCNR map uses basemap: "satellite")
       // Alabama-only look comes from the existing dark state vignette / AL hole mask
-      var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        maxZoom: 19,
+      var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', Object.assign({
+        maxZoom: 20,
         maxNativeZoom: 19,
         attribution: 'Esri, Maxar, Earthstar Geographics, and the GIS User Community'
-      });
-      mapBasemaps = { topo: topo, street: street, satellite: satellite };
+      }, tilePerf));
+
+      /*
+       * LiDAR terrain (high zoom safe):
+       * - Esri World Hillshade is updated with USGS 3DEP LiDAR DTMs; solid tiles through ~z16.
+       * - maxNativeZoom 16 = use sharpest native tiles; beyond that Leaflet scales them up so
+       *   the basemap never blanks when you zoom past native depth (stand / ditch level).
+       * - maxZoom matches (and exceeds) map maxZoom so the layer is never removed on pinch-zoom.
+       * Cached tiles only — not raw point clouds.
+       */
+      var LIDAR_MAX_ZOOM = 20;
+      var LIDAR_NATIVE_ZOOM = 16;
+      var lidarHillOpts = Object.assign({
+        maxZoom: LIDAR_MAX_ZOOM,
+        maxNativeZoom: LIDAR_NATIVE_ZOOM,
+        minZoom: 5,
+        attribution: 'Esri World Hillshade · USGS 3DEP LiDAR DEMs',
+        className: 'basemap-lidar-tiles',
+        // Keep requesting parent tiles if a deep zoom 404s (never leave a hole)
+        errorTileUrl: ''
+      }, tilePerf);
+      var lidarHill = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',
+        lidarHillOpts
+      );
+      // Pure LiDAR / DEM hillshade basemap (LiDAR+Aerial removed — identical feel to satellite for most users)
+      var lidar = lidarHill;
+
+      mapBasemaps = {
+        topo: topo,
+        street: street,
+        satellite: satellite,
+        lidar: lidar
+      };
       activeBasemapKey = 'topo';
       map = L.map('leaflet-map', {
         center: [32.7794, -86.8287],
@@ -5839,6 +6061,7 @@
         maxBounds: [[24, -92.5], [37, -79.5]],
         maxBoundsViscosity: 1.0,
         minZoom: 6,
+        maxZoom: LIDAR_MAX_ZOOM,
         preferCanvas: true
       });
       // Basemap + overlay toggles live in #map-layers-menu (bottom center); tools drawer under Tools tab
@@ -5917,6 +6140,8 @@
           placeStandAt(e.latlng.lat, e.latlng.lng);
           return;
         }
+        // Radar mode: pan/zoom only — no map-dot / weather side effects
+        if (typeof mapRadarActive !== 'undefined' && mapRadarActive) return;
         // Measure / draw shape tools take priority over free map-dot placement
         if (mapDrawMode) {
           handleMapDrawToolClick(e.latlng, e);
@@ -6610,9 +6835,431 @@
       hideAppPromptModal('shape-save-modal');
     }
 
+    // ========== WEATHER RADAR (RainViewer — last hour, ~5 min steps) ==========
+    var mapRadarActive = false;
+    var radarState = {
+      host: '',
+      frames: [],       // native + mid-blend steps for smoother 5-min feel
+      idx: 0,
+      front: 0,         // which buffer is currently visible (0|1)
+      layers: [null, null], // A/B tile buffers
+      timer: null,
+      busy: false,
+      latestTime: null,
+      pausedHeavy: null
+    };
+    var RADAR_CROSSFADE_MS = 520;  // smooth opacity crossfade between steps
+    var RADAR_DWELL_MS = 120;      // brief settle after fade (keeps motion fluid)
+    var RADAR_HOLD_MS = 2000;      // pause on latest scan (background loop timing)
+    var RADAR_OPACITY = 0.72;
+    var RADAR_API = 'https://api.rainviewer.com/public/weather-maps.json';
+    var radarAnimRaf = null;
+
+    function formatRadarClock(unixSec) {
+      // Fixed two-line layout so the HUD width/height never jumps as minutes tick
+      try {
+        var d = new Date(unixSec * 1000);
+        var datePart = d.toLocaleString('en-US', {
+          timeZone: 'America/Chicago',
+          weekday: 'short',
+          month: 'short',
+          day: '2-digit'
+        });
+        var timePart = d.toLocaleString('en-US', {
+          timeZone: 'America/Chicago',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        });
+        return datePart + '\n' + timePart + ' CT';
+      } catch (e) {
+        return new Date(unixSec * 1000).toLocaleString();
+      }
+    }
+
+    /** Hunt calendar is not today (past or future) — radar is always live current data */
+    function isRadarOutsideHuntToday() {
+      if (!selectedDate) return false;
+      try {
+        var days = typeof getDaysFromToday === 'function' ? getDaysFromToday(selectedDate) : 0;
+        return days !== 0;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function setRadarChromeActive(on) {
+      var ctrl = document.getElementById('map-radar-control');
+      var btn = document.getElementById('map-radar-toggle');
+      if (ctrl) {
+        ctrl.classList.toggle('radar-on', !!on);
+        if (!on) ctrl.classList.remove('has-current-note');
+      }
+      if (btn) {
+        btn.classList.toggle('active', !!on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        btn.textContent = on ? 'Radar on' : 'Radar';
+      }
+    }
+
+    /**
+     * Forward-facing UI: date + time only.
+     * Frame / scan meta stays internal (radarState) — never shown in the HUD.
+     */
+    function setRadarUiClock(unixSec) {
+      var clock = document.getElementById('map-radar-clock');
+      var ctrl = document.getElementById('map-radar-control');
+      var note = document.getElementById('map-radar-current-note');
+      if (clock) {
+        if (!unixSec) {
+          clock.textContent = '—';
+        } else {
+          clock.textContent = formatRadarClock(unixSec);
+        }
+      }
+      // Past/future hunt date: fixed "Radar is current" line (size reserved via CSS class once)
+      var showNote = !!(unixSec && isRadarOutsideHuntToday());
+      if (ctrl) ctrl.classList.toggle('has-current-note', showNote);
+      if (note) note.textContent = 'Radar is current';
+    }
+
+    function radarTileUrlFromPath(path) {
+      // RainViewer: host + path + /256/{z}/{x}/{y}/{color}/{options}.png
+      return radarState.host + path + '/256/{z}/{x}/{y}/2/1_1.png';
+    }
+
+    /**
+     * RainViewer past frames are ~10 min apart. Insert mid steps (~5 min clock)
+     * that crossfade previous+next tiles so motion is smoother without extra API load.
+     */
+    function expandRadarFramesToFiveMin(nativeFrames) {
+      var out = [];
+      if (!nativeFrames || !nativeFrames.length) return out;
+      for (var i = 0; i < nativeFrames.length; i++) {
+        var cur = nativeFrames[i];
+        out.push({
+          time: cur.time,
+          path: cur.path,
+          blend: false,
+          isLatest: i === nativeFrames.length - 1
+        });
+        if (i < nativeFrames.length - 1) {
+          var nxt = nativeFrames[i + 1];
+          var midT = Math.round((cur.time + nxt.time) / 2); // ~5 min when source is 10 min
+          out.push({
+            time: midT,
+            path: nxt.path,       // primary path for buffer B
+            pathPrev: cur.path,   // previous for blend A
+            blend: true,
+            isLatest: false
+          });
+        }
+      }
+      return out;
+    }
+
+    function makeRadarTileLayer(zIndex) {
+      var phone = (typeof isPhoneLayout === 'function' && isPhoneLayout());
+      return L.tileLayer('', {
+        opacity: 0,
+        zIndex: zIndex != null ? zIndex : 380,
+        maxZoom: 12,
+        maxNativeZoom: 7,
+        minZoom: 3,
+        detectRetina: false,
+        updateWhenIdle: true,
+        updateWhenZooming: false,
+        keepBuffer: phone ? 0 : 1,
+        crossOrigin: true,
+        className: 'radar-frame-layer',
+        attribution: 'Radar © RainViewer / NWS'
+      });
+    }
+
+    function pauseHeavyMapLayersForRadar() {
+      if (!map || radarState.pausedHeavy) return;
+      var snap = [];
+      var groups = [
+        adcnrOverlayGroup, adcnrOpenPinGroup, stateZonesGroup,
+        gaugeMarkerGroup, mapMarkerGroup, huntMarkerGroup
+      ];
+      groups.forEach(function(g) {
+        if (g && map.hasLayer(g)) {
+          snap.push(g);
+          try { map.removeLayer(g); } catch (e0) {}
+        }
+      });
+      radarState.pausedHeavy = snap;
+    }
+
+    function restoreHeavyMapLayersAfterRadar() {
+      if (!map || !radarState.pausedHeavy) return;
+      radarState.pausedHeavy.forEach(function(g) {
+        try { if (g && !map.hasLayer(g)) map.addLayer(g); } catch (e1) {}
+      });
+      radarState.pausedHeavy = null;
+      try {
+        if (typeof isPublicLandsOverlayWanted === 'function' && isPublicLandsOverlayWanted() &&
+            typeof drawAdcnrLandsOverlay === 'function' && adcnrLandsData) {
+          drawAdcnrLandsOverlay();
+        }
+        if (typeof ensureStateZonesDrawn === 'function' && typeof anyDeerZoneVisible === 'function' && anyDeerZoneVisible()) {
+          ensureStateZonesDrawn();
+        }
+      } catch (e2) {}
+    }
+
+    function clearRadarTimer() {
+      if (radarState.timer) {
+        clearTimeout(radarState.timer);
+        radarState.timer = null;
+      }
+      if (radarAnimRaf != null) {
+        try { cancelAnimationFrame(radarAnimRaf); } catch (eR) {}
+        radarAnimRaf = null;
+      }
+    }
+
+    function destroyRadarLayers() {
+      if (!map) return;
+      radarState.layers.forEach(function(ly, i) {
+        if (ly) {
+          try { map.removeLayer(ly); } catch (e) {}
+          radarState.layers[i] = null;
+        }
+      });
+      radarState.front = 0;
+    }
+
+    function stopMapRadar() {
+      mapRadarActive = false;
+      clearRadarTimer();
+      radarState.busy = false;
+      radarState.frames = [];
+      radarState.idx = 0;
+      destroyRadarLayers();
+      restoreHeavyMapLayersAfterRadar();
+      setRadarChromeActive(false);
+      setRadarUiClock(null);
+    }
+    window.stopMapRadar = stopMapRadar;
+
+    function scheduleRadarNext(delay) {
+      clearRadarTimer();
+      radarState.timer = setTimeout(function() {
+        radarState.timer = null;
+        if (!mapRadarActive) return;
+        radarState.idx = (radarState.idx + 1) % radarState.frames.length;
+        showRadarFrame(radarState.idx);
+      }, delay);
+    }
+
+    function waitLayerLoad(layer, done) {
+      var settled = false;
+      function finish() {
+        if (settled) return;
+        settled = true;
+        done();
+      }
+      var to = setTimeout(finish, 850);
+      try {
+        layer.once('load', function() {
+          clearTimeout(to);
+          finish();
+        });
+      } catch (e) {
+        clearTimeout(to);
+        finish();
+      }
+      setTimeout(function() {
+        try {
+          if (layer._loading === false || layer._tilesToLoad === 0) {
+            clearTimeout(to);
+            finish();
+          }
+        } catch (e2) {}
+      }, 70);
+    }
+
+    /** Ease-in-out cubic for soft opacity transitions */
+    function radarEase(t) {
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    /**
+     * Smoothly crossfade layerB in over layerA (or reverse).
+     * Keeps only 2 tile layers; feels less "tick" and more continuous.
+     */
+    function crossfadeRadarLayers(fromLayer, toLayer, ms, done) {
+      if (!fromLayer || !toLayer) {
+        if (done) done();
+        return;
+      }
+      var t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      var from0 = typeof fromLayer.options.opacity === 'number' ? fromLayer.options.opacity : RADAR_OPACITY;
+      try { from0 = fromLayer.options.opacity != null ? Number(fromLayer.options.opacity) : from0; } catch (e0) {}
+      toLayer.setOpacity(0);
+
+      function step(now) {
+        if (!mapRadarActive) {
+          radarAnimRaf = null;
+          return;
+        }
+        var t = Math.min(1, (now - t0) / ms);
+        var e = radarEase(t);
+        try {
+          toLayer.setOpacity(RADAR_OPACITY * e);
+          fromLayer.setOpacity(from0 * (1 - e));
+        } catch (e1) {}
+        if (t < 1) {
+          radarAnimRaf = requestAnimationFrame(step);
+        } else {
+          radarAnimRaf = null;
+          try {
+            toLayer.setOpacity(RADAR_OPACITY);
+            fromLayer.setOpacity(0);
+          } catch (e2) {}
+          if (done) done();
+        }
+      }
+      radarAnimRaf = requestAnimationFrame(step);
+    }
+
+    /**
+     * Show one animation step with a smooth crossfade into the next radar image.
+     * Mid ~5-min steps still use blended timing; UI only updates the clock.
+     */
+    function showRadarFrame(i) {
+      if (!mapRadarActive || !map || !radarState.frames.length) return;
+      if (radarState.busy) return;
+      radarState.busy = true;
+      radarState.idx = i;
+      var frame = radarState.frames[i];
+      var isLatest = !!frame.isLatest || (i === radarState.frames.length - 1 && !frame.blend);
+      // UI: date + time only (no frame counts / scan notes)
+      setRadarUiClock(frame.time);
+
+      var layerA = radarState.layers[0];
+      var layerB = radarState.layers[1];
+      if (!layerA || !layerB) {
+        radarState.busy = false;
+        return;
+      }
+
+      function afterShown() {
+        if (!mapRadarActive) return;
+        radarState.busy = false;
+        var delay = isLatest ? RADAR_HOLD_MS : RADAR_DWELL_MS;
+        scheduleRadarNext(delay);
+      }
+
+      // Which buffer is currently visible?
+      var front = radarState.front || 0;
+      var back = 1 - front;
+      var frontLayer = radarState.layers[front];
+      var backLayer = radarState.layers[back];
+
+      try {
+        // Target image: native scan path, or mid-step blends toward next path
+        var targetPath = frame.path;
+        backLayer.setUrl(radarTileUrlFromPath(targetPath));
+        waitLayerLoad(backLayer, function() {
+          if (!mapRadarActive) return;
+          // First frame: just fade in (nothing to crossfade from)
+          var frontOp = 0;
+          try { frontOp = Number(frontLayer.options.opacity) || 0; } catch (eF) {}
+          if (frontOp < 0.05 && i === 0) {
+            crossfadeRadarLayers(frontLayer, backLayer, Math.min(360, RADAR_CROSSFADE_MS), function() {
+              radarState.front = back;
+              afterShown();
+            });
+          } else {
+            crossfadeRadarLayers(frontLayer, backLayer, RADAR_CROSSFADE_MS, function() {
+              radarState.front = back;
+              afterShown();
+            });
+          }
+        });
+      } catch (eUrl) {
+        radarState.busy = false;
+        scheduleRadarNext(RADAR_DWELL_MS);
+      }
+    }
+
+    function startMapRadar() {
+      ensureMap().then(function(m) {
+        if (!m) return;
+        if (mapDrawMode) cancelMapDraw();
+        if (typeof gpsTrackActive !== 'undefined' && gpsTrackActive && typeof stopGpsTrack === 'function') {
+          try { stopGpsTrack(); } catch (eT) {}
+        }
+        if (mapRadarActive) {
+          stopMapRadar();
+          return;
+        }
+
+        mapRadarActive = true;
+        setRadarChromeActive(true);
+        setRadarUiClock(null);
+
+        pauseHeavyMapLayersForRadar();
+        if (map.closePopup) try { map.closePopup(); } catch (eP) {}
+
+        destroyRadarLayers();
+        radarState.layers[0] = makeRadarTileLayer(380).addTo(map);
+        radarState.layers[1] = makeRadarTileLayer(381).addTo(map);
+        radarState.front = 0;
+
+        fetch(RADAR_API, { cache: 'no-store' })
+          .then(function(res) {
+            if (!res.ok) throw new Error('Radar API ' + res.status);
+            return res.json();
+          })
+          .then(function(data) {
+            if (!mapRadarActive) return;
+            radarState.host = (data && data.host) || 'https://tilecache.rainviewer.com';
+            var past = (data && data.radar && data.radar.past) ? data.radar.past.slice() : [];
+            if (!past.length) throw new Error('No radar frames');
+
+            // Prefer last ~hour of native (~10 min) scans, then expand to ~5 min steps
+            var newest = past[past.length - 1].time;
+            var cutoff = newest - 60 * 60;
+            var hour = past.filter(function(f) { return f && f.time >= cutoff && f.path; });
+            if (hour.length < 2) hour = past.slice(-Math.min(past.length, 12));
+            radarState.frames = expandRadarFramesToFiveMin(hour);
+            radarState.latestTime = hour[hour.length - 1].time;
+            radarState.idx = 0;
+
+            // Internal only — not shown in HUD
+            try {
+              console.debug('[radar] steps=' + radarState.frames.length +
+                ' latest=' + (radarState.latestTime ? formatRadarClock(radarState.latestTime) : '?'));
+            } catch (eDbg) {}
+
+            setRadarUiClock(radarState.frames[0].time);
+            showRadarFrame(0);
+          })
+          .catch(function(err) {
+            console.error('Radar failed:', err);
+            if (typeof showAppCopyToast === 'function') {
+              showAppCopyToast('<span class="act">Radar failed</span><br>Could not load RainViewer frames. Check connection and retry.');
+            }
+            stopMapRadar();
+          });
+      });
+    }
+
+    function toggleMapRadar() {
+      if (mapRadarActive) stopMapRadar();
+      else startMapRadar();
+    }
+    window.toggleMapRadar = toggleMapRadar;
+    window.startMapRadar = startMapRadar;
+
     function startMapMeasure() {
       ensureMap().then(function(m) {
         if (!m) return;
+        if (mapRadarActive) stopMapRadar();
         if (gpsTrackActive) stopGpsTrack(); // save track if long enough
         if (mapDrawMode === 'measure') {
           cancelMapDraw();
@@ -6635,6 +7282,7 @@
     function startMapDrawShape() {
       ensureMap().then(function(m) {
         if (!m) return;
+        if (mapRadarActive) stopMapRadar();
         if (gpsTrackActive) stopGpsTrack(); // save track if long enough
         if (mapDrawMode === 'draw') {
           cancelMapDraw();
@@ -7224,6 +7872,7 @@
     }
 
     function toggleGpsTrack() {
+      if (mapRadarActive) stopMapRadar();
       if (gpsTrackActive) stopGpsTrack();
       else startGpsTrack();
     }
