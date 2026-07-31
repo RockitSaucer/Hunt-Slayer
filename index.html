@@ -260,14 +260,28 @@
     html.layout-phone .dashboard-under-steps {
       position: static; max-height: none; min-height: 0; margin-top: 16px; padding-top: 14px;
     }
-    /* Planner keeps side inset; map goes edge-to-edge for full phone width */
+    /*
+     * Phone stack order: planner steps → map → weather dashboard.
+     * Weather/list refresh used to sit ABOVE the map inside .card-planner, so every
+     * map-dot weather update grew content above the map and shoved the viewport up.
+     * display:contents lets us order the dashboard after the map without HTML moves.
+     */
     html.layout-phone .card-planner {
+      display: contents;
+    }
+    html.layout-phone .card-planner > .planner-row {
       order: 1;
       margin: 0 10px;
       width: auto;
       max-width: calc(100% - 20px);
       box-sizing: border-box;
       overflow-x: hidden;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      align-self: stretch;
     }
     html.layout-phone .card-map {
       position: static;
@@ -283,6 +297,20 @@
       border-right: none;
       box-sizing: border-box;
       overflow-x: hidden;
+    }
+    html.layout-phone .card-planner > #dashboard-container,
+    html.layout-phone .card-planner > .dashboard-under-steps {
+      order: 3;
+      margin: 0 10px 4px;
+      width: auto;
+      max-width: calc(100% - 20px);
+      box-sizing: border-box;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      align-self: stretch;
     }
     html.layout-phone .card-map .map-section-block {
       width: 100%;
@@ -4171,6 +4199,9 @@
     function selectPublicLandWeather(layer, attrs, lat, lng, opts) {
       opts = opts || {};
       if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) return;
+      // Default skipScroll true on phone so map-dot / unit taps don't jump the page
+      var skipScrollEarly = opts.skipScroll !== undefined ? !!opts.skipScroll : (typeof isPhoneLayout === 'function' && isPhoneLayout());
+      if (skipScrollEarly && typeof lockMapInView === 'function') lockMapInView();
       ensureHuntContext();
       var name = featureDisplayName(layer, attrs) || layer.label || 'Public land';
       var idSuffix = String(name).toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 40) + '_' + lat.toFixed(3) + '_' + lng.toFixed(3);
@@ -4227,6 +4258,9 @@
     function selectWeatherAtMapPoint(lat, lng, detected, tva, opts) {
       if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) return;
       opts = opts || {};
+      // Always lock map scroll first on map-spot picks (phone reflow protection)
+      var skipScrollEarly = opts.skipScroll !== undefined ? !!opts.skipScroll : true;
+      if (skipScrollEarly && typeof lockMapInView === 'function') lockMapInView();
       ensureHuntContext();
       detected = detected || detectBoundaryAndZone(lat, lng);
       // Unique id per click so each map spot reloads weather (do not reuse zone id)
@@ -6018,6 +6052,8 @@
       if (!map || typeof L === 'undefined') return;
       opts = opts || {};
       var skipWeather = !!opts.skipWeather;
+      // Freeze map on-screen before any weather/list DOM work (mobile)
+      if (!skipWeather && typeof lockMapInView === 'function') lockMapInView();
       clickLat = latlng.lat;
       clickLng = latlng.lng;
       lastClickTva = null;
@@ -9001,23 +9037,79 @@
     // Bump on each weather request so older in-flight fetches don't overwrite a newer map click
     var weatherRequestSeq = 0;
 
+    /**
+     * Keep the map visually fixed on phone while weather/list DOM updates reflow the page.
+     * Content above (or around) the map changing height was shoving the viewport "to the top".
+     */
+    var _mapInViewLock = null;
+    function lockMapInView() {
+      if (typeof isPhoneLayout === 'function' && !isPhoneLayout()) {
+        _mapInViewLock = null;
+        return;
+      }
+      var el = document.getElementById('map-wrapper');
+      if (!el) {
+        _mapInViewLock = null;
+        return;
+      }
+      _mapInViewLock = {
+        top: el.getBoundingClientRect().top,
+        until: Date.now() + 3200
+      };
+    }
+    function restoreMapInView() {
+      var lock = _mapInViewLock;
+      if (!lock || Date.now() > lock.until) return;
+      if (typeof isPhoneLayout === 'function' && !isPhoneLayout()) return;
+      var el = document.getElementById('map-wrapper');
+      if (!el) return;
+      var top = el.getBoundingClientRect().top;
+      var delta = top - lock.top;
+      if (Math.abs(delta) > 0.5) {
+        try {
+          window.scrollBy(0, delta);
+        } catch (eScroll) {
+          var y = (window.pageYOffset || document.documentElement.scrollTop || 0) + delta;
+          window.scrollTo(0, y);
+        }
+      }
+      // Re-sample so chained restores stay relative to the map
+      lock.top = el.getBoundingClientRect().top;
+    }
+    function scheduleMapInViewRestore() {
+      restoreMapInView();
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(function() {
+          restoreMapInView();
+          requestAnimationFrame(restoreMapInView);
+        });
+      }
+      [30, 80, 160, 320, 600, 1000, 1600, 2400].forEach(function(ms) {
+        setTimeout(restoreMapInView, ms);
+      });
+    }
+
     async function selectLocation(location, rule, opts) {
       opts = opts || {};
+      var skipScroll = !!opts.skipScroll;
+      if (skipScroll) lockMapInView();
       selectedLocationId = location.id;
       selectedSubsectionIndex = null;
       document.querySelectorAll('.location-item').forEach(function(el) { el.classList.remove('selected'); });
       updateAvailableList(true);
       updateEventsList();
+      if (skipScroll) restoreMapInView();
       ensureMap().then(function(m) {
         if (m) {
-          // Don't pan for free map-spot clicks (user already clicked there)
-          if (!location.isMapSpot) m.panTo([location.lat, location.lng]);
+          // Map-driven picks: never pan/scroll away from the user's click
+          if (!skipScroll && !location.isMapSpot) m.panTo([location.lat, location.lng]);
           plotSubsections(location, rule);
         }
       });
       // TVA note for this coordinate (no boundary on map)
       applyTvaToLocation(location, location.lat, location.lng);
-      loadWeatherAndRender(location, rule);
+      loadWeatherAndRender(location, rule, null, { skipScroll: skipScroll });
+      if (skipScroll) scheduleMapInViewRestore();
     }
     async function selectSubsection(locId, subIdx) {
       selectedSubsectionIndex = subIdx;
@@ -9034,11 +9126,23 @@
       loadWeatherAndRender(loc, match ? match.rule : { weapon:'General', target:'State limits', limit:'1/day' }, sub);
     }
 
-    async function loadWeatherAndRender(location, rule, subsection) {
+    async function loadWeatherAndRender(location, rule, subsection, opts) {
+      opts = opts || {};
+      var skipScroll = !!opts.skipScroll;
+      if (skipScroll) lockMapInView();
       var reqId = ++weatherRequestSeq;
-      document.getElementById('db-blank').style.display = 'none';
-      document.getElementById('db-content').style.display = 'none';
-      document.getElementById('db-loading').style.display = 'block';
+      var blank = document.getElementById('db-blank');
+      var content = document.getElementById('db-content');
+      var loading = document.getElementById('db-loading');
+      if (blank) blank.style.display = 'none';
+      // Map taps: do not collapse an already-open dashboard (hide→loading→show jumps the page).
+      // Only show the loading panel if nothing is visible yet.
+      var contentOpen = !!(content && content.style.display === 'block');
+      if (!(skipScroll && contentOpen)) {
+        if (content) content.style.display = 'none';
+        if (loading) loading.style.display = 'block';
+      }
+      if (skipScroll) restoreMapInView();
 
       const lat = subsection ? subsection.lat : location.lat;
       const lng = subsection ? subsection.lng : location.lng;
@@ -9068,6 +9172,7 @@
         displayDashboard(location, rule, generateSimulatedWeather(lat, lng, dateToUse), subsection, null, dateToUse, lat, lng);
         renderSubsections(location, rule);
       }
+      if (skipScroll) scheduleMapInViewRestore();
     }
 
     async function fetchWeather(lat, lon, date) {
@@ -9305,6 +9410,11 @@
       var showOverlay = forceBox || (fullscreen && selectedLocationId && !isCurrentLoc);
       document.getElementById('map-weather-overlay').style.display = showOverlay ? 'block' : 'none';
       window._forceMapWeatherOverlay = false;
+      // Map-dot weather can reflow layout; keep map fixed on phone
+      if (_mapInViewLock) {
+        restoreMapInView();
+        scheduleMapInViewRestore();
+      }
     }
     function renderSubsections(location, rule) {
       const cont = document.getElementById('subsections-list-container');
