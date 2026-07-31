@@ -1188,9 +1188,10 @@
       display: flex;
       flex-direction: row;
       align-items: center;
-      gap: 4px;
+      gap: var(--mbb-gap, 4px);
       max-width: none;
       pointer-events: auto;
+      flex: 0 0 auto;
       flex-shrink: 0;
     }
     .map-draw-tools .mdt-btn {
@@ -1198,10 +1199,10 @@
       border: 1px solid var(--border);
       color: var(--ink);
       border-radius: 10px;
-      padding: 0 9px;
-      height: 40px;
-      min-height: 40px;
-      max-height: 40px;
+      padding: 0 8px;
+      height: var(--mbb-h, 40px);
+      min-height: var(--mbb-h, 40px);
+      max-height: var(--mbb-h, 40px);
       font-size: 10px;
       font-weight: 800;
       cursor: pointer;
@@ -1213,6 +1214,7 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      flex: 0 0 auto;
     }
     .map-draw-tools .mdt-btn:hover { border-color: var(--accent); color: #fff; }
     .map-draw-tools .mdt-btn.active {
@@ -1778,11 +1780,11 @@
       flex-shrink: 0;
     }
     .map-radar-toggle {
-      width: 40px;
-      height: 40px;
-      min-width: 40px;
-      min-height: 40px;
-      max-height: 40px;
+      width: var(--mbb-icon, 40px);
+      height: var(--mbb-h, 40px);
+      min-width: var(--mbb-icon, 40px);
+      min-height: var(--mbb-h, 40px);
+      max-height: var(--mbb-h, 40px);
       padding: 0;
       border-radius: 10px;
       border: 1px solid rgba(56, 189, 248, 0.45);
@@ -2341,16 +2343,26 @@
     }
     .map-wind-hud.active { display: flex; }
 
-    /* Slim bottom bar: left cluster | centered CL | right cluster + settings */
+    /*
+     * Slim bottom bar — cohesive 3-zone grid:
+     *   [ date + weapon + tools  |  GPS  |  radar · compass · layers · settings ]
+     * Date/weapon sit in a fixed left slot and never shift when tools hide/show.
+     * Gaps between buttons are tight and uniform; empty space is only the
+     * balanced mid-zones around GPS (not between individual buttons).
+     */
     .map-bottom-bar {
+      --mbb-h: 40px;
+      --mbb-gap: 4px;
+      --mbb-icon: 40px;
       position: absolute;
       left: 50%;
       bottom: max(10px, env(safe-area-inset-bottom, 0px));
       transform: translateX(-50%);
       z-index: 10006;
-      display: flex;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
       align-items: center;
-      gap: 6px;
+      column-gap: var(--mbb-gap);
       pointer-events: none;
       width: min(640px, calc(100% - 12px));
       max-width: calc(100% - 12px);
@@ -2369,31 +2381,41 @@
     }
     /* Equal-height controls on the bar */
     .map-bottom-bar .mbb-ctrl {
-      height: 40px;
-      min-height: 40px;
-      max-height: 40px;
+      height: var(--mbb-h);
+      min-height: var(--mbb-h);
+      max-height: var(--mbb-h);
       box-sizing: border-box;
     }
+    /* Left zone: date/weapon (fixed) + tools (tight), packed start */
     .mbb-left {
+      grid-column: 1;
       display: flex;
       align-items: center;
-      gap: 6px;
-      flex: 1 1 0;
+      gap: var(--mbb-gap);
       min-width: 0;
       justify-content: flex-start;
+      justify-self: start;
     }
+    /* Center zone: Current Location — always true center of bar */
+    .map-bottom-bar > .mbb-icon-btn.mbb-gps {
+      grid-column: 2;
+      justify-self: center;
+    }
+    /* Right zone: radar / compass / layers / settings, packed end */
     .mbb-right {
+      grid-column: 3;
       display: flex;
       align-items: center;
-      gap: 6px;
-      flex: 1 1 0;
+      gap: var(--mbb-gap);
       min-width: 0;
       justify-content: flex-end;
+      justify-self: end;
     }
     .map-settings-btn {
-      width: 40px;
-      height: 40px;
-      min-height: 40px;
+      width: var(--mbb-icon);
+      height: var(--mbb-h);
+      min-width: var(--mbb-icon);
+      min-height: var(--mbb-h);
       border-radius: 10px;
       border: 1px solid var(--border);
       background: rgba(22, 26, 18, 0.95);
@@ -2409,18 +2431,25 @@
     }
     .map-settings-btn:hover { border-color: var(--accent); background: rgba(32, 38, 26, 0.98); }
 
-    /* Date + weapon text (Gun / Bow / Prim / Any) */
+    /*
+     * Date + weapon — reserved footprint so they never jump when tools
+     * or other bar buttons show/hide. Always visible.
+     */
     .mbb-context {
       display: flex;
-      align-items: center;
-      gap: 6px;
-      min-width: 0;
-      flex: 0 1 auto;
-      max-width: 150px;
-      padding: 0 2px;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 2px;
+      flex: 0 0 auto;
+      width: 72px;
+      min-width: 72px;
+      max-width: 72px;
+      padding: 0 2px 0 0;
       color: var(--ink);
       overflow: hidden;
-      height: 40px;
+      height: var(--mbb-h);
+      box-sizing: border-box;
     }
     .mbb-date {
       font-size: 10px;
@@ -2431,7 +2460,9 @@
       text-overflow: ellipsis;
       color: #e8efe4;
       font-variant-numeric: tabular-nums;
-      line-height: 1.15;
+      line-height: 1.1;
+      max-width: 100%;
+      display: block;
     }
     .mbb-date.is-empty { color: var(--muted); font-weight: 700; }
     .mbb-weapon {
@@ -2439,17 +2470,20 @@
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      height: 22px;
-      padding: 0 6px;
-      border-radius: 6px;
+      height: 16px;
+      max-width: 100%;
+      padding: 0 5px;
+      border-radius: 5px;
       border: 1px solid rgba(229, 154, 24, 0.45);
       background: rgba(229, 154, 24, 0.12);
       color: var(--accent);
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 800;
-      letter-spacing: 0.03em;
+      letter-spacing: 0.02em;
       line-height: 1;
       white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .mbb-weapon.is-empty {
       color: var(--muted);
@@ -2460,11 +2494,11 @@
     .mbb-weapon svg { display: none; }
 
     .mbb-icon-btn {
-      width: 40px;
-      height: 40px;
-      min-width: 40px;
-      min-height: 40px;
-      max-height: 40px;
+      width: var(--mbb-icon);
+      height: var(--mbb-h);
+      min-width: var(--mbb-icon);
+      min-height: var(--mbb-h);
+      max-height: var(--mbb-h);
       border-radius: 10px;
       border: 1px solid var(--border);
       background: rgba(22, 26, 18, 0.95);
@@ -2477,6 +2511,7 @@
       flex-shrink: 0;
       padding: 0;
       line-height: 0;
+      box-sizing: border-box;
     }
     .mbb-icon-btn svg { width: 22px; height: 22px; display: block; }
     .mbb-icon-btn:hover { border-color: var(--accent); color: #fff; }
@@ -2509,78 +2544,70 @@
     .map-wrapper.fullscreen .map-layers-menu.map-layers-bottom {
       z-index: 2147483001;
     }
+    /* Tools pack tight next to date — never push date around */
+    .map-draw-tools {
+      gap: var(--mbb-gap);
+      flex: 0 0 auto;
+      flex-shrink: 0;
+    }
+
     /*
-     * Mobile bottom bar: single neat row that fits the screen.
-     * Controls shrink together; very narrow phones also scale the bar slightly.
+     * Mobile: same 3-zone layout, smaller controls, tighter gaps.
+     * Date + weapon always shown (stacked in fixed slot). Scale bar only
+     * on very narrow phones so the row stays one cohesive strip.
      */
     html.layout-phone .map-bottom-bar {
-      --mbb-h: 30px;
+      --mbb-h: 32px;
       --mbb-gap: 3px;
-      --mbb-icon: 30px;
-      gap: var(--mbb-gap);
-      padding: 4px 5px;
+      --mbb-icon: 32px;
       width: calc(100% - 8px);
       max-width: calc(100% - 8px);
-      border-radius: 10px;
-      flex-wrap: nowrap;
-      align-items: center;
-      overflow: visible;
-      /* keep centered; scale slightly so nothing stacks / overflows */
-      transform: translateX(-50%) scale(0.94);
+      padding: 5px 6px;
+      border-radius: 11px;
+      column-gap: var(--mbb-gap);
+      transform: translateX(-50%);
       transform-origin: center bottom;
     }
     html.layout-phone .map-wrapper.fullscreen .map-bottom-bar {
-      transform: translateX(-50%) scale(0.94);
+      transform: translateX(-50%);
     }
     html.layout-phone .mbb-left,
     html.layout-phone .mbb-right {
       gap: var(--mbb-gap);
-      flex: 1 1 0;
-      min-width: 0;
-    }
-    html.layout-phone .mbb-left {
-      overflow: hidden;
     }
     html.layout-phone .mbb-context {
-      max-width: 56px;
-      min-width: 0;
-      flex: 0 1 56px;
+      width: 54px;
+      min-width: 54px;
+      max-width: 54px;
       height: var(--mbb-h);
-      gap: 2px;
-      padding: 0;
+      gap: 1px;
+      padding: 0 1px 0 0;
     }
     html.layout-phone .mbb-date {
-      font-size: 8px;
+      font-size: 9px;
       letter-spacing: 0;
-      max-width: 100%;
     }
     html.layout-phone .mbb-weapon {
-      height: 16px;
-      padding: 0 3px;
+      height: 14px;
+      padding: 0 4px;
       font-size: 8px;
       border-radius: 4px;
-    }
-    /* Hide weapon chip on very narrow phones — date alone is enough */
-    @media (max-width: 380px) {
-      html.layout-phone .mbb-weapon { display: none; }
-      html.layout-phone .mbb-context { max-width: 44px; flex-basis: 44px; }
+      /* never hide — always show weapon with date */
+      display: inline-flex !important;
     }
     html.layout-phone .map-draw-tools {
-      gap: 2px;
-      flex: 1 1 auto;
-      min-width: 0;
-      flex-shrink: 1;
+      gap: var(--mbb-gap);
+      flex: 0 0 auto;
     }
     html.layout-phone .map-draw-tools .mdt-btn {
       height: var(--mbb-h);
       min-height: var(--mbb-h);
       max-height: var(--mbb-h);
-      padding: 0 4px;
-      font-size: 8px;
-      border-radius: 7px;
-      flex: 0 1 auto;
-      min-width: 0;
-      letter-spacing: -0.01em;
+      padding: 0 5px;
+      font-size: 9px;
+      border-radius: 8px;
+      flex: 0 0 auto;
+      letter-spacing: 0;
     }
     html.layout-phone .map-bottom-bar .mbb-ctrl,
     html.layout-phone .map-settings-btn,
@@ -2592,35 +2619,33 @@
       min-width: var(--mbb-icon);
       min-height: var(--mbb-h);
       max-height: var(--mbb-h);
-      border-radius: 7px;
+      border-radius: 8px;
       flex-shrink: 0;
     }
     html.layout-phone .mbb-compass-btn {
       min-width: var(--mbb-icon);
       width: auto;
-      max-width: 40px;
-      padding: 0 4px;
-      font-size: 8px;
+      max-width: 44px;
+      padding: 0 5px;
+      font-size: 9px;
     }
     html.layout-phone .mbb-icon-btn svg,
     html.layout-phone .map-radar-toggle svg,
     html.layout-phone .mbb-compass-btn svg {
-      width: 16px;
-      height: 16px;
+      width: 17px;
+      height: 17px;
     }
     html.layout-phone .map-layers-menu {
-      flex-shrink: 1;
-      min-width: 0;
+      flex-shrink: 0;
     }
     html.layout-phone .map-layers-toggle-btn {
-      padding: 0 5px;
+      padding: 0 6px;
       height: var(--mbb-h);
       min-height: var(--mbb-h);
       max-height: var(--mbb-h);
-      font-size: 9px;
-      border-radius: 7px;
+      font-size: 10px;
+      border-radius: 8px;
       gap: 2px;
-      min-width: 0;
     }
     html.layout-phone .map-layers-toggle-btn .ml-caret {
       font-size: 8px;
@@ -2628,21 +2653,30 @@
     html.layout-phone .map-radar-control {
       flex-shrink: 0;
     }
-    /* Extra-narrow phones: slightly smaller scale so one clean row always fits */
-    @media (max-width: 360px) {
+    /* Narrow phones: keep layout, slightly smaller icons — do not hide date/weapon */
+    @media (max-width: 390px) {
       html.layout-phone .map-bottom-bar,
       html.layout-phone .map-wrapper.fullscreen .map-bottom-bar {
-        --mbb-h: 28px;
-        --mbb-icon: 28px;
+        --mbb-h: 30px;
+        --mbb-icon: 30px;
         --mbb-gap: 2px;
-        transform: translateX(-50%) scale(0.90);
-        padding: 3px 4px;
+        padding: 4px 5px;
+        transform: translateX(-50%) scale(0.96);
+      }
+      html.layout-phone .mbb-context {
+        width: 50px;
+        min-width: 50px;
+        max-width: 50px;
+      }
+      html.layout-phone .map-draw-tools .mdt-btn {
+        padding: 0 4px;
+        font-size: 8px;
       }
     }
-    @media (max-width: 320px) {
+    @media (max-width: 340px) {
       html.layout-phone .map-bottom-bar,
       html.layout-phone .map-wrapper.fullscreen .map-bottom-bar {
-        transform: translateX(-50%) scale(0.86);
+        transform: translateX(-50%) scale(0.92);
       }
     }
     /* Settings modal */
@@ -2825,8 +2859,9 @@
     html.settings-hide-compass #mbb-compass-btn { display: none !important; }
     /* Bottom-bar compass/wind quick toggle */
     .mbb-compass-btn {
-      min-width: 40px;
-      height: 40px;
+      min-width: var(--mbb-icon, 40px);
+      height: var(--mbb-h, 40px);
+      max-height: var(--mbb-h, 40px);
       padding: 0 8px;
       border-radius: 10px;
       border: 1px solid var(--border);
@@ -2943,13 +2978,15 @@
     .map-layers-toggle-btn {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: 3px;
       background: rgba(22, 26, 18, 0.95);
       border: 1px solid var(--border);
       color: var(--accent);
       border-radius: 10px;
-      padding: 0 12px;
-      height: 40px;
+      padding: 0 10px;
+      height: var(--mbb-h, 40px);
+      min-height: var(--mbb-h, 40px);
+      max-height: var(--mbb-h, 40px);
       font-size: 12px;
       font-weight: 800;
       letter-spacing: 0.03em;
@@ -2958,6 +2995,7 @@
       white-space: nowrap;
       line-height: 1.2;
       box-sizing: border-box;
+      flex-shrink: 0;
     }
     .map-layers-toggle-btn:hover,
     .map-layers-menu.open .map-layers-toggle-btn,
