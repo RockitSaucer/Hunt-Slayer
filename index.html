@@ -1272,48 +1272,106 @@
       color: #fca5a5;
     }
 
-    /* Radar control — top bar next to wind compass (not in Tools) */
+    /*
+     * Compass + Radar as one stacked object (same width, shared shell).
+     * Wind on top, Radar button flush underneath — reads as a single control.
+     */
+    .map-compass-radar {
+      pointer-events: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      width: 148px;
+      min-width: 148px;
+      max-width: min(148px, 44vw);
+      flex-shrink: 0;
+      box-sizing: border-box;
+      background: rgba(22, 26, 18, 0.94);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+      overflow: hidden;
+    }
+    .map-compass-radar .map-wind-hud {
+      display: none;
+      position: static;
+      transform: none;
+      left: auto;
+      top: auto;
+      z-index: auto;
+      align-items: center;
+      gap: 8px;
+      /* part of shared shell — no second card */
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      padding: 0 10px;
+      max-width: none;
+      width: 100%;
+      height: 56px;
+      min-height: 56px;
+      max-height: 56px;
+      box-sizing: border-box;
+      flex-shrink: 0;
+      pointer-events: none;
+    }
+    .map-compass-radar .map-wind-hud.active {
+      display: flex;
+    }
+    .map-compass-radar.has-wind .map-wind-hud.active {
+      border-bottom: 1px solid var(--border);
+    }
     .map-radar-control {
       pointer-events: auto;
       display: flex;
       flex-direction: column;
       align-items: stretch;
-      gap: 5px;
-      width: 168px;
-      max-width: min(168px, 46vw);
-      flex-shrink: 0;
-      min-width: 168px;
+      gap: 0;
+      width: 100%;
+      min-width: 0;
+      max-width: none;
       box-sizing: border-box;
     }
     .map-radar-toggle {
-      background: rgba(22, 26, 18, 0.94);
-      border: 1px solid var(--border);
+      background: transparent;
+      border: none;
+      border-radius: 0;
       color: var(--ink);
-      border-radius: 8px;
-      padding: 7px 10px;
-      font-size: 11px;
+      padding: 0 10px;
+      font-size: 13px;
       font-weight: 800;
       cursor: pointer;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-      line-height: 1.2;
+      box-shadow: none;
+      line-height: 1;
       white-space: nowrap;
       width: 100%;
+      /* ~half the compass/wind row (56px) — same width, shorter height */
+      height: 28px;
+      min-height: 28px;
+      max-height: 28px;
       box-sizing: border-box;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
-    .map-radar-toggle:hover { border-color: #38bdf8; color: #fff; }
+    .map-radar-toggle:hover {
+      background: rgba(56, 189, 248, 0.12);
+      color: #fff;
+    }
     .map-radar-control.radar-on .map-radar-toggle {
-      border-color: #38bdf8;
-      background: rgba(56, 189, 248, 0.18);
+      background: rgba(56, 189, 248, 0.16);
       color: #7dd3fc;
+      border-bottom: 1px solid rgba(56, 189, 248, 0.35);
     }
-    /* Fixed-size time box — only date/time; never resizes as the loop runs */
+    /* Fixed-size time box under the shared unit when radar is on */
     .map-radar-hud {
       display: none;
-      background: rgba(8, 16, 28, 0.94);
-      border: 1px solid #38bdf8;
-      border-radius: 8px;
+      background: rgba(8, 16, 28, 0.98);
+      border: none;
+      border-top: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 0;
       padding: 8px 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.45);
+      box-shadow: none;
       line-height: 1.25;
       width: 100%;
       height: 58px;
@@ -1344,10 +1402,9 @@
       height: 30px;
       line-height: 1.25;
       overflow: hidden;
-      white-space: normal;
+      white-space: pre-line;
       word-break: keep-all;
     }
-    /* Hidden from UI — kept for internal/debug if needed */
     .map-radar-hud .mrh-meta {
       display: none !important;
     }
@@ -1368,27 +1425,42 @@
     }
     .map-radar-stop {
       display: none;
-      background: #0e7490;
-      border: 1px solid #22d3ee;
+      background: rgba(14, 116, 144, 0.55);
+      border: none;
+      border-top: 1px solid rgba(34, 211, 238, 0.4);
+      border-radius: 0;
       color: #fff;
-      border-radius: 8px;
-      padding: 6px 8px;
-      font-size: 10px;
+      padding: 0 10px;
+      font-size: 11px;
       font-weight: 800;
       cursor: pointer;
       text-align: center;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+      box-shadow: none;
       width: 100%;
+      height: 36px;
+      min-height: 36px;
       box-sizing: border-box;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
     }
     .map-radar-control.radar-on .map-radar-stop { display: block; }
-    .map-radar-stop:hover { background: #0891b2; color: #fff; }
-    html.layout-phone .map-radar-control {
-      width: 150px;
-      min-width: 150px;
-      max-width: min(150px, 42vw);
+    .map-radar-stop:hover { background: rgba(8, 145, 178, 0.75); color: #fff; }
+    html.layout-phone .map-compass-radar {
+      width: 136px;
+      min-width: 136px;
+      max-width: min(136px, 40vw);
     }
-    html.layout-phone .map-radar-toggle { font-size: 10px; padding: 6px 8px; }
+    html.layout-phone .map-compass-radar .map-wind-hud {
+      height: 52px;
+      min-height: 52px;
+      max-height: 52px;
+    }
+    html.layout-phone .map-radar-toggle {
+      height: 26px;
+      min-height: 26px;
+      max-height: 26px;
+      font-size: 12px;
+    }
     html.layout-phone .map-radar-hud { height: 54px; }
     html.layout-phone .map-radar-control.radar-on.has-current-note .map-radar-hud { height: 74px; }
     html.layout-phone .map-radar-hud .mrh-clock { font-size: 11px; height: 28px; }
@@ -1608,18 +1680,18 @@
       transform: translateX(-50%);
       z-index: 10005;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 8px;
-      max-width: calc(100% - 120px);
+      max-width: calc(100% - 64px);
       pointer-events: none;
     }
     .map-wrapper.fullscreen .map-top-center {
       z-index: 2147483001;
       top: max(10px, env(safe-area-inset-top, 0px));
-      max-width: calc(100% - 140px);
-      align-items: center;
+      max-width: calc(100% - 72px);
+      align-items: flex-start;
     }
-    /* Map wind compass HUD - sits next to Layers */
+    /* Wind HUD defaults (standalone styles overridden when inside .map-compass-radar) */
     .map-wind-hud {
       display: none;
       position: static;
@@ -1641,7 +1713,7 @@
     }
     .map-wind-hud.active { display: flex; }
     .map-wrapper.fullscreen .map-wind-hud {
-      max-width: min(320px, 48vw);
+      max-width: none;
     }
 
     /* Layers menu — bottom center of map (panel opens upward) */
@@ -1799,11 +1871,14 @@
       border: 1px solid var(--border);
       color: var(--accent);
       border-radius: 6px;
-      padding: 6px 12px;
+      padding: 6px 8px;
+      min-width: 40px;
       font-weight: bold;
       cursor: pointer;
       font-size: 11px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      text-align: center;
+      letter-spacing: 0.02em;
     }
     .map-fs-btn:hover { border-color: var(--accent); }
     .map-wrapper.fullscreen .map-fs-btn {
@@ -1839,8 +1914,8 @@
       cursor: crosshair;
     }
     .map-wind-hud .compass {
-      width: 44px;
-      height: 44px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       border: 2px solid var(--border);
       position: relative;
@@ -1866,15 +1941,15 @@
       transform-origin: 50% 50%;
       transition: transform 0.6s ease;
     }
-    .map-wind-meta { min-width: 0; line-height: 1.25; }
+    .map-wind-meta { min-width: 0; line-height: 1.2; flex: 1; overflow: hidden; }
     .map-wind-meta .mw-speed {
-      font-size: 13px; font-weight: 800; color: #fff; white-space: nowrap;
+      font-size: 12px; font-weight: 800; color: #fff; white-space: nowrap;
     }
     .map-wind-meta .mw-dir {
-      font-size: 11px; color: var(--muted); white-space: nowrap;
+      font-size: 10px; color: var(--muted); white-space: nowrap;
     }
     .map-wind-meta .mw-scent {
-      font-size: 11px; font-weight: 700; color: var(--accent); white-space: nowrap;
+      font-size: 10px; font-weight: 700; color: var(--accent); white-space: nowrap;
     }
 
     /* Combined land + distance filter panel */
@@ -2382,26 +2457,28 @@
           <!-- Fullscreen: small REG SLAYER logo left of compass (Layers is bottom-center) -->
           <div class="map-top-center" id="map-top-center">
             <img class="map-fs-logo" src="reg-slayer-logo.png" alt="REG SLAYER" width="140" height="30" decoding="async" />
-            <div id="map-wind-hud" class="map-wind-hud" aria-live="polite">
-              <div class="compass" title="Wind direction">
-                <div class="compass-needle" id="compass-needle"></div>
+            <!-- Compass + Radar as one stacked unit -->
+            <div class="map-compass-radar" id="map-compass-radar">
+              <div id="map-wind-hud" class="map-wind-hud" aria-live="polite">
+                <div class="compass" title="Wind direction">
+                  <div class="compass-needle" id="compass-needle"></div>
+                </div>
+                <div class="map-wind-meta">
+                  <div class="mw-speed" id="map-wind-speed">-- mph</div>
+                  <div class="mw-dir" id="map-wind-dir">from -</div>
+                  <div class="mw-scent" id="map-scent-text">Scent → -</div>
+                </div>
               </div>
-              <div class="map-wind-meta">
-                <div class="mw-speed" id="map-wind-speed">-- mph</div>
-                <div class="mw-dir" id="map-wind-dir">from -</div>
-                <div class="mw-scent" id="map-scent-text">Scent → -</div>
+              <div class="map-radar-control" id="map-radar-control">
+                <button type="button" class="map-radar-toggle" id="map-radar-toggle" onclick="toggleMapRadar()" title="Animated weather radar — last hour, ~5 min steps">Radar</button>
+                <div class="map-radar-hud" id="map-radar-hud" aria-live="polite">
+                  <div class="mrh-label">Radar time</div>
+                  <div class="mrh-clock" id="map-radar-clock">—</div>
+                  <div class="mrh-meta" id="map-radar-meta" hidden aria-hidden="true"></div>
+                  <div class="mrh-current-note" id="map-radar-current-note">Radar is current</div>
+                </div>
+                <button type="button" class="map-radar-stop" id="map-radar-stop" onclick="stopMapRadar()" title="Stop radar loop">Stop</button>
               </div>
-            </div>
-            <!-- Live radar sits beside the compass (not in Tools) -->
-            <div class="map-radar-control" id="map-radar-control">
-              <button type="button" class="map-radar-toggle" id="map-radar-toggle" onclick="toggleMapRadar()" title="Animated weather radar — last hour, ~5 min steps">Radar</button>
-              <div class="map-radar-hud" id="map-radar-hud" aria-live="polite">
-                <div class="mrh-label">Radar time</div>
-                <div class="mrh-clock" id="map-radar-clock">—</div>
-                <div class="mrh-meta" id="map-radar-meta" hidden aria-hidden="true"></div>
-                <div class="mrh-current-note" id="map-radar-current-note">Radar is current</div>
-              </div>
-              <button type="button" class="map-radar-stop" id="map-radar-stop" onclick="stopMapRadar()" title="Stop radar loop">Stop radar</button>
             </div>
           </div>
           <!-- Stand placement: click map after + Add Stand -->
@@ -2409,8 +2486,8 @@
             <span id="stand-place-banner-text">Click the map to place your stand</span>
             <button type="button" id="stand-place-cancel" onclick="cancelStandPlacement()" style="background:none;border:1px solid var(--border);color:var(--ink);border-radius:4px;padding:3px 8px;cursor:pointer;font-size:11px;font-weight:600;">Cancel</button>
           </div>
-          <button id="map-maximize-btn" class="map-fs-btn" onclick="toggleMapFullscreen()" type="button">Full Screen</button>
-          <button id="map-minimize-btn" class="map-fs-btn" onclick="toggleMapFullscreen()" type="button" style="display:none;">Minimize</button>
+          <button id="map-maximize-btn" class="map-fs-btn" onclick="toggleMapFullscreen()" type="button" title="Maximize map">Max</button>
+          <button id="map-minimize-btn" class="map-fs-btn" onclick="toggleMapFullscreen()" type="button" style="display:none;" title="Minimize map">Min</button>
           <!-- Left: Current Location + collapsible Tools; bottom-center: Layers -->
           <div class="map-draw-tools" id="map-draw-tools">
             <button type="button" class="mdt-btn mdt-gps" id="gps-snap-btn" onclick="snapToGPS()" title="Snap map to your GPS position">📍 Current Location</button>
@@ -9250,6 +9327,8 @@
       setTvaNoteEl('db-tva-note', null);
       var windHud = document.getElementById('map-wind-hud');
       if (windHud) windHud.classList.remove('active');
+      var stack = document.getElementById('map-compass-radar');
+      if (stack) stack.classList.remove('has-wind');
     }
 
     // Last wind used on the map compass (re-applied when entering fullscreen)
@@ -9274,6 +9353,8 @@
       if (dirEl) dirEl.textContent = (isCurrent ? 'Now from ' : 'from ') + from;
       if (scentEl) scentEl.textContent = 'Scent → ' + drift;
       hud.classList.add('active');
+      var stack = document.getElementById('map-compass-radar');
+      if (stack) stack.classList.add('has-wind');
 
       var needle = document.getElementById('compass-needle');
       if (!needle) return;
