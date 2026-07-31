@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>REG SLAYER - Alabama Deer Season Planner v3.9</title>
+  <title>REG SLAYER - Alabama Deer Season Planner v4.0</title>
   <!-- Detect phone vs desktop as early as possible (reduces layout flash) -->
   <script>
     (function () {
@@ -45,7 +45,7 @@
     html, body { height: 100%; }
     body { background: var(--bg); color: var(--ink); margin: 0; padding: 0; line-height: 1.5; min-height: 100vh; display: flex; flex-direction: column; }
 
-    /* ========== BRAND HEADER (v3.9 - large logo fills top bar) ========== */
+    /* ========== BRAND HEADER (v4.0 - large logo fills top bar) ========== */
     .brand-header {
       background:
         linear-gradient(180deg, rgba(13,15,12,0.15) 0%, rgba(13,15,12,0.88) 100%),
@@ -952,6 +952,27 @@
     .badge.refuge { background: var(--blue-refuge); color: white; }
     .map-wrapper { margin-top: 15px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); position: relative; }
     /* Map height set in desktop / phone layout blocks above */
+    /*
+     * Non-fullscreen: when a map-dot (or similar) popup is open, let it paint over the
+     * REG SLAYER brand banner above the map, and stay anchored to the orange dot.
+     */
+    html.map-popup-covers-brand .brand-header {
+      z-index: 100;
+    }
+    html.map-popup-covers-brand .card-map,
+    html.map-popup-covers-brand .card-map .map-section-block {
+      overflow: visible;
+    }
+    html.map-popup-covers-brand .map-wrapper:not(.fullscreen) {
+      overflow: visible;
+      z-index: 6000;
+    }
+    html.map-popup-covers-brand .map-wrapper:not(.fullscreen) #leaflet-map,
+    html.map-popup-covers-brand .map-wrapper:not(.fullscreen) .leaflet-container,
+    html.map-popup-covers-brand .map-wrapper:not(.fullscreen) .leaflet-pane,
+    html.map-popup-covers-brand .map-wrapper:not(.fullscreen) .leaflet-map-pane {
+      overflow: visible !important;
+    }
     /* True fullscreen: covers entire viewport including brand banner (wrapper is reparented to body) */
     .map-wrapper.fullscreen {
       position: fixed !important;
@@ -990,29 +1011,6 @@
       /* Keep in layout for restore, but invisible — map paints over everything */
       visibility: hidden !important;
       pointer-events: none !important;
-    }
-    /* Tiny brand mark on the map (left of compass) — only in fullscreen */
-    .map-fs-logo {
-      display: none;
-      height: 26px;
-      width: auto;
-      max-width: 120px;
-      object-fit: contain;
-      object-position: center;
-      pointer-events: none;
-      flex-shrink: 0;
-      align-self: center;
-      filter: drop-shadow(0 1px 3px rgba(0,0,0,0.9));
-      opacity: 0.95;
-    }
-    .map-wrapper.fullscreen .map-fs-logo {
-      display: block;
-      height: 30px;
-      max-width: 140px;
-    }
-    html.layout-phone .map-wrapper.fullscreen .map-fs-logo {
-      height: 22px;
-      max-width: 100px;
     }
     .detection-toast { background: var(--panel-light); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-top: 10px; display: none; border-left: 5px solid var(--accent); position: absolute; bottom: 70px; left: 20px; z-index: 10002; max-width: 320px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); }
     .detection-toast.active { display: block; }
@@ -1283,13 +1281,6 @@
       border-color: #f87171;
       color: #fca5a5;
     }
-    html.layout-phone .map-draw-tools .mdt-btn {
-      height: 36px;
-      min-height: 36px;
-      max-height: 36px;
-      padding: 0 6px;
-      font-size: 9px;
-    }
     html.layout-phone .map-draw-tools.tool-active .mdt-tools-panel {
       top: max(88px, calc(env(safe-area-inset-top, 0px) + 72px));
       left: max(8px, env(safe-area-inset-left, 0px));
@@ -1409,8 +1400,9 @@
         0 8px 22px rgba(0,0,0,0.6),
         inset 0 0 16px rgba(0,0,0,0.7);
     }
-    html.layout-phone .compass-dial { --dial-size: 75px; }
-    html.layout-phone .map-wind-hud.dial-expanded .compass-dial { --dial-size: 130px; }
+    /* Mobile dials ~30% smaller than desktop (70% scale) */
+    html.layout-phone .compass-dial { --dial-size: 60px; }
+    html.layout-phone .map-wind-hud.dial-expanded .compass-dial { --dial-size: 104px; }
 
     /* Simple wind indicator: arrow + speed only (not a compass clone) */
     .compass-dial.simple-wind {
@@ -1428,8 +1420,48 @@
         0 0 0 2px rgba(56, 189, 248, 0.45),
         0 8px 22px rgba(0,0,0,0.55);
     }
-    html.layout-phone .compass-dial.simple-wind { --dial-size: 64px; }
-    html.layout-phone .map-wind-hud.dial-expanded .compass-dial.simple-wind { --dial-size: 108px; }
+    html.layout-phone .compass-dial.simple-wind { --dial-size: 50px; }
+    html.layout-phone .map-wind-hud.dial-expanded .compass-dial.simple-wind { --dial-size: 84px; }
+    html.layout-phone .simple-wind .mw-speed { font-size: 11px !important; }
+    html.layout-phone .map-wind-hud.dial-expanded .simple-wind .mw-speed { font-size: 15px !important; }
+    html.layout-phone .simple-wind .compass-needle,
+    html.layout-phone .simple-wind .wind-arrow {
+      border-left-width: 7px;
+      border-right-width: 7px;
+      border-bottom-width: 24px;
+      margin-left: -7px;
+      margin-top: -20px;
+    }
+    html.layout-phone .map-wind-hud.dial-expanded .simple-wind .compass-needle,
+    html.layout-phone .map-wind-hud.dial-expanded .simple-wind .wind-arrow {
+      border-left-width: 9px;
+      border-right-width: 9px;
+      border-bottom-width: 34px;
+      margin-left: -9px;
+      margin-top: -28px;
+    }
+    html.layout-phone .dial-center-info {
+      padding: 10px 4px 8px;
+    }
+    html.layout-phone .dial-center-info .dial-main,
+    html.layout-phone .dial-center-info .mh-deg {
+      font-size: 10px;
+    }
+    html.layout-phone .dial-center-info .dial-sub,
+    html.layout-phone .dial-center-info .mh-card,
+    html.layout-phone .dial-center-info .mh-hint {
+      font-size: 7px;
+    }
+    html.layout-phone .map-wind-hud.dial-expanded .dial-center-info .dial-main,
+    html.layout-phone .map-wind-hud.dial-expanded .dial-center-info .mh-deg {
+      font-size: 14px;
+    }
+    html.layout-phone .dial-rose .hr-n { font-size: 11px; }
+    html.layout-phone .heading-bead {
+      border-left-width: 8px;
+      border-right-width: 8px;
+      border-bottom-width: 14px;
+    }
     .simple-wind .dial-rose,
     .simple-wind::after { display: none !important; }
     .simple-wind .mw-dir,
@@ -1700,34 +1732,36 @@
       color: #fca5a5;
     }
     .mwh-swap-btn .mwh-swap-label { line-height: 1; }
-    /* GPS location: blue dot (wind mode) or heading triangle (compass mode).
-       Scale is applied in JS (~1.5× until max zoom). */
+    /* GPS location: blue dot (wind mode) or heading arrow (compass mode).
+       Scale is applied in JS (~1.5× until max zoom). Darker blue + thin black outline. */
     .gps-loc-dot {
-      background: #3498db;
+      background: #1a5f9e;
       width: 16px;
       height: 16px;
       border-radius: 50%;
-      border: 3px solid #fff;
-      box-shadow: 0 0 8px #3498db;
+      border: 1.5px solid #000;
+      box-shadow: 0 0 6px rgba(26,95,158,0.85), 0 0 0 1px rgba(255,255,255,0.35);
       box-sizing: border-box;
     }
     .gps-heading-tri-wrap {
-      width: 18px;
-      height: 18px;
+      width: 22px;
+      height: 28px;
       display: flex;
       align-items: center;
       justify-content: center;
       will-change: transform;
       transform-origin: center center;
+      filter: drop-shadow(0 1px 3px rgba(0,0,0,0.55));
     }
+    .gps-heading-tri-wrap svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+    /* Navigation chevron (point = facing direction); CSS class kept for querySelector */
     .gps-heading-tri {
-      width: 0;
-      height: 0;
-      border-left: 7px solid transparent;
-      border-right: 7px solid transparent;
-      border-bottom: 14px solid #3498db;
-      filter: drop-shadow(0 0 3px rgba(52,152,219,0.9)) drop-shadow(0 0 0 1.5px #fff);
-      /* points "up" = device facing; wrapper rotates by heading */
+      display: none;
     }
     /* Radar control — icon on slim bottom bar; HUD pops upward when on */
     .map-radar-control {
@@ -2192,29 +2226,104 @@
     .water-card span { font-size: 11px; color: var(--muted); display: block; text-transform: uppercase; }
     .water-card strong { font-size: 15px; color: #fff; display: block; margin-top: 2px; }
     .flooding-tag { color: var(--danger) !important; font-weight: 900 !important; animation: blink 1.2s infinite; }
+
+    /* NWS weather alerts — same footprint zone as water panel; red; max 3×3 then scroll */
+    .weather-alerts-panel {
+      background: rgba(180, 28, 28, 0.1);
+      border: 1px solid #e53935;
+      border-radius: 10px;
+      padding: 10px 12px;
+      /* Cap height near a typical water-level block so it never dominates the dashboard */
+      max-height: 168px;
+      box-sizing: border-box;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .weather-alerts-panel .wx-alerts-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .weather-alerts-panel .wx-alerts-head strong {
+      color: #ef4444;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .weather-alerts-panel .wx-alerts-src {
+      color: rgba(239, 68, 68, 0.75);
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .wx-alerts-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-auto-rows: minmax(0, 1fr);
+      gap: 4px;
+      flex: 1 1 auto;
+      min-height: 0;
+      max-height: 120px; /* ~3 rows */
+      overflow-x: hidden;
+      overflow-y: auto;
+      align-content: start;
+    }
+    .wx-alert-chip {
+      color: #fecaca;
+      background: rgba(80, 12, 12, 0.55);
+      border: 1px solid rgba(239, 68, 68, 0.65);
+      border-radius: 6px;
+      padding: 4px 5px;
+      text-align: center;
+      line-height: 1.15;
+      font-weight: 700;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+      word-break: break-word;
+      hyphens: auto;
+    }
+    .wx-alert-chip .wx-sev {
+      display: block;
+      font-size: 0.85em;
+      opacity: 0.85;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-top: 1px;
+    }
+
+    /* High wind callout — only when criteria met; sits just above hourly table */
+    .high-wind-box {
+      background: rgba(180, 28, 28, 0.12);
+      border: 1px solid #e53935;
+      border-radius: 8px;
+      padding: 8px 12px;
+      text-align: center;
+      box-sizing: border-box;
+    }
+    .high-wind-box .hw-label {
+      display: block;
+      color: #ef4444;
+      font-weight: 900;
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      line-height: 1.2;
+    }
+    .high-wind-box .hw-detail {
+      display: block;
+      color: #fca5a5;
+      font-size: 12px;
+      font-weight: 700;
+      margin-top: 3px;
+    }
     @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
     .db-title-block h2 { margin: 0 0 2px; font-size: 1.5em; line-height: 1.25; }
     #weather-source-badge { font-size: 10px; color: var(--muted); margin-top: 4px; }
 
-    /* Top-center bar: (fullscreen logo) + wind compass + Layers menu */
-    .map-top-center {
-      position: absolute;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 10005;
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      max-width: calc(100% - 64px);
-      pointer-events: none;
-    }
-    .map-wrapper.fullscreen .map-top-center {
-      z-index: 2147483001;
-      top: max(10px, env(safe-area-inset-top, 0px));
-      max-width: calc(100% - 72px);
-      align-items: flex-start;
-    }
     /* Wind/compass HUD shell (no box — styles live on .compass-dial) */
     .map-wind-hud {
       display: none;
@@ -2400,24 +2509,141 @@
     .map-wrapper.fullscreen .map-layers-menu.map-layers-bottom {
       z-index: 2147483001;
     }
+    /*
+     * Mobile bottom bar: single neat row that fits the screen.
+     * Controls shrink together; very narrow phones also scale the bar slightly.
+     */
     html.layout-phone .map-bottom-bar {
-      gap: 4px;
-      padding: 5px 6px;
-      width: min(100%, calc(100% - 10px));
+      --mbb-h: 30px;
+      --mbb-gap: 3px;
+      --mbb-icon: 30px;
+      gap: var(--mbb-gap);
+      padding: 4px 5px;
+      width: calc(100% - 8px);
+      max-width: calc(100% - 8px);
+      border-radius: 10px;
+      flex-wrap: nowrap;
+      align-items: center;
+      overflow: visible;
+      /* keep centered; scale slightly so nothing stacks / overflows */
+      transform: translateX(-50%) scale(0.94);
+      transform-origin: center bottom;
     }
-    html.layout-phone .mbb-context { max-width: 96px; }
-    html.layout-phone .mbb-date { font-size: 9px; }
+    html.layout-phone .map-wrapper.fullscreen .map-bottom-bar {
+      transform: translateX(-50%) scale(0.94);
+    }
+    html.layout-phone .mbb-left,
+    html.layout-phone .mbb-right {
+      gap: var(--mbb-gap);
+      flex: 1 1 0;
+      min-width: 0;
+    }
+    html.layout-phone .mbb-left {
+      overflow: hidden;
+    }
+    html.layout-phone .mbb-context {
+      max-width: 56px;
+      min-width: 0;
+      flex: 0 1 56px;
+      height: var(--mbb-h);
+      gap: 2px;
+      padding: 0;
+    }
+    html.layout-phone .mbb-date {
+      font-size: 8px;
+      letter-spacing: 0;
+      max-width: 100%;
+    }
+    html.layout-phone .mbb-weapon {
+      height: 16px;
+      padding: 0 3px;
+      font-size: 8px;
+      border-radius: 4px;
+    }
+    /* Hide weapon chip on very narrow phones — date alone is enough */
+    @media (max-width: 380px) {
+      html.layout-phone .mbb-weapon { display: none; }
+      html.layout-phone .mbb-context { max-width: 44px; flex-basis: 44px; }
+    }
+    html.layout-phone .map-draw-tools {
+      gap: 2px;
+      flex: 1 1 auto;
+      min-width: 0;
+      flex-shrink: 1;
+    }
+    html.layout-phone .map-draw-tools .mdt-btn {
+      height: var(--mbb-h);
+      min-height: var(--mbb-h);
+      max-height: var(--mbb-h);
+      padding: 0 4px;
+      font-size: 8px;
+      border-radius: 7px;
+      flex: 0 1 auto;
+      min-width: 0;
+      letter-spacing: -0.01em;
+    }
+    html.layout-phone .map-bottom-bar .mbb-ctrl,
     html.layout-phone .map-settings-btn,
     html.layout-phone .mbb-icon-btn,
-    html.layout-phone .map-radar-toggle {
-      width: 36px;
-      height: 36px;
-      min-width: 36px;
+    html.layout-phone .map-radar-toggle,
+    html.layout-phone .mbb-compass-btn {
+      width: var(--mbb-icon);
+      height: var(--mbb-h);
+      min-width: var(--mbb-icon);
+      min-height: var(--mbb-h);
+      max-height: var(--mbb-h);
+      border-radius: 7px;
+      flex-shrink: 0;
+    }
+    html.layout-phone .mbb-compass-btn {
+      min-width: var(--mbb-icon);
+      width: auto;
+      max-width: 40px;
+      padding: 0 4px;
+      font-size: 8px;
+    }
+    html.layout-phone .mbb-icon-btn svg,
+    html.layout-phone .map-radar-toggle svg,
+    html.layout-phone .mbb-compass-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+    html.layout-phone .map-layers-menu {
+      flex-shrink: 1;
+      min-width: 0;
     }
     html.layout-phone .map-layers-toggle-btn {
-      padding: 0 8px;
-      height: 36px;
-      font-size: 11px;
+      padding: 0 5px;
+      height: var(--mbb-h);
+      min-height: var(--mbb-h);
+      max-height: var(--mbb-h);
+      font-size: 9px;
+      border-radius: 7px;
+      gap: 2px;
+      min-width: 0;
+    }
+    html.layout-phone .map-layers-toggle-btn .ml-caret {
+      font-size: 8px;
+    }
+    html.layout-phone .map-radar-control {
+      flex-shrink: 0;
+    }
+    /* Extra-narrow phones: slightly smaller scale so one clean row always fits */
+    @media (max-width: 360px) {
+      html.layout-phone .map-bottom-bar,
+      html.layout-phone .map-wrapper.fullscreen .map-bottom-bar {
+        --mbb-h: 28px;
+        --mbb-icon: 28px;
+        --mbb-gap: 2px;
+        transform: translateX(-50%) scale(0.90);
+        padding: 3px 4px;
+      }
+    }
+    @media (max-width: 320px) {
+      html.layout-phone .map-bottom-bar,
+      html.layout-phone .map-wrapper.fullscreen .map-bottom-bar {
+        transform: translateX(-50%) scale(0.86);
+      }
     }
     /* Settings modal */
     #settings-modal {
@@ -3171,11 +3397,11 @@
   </style>
 </head>
 <body>
-  <!-- Brand header: large logo + small V3.9 at bottom-right of logo -->
+  <!-- Brand header: large logo + small V4.0 at bottom-right of logo -->
   <header class="brand-header" role="banner">
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 3.9">V3.9</span>
+      <span class="brand-version" aria-label="Version 4.0">V4.0</span>
     </div>
   </header>
 
@@ -3367,6 +3593,14 @@
             <div class="water-card"><span>Discharge</span><strong id="water-flow-val">-- cfs</strong></div>
           </div>
         </div>
+        <!-- NWS watches/warnings for selected area (same dashboard zone as water; closer to weather below) -->
+        <div id="weather-alerts-container" class="weather-alerts-panel" style="display:none;" aria-live="polite">
+          <div class="wx-alerts-head">
+            <strong>Weather Alerts</strong>
+            <span class="wx-alerts-src">NWS</span>
+          </div>
+          <div id="weather-alerts-grid" class="wx-alerts-grid"></div>
+        </div>
         <div>
           <span class="step-title" style="font-size:11px;">Solunar & Legal Hours</span>
           <div class="solunar-panel">
@@ -3377,6 +3611,11 @@
               Moon: <strong id="db-moon-text" style="display:inline;margin-left:5px;font-size:14px;color:var(--accent);">Unknown</strong>
             </div>
           </div>
+        </div>
+        <!-- High wind only when sustained &gt;15 mph or gusts &gt;20 — sits directly above hourly -->
+        <div id="high-wind-box" class="high-wind-box" style="display:none;" role="status">
+          <span class="hw-label">High Wind</span>
+          <span id="high-wind-detail" class="hw-detail">--</span>
         </div>
         <div>
           <span class="step-title" style="font-size:11px;">Hourly Forecast (Daylight)</span>
@@ -3397,10 +3636,6 @@
           <span class="step-title" style="font-size:11px;">Alabama Map & Bordering States</span>
         </div>
         <div class="map-wrapper" id="map-wrapper">
-          <!-- Fullscreen: small REG SLAYER logo left of compass (Layers is bottom-center) -->
-          <div class="map-top-center" id="map-top-center">
-            <img class="map-fs-logo" src="reg-slayer-logo.png" alt="REG SLAYER" width="140" height="30" decoding="async" />
-          </div>
           <!-- Free-standing compass / wind dials — absolute on map; draggable when enlarged -->
           <div class="map-compass-radar" id="map-compass-radar">
             <div id="map-wind-hud" class="map-wind-hud mode-wind" aria-live="polite">
@@ -3802,7 +4037,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '3.9';
+    const APP_VERSION = '4.0';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -7542,23 +7777,23 @@
       if (streetRadio) streetRadio.checked = (key === 'street');
       if (satRadio) satRadio.checked = (key === 'satellite');
       if (lidarRadio) lidarRadio.checked = (key === 'lidar');
-      // LiDAR: deep overzoom + roads/waterways overlay defaults ON
-      // Leaving LiDAR turns roads/waterways back OFF (can still toggle while LiDAR is on)
+      // LiDAR: deep overzoom + topo contour lines default ON (roads stay off unless user enables them)
+      // Leaving LiDAR turns the auto-enabled topo overlay OFF
       try {
         if (key === 'lidar') {
           if (map.setMaxZoom) map.setMaxZoom(20);
-          if (typeof toggleRoadsOverlay === 'function') toggleRoadsOverlay(true);
+          if (typeof toggleTopoOverlay === 'function') toggleTopoOverlay(true);
           if (!window._lidarZoomHintShown) {
             window._lidarZoomHintShown = true;
             if (typeof showAppCopyToast === 'function') {
               showAppCopyToast(
                 '<span class="act">LiDAR terrain on</span><br>' +
-                'Best detail ~12–16×. Keep zooming — tiles scale past native depth instead of blanking out.'
+                'Topo lines on. Best detail ~12–16× — tiles scale past native depth instead of blanking out.'
               );
             }
           }
         } else if (prevKey === 'lidar' && key !== 'lidar') {
-          if (typeof toggleRoadsOverlay === 'function') toggleRoadsOverlay(false);
+          if (typeof toggleTopoOverlay === 'function') toggleTopoOverlay(false);
         }
       } catch (eLidarHint) {}
       // GPS marker size depends on max zoom (LiDAR allows deeper zoom)
@@ -7705,7 +7940,9 @@
         maxBoundsViscosity: 1.0,
         minZoom: 6,
         maxZoom: LIDAR_MAX_ZOOM,
-        preferCanvas: true
+        preferCanvas: true,
+        // Never zoom on double-click — it shoves open popups to the top of the map
+        doubleClickZoom: false
       });
       // Basemap + overlay toggles live in #map-layers-menu (bottom center); tools drawer under Tools tab
       wireMapLayersMenu();
@@ -7806,13 +8043,13 @@
         refreshMapDrawPreview();
       });
 
-      // Double-click ends measure/draw (same as Finish button). Zoom is disabled while tools are active.
+      // Double-click zoom is off globally. While measuring/drawing, dblclick = Finish.
       map.on('dblclick', function(e) {
-        if (!mapDrawMode) return;
         if (e && e.originalEvent) {
-          L.DomEvent.stop(e);
-          if (e.originalEvent.preventDefault) e.originalEvent.preventDefault();
+          L.DomEvent.preventDefault(e.originalEvent);
         }
+        if (!mapDrawMode) return;
+        if (e) L.DomEvent.stop(e);
         // Second click of the double-click usually already added a vertex — drop the duplicate, then finish
         endMapDrawFromDoubleClick();
       });
@@ -7939,61 +8176,79 @@
      * opts.openMenu: force open the options popup (default false)
      */
     /**
-     * Keep Leaflet popups above the free-standing compass and nudge them toward
-     * map center when they would sit near an edge — without covering the source marker.
+     * Keep Leaflet popups anchored to their marker (prefer directly above the dot).
+     * - No auto-pan map jump (that shoved menus to the top of the screen).
+     * - Horizontal nudge only when the menu would clip left/right map edges.
+     * - Non-fullscreen: allow the menu to extend over the brand banner above the map.
+     * - Fullscreen / tight top: if not enough room above, place beside the marker.
      */
+    function setMapPopupCoversBrand(on) {
+      try {
+        document.documentElement.classList.toggle('map-popup-covers-brand', !!on);
+      } catch (eCb) {}
+    }
+
     function smartPositionMapPopup(popup) {
       if (!map || !popup) return;
       try {
         var el = popup.getElement && popup.getElement();
         if (!el) return;
         var source = popup._source;
+        if (!source || !source.getLatLng) return;
+
         var mapSize = map.getSize();
-        var pad = 18;
+        var markerPt = map.latLngToContainerPoint(source.getLatLng());
         var popW = el.offsetWidth || 280;
-        var popH = el.offsetHeight || 300;
-        var markerPt = null;
-        if (source && source.getLatLng) {
-          markerPt = map.latLngToContainerPoint(source.getLatLng());
+        var popH = el.offsetHeight || 320;
+        var pad = 10;
+        var tipH = 14;
+        var halfW = popW / 2;
+        var isFs = typeof isMapFullscreen === 'function' && isMapFullscreen();
+        var className = (popup.options && popup.options.className) || '';
+        var isMapMenu = /map-dot-popup|saved-item-popup/.test(className);
+
+        // Never auto-pan the map for these menus — that caused the “jump to top” bug
+        popup.options.autoPan = false;
+
+        // Prefer classic placement: tip on marker, content directly above
+        var offX = 0;
+        var offY = 0;
+
+        // Horizontal: keep menu on-screen left/right when possible
+        if (markerPt.x - halfW < pad) {
+          offX = pad + halfW - markerPt.x;
+        } else if (markerPt.x + halfW > mapSize.x - pad) {
+          offX = (mapSize.x - pad - halfW) - markerPt.x;
         }
-        // Desired anchor: near map center
-        var targetX = mapSize.x / 2;
-        var targetY = mapSize.y * 0.42;
-        if (markerPt) {
-          // Prefer the side of center opposite the marker so the dot stays visible
-          if (markerPt.x < mapSize.x / 2) targetX = Math.min(mapSize.x - pad - popW / 2, mapSize.x * 0.62);
-          else targetX = Math.max(pad + popW / 2, mapSize.x * 0.38);
-          if (markerPt.y < mapSize.y / 2) targetY = Math.min(mapSize.y - pad - popH / 2, mapSize.y * 0.55);
-          else targetY = Math.max(pad + popH / 2, mapSize.y * 0.35);
-          // Minimum separation from the marker so the X is not under the dial/dot
-          var minSep = 90;
-          if (Math.abs(targetX - markerPt.x) < minSep && Math.abs(targetY - markerPt.y) < minSep) {
-            targetX = markerPt.x < mapSize.x / 2 ? markerPt.x + minSep + popW * 0.25 : markerPt.x - minSep - popW * 0.25;
-            targetY = markerPt.y < mapSize.y / 2 ? markerPt.y + 70 : markerPt.y - 70;
+
+        var roomAbove = markerPt.y - pad;
+        var needAbove = popH + tipH;
+
+        if (!isFs && isMapMenu) {
+          // Non-fullscreen: allow overflow over the logo banner; stay above the dot
+          setMapPopupCoversBrand(true);
+          offY = 0;
+        } else if (roomAbove >= needAbove) {
+          setMapPopupCoversBrand(false);
+          offY = 0;
+        } else {
+          // Fullscreen / not enough room above: place beside the marker, still nearby
+          setMapPopupCoversBrand(false);
+          var sideGap = 18;
+          if (markerPt.x < mapSize.x / 2) {
+            offX = halfW + sideGap;
+          } else {
+            offX = -(halfW + sideGap);
           }
-        }
-        targetX = Math.max(pad + popW / 2, Math.min(mapSize.x - pad - popW / 2, targetX));
-        targetY = Math.max(pad + 20, Math.min(mapSize.y - pad - popH * 0.65, targetY));
-
-        if (!markerPt) {
-          // Fallback: only clamp if near edges (no marker)
-          var rect = el.getBoundingClientRect();
-          var mapRect = map.getContainer().getBoundingClientRect();
-          var nearEdge =
-            rect.top < mapRect.top + pad ||
-            rect.bottom > mapRect.bottom - pad ||
-            rect.left < mapRect.left + pad ||
-            rect.right > mapRect.right - pad;
-          if (!nearEdge) return;
-          markerPt = L.point(mapSize.x / 2, mapSize.y / 2);
+          // Keep vertical center near the marker (Leaflet origin is the tip under the box)
+          offY = Math.round(popH * 0.45);
+          // Re-clamp horizontal after side placement
+          var tipX = markerPt.x + offX;
+          if (tipX - halfW < pad) offX = pad + halfW - markerPt.x;
+          if (tipX + halfW > mapSize.x - pad) offX = (mapSize.x - pad - halfW) - markerPt.x;
         }
 
-        // Leaflet offset is relative to the marker tip
-        var offX = targetX - markerPt.x;
-        var offY = targetY - markerPt.y;
         popup.options.offset = L.point(Math.round(offX), Math.round(offY));
-        popup.options.autoPan = true;
-        popup.options.autoPanPadding = [24, 24];
         if (typeof popup.update === 'function') popup.update();
       } catch (eSp) {}
     }
@@ -8003,12 +8258,21 @@
       map._smartPopupsWired = true;
       map.on('popupopen', function(e) {
         if (!e || !e.popup) return;
-        // After layout, measure size and shift toward center if needed
+        // After layout, measure size and pin above the marker
         requestAnimationFrame(function() {
           requestAnimationFrame(function() {
             smartPositionMapPopup(e.popup);
           });
         });
+      });
+      map.on('popupclose', function() {
+        // Drop brand-cover mode only when no other popup remains open
+        setTimeout(function() {
+          try {
+            if (map && map._popup) return; // another popup still open
+          } catch (e0) {}
+          setMapPopupCoversBrand(false);
+        }, 0);
       });
     }
 
@@ -8059,8 +8323,9 @@
         tempClickMarker.bindPopup(buildMapDotActionsHtml(), {
           className: 'map-dot-popup',
           closeButton: true,
-          autoPan: true,
+          autoPan: false,
           maxWidth: 300,
+          offset: L.point(0, 0),
           closeOnClick: false
         });
         // Options + can/can't hunt only when the user taps the orange dot
@@ -8555,16 +8820,11 @@
       refreshMapDrawPreview();
     }
 
-    /** Disable Leaflet zoom-on-double-click while measuring/drawing so Finish via double-click works. */
-    function setMapDrawDoubleClickZoom(enabled) {
+    /** Double-click zoom stays off globally (popups / dots). Draw tools use dblclick only to Finish. */
+    function setMapDrawDoubleClickZoom(/* enabled */) {
       if (!map || !map.doubleClickZoom) return;
       try {
-        if (enabled) {
-          if (mapDrawDblZoomWasEnabled) map.doubleClickZoom.enable();
-        } else {
-          mapDrawDblZoomWasEnabled = map.doubleClickZoom.enabled ? map.doubleClickZoom.enabled() : true;
-          map.doubleClickZoom.disable();
-        }
+        map.doubleClickZoom.disable();
       } catch (e) {}
     }
 
@@ -10487,30 +10747,35 @@
 
     function buildGpsMarkerIcon(headingDeg) {
       var scale = getGpsMarkerScale();
-      // Compass mode + known heading → triangle pointing the way the user is facing
+      // Compass mode + known heading → navigation arrow (point = facing direction)
       var useTri = (typeof headingHudMode !== 'undefined' && headingHudMode === 'compass' &&
         headingDeg != null && !isNaN(headingDeg));
       if (useTri) {
         var rot = ((Number(headingDeg) % 360) + 360) % 360;
-        // Base triangle ~18px; 1.5× until max zoom
-        var sz = Math.round(18 * scale);
-        var side = Math.round(7 * scale);
-        var height = Math.round(14 * scale);
+        // Wider base, clear nose — darker blue fill + thin black outline
+        var w = Math.round(20 * scale);
+        var h = Math.round(28 * scale);
         var html =
-          '<div class="gps-heading-tri-wrap" style="width:' + sz + 'px;height:' + sz + 'px;' +
+          '<div class="gps-heading-tri-wrap" style="width:' + w + 'px;height:' + h + 'px;' +
             'transform:rotate(' + rot.toFixed(1) + 'deg);transform-origin:center center;">' +
-            '<div class="gps-heading-tri" style="border-left-width:' + side + 'px;border-right-width:' + side +
-            'px;border-bottom-width:' + height + 'px;"></div>' +
+            '<svg viewBox="0 0 24 32" width="' + w + '" height="' + h + '" aria-hidden="true">' +
+              // Outer black outline (slightly larger path via stroke)
+              '<path d="M12 1.5 L22.5 29.5 L12 23.2 L1.5 29.5 Z" fill="#1a5f9e" stroke="#000" ' +
+                'stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>' +
+              // Inner highlight notch so the nose reads clearly
+              '<path d="M12 6.5 L17.2 24.5 L12 20.5 L6.8 24.5 Z" fill="#2477c4" opacity="0.55"/>' +
+            '</svg>' +
+            '<div class="gps-heading-tri" aria-hidden="true"></div>' +
           '</div>';
         return L.divIcon({
           className: 'gps-heading-icon',
           html: html,
-          iconSize: [sz, sz],
-          iconAnchor: [sz / 2, sz / 2]
+          iconSize: [w, h],
+          iconAnchor: [w / 2, h / 2]
         });
       }
       var dsz = Math.round(16 * scale);
-      var border = Math.max(2, Math.round(3 * scale));
+      var border = Math.max(1, Math.round(1.5 * scale));
       return L.divIcon({
         className: 'gps-dot-icon',
         html: '<div class="gps-loc-dot" style="width:' + dsz + 'px;height:' + dsz + 'px;border-width:' + border + 'px;"></div>',
@@ -11489,6 +11754,11 @@
       document.getElementById('db-blank').style.display = 'block';
       document.getElementById('current-data-banner').style.display = 'none';
       setTvaNoteEl('db-tva-note', null);
+      try {
+        weatherAlertsRequestSeq++;
+        renderWeatherAlerts(null);
+        renderHighWindBox(null);
+      } catch (eResetWx) {}
       var windHud = document.getElementById('map-wind-hud');
       // Keep HUD visible in compass mode; only hide wind-driven shell if pure wind mode with no data
       if (windHud && headingHudMode !== 'compass') windHud.classList.remove('active');
@@ -12582,18 +12852,18 @@
       var url;
       if (daysAhead < 0) {
         url = 'https://archive-api.open-meteo.com/v1/archive?latitude=' + lat + '&longitude=' + lon +
-              '&hourly=temperature_2m,precipitation_probability,rain,wind_speed_10m,wind_direction_10m' +
+              '&hourly=temperature_2m,precipitation_probability,rain,wind_speed_10m,wind_direction_10m,wind_gusts_10m' +
               '&daily=sunrise,sunset,temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch' +
               '&timezone=auto&start_date=' + dateStr + '&end_date=' + dateStr;
       } else if (daysAhead === 0) {
         url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon +
-              '&current=temperature_2m,wind_speed_10m,wind_direction_10m,precipitation,weather_code' +
-              '&hourly=temperature_2m,precipitation_probability,rain,wind_speed_10m,wind_direction_10m' +
+              '&current=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,weather_code' +
+              '&hourly=temperature_2m,precipitation_probability,rain,wind_speed_10m,wind_direction_10m,wind_gusts_10m' +
               '&daily=sunrise,sunset,temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch' +
               '&timezone=auto&forecast_days=1';
       } else {
         url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon +
-              '&hourly=temperature_2m,precipitation_probability,rain,wind_speed_10m,wind_direction_10m' +
+              '&hourly=temperature_2m,precipitation_probability,rain,wind_speed_10m,wind_direction_10m,wind_gusts_10m' +
               '&daily=sunrise,sunset,temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch' +
               '&timezone=auto&start_date=' + dateStr + '&end_date=' + dateStr;
       }
@@ -12648,6 +12918,168 @@
         high: high != null ? Math.round(high) : null,
         low: low != null ? Math.round(low) : null
       };
+    }
+
+    // ========== NWS WEATHER ALERTS + HIGH WIND ==========
+    var nwsAlertsCache = { key: '', data: null, timestamp: 0 };
+    var nwsAlertsInflight = {};
+    var NWS_ALERTS_TTL = 5 * 60 * 1000; // 5 min
+    var weatherAlertsRequestSeq = 0;
+
+    /** Active NWS watches/warnings/advisories for a lat/lng (selected area). */
+    function fetchNwsAlerts(lat, lon) {
+      if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) return Promise.resolve([]);
+      var key = Number(lat).toFixed(3) + ',' + Number(lon).toFixed(3);
+      if (nwsAlertsCache.key === key && nwsAlertsCache.data && (Date.now() - nwsAlertsCache.timestamp) < NWS_ALERTS_TTL) {
+        return Promise.resolve(nwsAlertsCache.data);
+      }
+      if (nwsAlertsInflight[key]) return nwsAlertsInflight[key];
+      var url = 'https://api.weather.gov/alerts/active?point=' +
+        encodeURIComponent(Number(lat).toFixed(4)) + ',' + encodeURIComponent(Number(lon).toFixed(4));
+      nwsAlertsInflight[key] = fetch(url, {
+        headers: { 'Accept': 'application/geo+json' },
+        cache: 'no-cache'
+      }).then(function(res) {
+        if (!res.ok) throw new Error('NWS alerts ' + res.status);
+        return res.json();
+      }).then(function(geo) {
+        var list = [];
+        (geo.features || []).forEach(function(f) {
+          var p = (f && f.properties) || {};
+          var event = String(p.event || p.headline || '').trim();
+          if (!event) return;
+          // Prefer severe / special products: watches, warnings, advisories, statements
+          var sev = String(p.severity || '').toLowerCase();
+          var msg = String(p.messageType || '').toLowerCase();
+          var status = String(p.status || '').toLowerCase();
+          if (status && status !== 'actual') return;
+          list.push({
+            event: event,
+            severity: p.severity || '',
+            certainty: p.certainty || '',
+            urgency: p.urgency || '',
+            headline: p.headline || event,
+            id: p.id || (f.id || event)
+          });
+        });
+        // Priority: Extreme/Severe first, then by event name
+        var rank = { extreme: 0, severe: 1, moderate: 2, minor: 3, unknown: 4 };
+        list.sort(function(a, b) {
+          var ra = rank[String(a.severity).toLowerCase()] != null ? rank[String(a.severity).toLowerCase()] : 5;
+          var rb = rank[String(b.severity).toLowerCase()] != null ? rank[String(b.severity).toLowerCase()] : 5;
+          if (ra !== rb) return ra - rb;
+          return String(a.event).localeCompare(String(b.event));
+        });
+        // Dedupe by event name
+        var seen = {};
+        list = list.filter(function(a) {
+          var k = a.event.toLowerCase();
+          if (seen[k]) return false;
+          seen[k] = 1;
+          return true;
+        });
+        nwsAlertsCache = { key: key, data: list, timestamp: Date.now() };
+        delete nwsAlertsInflight[key];
+        return list;
+      }).catch(function() {
+        delete nwsAlertsInflight[key];
+        return [];
+      });
+      return nwsAlertsInflight[key];
+    }
+
+    function renderWeatherAlerts(alerts) {
+      var box = document.getElementById('weather-alerts-container');
+      var grid = document.getElementById('weather-alerts-grid');
+      if (!box || !grid) return;
+      if (!alerts || !alerts.length) {
+        box.style.display = 'none';
+        grid.innerHTML = '';
+        return;
+      }
+      var n = alerts.length;
+      // Shrink type so more chips fit; 3 cols × up to 3 rows visible, then scroll
+      var fs = n <= 3 ? 11 : n <= 6 ? 10 : n <= 9 ? 9 : 8;
+      var html = '';
+      for (var i = 0; i < n; i++) {
+        var a = alerts[i];
+        var sev = a.severity ? escHtml(String(a.severity)) : '';
+        html += '<div class="wx-alert-chip" style="font-size:' + fs + 'px;" title="' +
+          escHtml(a.headline || a.event) + '">' +
+          escHtml(a.event) +
+          (sev ? '<span class="wx-sev">' + sev + '</span>' : '') +
+          '</div>';
+      }
+      grid.innerHTML = html;
+      box.style.display = 'flex';
+    }
+
+    /**
+     * High wind: sustained > 15 mph OR gusts > 20 mph.
+     * Uses current conditions when available, else peak daytime hourly for the selected date.
+     */
+    function getHighWindInfo(weather) {
+      if (!weather) return null;
+      var speed = 0, gust = 0, dir = 0;
+      if (weather.isCurrent && weather.current) {
+        speed = Number(weather.current.wind_speed_10m) || 0;
+        gust = Number(weather.current.wind_gusts_10m) || 0;
+        dir = Number(weather.current.wind_direction_10m) || 0;
+      } else if (weather.hourly) {
+        var h = weather.hourly;
+        var bestSpeed = 0, bestGust = 0, bestDir = 0;
+        for (var i = 5; i <= 18; i++) {
+          var s = Number(h.wind_speed_10m && h.wind_speed_10m[i]) || 0;
+          var g = Number(h.wind_gusts_10m && h.wind_gusts_10m[i]) || 0;
+          if (s > bestSpeed || g > bestGust) {
+            if (s >= bestSpeed) { bestSpeed = s; bestDir = Number(h.wind_direction_10m && h.wind_direction_10m[i]) || bestDir; }
+            if (g > bestGust) bestGust = g;
+          }
+        }
+        // Also consider all-day max if daylight empty
+        if (!bestSpeed && h.wind_speed_10m) {
+          for (var j = 0; j < h.wind_speed_10m.length; j++) {
+            var sj = Number(h.wind_speed_10m[j]) || 0;
+            if (sj > bestSpeed) {
+              bestSpeed = sj;
+              bestDir = Number(h.wind_direction_10m && h.wind_direction_10m[j]) || 0;
+            }
+            var gj = Number(h.wind_gusts_10m && h.wind_gusts_10m[j]) || 0;
+            if (gj > bestGust) bestGust = gj;
+          }
+        }
+        speed = bestSpeed;
+        gust = bestGust;
+        dir = bestDir;
+      }
+      if (!(speed > 15 || gust > 20)) return null;
+      return { speed: speed, gust: gust, dir: dir };
+    }
+
+    function renderHighWindBox(weather) {
+      var box = document.getElementById('high-wind-box');
+      var detail = document.getElementById('high-wind-detail');
+      if (!box) return;
+      var info = getHighWindInfo(weather);
+      if (!info) {
+        box.style.display = 'none';
+        if (detail) detail.textContent = '';
+        return;
+      }
+      var parts = Math.round(info.speed) + ' mph from ' + getCardinal(info.dir);
+      if (info.gust > 20) parts += ' · gusts ' + Math.round(info.gust) + ' mph';
+      if (detail) detail.textContent = parts;
+      box.style.display = 'block';
+    }
+
+    function loadAndRenderWeatherAlerts(lat, lng) {
+      var seq = ++weatherAlertsRequestSeq;
+      renderWeatherAlerts(null);
+      if (lat == null || lng == null) return;
+      fetchNwsAlerts(lat, lng).then(function(alerts) {
+        if (seq !== weatherAlertsRequestSeq) return;
+        renderWeatherAlerts(alerts);
+      });
     }
 
     function displayDashboard(location, rule, weather, subsection, waterData, dateUsed, lat, lng) {
@@ -12710,6 +13142,9 @@
         else warn.style.display = 'none';
       } else waterBox.style.display = 'none';
 
+      // NWS watches/warnings for this selected point (same dashboard band as water; sits under water so nearer weather)
+      loadAndRenderWeatherAlerts(lat, lng);
+
       let sourceText = 'Source: Live Open-Meteo';
       if (weather.isSimulated) sourceText = 'Source: Offline baseline';
       else if (weather.isHistorical) sourceText = 'Source: Open-Meteo Historical Archive';
@@ -12757,6 +13192,9 @@
       }
       document.getElementById('scent-drift-text').innerText = 'Scent Drift: towards ' + getCardinal((wdir + 180) % 360);
       updateMapWindHud(wspd, wdir, windIsCurrent);
+
+      // High wind box only when criteria met — directly above hourly forecast
+      renderHighWindBox(weather);
 
       // Hourly table - single innerHTML write
       var hourly = weather.hourly;
