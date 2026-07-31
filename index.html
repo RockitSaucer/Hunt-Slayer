@@ -924,8 +924,68 @@
     .badge.refuge { background: var(--blue-refuge); color: white; }
     .map-wrapper { margin-top: 15px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); position: relative; }
     /* Map height set in desktop / phone layout blocks above */
-    .map-wrapper.fullscreen { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 99999 !important; margin-top: 0 !important; border-radius: 0 !important; }
-    .map-wrapper.fullscreen #leaflet-map { height: 100% !important; }
+    /* True fullscreen: covers entire viewport including brand banner (wrapper is reparented to body) */
+    .map-wrapper.fullscreen {
+      position: fixed !important;
+      inset: 0 !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      width: 100vw !important;
+      width: 100dvw !important;
+      height: 100vh !important;
+      height: 100dvh !important;
+      max-width: none !important;
+      max-height: none !important;
+      z-index: 2147483000 !important;
+      margin: 0 !important;
+      border-radius: 0 !important;
+      border: none !important;
+      overflow: hidden !important;
+      background: #0d0f0c;
+    }
+    .map-wrapper.fullscreen #leaflet-map {
+      height: 100% !important;
+      width: 100% !important;
+      min-height: 100% !important;
+    }
+    /* While map is fullscreen, park page scroll and tuck site chrome under the map */
+    html.map-is-fullscreen,
+    html.map-is-fullscreen body {
+      overflow: hidden !important;
+      height: 100% !important;
+    }
+    html.map-is-fullscreen .brand-header,
+    html.map-is-fullscreen .site-footer,
+    html.map-is-fullscreen .app-shell {
+      /* Keep in layout for restore, but invisible — map paints over everything */
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+    /* Tiny brand mark on the map (left of compass) — only in fullscreen */
+    .map-fs-logo {
+      display: none;
+      height: 26px;
+      width: auto;
+      max-width: 120px;
+      object-fit: contain;
+      object-position: center;
+      pointer-events: none;
+      flex-shrink: 0;
+      align-self: center;
+      filter: drop-shadow(0 1px 3px rgba(0,0,0,0.9));
+      opacity: 0.95;
+    }
+    .map-wrapper.fullscreen .map-fs-logo {
+      display: block;
+      height: 30px;
+      max-width: 140px;
+    }
+    html.layout-phone .map-wrapper.fullscreen .map-fs-logo {
+      height: 22px;
+      max-width: 100px;
+    }
     .detection-toast { background: var(--panel-light); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-top: 10px; display: none; border-left: 5px solid var(--accent); position: absolute; bottom: 70px; left: 20px; z-index: 10002; max-width: 320px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); }
     .detection-toast.active { display: block; }
     /* Free-map dot action menu - high contrast, large tap targets */
@@ -1053,7 +1113,13 @@
       max-width: min(200px, calc(100% - 20px));
       pointer-events: auto;
     }
-    .map-wrapper.fullscreen .map-draw-tools { z-index: 100040; top: 110px; left: 16px; }
+    /* Fullscreen: keep tool column top-left (above zoom + safe area), always tappable */
+    .map-wrapper.fullscreen .map-draw-tools {
+      z-index: 2147483001;
+      top: max(100px, calc(env(safe-area-inset-top, 0px) + 88px));
+      bottom: auto !important;
+      left: max(10px, env(safe-area-inset-left, 0px));
+    }
     .map-draw-tools .mdt-btn {
       background: rgba(22, 26, 18, 0.95);
       border: 1px solid var(--border);
@@ -1074,6 +1140,18 @@
       color: var(--accent);
     }
     .map-draw-tools .mdt-btn:disabled { opacity: 0.45; cursor: default; }
+    /* Current Location — top of the tool stack (above Measure / Draw / Track) */
+    .map-draw-tools .mdt-btn.mdt-gps {
+      background: var(--green);
+      border-color: #5d8e3d;
+      color: #fff;
+      order: -1; /* stay first even if DOM order changes */
+    }
+    .map-draw-tools .mdt-btn.mdt-gps:hover {
+      background: var(--green-hover);
+      border-color: #7ab050;
+      color: #fff;
+    }
     /* Undo / Finish / Cancel only while a tool is active */
     .map-draw-tools .mdt-tool-only { display: none; }
     .map-draw-tools.tool-active .mdt-tool-only { display: block; }
@@ -1136,11 +1214,18 @@
       line-height: 1.35;
     }
     .map-draw-stats.active { display: block; }
-    /* Phone: keep clear of Current Location + bottom controls */
+    /* Phone (inline map): tools lower-left so they don't cover the map center */
     html.layout-phone .map-draw-tools {
       top: auto;
-      bottom: 72px;
+      bottom: max(16px, env(safe-area-inset-bottom, 0px));
       left: 10px;
+    }
+    /* Phone fullscreen: pin tools + Current Location top-left (never under home bar) */
+    html.layout-phone .map-wrapper.fullscreen .map-draw-tools {
+      top: max(96px, calc(env(safe-area-inset-top, 0px) + 84px));
+      bottom: auto !important;
+      left: max(10px, env(safe-area-inset-left, 0px));
+      z-index: 100050;
     }
     .map-wrapper.draw-mode #leaflet-map { cursor: crosshair; }
 
@@ -1244,7 +1329,7 @@
     .db-title-block h2 { margin: 0 0 2px; font-size: 1.5em; line-height: 1.25; }
     #weather-source-badge { font-size: 10px; color: var(--muted); margin-top: 4px; }
 
-    /* Top-center bar: wind compass + combined Layers menu (basemap + overlays) */
+    /* Top-center bar: (fullscreen logo) + wind compass + Layers menu */
     .map-top-center {
       position: absolute;
       top: 10px;
@@ -1252,15 +1337,16 @@
       transform: translateX(-50%);
       z-index: 10005;
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       gap: 8px;
       max-width: calc(100% - 120px);
       pointer-events: none;
     }
     .map-wrapper.fullscreen .map-top-center {
-      z-index: 100050;
-      top: 16px;
+      z-index: 2147483001;
+      top: max(10px, env(safe-area-inset-top, 0px));
       max-width: calc(100% - 140px);
+      align-items: center;
     }
     /* Map wind compass HUD - sits next to Layers */
     .map-wind-hud {
@@ -1413,7 +1499,11 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.4);
     }
     .map-fs-btn:hover { border-color: var(--accent); }
-    .map-wrapper.fullscreen .map-fs-btn { z-index: 100040; top: 16px; right: 16px; }
+    .map-wrapper.fullscreen .map-fs-btn {
+      z-index: 2147483001;
+      top: max(12px, env(safe-area-inset-top, 0px));
+      right: max(12px, env(safe-area-inset-right, 0px));
+    }
     .stand-place-banner {
       position: absolute;
       top: 10px;
@@ -1981,10 +2071,10 @@
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
           <span class="step-title" style="font-size:11px;">Alabama Map & Bordering States</span>
         </div>
-        <div class="map-wrapper">
-          <!-- Compact wind compass for selected area (top center) -->
-          <!-- Compass + combined Layers menu (basemap + overlays) sit together top-center -->
+        <div class="map-wrapper" id="map-wrapper">
+          <!-- Fullscreen: small REG SLAYER logo left of compass; then Layers -->
           <div class="map-top-center" id="map-top-center">
+            <img class="map-fs-logo" src="reg-slayer-logo.png" alt="REG SLAYER" width="140" height="30" decoding="async" />
             <div id="map-wind-hud" class="map-wind-hud" aria-live="polite">
               <div class="compass" title="Wind direction">
                 <div class="compass-needle" id="compass-needle"></div>
@@ -2066,8 +2156,9 @@
           </div>
           <button id="map-maximize-btn" class="map-fs-btn" onclick="toggleMapFullscreen()" type="button">Full Screen</button>
           <button id="map-minimize-btn" class="map-fs-btn" onclick="toggleMapFullscreen()" type="button" style="display:none;">Minimize</button>
-          <!-- Measure / draw tools (distance lines + saveable hunt shapes) -->
+          <!-- Measure / draw / GPS tools (Current Location sits above drawing & tracking) -->
           <div class="map-draw-tools" id="map-draw-tools">
+            <button type="button" class="mdt-btn mdt-gps" id="gps-snap-btn" onclick="snapToGPS()" title="Snap map to your GPS position">📍 Current Location</button>
             <button type="button" class="mdt-btn" id="mdt-measure" onclick="startMapMeasure()" title="Click points to measure distance">📏 Measure</button>
             <button type="button" class="mdt-btn" id="mdt-draw" onclick="startMapDrawShape()" title="Click points to draw a shape, then Finish to save">✏️ Draw shape</button>
             <button type="button" class="mdt-btn mdt-track-idle" id="mdt-track" onclick="toggleGpsTrack()" title="GPS track your movement (battery-friendly)">📍 Track</button>
@@ -2079,7 +2170,6 @@
             <div class="map-draw-hint mdt-tool-only" id="map-draw-hint"></div>
             <div class="map-draw-stats mdt-tool-only" id="map-draw-stats"></div>
           </div>
-          <button id="gps-snap-btn" onclick="snapToGPS()" style="position:absolute;bottom:20px;left:20px;z-index:10000;background:var(--green);color:white;border:none;border-radius:6px;padding:8px 12px;font-weight:bold;cursor:pointer;font-size:11px;">Current Location</button>
 
           <div id="map-weather-overlay" style="display:none;position:absolute;bottom:20px;right:20px;z-index:10001;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:15px;width:300px;box-shadow:0 4px 15px rgba(0,0,0,0.6);max-height:80vh;overflow-y:auto;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
@@ -9098,25 +9188,66 @@
       }
     }
     window.removeSubsection = removeSubsection;
+    /** Remember where the map-wrapper sat so we can restore after true fullscreen. */
+    var _mapFsHome = null; // { parent, next }
+
+    function enterMapTrueFullscreen(w) {
+      if (!w) return;
+      // Reparent to <body> so fixed positioning is never trapped by sticky card / stacking contexts
+      if (!w._mapFsReparented) {
+        _mapFsHome = { parent: w.parentNode, next: w.nextSibling };
+        document.body.appendChild(w);
+        w._mapFsReparented = true;
+      }
+      w.classList.add('fullscreen');
+      document.documentElement.classList.add('map-is-fullscreen');
+      document.body.classList.add('map-is-fullscreen');
+      try { document.body.style.overflow = 'hidden'; } catch (e0) {}
+    }
+
+    function exitMapTrueFullscreen(w) {
+      if (!w) return;
+      // Put map back in its slot first (still fullscreen class so no banner flash), then clear FS chrome
+      if (w._mapFsReparented && _mapFsHome && _mapFsHome.parent) {
+        if (_mapFsHome.next && _mapFsHome.next.parentNode === _mapFsHome.parent) {
+          _mapFsHome.parent.insertBefore(w, _mapFsHome.next);
+        } else {
+          _mapFsHome.parent.appendChild(w);
+        }
+        w._mapFsReparented = false;
+        _mapFsHome = null;
+      }
+      w.classList.remove('fullscreen');
+      document.documentElement.classList.remove('map-is-fullscreen');
+      document.body.classList.remove('map-is-fullscreen');
+      try { document.body.style.overflow = ''; } catch (e1) {}
+      w.style.width = '';
+      w.style.height = '';
+      w.style.top = '';
+      w.style.left = '';
+      w.style.right = '';
+      w.style.bottom = '';
+      w.style.inset = '';
+      var mapEl = document.getElementById('leaflet-map');
+      if (mapEl) {
+        mapEl.style.width = '';
+        mapEl.style.height = '';
+      }
+    }
+
     function toggleMapFullscreen() {
       ensureMap().then(function() {
-        var w = document.querySelector('.map-wrapper');
-        var full = w.classList.toggle('fullscreen');
+        var w = document.getElementById('map-wrapper') || document.querySelector('.map-wrapper');
+        if (!w) return;
+        var full = !w.classList.contains('fullscreen');
+        if (full) {
+          enterMapTrueFullscreen(w);
+        } else {
+          exitMapTrueFullscreen(w);
+        }
         document.getElementById('map-maximize-btn').style.display = full ? 'none' : 'block';
         document.getElementById('map-minimize-btn').style.display = full ? 'block' : 'none';
-        // When minimizing back to inline map, clear any leftover fixed fullscreen sizing
         if (!full) {
-          w.style.width = '';
-          w.style.height = '';
-          w.style.top = '';
-          w.style.left = '';
-          w.style.right = '';
-          w.style.bottom = '';
-          var mapEl = document.getElementById('leaflet-map');
-          if (mapEl) {
-            mapEl.style.width = '';
-            mapEl.style.height = '';
-          }
           fitPhoneMapSize();
           [50, 150, 400].forEach(function(ms) {
             setTimeout(function() {
@@ -9139,7 +9270,7 @@
         if (full) adcnrLegendDismissed = false;
         updateAdcnrLegendVisibility();
         setTimeout(function() {
-          if (map) map.invalidateSize();
+          if (map) map.invalidateSize(true);
           // Re-assert needle after layout reflow in fullscreen
           if (full && lastMapWind.wdir != null) {
             updateMapWindHud(lastMapWind.wspd, lastMapWind.wdir, lastMapWind.isCurrent);
