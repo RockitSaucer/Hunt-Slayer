@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>REG SLAYER - Alabama Deer Season Planner v3.1</title>
+  <title>REG SLAYER - Alabama Deer Season Planner v3.2</title>
   <!-- Detect phone vs desktop as early as possible (reduces layout flash) -->
   <script>
     (function () {
@@ -45,7 +45,7 @@
     html, body { height: 100%; }
     body { background: var(--bg); color: var(--ink); margin: 0; padding: 0; line-height: 1.5; min-height: 100vh; display: flex; flex-direction: column; }
 
-    /* ========== BRAND HEADER (v3.1 - large logo fills top bar) ========== */
+    /* ========== BRAND HEADER (v3.2 - large logo fills top bar) ========== */
     .brand-header {
       background:
         linear-gradient(180deg, rgba(13,15,12,0.15) 0%, rgba(13,15,12,0.88) 100%),
@@ -99,7 +99,7 @@
       text-shadow: 0 1px 3px rgba(0,0,0,0.85);
     }
 
-    /* Site links / tagline live in page footer (v3.1) */
+    /* Site links / tagline live in page footer (v3.2) */
     .site-footer {
       margin-top: auto;
       border-top: 1px solid var(--border);
@@ -130,7 +130,7 @@
       padding: 3px 9px; border-radius: 6px; border: 1px solid var(--border);
     }
 
-    /* ========== DESKTOP SHELL (v3.1 - planner+weather left, big map right) ========== */
+    /* ========== DESKTOP SHELL (v3.2 - planner+weather left, big map right) ========== */
     .app-shell {
       max-width: none;
       margin: 0;
@@ -1101,7 +1101,7 @@
       font-weight: 800;
     }
 
-    /* Map measure / draw tools — left side, below Leaflet zoom (+/−) controls */
+    /* Left stack: Current Location + compact Tools (drawer for measure/draw/track) */
     .map-draw-tools {
       position: absolute;
       top: 100px; /* clear default Leaflet zoom bar (top-left ~70–90px) */
@@ -1109,11 +1109,11 @@
       z-index: 10000;
       display: flex;
       flex-direction: column;
+      align-items: stretch;
       gap: 6px;
       max-width: min(200px, calc(100% - 20px));
       pointer-events: auto;
     }
-    /* Fullscreen: keep tool column top-left (above zoom + safe area), always tappable */
     .map-wrapper.fullscreen .map-draw-tools {
       z-index: 2147483001;
       top: max(100px, calc(env(safe-area-inset-top, 0px) + 88px));
@@ -1140,17 +1140,58 @@
       color: var(--accent);
     }
     .map-draw-tools .mdt-btn:disabled { opacity: 0.45; cursor: default; }
-    /* Current Location — top of the tool stack (above Measure / Draw / Track) */
+    /* Current Location — full-size primary control */
     .map-draw-tools .mdt-btn.mdt-gps {
       background: var(--green);
       border-color: #5d8e3d;
       color: #fff;
-      order: -1; /* stay first even if DOM order changes */
+      padding: 8px 10px;
+      font-size: 11px;
     }
     .map-draw-tools .mdt-btn.mdt-gps:hover {
       background: var(--green-hover);
       border-color: #7ab050;
       color: #fff;
+    }
+    /* Tools toggle — ~half the size of Current Location */
+    .map-draw-tools .mdt-btn.mdt-tools-toggle {
+      padding: 4px 8px;
+      font-size: 10px;
+      font-weight: 800;
+      border-radius: 6px;
+      text-align: center;
+      letter-spacing: 0.02em;
+      align-self: flex-start;
+      min-width: 0;
+      width: auto;
+      max-width: 100%;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.35);
+    }
+    .map-draw-tools.tools-open .mdt-btn.mdt-tools-toggle,
+    .map-draw-tools .mdt-btn.mdt-tools-toggle.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(229, 154, 24, 0.14);
+    }
+    /* Collapsed tool drawer — 80% of original button size */
+    .mdt-tools-panel {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      width: 100%;
+      max-width: 100%;
+    }
+    .map-draw-tools.tools-open .mdt-tools-panel,
+    .map-draw-tools.tool-active .mdt-tools-panel,
+    .map-draw-tools.tracking .mdt-tools-panel {
+      display: flex;
+    }
+    .mdt-tools-panel .mdt-btn {
+      padding: 6px 8px;           /* ~80% of 8×10 */
+      font-size: 9px;             /* ~80% of 11 */
+      border-radius: 6px;
+      font-weight: 800;
+      line-height: 1.2;
     }
     /* Undo / Finish / Cancel only while a tool is active */
     .map-draw-tools .mdt-tool-only { display: none; }
@@ -1161,8 +1202,8 @@
       background: #b91c1c;
       border-color: #f87171;
       color: #fff;
-      font-size: 13px;
-      padding: 12px 12px;
+      font-size: 10px;
+      padding: 9px 8px;
       box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.35), 0 4px 14px rgba(0,0,0,0.5);
       animation: trackPulse 1.6s ease-in-out infinite;
     }
@@ -1181,9 +1222,9 @@
       display: none;
       background: rgba(127, 29, 29, 0.94);
       border: 1px solid #f87171;
-      border-radius: 8px;
-      padding: 8px 10px;
-      font-size: 11px;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 9px;
       color: #fff;
       font-weight: 700;
       line-height: 1.35;
@@ -1193,11 +1234,11 @@
       display: none;
       background: rgba(15, 18, 14, 0.94);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 8px 10px;
-      font-size: 10px;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 9px;
       color: var(--muted);
-      line-height: 1.4;
+      line-height: 1.35;
       box-shadow: 0 2px 8px rgba(0,0,0,0.4);
     }
     .map-draw-hint.active { display: block; }
@@ -1206,9 +1247,9 @@
       display: none;
       background: rgba(15, 18, 14, 0.94);
       border: 1px solid var(--accent);
-      border-radius: 8px;
-      padding: 8px 10px;
-      font-size: 11px;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 9px;
       color: #fff;
       font-weight: 700;
       line-height: 1.35;
@@ -1217,7 +1258,7 @@
     /* Phone (inline map): tools lower-left so they don't cover the map center */
     html.layout-phone .map-draw-tools {
       top: auto;
-      bottom: max(16px, env(safe-area-inset-bottom, 0px));
+      bottom: max(56px, calc(env(safe-area-inset-bottom, 0px) + 48px)); /* clear bottom Layers */
       left: 10px;
     }
     /* Phone fullscreen: pin tools + Current Location top-left (never under home bar) */
@@ -1225,7 +1266,7 @@
       top: max(96px, calc(env(safe-area-inset-top, 0px) + 84px));
       bottom: auto !important;
       left: max(10px, env(safe-area-inset-left, 0px));
-      z-index: 100050;
+      z-index: 2147483001;
     }
     .map-wrapper.draw-mode #leaflet-map { cursor: crosshair; }
 
@@ -1373,12 +1414,25 @@
       max-width: min(320px, 48vw);
     }
 
-    /* Combined basemap + overlay menu (next to compass) */
+    /* Layers menu — bottom center of map (panel opens upward) */
     .map-layers-menu {
       position: relative;
       pointer-events: auto;
       flex-shrink: 0;
       z-index: 10006;
+    }
+    .map-layers-menu.map-layers-bottom {
+      position: absolute;
+      left: 50%;
+      bottom: max(12px, env(safe-area-inset-bottom, 0px));
+      top: auto;
+      transform: translateX(-50%);
+      z-index: 10006;
+      pointer-events: auto;
+    }
+    .map-wrapper.fullscreen .map-layers-menu.map-layers-bottom {
+      z-index: 2147483001;
+      bottom: max(16px, env(safe-area-inset-bottom, 0px));
     }
     .map-layers-toggle-btn {
       display: inline-flex;
@@ -1408,9 +1462,18 @@
       color: var(--muted);
       transition: transform 0.15s ease;
     }
+    /* Bottom layers: caret points up when closed, down when open */
+    .map-layers-menu.map-layers-bottom .map-layers-toggle-btn .ml-caret {
+      transform: rotate(180deg);
+    }
     .map-layers-menu.open .map-layers-toggle-btn .ml-caret,
     .map-layers-menu:hover .map-layers-toggle-btn .ml-caret {
-      transform: rotate(180deg);
+      transform: rotate(0deg);
+      color: var(--accent);
+    }
+    .map-layers-menu.map-layers-bottom.open .map-layers-toggle-btn .ml-caret,
+    .map-layers-menu.map-layers-bottom:hover .map-layers-toggle-btn .ml-caret {
+      transform: rotate(0deg);
       color: var(--accent);
     }
     .map-layers-panel {
@@ -1429,6 +1492,15 @@
       box-shadow: 0 10px 28px rgba(0,0,0,0.6);
       z-index: 10007;
     }
+    /* Bottom placement: open panel upward, centered on the Layers button */
+    .map-layers-menu.map-layers-bottom .map-layers-panel {
+      top: auto;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      right: auto;
+      transform: translateX(-50%);
+      max-height: min(60vh, 480px);
+    }
     /* Invisible bridge so hover doesn't drop when moving from button → panel */
     .map-layers-panel::before {
       content: '';
@@ -1436,6 +1508,11 @@
       top: -10px;
       left: 0;
       right: 0;
+      height: 10px;
+    }
+    .map-layers-menu.map-layers-bottom .map-layers-panel::before {
+      top: auto;
+      bottom: -10px;
       height: 10px;
     }
     /* Hover (desktop) or .open (click/tap) reveals options */
@@ -1846,11 +1923,11 @@
   </style>
 </head>
 <body>
-  <!-- Brand header: large logo + small V3.1 at bottom-right of logo -->
+  <!-- Brand header: large logo + small V3.2 at bottom-right of logo -->
   <header class="brand-header" role="banner">
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 3.1">V3.1</span>
+      <span class="brand-version" aria-label="Version 3.2">V3.2</span>
     </div>
   </header>
 
@@ -2072,7 +2149,7 @@
           <span class="step-title" style="font-size:11px;">Alabama Map & Bordering States</span>
         </div>
         <div class="map-wrapper" id="map-wrapper">
-          <!-- Fullscreen: small REG SLAYER logo left of compass; then Layers -->
+          <!-- Fullscreen: small REG SLAYER logo left of compass (Layers is bottom-center) -->
           <div class="map-top-center" id="map-top-center">
             <img class="map-fs-logo" src="reg-slayer-logo.png" alt="REG SLAYER" width="140" height="30" decoding="async" />
             <div id="map-wind-hud" class="map-wind-hud" aria-live="polite">
@@ -2085,69 +2162,7 @@
                 <div class="mw-scent" id="map-scent-text">Scent → -</div>
               </div>
             </div>
-            <div class="map-layers-menu" id="map-layers-menu">
-              <button type="button" class="map-layers-toggle-btn" id="map-layers-toggle-btn" aria-expanded="false" aria-controls="map-layers-panel" title="Map base & overlays">
-                Layers <span class="ml-caret" aria-hidden="true">▾</span>
-              </button>
-              <div class="map-layers-panel" id="map-layers-panel" role="group" aria-label="Map layers">
-                <div class="ml-section">Base map</div>
-                <label class="ml-option">
-                  <input type="radio" name="map-basemap" id="basemap-topo" value="topo" checked onchange="setMapBasemap('topo')">
-                  <span class="ml-opt-text">USGS Topography<span class="ml-opt-sub">Terrain / contours</span></span>
-                </label>
-                <label class="ml-option">
-                  <input type="radio" name="map-basemap" id="basemap-street" value="street" onchange="setMapBasemap('street')">
-                  <span class="ml-opt-text">Roads &amp; Waterways<span class="ml-opt-sub">Street map</span></span>
-                </label>
-                <label class="ml-option">
-                  <input type="radio" name="map-basemap" id="basemap-satellite" value="satellite" onchange="setMapBasemap('satellite')">
-                  <span class="ml-opt-text">Satellite<span class="ml-opt-sub">High-def imagery (same style as ADCNR DCNR map)</span></span>
-                </label>
-
-                <div class="ml-section">Overlays</div>
-                <label class="ml-option">
-                  <input type="checkbox" id="toggle-prev-hunts-chk" onchange="drawHuntsOnMap()">
-                  <span class="ml-opt-text">Past Hunts<span class="ml-opt-sub">Your logged hunt pins</span></span>
-                </label>
-
-                <div class="ml-section">Public lands</div>
-                <div class="pl-toggles" id="pl-toggles" role="group" aria-label="Toggle public land types">
-                  <button type="button" class="pl-toggle-btn on" id="pl-btn-wma" data-pl="wma" style="background:#e59a18;" onclick="togglePublicLandType('wma')" title="Wildlife Management Areas" aria-pressed="true">WMA<span class="pl-sub">on</span></button>
-                  <button type="button" class="pl-toggle-btn on" id="pl-btn-forestNwr" data-pl="forestNwr" style="background:#2f9e4f;color:#fff;" onclick="togglePublicLandType('forestNwr')" title="National Forests &amp; NWR" aria-pressed="true">Forest/NWR<span class="pl-sub">on</span></button>
-                  <button type="button" class="pl-toggle-btn on" id="pl-btn-tva" data-pl="tva" style="background:#2d8fd9;color:#fff;" onclick="togglePublicLandType('tva')" title="TVA Undeveloped" aria-pressed="true">TVA<span class="pl-sub">on</span></button>
-                  <button type="button" class="pl-toggle-btn on" id="pl-btn-foreverWild" data-pl="foreverWild" style="background:#9b59b6;color:#fff;" onclick="togglePublicLandType('foreverWild')" title="Forever Wild" aria-pressed="true">FW<span class="pl-sub">on</span></button>
-                  <button type="button" class="pl-toggle-btn on" id="pl-btn-soa" data-pl="soa" style="background:#c026d3;color:#fff;" onclick="togglePublicLandType('soa')" title="Special Opportunity Areas" aria-pressed="true">SOA<span class="pl-sub">on</span></button>
-                  <button type="button" class="pl-toggle-btn on" id="pl-btn-pdha" data-pl="pdha" style="background:#14b8a6;color:#fff;" onclick="togglePublicLandType('pdha')" title="Disabled Hunt Areas (PDHA)" aria-pressed="true">PDHA<span class="pl-sub">on</span></button>
-                  <button type="button" class="pl-toggle-btn on" id="pl-btn-usace" data-pl="usace" style="background:#6b7c3a;color:#fff;" onclick="togglePublicLandType('usace')" title="U.S. Army Corps of Engineers open recreation / hunting project lands" aria-pressed="true">USACE<span class="pl-sub">on</span></button>
-                  <button type="button" class="pl-toggle-btn on" id="pl-btn-listPins" data-pl="listPins" style="background:#486a2f;color:#fff;" onclick="togglePublicLandType('listPins')" title="Green ✓ pins for Available Hunts list" aria-pressed="true">✓ List<span class="pl-sub">on</span></button>
-                </div>
-                <div class="zone-toggle-actions">
-                  <button type="button" onclick="setAllPublicLandTypes(true)">All on</button>
-                  <button type="button" onclick="setAllPublicLandTypes(false)">All off</button>
-                </div>
-                <div class="zone-toggle-hint">Tap a color to show/hide that land type. All on by default. ✓ List = units in your Available Hunts dropdown.</div>
-                <div id="adcnr-cache-status" style="font-size:9px;margin-top:6px;color:var(--muted);"></div>
-                <!-- Hidden master for legacy; driven by any public-land type being on -->
-                <input type="checkbox" id="toggle-adcnr-lands-chk" checked style="display:none;" aria-hidden="true">
-                <span id="toggle-adcnr-label" style="display:none;" aria-hidden="true"></span>
-
-                <div class="ml-section">Deer season zones</div>
-                <div class="zone-toggles" id="zone-toggles" role="group" aria-label="Toggle deer season zones">
-                  <button type="button" class="zone-toggle-btn" id="zone-btn-A" data-zone="A" style="background:#8a8a8a;" onclick="toggleDeerZone('A')" title="Zone A — default statewide" aria-pressed="false">A<span class="zt-sub">off</span></button>
-                  <button type="button" class="zone-toggle-btn" id="zone-btn-B" data-zone="B" style="background:#e6d29a;" onclick="toggleDeerZone('B')" title="Zone B — south of US-80 line" aria-pressed="false">B<span class="zt-sub">off</span></button>
-                  <button type="button" class="zone-toggle-btn" id="zone-btn-C" data-zone="C" style="background:#e0913c;" onclick="toggleDeerZone('C')" title="Zone C — north-central band" aria-pressed="false">C<span class="zt-sub">off</span></button>
-                  <button type="button" class="zone-toggle-btn" id="zone-btn-D" data-zone="D" style="background:#7dcf9a;" onclick="toggleDeerZone('D')" title="Zone D — Bankhead / Winston–Lawrence pocket" aria-pressed="false">D<span class="zt-sub">off</span></button>
-                  <button type="button" class="zone-toggle-btn" id="zone-btn-E" data-zone="E" style="background:#9a8b3a;" onclick="toggleDeerZone('E')" title="Zone E — Calhoun/Cleburne &amp; E. Russell" aria-pressed="false">E<span class="zt-sub">off</span></button>
-                </div>
-                <div class="zone-toggle-actions">
-                  <button type="button" onclick="setAllDeerZones(true)">All on</button>
-                  <button type="button" onclick="setAllDeerZones(false)">All off</button>
-                </div>
-                <div class="zone-toggle-hint">Tap a color to show/hide that zone. Off by default — turn on only what you need. Confirm Outdoor Alabama before hunting.</div>
-                <!-- Hidden master flag; driven by any zone being on -->
-                <input type="checkbox" id="toggle-state-zones-chk" style="display:none;" aria-hidden="true">
-              </div>
-            </div>
+            
           </div>
           <!-- Stand placement: click map after + Add Stand -->
           <div id="stand-place-banner" class="stand-place-banner" style="display:none;" role="status">
@@ -2156,20 +2171,88 @@
           </div>
           <button id="map-maximize-btn" class="map-fs-btn" onclick="toggleMapFullscreen()" type="button">Full Screen</button>
           <button id="map-minimize-btn" class="map-fs-btn" onclick="toggleMapFullscreen()" type="button" style="display:none;">Minimize</button>
-          <!-- Measure / draw / GPS tools (Current Location sits above drawing & tracking) -->
+          <!-- Left: Current Location + collapsible Tools; bottom-center: Layers -->
           <div class="map-draw-tools" id="map-draw-tools">
             <button type="button" class="mdt-btn mdt-gps" id="gps-snap-btn" onclick="snapToGPS()" title="Snap map to your GPS position">📍 Current Location</button>
-            <button type="button" class="mdt-btn" id="mdt-measure" onclick="startMapMeasure()" title="Click points to measure distance">📏 Measure</button>
-            <button type="button" class="mdt-btn" id="mdt-draw" onclick="startMapDrawShape()" title="Click points to draw a shape, then Finish to save">✏️ Draw shape</button>
-            <button type="button" class="mdt-btn mdt-track-idle" id="mdt-track" onclick="toggleGpsTrack()" title="GPS track your movement (battery-friendly)">📍 Track</button>
-            <button type="button" class="mdt-btn mdt-track-stop" id="mdt-track-stop" onclick="toggleGpsTrack()" title="Stop GPS tracking and save the path">⏹ Stop track</button>
-            <div class="map-track-live-stats" id="map-track-live-stats"></div>
-            <button type="button" class="mdt-btn mdt-tool-only" id="mdt-undo" onclick="undoMapDrawVertex()" disabled title="Remove last point">↩ Undo point</button>
-            <button type="button" class="mdt-btn mdt-tool-only" id="mdt-finish" onclick="finishMapDraw()" disabled title="Finish line or save shape">✓ Finish</button>
-            <button type="button" class="mdt-btn mdt-tool-only" id="mdt-cancel" onclick="cancelMapDraw()" disabled title="Cancel drawing">✕ Cancel</button>
-            <div class="map-draw-hint mdt-tool-only" id="map-draw-hint"></div>
-            <div class="map-draw-stats mdt-tool-only" id="map-draw-stats"></div>
+            <button type="button" class="mdt-btn mdt-tools-toggle" id="mdt-tools-toggle" aria-expanded="false" aria-controls="mdt-tools-panel" title="Measure, draw shape, GPS track">🧰 Tools</button>
+            <div class="mdt-tools-panel" id="mdt-tools-panel" role="group" aria-label="Map drawing tools">
+              <button type="button" class="mdt-btn" id="mdt-measure" onclick="startMapMeasure()" title="Click points to measure distance">📏 Measure</button>
+              <button type="button" class="mdt-btn" id="mdt-draw" onclick="startMapDrawShape()" title="Click points to draw a shape, then Finish to save">✏️ Draw shape</button>
+              <button type="button" class="mdt-btn mdt-track-idle" id="mdt-track" onclick="toggleGpsTrack()" title="GPS track your movement (battery-friendly)">📍 Track</button>
+              <button type="button" class="mdt-btn mdt-track-stop" id="mdt-track-stop" onclick="toggleGpsTrack()" title="Stop GPS tracking and save the path">⏹ Stop track</button>
+              <div class="map-track-live-stats" id="map-track-live-stats"></div>
+              <button type="button" class="mdt-btn mdt-tool-only" id="mdt-undo" onclick="undoMapDrawVertex()" disabled title="Remove last point">↩ Undo point</button>
+              <button type="button" class="mdt-btn mdt-tool-only" id="mdt-finish" onclick="finishMapDraw()" disabled title="Finish line or save shape">✓ Finish</button>
+              <button type="button" class="mdt-btn mdt-tool-only" id="mdt-cancel" onclick="cancelMapDraw()" disabled title="Cancel drawing">✕ Cancel</button>
+              <div class="map-draw-hint mdt-tool-only" id="map-draw-hint"></div>
+              <div class="map-draw-stats mdt-tool-only" id="map-draw-stats"></div>
+            </div>
           </div>
+
+          <div class="map-layers-menu map-layers-bottom" id="map-layers-menu">
+                        <button type="button" class="map-layers-toggle-btn" id="map-layers-toggle-btn" aria-expanded="false" aria-controls="map-layers-panel" title="Map base & overlays">
+                          Layers <span class="ml-caret" aria-hidden="true">▾</span>
+                        </button>
+                        <div class="map-layers-panel" id="map-layers-panel" role="group" aria-label="Map layers">
+                          <div class="ml-section">Base map</div>
+                          <label class="ml-option">
+                            <input type="radio" name="map-basemap" id="basemap-topo" value="topo" checked onchange="setMapBasemap('topo')">
+                            <span class="ml-opt-text">USGS Topography<span class="ml-opt-sub">Terrain / contours</span></span>
+                          </label>
+                          <label class="ml-option">
+                            <input type="radio" name="map-basemap" id="basemap-street" value="street" onchange="setMapBasemap('street')">
+                            <span class="ml-opt-text">Roads &amp; Waterways<span class="ml-opt-sub">Street map</span></span>
+                          </label>
+                          <label class="ml-option">
+                            <input type="radio" name="map-basemap" id="basemap-satellite" value="satellite" onchange="setMapBasemap('satellite')">
+                            <span class="ml-opt-text">Satellite<span class="ml-opt-sub">High-def imagery (same style as ADCNR DCNR map)</span></span>
+                          </label>
+          
+                          <div class="ml-section">Overlays</div>
+                          <label class="ml-option">
+                            <input type="checkbox" id="toggle-prev-hunts-chk" onchange="drawHuntsOnMap()">
+                            <span class="ml-opt-text">Past Hunts<span class="ml-opt-sub">Your logged hunt pins</span></span>
+                          </label>
+          
+                          <div class="ml-section">Public lands</div>
+                          <div class="pl-toggles" id="pl-toggles" role="group" aria-label="Toggle public land types">
+                            <button type="button" class="pl-toggle-btn on" id="pl-btn-wma" data-pl="wma" style="background:#e59a18;" onclick="togglePublicLandType('wma')" title="Wildlife Management Areas" aria-pressed="true">WMA<span class="pl-sub">on</span></button>
+                            <button type="button" class="pl-toggle-btn on" id="pl-btn-forestNwr" data-pl="forestNwr" style="background:#2f9e4f;color:#fff;" onclick="togglePublicLandType('forestNwr')" title="National Forests &amp; NWR" aria-pressed="true">Forest/NWR<span class="pl-sub">on</span></button>
+                            <button type="button" class="pl-toggle-btn on" id="pl-btn-tva" data-pl="tva" style="background:#2d8fd9;color:#fff;" onclick="togglePublicLandType('tva')" title="TVA Undeveloped" aria-pressed="true">TVA<span class="pl-sub">on</span></button>
+                            <button type="button" class="pl-toggle-btn on" id="pl-btn-foreverWild" data-pl="foreverWild" style="background:#9b59b6;color:#fff;" onclick="togglePublicLandType('foreverWild')" title="Forever Wild" aria-pressed="true">FW<span class="pl-sub">on</span></button>
+                            <button type="button" class="pl-toggle-btn on" id="pl-btn-soa" data-pl="soa" style="background:#c026d3;color:#fff;" onclick="togglePublicLandType('soa')" title="Special Opportunity Areas" aria-pressed="true">SOA<span class="pl-sub">on</span></button>
+                            <button type="button" class="pl-toggle-btn on" id="pl-btn-pdha" data-pl="pdha" style="background:#14b8a6;color:#fff;" onclick="togglePublicLandType('pdha')" title="Disabled Hunt Areas (PDHA)" aria-pressed="true">PDHA<span class="pl-sub">on</span></button>
+                            <button type="button" class="pl-toggle-btn on" id="pl-btn-usace" data-pl="usace" style="background:#6b7c3a;color:#fff;" onclick="togglePublicLandType('usace')" title="U.S. Army Corps of Engineers open recreation / hunting project lands" aria-pressed="true">USACE<span class="pl-sub">on</span></button>
+                            <button type="button" class="pl-toggle-btn on" id="pl-btn-listPins" data-pl="listPins" style="background:#486a2f;color:#fff;" onclick="togglePublicLandType('listPins')" title="Green ✓ pins for Available Hunts list" aria-pressed="true">✓ List<span class="pl-sub">on</span></button>
+                          </div>
+                          <div class="zone-toggle-actions">
+                            <button type="button" onclick="setAllPublicLandTypes(true)">All on</button>
+                            <button type="button" onclick="setAllPublicLandTypes(false)">All off</button>
+                          </div>
+                          <div class="zone-toggle-hint">Tap a color to show/hide that land type. All on by default. ✓ List = units in your Available Hunts dropdown.</div>
+                          <div id="adcnr-cache-status" style="font-size:9px;margin-top:6px;color:var(--muted);"></div>
+                          <!-- Hidden master for legacy; driven by any public-land type being on -->
+                          <input type="checkbox" id="toggle-adcnr-lands-chk" checked style="display:none;" aria-hidden="true">
+                          <span id="toggle-adcnr-label" style="display:none;" aria-hidden="true"></span>
+          
+                          <div class="ml-section">Deer season zones</div>
+                          <div class="zone-toggles" id="zone-toggles" role="group" aria-label="Toggle deer season zones">
+                            <button type="button" class="zone-toggle-btn" id="zone-btn-A" data-zone="A" style="background:#8a8a8a;" onclick="toggleDeerZone('A')" title="Zone A — default statewide" aria-pressed="false">A<span class="zt-sub">off</span></button>
+                            <button type="button" class="zone-toggle-btn" id="zone-btn-B" data-zone="B" style="background:#e6d29a;" onclick="toggleDeerZone('B')" title="Zone B — south of US-80 line" aria-pressed="false">B<span class="zt-sub">off</span></button>
+                            <button type="button" class="zone-toggle-btn" id="zone-btn-C" data-zone="C" style="background:#e0913c;" onclick="toggleDeerZone('C')" title="Zone C — north-central band" aria-pressed="false">C<span class="zt-sub">off</span></button>
+                            <button type="button" class="zone-toggle-btn" id="zone-btn-D" data-zone="D" style="background:#7dcf9a;" onclick="toggleDeerZone('D')" title="Zone D — Bankhead / Winston–Lawrence pocket" aria-pressed="false">D<span class="zt-sub">off</span></button>
+                            <button type="button" class="zone-toggle-btn" id="zone-btn-E" data-zone="E" style="background:#9a8b3a;" onclick="toggleDeerZone('E')" title="Zone E — Calhoun/Cleburne &amp; E. Russell" aria-pressed="false">E<span class="zt-sub">off</span></button>
+                          </div>
+                          <div class="zone-toggle-actions">
+                            <button type="button" onclick="setAllDeerZones(true)">All on</button>
+                            <button type="button" onclick="setAllDeerZones(false)">All off</button>
+                          </div>
+                          <div class="zone-toggle-hint">Tap a color to show/hide that zone. Off by default — turn on only what you need. Confirm Outdoor Alabama before hunting.</div>
+                          <!-- Hidden master flag; driven by any zone being on -->
+                          <input type="checkbox" id="toggle-state-zones-chk" style="display:none;" aria-hidden="true">
+                        </div>
+                      </div>
+
 
           <div id="map-weather-overlay" style="display:none;position:absolute;bottom:20px;right:20px;z-index:10001;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:15px;width:300px;box-shadow:0 4px 15px rgba(0,0,0,0.6);max-height:80vh;overflow-y:auto;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
@@ -2237,7 +2320,7 @@
   </div>
   </div><!-- /.app-shell -->
 
-  <!-- Tagline + official links moved to bottom (v3.1) -->
+  <!-- Tagline + official links moved to bottom (v3.2) -->
   <footer class="site-footer" role="contentinfo">
     <div class="site-footer-inner">
       <p>Alabama public &amp; private land · USGS gauges · topo terrain · wind &amp; scent</p>
@@ -2305,7 +2388,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '3.1';
+    const APP_VERSION = '3.2';
     let selectedDate = null, selectedWeapon = null, selectedLand = 'Public', selectedLocationId = null;
     let selectedSubsectionIndex = null, viewFilterMode = 'all', currentSelectedColor = '#e59a18';
     let editingEventId = null, userLat = null, userLng = null;
@@ -5552,6 +5635,63 @@
     }
     window.wireMapLayersMenu = wireMapLayersMenu;
 
+    /** Open/close Measure·Draw·Track drawer under the Tools tab */
+    function setMapToolsMenuOpen(open) {
+      var tools = document.getElementById('map-draw-tools');
+      var btn = document.getElementById('mdt-tools-toggle');
+      if (!tools) return;
+      // Keep open while measuring/drawing or live tracking (need Finish / Stop)
+      if (tools.classList.contains('tool-active') || tools.classList.contains('tracking')) {
+        open = true;
+      }
+      tools.classList.toggle('tools-open', !!open);
+      if (btn) {
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        btn.classList.toggle('active', !!open);
+      }
+    }
+    window.setMapToolsMenuOpen = setMapToolsMenuOpen;
+
+    function wireMapToolsMenu() {
+      var tools = document.getElementById('map-draw-tools');
+      var btn = document.getElementById('mdt-tools-toggle');
+      if (!tools || !btn || btn._wiredToolsMenu) return;
+      btn._wiredToolsMenu = true;
+
+      btn.addEventListener('click', function(ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        var open = !tools.classList.contains('tools-open');
+        setMapToolsMenuOpen(open);
+      });
+
+      var panel = document.getElementById('mdt-tools-panel');
+      if (panel) {
+        panel.addEventListener('click', function(ev) { ev.stopPropagation(); });
+      }
+      // Don't collapse when tapping Current Location (same stack)
+      var gps = document.getElementById('gps-snap-btn');
+      if (gps) {
+        gps.addEventListener('click', function(ev) { ev.stopPropagation(); });
+      }
+
+      // Click elsewhere (no tool selected) → collapse back to Tools tab only
+      document.addEventListener('click', function(ev) {
+        if (!tools.classList.contains('tools-open')) return;
+        if (tools.classList.contains('tool-active') || tools.classList.contains('tracking')) return;
+        if (tools.contains(ev.target)) return;
+        setMapToolsMenuOpen(false);
+      });
+
+      document.addEventListener('keydown', function(ev) {
+        if (ev.key !== 'Escape') return;
+        if (!tools.classList.contains('tools-open')) return;
+        if (tools.classList.contains('tool-active') || tools.classList.contains('tracking')) return;
+        setMapToolsMenuOpen(false);
+      });
+    }
+    window.wireMapToolsMenu = wireMapToolsMenu;
+
     function initMap() {
       if (typeof L === 'undefined' || map) return;
       // USGS topo default; street + satellite (Esri World Imagery — same basemap as ADCNR DCNR viewer)
@@ -5581,8 +5721,9 @@
         minZoom: 6,
         preferCanvas: true
       });
-      // Basemap + overlay toggles live in #map-layers-menu next to the compass (not Leaflet layers control)
+      // Basemap + overlay toggles live in #map-layers-menu (bottom center); tools drawer under Tools tab
       wireMapLayersMenu();
+      wireMapToolsMenu();
       setMapBasemap(activeBasemapKey);
 
       // Zone tint under public lands; ADCNR polygons under markers so pins stay clickable
@@ -6108,6 +6249,8 @@
       if (wrap) wrap.classList.toggle('draw-mode', active);
       var tools = document.getElementById('map-draw-tools');
       if (tools) tools.classList.toggle('tool-active', active);
+      // Keep Tools drawer open while a tool is active so Finish / Cancel stay reachable
+      if (active && typeof setMapToolsMenuOpen === 'function') setMapToolsMenuOpen(true);
       applyMapDrawInteractionLock();
       var bMeas = document.getElementById('mdt-measure');
       var bDraw = document.getElementById('mdt-draw');
@@ -6722,6 +6865,8 @@
     function updateTrackButtonUi() {
       var tools = document.getElementById('map-draw-tools');
       if (tools) tools.classList.toggle('tracking', !!gpsTrackActive);
+      // Keep Tools drawer open so Stop track stays visible
+      if (gpsTrackActive && typeof setMapToolsMenuOpen === 'function') setMapToolsMenuOpen(true);
       var live = document.getElementById('map-track-live-stats');
       if (!live) return;
       if (!gpsTrackActive) {
@@ -9342,8 +9487,9 @@
       }, 200);
       setLand('Public');
       updateDistStatus();
-      // Layers menu (basemap + overlays) next to compass — wire before map loads
+      // Layers (bottom) + Tools drawer — wire before map loads
       wireMapLayersMenu();
+      wireMapToolsMenu();
       updatePublicLandToggleUI();
       updateDeerZoneToggleUI();
       var _plannerResizeTimer = null;
