@@ -4903,12 +4903,40 @@
     window.closeDeerRegsPanel = closeDeerRegsPanel;
 
     // ========== MAP SPOT HUNT STATUS + PROPERTY PARCELS ==========
+    // Regrid demo tiles block browser Referer from GitHub Pages / local hosts (HTTP 403).
+    // Always load tiles + UTFGrid with referrerPolicy: 'no-referrer'. Optional token:
+    //   ?regrid_token=YOUR_TOKEN  or  localStorage.regrid_token  or  window.REGRID_TOKEN
     var lastClickParcel = null; // { owner, address, parcelnumb, path, ... }
     var parcelLayer = null;
     var parcelsEnabled = false;
     var parcelGridCache = {};
-    var PARCEL_TILE_URL = 'https://tiles.regrid.com/api/v1/parcels/{z}/{x}/{y}.png';
-    var PARCEL_GRID_URL = 'https://tiles.regrid.com/api/v1/parcels/{z}/{x}/{y}.json';
+    var PARCEL_TILE_BASE = 'https://tiles.regrid.com/api/v1/parcels/{z}/{x}/{y}.png';
+    var PARCEL_GRID_BASE = 'https://tiles.regrid.com/api/v1/parcels/{z}/{x}/{y}.json';
+
+    function getRegridToken() {
+      try {
+        if (typeof window.REGRID_TOKEN === 'string' && window.REGRID_TOKEN.trim()) {
+          return window.REGRID_TOKEN.trim();
+        }
+        var q = new URLSearchParams(window.location.search || '');
+        var fromQ = q.get('regrid_token') || q.get('regrid') || '';
+        if (fromQ && fromQ.trim()) {
+          try { localStorage.setItem('regrid_token', fromQ.trim()); } catch (e0) {}
+          return fromQ.trim();
+        }
+        var ls = localStorage.getItem('regrid_token');
+        if (ls && ls.trim()) return ls.trim();
+      } catch (e) {}
+      return '';
+    }
+
+    function parcelUrl(template, z, x, y) {
+      var u = template
+        .replace('{z}', z).replace('{x}', x).replace('{y}', y);
+      var tok = getRegridToken();
+      if (tok) u += (u.indexOf('?') >= 0 ? '&' : '?') + 'token=' + encodeURIComponent(tok);
+      return u;
+    }
 
     function lonLatToTileXY(lon, lat, z) {
       var n = Math.pow(2, z);
@@ -4938,7 +4966,57 @@
       if (idx < 0) return null;
       var k = gridJson.keys[idx];
       if (k === '' || k == null) return null;
-      return gridJson.data[k] || null;
+      // UTFGrid data keys may be string or number depending on parser/source
+      var data = gridJson.data;
+      return data[k] || data[String(k)] || (typeof k === 'string' && !isNaN(k) ? data[Number(k)] : null) || null;
+    }
+
+    function pickParcelOwner(d) {
+      if (!d || typeof d !== 'object') return '';
+      var keys = [
+        'owner', 'OWNER', 'owner_name', 'OWNER_NAME', 'ownername',
+        'ownernme', 'owner1', 'OWNER1', 'mail_name', 'MAIL_NAME',
+        'proprietor', 'taxpayer', 'TAXPAYER', 'own_name'
+      ];
+      for (var i = 0; i < keys.length; i++) {
+        var v = d[keys[i]];
+        if (v != null && String(v).trim()) return String(v).trim();
+      }
+      return '';
+    }
+
+    function pickParcelAddress(d) {
+      if (!d || typeof d !== 'object') return '';
+      var keys = [
+        'address', 'situs_address', 'SITE_ADDR', 'site_address',
+        'situs', 'prop_address', 'PROP_ADDR', 'mail_address', 'location'
+      ];
+      for (var i = 0; i < keys.length; i++) {
+        var v = d[keys[i]];
+        if (v != null && String(v).trim()) return String(v).trim();
+      }
+      return '';
+    }
+
+    function pickParcelNumb(d) {
+      if (!d || typeof d !== 'object') return '';
+      var keys = ['parcelnumb', 'parcel_id', 'PARCEL_ID', 'apn', 'APN', 'parcel_number', 'account'];
+      for (var i = 0; i < keys.length; i++) {
+        var v = d[keys[i]];
+        if (v != null && String(v).trim()) return String(v).trim();
+      }
+      return '';
+    }
+
+    function normalizeParcelRecord(d) {
+      if (!d) return null;
+      return {
+        owner: pickParcelOwner(d),
+        address: pickParcelAddress(d),
+        parcelnumb: pickParcelNumb(d),
+        path: d.path || '',
+        raw: d
+      };
     }
 
     /** Query Regrid parcel UTFGrid at lat/lng (owner / address when available). */
@@ -4956,21 +5034,17 @@
 
       function fromCache(j) {
         try {
-          var d = lookupUtfGrid(j, px, py);
-          if (!d) return null;
-          return {
-            owner: d.owner || d.OWNER || d.owner_name || '',
-            address: d.address || d.situs_address || d.SITE_ADDR || '',
-            parcelnumb: d.parcelnumb || d.parcel_id || d.PARCEL_ID || '',
-            path: d.path || '',
-            raw: d
-          };
+          return normalizeParcelRecord(lookupUtfGrid(j, px, py));
         } catch (e) { return null; }
       }
 
       if (parcelGridCache[key]) return Promise.resolve(fromCache(parcelGridCache[key]));
-      return fetch(PARCEL_GRID_URL.replace('{z}', tile.z).replace('{x}', tile.x).replace('{y}', tile.y), {
-        cache: 'force-cache'
+      // referrerPolicy no-referrer: Regrid demo tiles return 403 when Referer is github.io / localhost
+      return fetch(parcelUrl(PARCEL_GRID_BASE, tile.z, tile.x, tile.y), {
+        cache: 'default',
+        referrerPolicy: 'no-referrer',
+        mode: 'cors',
+        credentials: 'omit'
       }).then(function(res) {
         if (!res.ok) throw new Error('parcel grid ' + res.status);
         return res.json();
@@ -4985,6 +5059,41 @@
       }).catch(function() { return null; });
     }
 
+    /** Leaflet tile layer that never sends Referer (required for Regrid on GitHub Pages). */
+    function createParcelTileLayer() {
+      var RegridTiles = L.TileLayer.extend({
+        createTile: function(coords, done) {
+          var tile = document.createElement('img');
+          L.DomEvent.on(tile, 'load', L.Util.bind(this._tileOnLoad, this, done, tile));
+          L.DomEvent.on(tile, 'error', L.Util.bind(this._tileOnError, this, done, tile));
+          if (this.options.crossOrigin || this.options.crossOrigin === '') {
+            tile.crossOrigin = this.options.crossOrigin === true ? '' : this.options.crossOrigin;
+          }
+          tile.alt = '';
+          tile.setAttribute('role', 'presentation');
+          // Critical: omit Referer so Regrid does not 403 github.io / local hosts
+          try { tile.referrerPolicy = 'no-referrer'; } catch (eR) {}
+          tile.src = this.getTileUrl(coords);
+          return tile;
+        },
+        getTileUrl: function(coords) {
+          var z = this._getZoomForUrl();
+          return parcelUrl(PARCEL_TILE_BASE, z, coords.x, coords.y);
+        }
+      });
+      return new RegridTiles(PARCEL_TILE_BASE, {
+        maxZoom: 20,
+        maxNativeZoom: 18,
+        minZoom: 11,
+        opacity: 0.92,
+        zIndex: 360,
+        detectRetina: false,
+        updateWhenIdle: true,
+        crossOrigin: true,
+        attribution: 'Property lines © Regrid'
+      });
+    }
+
     function togglePropertyLines(on) {
       parcelsEnabled = !!on;
       var chk = document.getElementById('toggle-parcels-chk');
@@ -4992,19 +5101,10 @@
       ensureMap().then(function(m) {
         if (!m || typeof L === 'undefined') return;
         if (parcelsEnabled) {
-          if (!parcelLayer) {
-            parcelLayer = L.tileLayer(PARCEL_TILE_URL, {
-              maxZoom: 20,
-              maxNativeZoom: 18,
-              minZoom: 11,
-              opacity: 0.92,
-              zIndex: 360,
-              detectRetina: false,
-              updateWhenIdle: true,
-              attribution: 'Property lines © Regrid'
-            });
-          }
-          if (!m.hasLayer(parcelLayer)) parcelLayer.addTo(m);
+          // Rebuild layer if token may have changed since last create
+          if (parcelLayer && m.hasLayer(parcelLayer)) m.removeLayer(parcelLayer);
+          parcelLayer = createParcelTileLayer();
+          parcelLayer.addTo(m);
           if (m.getZoom() < 12 && typeof showAppCopyToast === 'function') {
             showAppCopyToast(
               '<span class="act">Property lines on</span><br>' +
@@ -5155,7 +5255,9 @@
       if (st.landKind === 'private') {
         lines.push('<div class="mhs-line">Private Property</div>');
         if (st.owner) lines.push('<div class="mhs-line">' + escHtml(st.owner) + '</div>');
-        else lines.push('<div class="mhs-sub">Owner unknown · confirm tax / deed records</div>');
+        else if (st.address) lines.push('<div class="mhs-sub">Addr: ' + escHtml(st.address) + ' · owner not listed</div>');
+        else if (st.parcelnumb) lines.push('<div class="mhs-sub">Parcel ' + escHtml(st.parcelnumb) + ' · owner not listed</div>');
+        else lines.push('<div class="mhs-sub">Owner not in parcel data · confirm tax / deed records</div>');
         lines.push('<div class="mhs-line">Zone ' + escHtml(st.zone || 'A') + '</div>');
       } else {
         lines.push('<div class="mhs-line">' + escHtml(st.name || 'Public land') + '</div>');
@@ -7768,7 +7870,9 @@
           '<div class="mdm-title" style="margin-top:2px;">Private land · Zone ' + escHtml(st.zone || 'A') + '</div>' +
           (st.owner
             ? '<div class="mdm-sub">Owner: ' + escHtml(st.owner) + (st.address ? ' · ' + escHtml(st.address) : '') + '</div>'
-            : '<div class="mdm-sub">Turn on Property lines overlay for owner when available</div>') +
+            : st.address
+              ? '<div class="mdm-sub">Addr: ' + escHtml(st.address) + ' · owner not listed</div>'
+              : '<div class="mdm-sub">Owner not listed for this spot · zoom 12–18 &amp; retry, or confirm tax records</div>') +
           '<div style="height:1px;background:var(--border);margin:8px 0 6px;"></div>';
       }
       return (
