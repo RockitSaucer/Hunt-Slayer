@@ -4789,6 +4789,12 @@
           '</div>',
           { className: 'saved-item-popup map-dot-popup', closeButton: true, autoPan: true, maxWidth: 280, closeOnClick: false }
         );
+        pin.on('click', function() {
+          if (mapDrawMode === 'measure' || mapDrawMode === 'draw') return;
+          if (typeof selectLocationById === 'function') {
+            selectLocationById(loc.id, { closePopup: false, showOverlay: isMapFullscreen(), skipScroll: true });
+          }
+        });
         pin.on('popupopen', function() {
           var el = pin.getPopup() && pin.getPopup().getElement();
           if (el && typeof L !== 'undefined') {
@@ -4886,7 +4892,8 @@
               }
               if (map) map.closePopup();
               setLastClickPublicLand(layer, attrs, clickLatLng.lat, clickLatLng.lng);
-              placeOrMoveMapDot(clickLatLng, { skipWeather: isPhoneLayout() });
+              // Always refresh weather + compass for this point (skipScroll keeps phone on the map)
+              placeOrMoveMapDot(clickLatLng, { skipWeather: false });
               try {
                 if (navigator.vibrate) navigator.vibrate(18);
               } catch (vibErr) {}
@@ -4948,8 +4955,8 @@
                 return;
               }
               setLastClickPublicLand(layer, attrs, clickLatLng.lat, clickLatLng.lng);
-              // Phone: keep the map focused — popup only (weather when user taps the button)
-              if (isPhoneLayout()) return;
+              // Always load weather + compass for this unit/point.
+              // skipScroll so phone/fullscreen stay on the map (no jump to dashboard).
               selectPublicLandWeather(layer, attrs, clickLatLng.lat, clickLatLng.lng, {
                 closePopup: false,
                 showOverlay: isMapFullscreen(),
@@ -5504,15 +5511,36 @@
             fillColor: z.color,
             fillOpacity: z.fillOpacity != null ? z.fillOpacity : 0.18,
             interactive: true,
+            // Do not bubble — handler below loads weather once (avoids double fetch)
             bubblingMouseEvents: false,
             className: 'state-zone-poly zone-' + z.zone,
             smoothFactor: 1.15
           });
-          poly.bindPopup(
+          poly.bindTooltip(
             '<strong style="color:' + z.color + ';">Deer Season ' + z.name + '</strong>' +
-            '<br><span style="font-size:12px;color:#c5d0be;">' + (z.desc || '') + '</span>' +
-            '<br><span style="font-size:10px;color:#8d9c84;">Boundary routes from Outdoor Alabama legal text · confirm current regs before hunting</span>'
+            '<br><span style="font-size:11px;color:#c5d0be;">' + (z.desc || '') + '</span>' +
+            '<br><span style="font-size:10px;color:#8d9c84;">Click for weather at this spot · confirm Outdoor Alabama regs</span>',
+            { sticky: true, opacity: 0.96, direction: 'top', className: 'state-zone-tooltip' }
           );
+          poly.on('click', function(e) {
+            if (mapDrawMode === 'measure' || mapDrawMode === 'draw') {
+              if (e && e.originalEvent) {
+                L.DomEvent.stopPropagation(e.originalEvent);
+                L.DomEvent.preventDefault(e.originalEvent);
+              }
+              if (e && e.latlng) handleMapDrawToolClick(e.latlng, e);
+              return;
+            }
+            if (standPlaceMode && e && e.latlng) {
+              placeStandAt(e.latlng.lat, e.latlng.lng);
+              return;
+            }
+            if (e && e.originalEvent) L.DomEvent.stopPropagation(e.originalEvent);
+            if (e && e.latlng) {
+              lastClickPublicLand = null;
+              placeOrMoveMapDot(e.latlng, { skipWeather: false });
+            }
+          });
           stateZonesGroup.addLayer(poly);
         });
 
@@ -5862,8 +5890,9 @@
         }
         // Free map click (not on public-land polygon) - clear unit context
         lastClickPublicLand = null;
-        // Place / move a clean map dot - on phone skip auto-weather (stays on map)
-        placeOrMoveMapDot(e.latlng, { skipWeather: isPhoneLayout() });
+        // Always refresh weather + wind compass for the clicked point
+        // (dashboard still loads; skipScroll keeps the page from jumping on phone)
+        placeOrMoveMapDot(e.latlng, { skipWeather: false });
       });
 
       map.on('mousemove', function(e) {
@@ -5981,8 +6010,9 @@
     window.handleMapDotPublicLandAction = handleMapDotPublicLandAction;
 
     /**
-     * Drop a clean accent dot on the map (no lat/long/zone). Click the dot for actions.
-     * opts.skipWeather: place pin only (used on phone so the page does not jump to weather)
+     * Drop a clean accent dot on the map (no lat/long/zone). Click the dot for more actions.
+     * By default loads weather + wind compass for the clicked coordinates.
+     * opts.skipWeather: place pin only (rare; prefer loading weather so compass stays in sync)
      */
     function placeOrMoveMapDot(latlng, opts) {
       if (!map || typeof L === 'undefined') return;
@@ -6033,11 +6063,11 @@
         });
       }
 
-      // Desktop: refresh weather + compass for this map click.
-      // Phone: stay on the map — user taps "Get weather" on the orange dot when ready.
+      // Always refresh weather + compass for this map click (unless explicitly skipped).
+      // selectWeatherAtMapPoint uses skipScroll so the map stays in view on phone.
       var detected = detectBoundaryAndZone(clickLat, clickLng);
       if (!skipWeather) {
-        selectWeatherAtMapPoint(clickLat, clickLng, detected, null);
+        selectWeatherAtMapPoint(clickLat, clickLng, detected, null, { skipScroll: true });
       }
 
       // Silent TVA lookup; if still on this spot, attach TVA note without blocking first weather paint
@@ -7570,6 +7600,20 @@
           if (el) {
             L.DomEvent.disableClickPropagation(el);
             L.DomEvent.disableScrollPropagation(el);
+          }
+        });
+        // Clicking a saved shape immediately loads its weather + compass (popup still available)
+        poly.on('click', function(e) {
+          if (mapDrawMode === 'measure' || mapDrawMode === 'draw') {
+            if (e && e.latlng) handleMapDrawToolClick(e.latlng, e);
+            return;
+          }
+          if (standPlaceMode && e && e.latlng) {
+            placeStandAt(e.latlng.lat, e.latlng.lng);
+            return;
+          }
+          if (typeof selectLocationById === 'function') {
+            selectLocationById(area.id, { closePopup: false, showOverlay: isMapFullscreen(), skipScroll: true });
           }
         });
         customAreaGroup.addLayer(poly);
@@ -9127,7 +9171,13 @@
         document.getElementById('db-subtitle').innerText = 'Coords: ' + subsection.lat.toFixed(5) + ', ' + subsection.lng.toFixed(5);
       } else {
         document.getElementById('db-title').innerText = location.name;
-        document.getElementById('db-subtitle').innerText = 'Zone ' + location.zone + ' - Limit: ' + (rule.limit||'1/day');
+        var subBits = 'Zone ' + (location.zone || 'A') + ' - Limit: ' + (rule.limit || '1/day');
+        // Show exact click coords so map-driven weather is obviously bound to that point
+        if (lat != null && lng != null && !isNaN(lat) && !isNaN(lng) &&
+            (location.isMapSpot || location.isPublicLand || location.isCustomArea)) {
+          subBits += ' · ' + Number(lat).toFixed(4) + ', ' + Number(lng).toFixed(4);
+        }
+        document.getElementById('db-subtitle').innerText = subBits;
       }
       document.getElementById('db-reg-summary').innerText = 'Open Season: ' + rule.weapon + ' (' + (rule.target||'State limits') + ')';
       document.getElementById('db-rules-text').innerText = rule.notes || 'Wear hunter orange. Submit harvests within 48 hours.';
