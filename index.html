@@ -1299,14 +1299,14 @@
       left: auto;
       top: auto;
       z-index: auto;
-      align-items: center;
-      gap: 8px;
+      align-items: stretch;
+      gap: 0;
       /* part of shared shell — no second card */
       background: transparent;
       border: none;
       border-radius: 0;
       box-shadow: none;
-      padding: 0 10px;
+      padding: 0;
       max-width: none;
       width: 100%;
       height: 56px;
@@ -1319,8 +1319,182 @@
     .map-compass-radar .map-wind-hud.active {
       display: flex;
     }
-    .map-compass-radar.has-wind .map-wind-hud.active {
+    .map-compass-radar.has-wind .map-wind-hud.active,
+    .map-compass-radar.has-heading .map-wind-hud.active {
       border-bottom: 1px solid var(--border);
+    }
+    /* Wind vs heading panels inside the top HUD */
+    .mwh-panel {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      height: 100%;
+      padding: 0 6px 0 8px;
+      box-sizing: border-box;
+      min-width: 0;
+    }
+    .map-wind-hud.mode-wind .mwh-wind-panel { display: flex; }
+    .map-wind-hud.mode-compass .mwh-heading-panel { display: flex; }
+    .mwh-swap-btn {
+      pointer-events: auto;
+      flex: 0 0 auto;
+      width: 28px;
+      height: 28px;
+      margin-left: auto;
+      padding: 0;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.25);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+    }
+    .mwh-swap-btn:hover {
+      border-color: var(--accent);
+      background: rgba(229, 154, 24, 0.15);
+    }
+    .mwh-mini {
+      position: relative;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border);
+      background: var(--panel);
+      display: block;
+      box-sizing: border-box;
+    }
+    .mwh-mini-compass .mwh-mini-n {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 6px;
+      font-weight: 800;
+      color: var(--danger);
+      line-height: 1;
+    }
+    .mwh-mini-compass .mwh-mini-needle {
+      position: absolute;
+      left: 50%;
+      top: 3px;
+      width: 1.5px;
+      height: 11px;
+      margin-left: -0.75px;
+      background: linear-gradient(to bottom, var(--accent) 50%, var(--muted) 50%);
+      border-radius: 1px;
+    }
+    .mwh-mini-wind .mwh-mini-wind-needle {
+      position: absolute;
+      left: 50%;
+      top: 2px;
+      width: 1.5px;
+      height: 12px;
+      margin-left: -0.75px;
+      background: linear-gradient(to bottom, #38bdf8 50%, var(--muted) 50%);
+      border-radius: 1px;
+      transform: rotate(40deg);
+      transform-origin: 50% 50%;
+    }
+    /* Device heading compass (rose rotates under fixed "facing" bead at top) */
+    .heading-dial {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--panel);
+      position: relative;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .heading-rose {
+      position: absolute;
+      inset: 0;
+      transform-origin: 50% 50%;
+      will-change: transform;
+      transition: none; /* updated via rAF for smoothness */
+    }
+    .heading-rose .hr-n,
+    .heading-rose .hr-e,
+    .heading-rose .hr-s,
+    .heading-rose .hr-w {
+      position: absolute;
+      font-size: 8px;
+      font-weight: 800;
+      line-height: 1;
+      color: var(--muted);
+    }
+    .heading-rose .hr-n { top: 2px; left: 50%; transform: translateX(-50%); color: var(--danger); }
+    .heading-rose .hr-s { bottom: 2px; left: 50%; transform: translateX(-50%); }
+    .heading-rose .hr-e { right: 3px; top: 50%; transform: translateY(-50%); }
+    .heading-rose .hr-w { left: 3px; top: 50%; transform: translateY(-50%); }
+    .heading-bead {
+      position: absolute;
+      top: 1px;
+      left: 50%;
+      width: 0;
+      height: 0;
+      margin-left: -4px;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-bottom: 7px solid var(--accent);
+      z-index: 2;
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5));
+    }
+    .map-heading-meta {
+      min-width: 0;
+      flex: 1;
+      overflow: hidden;
+      line-height: 1.15;
+    }
+    .map-heading-meta .mh-deg {
+      font-size: 13px;
+      font-weight: 800;
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .map-heading-meta .mh-card {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .map-heading-meta .mh-hint {
+      font-size: 8px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-height: 10px;
+    }
+    /* GPS location: blue dot (wind mode) or heading triangle (compass mode) */
+    .gps-loc-dot {
+      background: #3498db;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 3px solid #fff;
+      box-shadow: 0 0 8px #3498db;
+    }
+    .gps-heading-tri-wrap {
+      width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      will-change: transform;
+    }
+    .gps-heading-tri {
+      width: 0;
+      height: 0;
+      border-left: 7px solid transparent;
+      border-right: 7px solid transparent;
+      border-bottom: 14px solid #3498db;
+      filter: drop-shadow(0 0 3px rgba(52,152,219,0.9)) drop-shadow(0 0 0 1.5px #fff);
+      /* points "up" = device facing; wrapper rotates by heading */
     }
     .map-radar-control {
       pointer-events: auto;
@@ -1935,7 +2109,7 @@
     }
     .compass-needle {
       width: 2px;
-      height: 30px;
+      height: 28px;
       background: linear-gradient(to bottom, var(--accent) 50%, var(--muted) 50%);
       position: absolute;
       transform-origin: 50% 50%;
@@ -2457,16 +2631,47 @@
           <!-- Fullscreen: small REG SLAYER logo left of compass (Layers is bottom-center) -->
           <div class="map-top-center" id="map-top-center">
             <img class="map-fs-logo" src="reg-slayer-logo.png" alt="REG SLAYER" width="140" height="30" decoding="async" />
-            <!-- Compass + Radar as one stacked unit -->
+            <!-- Wind/Compass + Radar as one stacked unit -->
             <div class="map-compass-radar" id="map-compass-radar">
-              <div id="map-wind-hud" class="map-wind-hud" aria-live="polite">
-                <div class="compass" title="Wind direction">
-                  <div class="compass-needle" id="compass-needle"></div>
+              <div id="map-wind-hud" class="map-wind-hud mode-wind" aria-live="polite">
+                <!-- WIND mode (default desktop) -->
+                <div class="mwh-panel mwh-wind-panel" id="mwh-wind-panel">
+                  <div class="compass" title="Wind from direction" id="wind-compass-dial">
+                    <div class="compass-needle" id="compass-needle"></div>
+                  </div>
+                  <div class="map-wind-meta">
+                    <div class="mw-speed" id="map-wind-speed">-- mph</div>
+                    <div class="mw-dir" id="map-wind-dir">from -</div>
+                    <div class="mw-scent" id="map-scent-text">Scent → -</div>
+                  </div>
+                  <button type="button" class="mwh-swap-btn" id="mwh-to-compass" title="Show device compass">
+                    <span class="mwh-mini mwh-mini-compass" aria-hidden="true">
+                      <span class="mwh-mini-n">N</span>
+                      <span class="mwh-mini-needle"></span>
+                    </span>
+                  </button>
                 </div>
-                <div class="map-wind-meta">
-                  <div class="mw-speed" id="map-wind-speed">-- mph</div>
-                  <div class="mw-dir" id="map-wind-dir">from -</div>
-                  <div class="mw-scent" id="map-scent-text">Scent → -</div>
+                <!-- COMPASS / heading mode (default mobile) -->
+                <div class="mwh-panel mwh-heading-panel" id="mwh-heading-panel">
+                  <div class="heading-dial" id="heading-compass-dial" title="Direction you are facing">
+                    <div class="heading-rose" id="heading-rose">
+                      <span class="hr-n">N</span>
+                      <span class="hr-e">E</span>
+                      <span class="hr-s">S</span>
+                      <span class="hr-w">W</span>
+                    </div>
+                    <div class="heading-bead" aria-hidden="true"></div>
+                  </div>
+                  <div class="map-heading-meta">
+                    <div class="mh-deg" id="map-heading-deg">--°</div>
+                    <div class="mh-card" id="map-heading-card">Looking —</div>
+                    <div class="mh-hint" id="map-heading-hint"></div>
+                  </div>
+                  <button type="button" class="mwh-swap-btn" id="mwh-to-wind" title="Show wind indicator">
+                    <span class="mwh-mini mwh-mini-wind" aria-hidden="true">
+                      <span class="mwh-mini-wind-needle"></span>
+                    </span>
+                  </button>
                 </div>
               </div>
               <div class="map-radar-control" id="map-radar-control">
@@ -8597,16 +8802,60 @@
     }
     window.shareSavedPinLocation = shareSavedPinLocation;
 
-    function setGpsMarker(lat, lng) {
+    function buildGpsMarkerIcon(headingDeg) {
+      // Compass mode + known heading → small triangle pointing the way the user is facing
+      var useTri = (typeof headingHudMode !== 'undefined' && headingHudMode === 'compass' &&
+        headingDeg != null && !isNaN(headingDeg));
+      if (useTri) {
+        var rot = ((Number(headingDeg) % 360) + 360) % 360;
+        var html =
+          '<div class="gps-heading-tri-wrap" style="transform:rotate(' + rot.toFixed(1) + 'deg)">' +
+            '<div class="gps-heading-tri"></div>' +
+          '</div>';
+        return L.divIcon({
+          className: 'gps-heading-icon',
+          html: html,
+          iconSize: [18, 18],
+          iconAnchor: [9, 9]
+        });
+      }
+      return L.divIcon({
+        className: 'gps-dot-icon',
+        html: '<div class="gps-loc-dot"></div>',
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+      });
+    }
+
+    function setGpsMarker(lat, lng, headingDeg) {
       if (!map || typeof L === 'undefined') return;
-      var icon = L.divIcon({ className: '', html: '<div style="background:#3498db;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 0 8px #3498db;animation:pulse 1.5s infinite;"></div>', iconSize: [16,16], iconAnchor: [8,8] });
+      if (headingDeg == null && typeof deviceHeadingDeg !== 'undefined') headingDeg = deviceHeadingDeg;
+      var icon = buildGpsMarkerIcon(headingDeg);
       if (gpsMarker) {
         gpsMarker.setLatLng([lat, lng]);
+        try { gpsMarker.setIcon(icon); } catch (eI) {}
       } else {
-        // Blue dot only - no auto "You are here" popup
-        gpsMarker = L.marker([lat, lng], { icon: icon }).addTo(map);
+        // Location only — no auto popup
+        gpsMarker = L.marker([lat, lng], { icon: icon, interactive: false, keyboard: false }).addTo(map);
       }
       if (map) map.closePopup();
+    }
+
+    /** Lightweight GPS marker rotation without rebuilding the whole icon (smooth heading). */
+    function updateGpsMarkerHeading(headingDeg) {
+      if (!gpsMarker || headingHudMode !== 'compass') return;
+      if (headingDeg == null || isNaN(headingDeg)) return;
+      try {
+        var el = gpsMarker.getElement && gpsMarker.getElement();
+        if (!el) return;
+        var wrap = el.querySelector('.gps-heading-tri-wrap');
+        if (wrap) {
+          wrap.style.transform = 'rotate(' + (((Number(headingDeg) % 360) + 360) % 360).toFixed(1) + 'deg)';
+        } else {
+          // Was a circle — upgrade to triangle once
+          if (userLat != null && userLng != null) setGpsMarker(userLat, userLng, headingDeg);
+        }
+      } catch (eU) {}
     }
 
     function cancelToastForm() {
@@ -9326,13 +9575,278 @@
       document.getElementById('current-data-banner').style.display = 'none';
       setTvaNoteEl('db-tva-note', null);
       var windHud = document.getElementById('map-wind-hud');
-      if (windHud) windHud.classList.remove('active');
+      // Keep HUD visible in compass mode; only hide wind-driven shell if pure wind mode with no data
+      if (windHud && headingHudMode !== 'compass') windHud.classList.remove('active');
       var stack = document.getElementById('map-compass-radar');
-      if (stack) stack.classList.remove('has-wind');
+      if (stack) {
+        stack.classList.remove('has-wind');
+        if (headingHudMode === 'compass') stack.classList.add('has-heading');
+        else stack.classList.remove('has-heading');
+      }
     }
 
-    // Last wind used on the map compass (re-applied when entering fullscreen)
+    // Last wind used on the map dial (re-applied when entering fullscreen)
     var lastMapWind = { wspd: null, wdir: null, isCurrent: false };
+
+    // Top HUD: 'wind' | 'compass' — desktop defaults wind, phone defaults compass
+    var headingHudMode = 'wind';
+    var deviceHeadingDeg = null;     // smoothed heading 0–360 (facing)
+    var headingSmoothed = null;
+    var headingWatchOn = false;
+    var headingOrientHandler = null;
+    var headingRaf = null;
+    var headingPending = null;
+    var headingPermissionState = 'unknown'; // unknown | granted | denied
+
+    function normalizeHeadingDeg(d) {
+      d = Number(d);
+      if (isNaN(d)) return null;
+      d = d % 360;
+      if (d < 0) d += 360;
+      return d;
+    }
+
+    function shortestHeadingDelta(from, to) {
+      return ((to - from + 540) % 360) - 180;
+    }
+
+    function smoothDeviceHeading(raw) {
+      raw = normalizeHeadingDeg(raw);
+      if (raw == null) return headingSmoothed;
+      if (headingSmoothed == null) {
+        headingSmoothed = raw;
+        return headingSmoothed;
+      }
+      // Fast exponential smooth — responsive turn, low jitter
+      var delta = shortestHeadingDelta(headingSmoothed, raw);
+      headingSmoothed = normalizeHeadingDeg(headingSmoothed + delta * 0.28);
+      return headingSmoothed;
+    }
+
+    function extractDeviceHeading(e) {
+      if (!e) return null;
+      // iOS Safari
+      if (typeof e.webkitCompassHeading === 'number' && !isNaN(e.webkitCompassHeading)) {
+        return normalizeHeadingDeg(e.webkitCompassHeading);
+      }
+      // Absolute orientation: alpha ≈ compass when available
+      if (typeof e.alpha === 'number' && !isNaN(e.alpha)) {
+        // Common web mapping: heading = 360 - alpha
+        return normalizeHeadingDeg(360 - e.alpha);
+      }
+      return null;
+    }
+
+    function applyHeadingToUi(heading) {
+      heading = normalizeHeadingDeg(heading);
+      if (heading == null) return;
+      deviceHeadingDeg = heading;
+
+      // Rose rotates opposite heading so N stays north; fixed bead = facing
+      var rose = document.getElementById('heading-rose');
+      if (rose) rose.style.transform = 'rotate(' + (-heading).toFixed(2) + 'deg)';
+
+      var degEl = document.getElementById('map-heading-deg');
+      var cardEl = document.getElementById('map-heading-card');
+      var hintEl = document.getElementById('map-heading-hint');
+      if (degEl) degEl.textContent = Math.round(heading) + '°';
+      if (cardEl) cardEl.textContent = 'Looking ' + getCardinal(heading);
+      if (hintEl) hintEl.textContent = '';
+
+      // Map triangle (only in compass mode)
+      if (headingHudMode === 'compass') updateGpsMarkerHeading(heading);
+    }
+
+    function onDeviceOrientationEvent(e) {
+      var h = extractDeviceHeading(e);
+      if (h == null) return;
+      headingPending = h;
+      if (headingRaf != null) return;
+      headingRaf = requestAnimationFrame(function() {
+        headingRaf = null;
+        if (headingPending == null) return;
+        var s = smoothDeviceHeading(headingPending);
+        headingPending = null;
+        if (s != null) applyHeadingToUi(s);
+      });
+    }
+
+    function stopDeviceHeadingWatch() {
+      if (!headingWatchOn) return;
+      headingWatchOn = false;
+      try {
+        if (headingOrientHandler) {
+          window.removeEventListener('deviceorientationabsolute', headingOrientHandler, true);
+          window.removeEventListener('deviceorientation', headingOrientHandler, true);
+        }
+      } catch (e0) {}
+      if (headingRaf != null) {
+        try { cancelAnimationFrame(headingRaf); } catch (e1) {}
+        headingRaf = null;
+      }
+      headingPending = null;
+    }
+
+    function startDeviceHeadingWatch() {
+      if (headingWatchOn) return;
+      if (typeof window === 'undefined') return;
+      headingOrientHandler = onDeviceOrientationEvent;
+      // Prefer absolute when available
+      try {
+        window.addEventListener('deviceorientationabsolute', headingOrientHandler, true);
+      } catch (eA) {}
+      try {
+        window.addEventListener('deviceorientation', headingOrientHandler, true);
+      } catch (eR) {}
+      headingWatchOn = true;
+      var hint = document.getElementById('map-heading-hint');
+      if (hint && deviceHeadingDeg == null) {
+        hint.textContent = 'Point phone forward…';
+      }
+    }
+
+    /**
+     * iOS 13+ requires a user gesture for orientation permission.
+     * Returns a Promise<boolean>.
+     */
+    function ensureDeviceOrientationPermission() {
+      return new Promise(function(resolve) {
+        try {
+          if (typeof DeviceOrientationEvent !== 'undefined' &&
+              typeof DeviceOrientationEvent.requestPermission === 'function') {
+            DeviceOrientationEvent.requestPermission()
+              .then(function(state) {
+                headingPermissionState = (state === 'granted') ? 'granted' : 'denied';
+                resolve(state === 'granted');
+              })
+              .catch(function() {
+                headingPermissionState = 'denied';
+                resolve(false);
+              });
+            return;
+          }
+        } catch (e) {
+          resolve(false);
+          return;
+        }
+        headingPermissionState = 'granted';
+        resolve(true);
+      });
+    }
+
+    function ensureTopHudVisible() {
+      var hud = document.getElementById('map-wind-hud');
+      var stack = document.getElementById('map-compass-radar');
+      if (hud) hud.classList.add('active');
+      if (stack) {
+        if (headingHudMode === 'compass') {
+          stack.classList.add('has-heading');
+          stack.classList.remove('has-wind');
+        } else {
+          stack.classList.add('has-wind');
+          stack.classList.remove('has-heading');
+        }
+      }
+    }
+
+    /**
+     * Switch top dial: 'wind' | 'compass'.
+     * Desktop default wind; phone default compass.
+     * opts.fromUser: true when user tapped (needed for iOS permission).
+     */
+    function setHeadingMode(mode, opts) {
+      opts = opts || {};
+      mode = (mode === 'compass') ? 'compass' : 'wind';
+      headingHudMode = mode;
+      var hud = document.getElementById('map-wind-hud');
+      if (hud) {
+        hud.classList.toggle('mode-wind', mode === 'wind');
+        hud.classList.toggle('mode-compass', mode === 'compass');
+      }
+      ensureTopHudVisible();
+
+      if (mode === 'compass') {
+        function go() {
+          startDeviceHeadingWatch();
+          if (deviceHeadingDeg != null) applyHeadingToUi(deviceHeadingDeg);
+          if (userLat != null && userLng != null) {
+            setGpsMarker(userLat, userLng, deviceHeadingDeg);
+          }
+          var hint = document.getElementById('map-heading-hint');
+          if (hint && deviceHeadingDeg == null) {
+            hint.textContent = opts.fromUser ? 'Calibrating…' : 'Tap if heading stuck';
+          }
+        }
+        if (opts.fromUser || headingPermissionState === 'granted') {
+          ensureDeviceOrientationPermission().then(function(ok) {
+            if (!ok) {
+              var hint = document.getElementById('map-heading-hint');
+              if (hint) hint.textContent = 'Enable motion access';
+              // Still show compass UI; may work without explicit permission on Android
+              go();
+              return;
+            }
+            go();
+          });
+        } else {
+          // Auto default on mobile: start listening (Android); iOS may need a tap later
+          startDeviceHeadingWatch();
+          if (userLat != null && userLng != null) setGpsMarker(userLat, userLng, deviceHeadingDeg);
+          var hint2 = document.getElementById('map-heading-hint');
+          if (hint2 && deviceHeadingDeg == null) {
+            hint2.textContent = 'Tap compass icon if locked';
+          }
+        }
+      } else {
+        // Wind mode: keep listening lightly optional — stop to save battery when not needed
+        stopDeviceHeadingWatch();
+        if (userLat != null && userLng != null) setGpsMarker(userLat, userLng, null);
+        // Re-apply last wind needle if we have it
+        if (lastMapWind && lastMapWind.wdir != null) {
+          updateMapWindHud(lastMapWind.wspd, lastMapWind.wdir, lastMapWind.isCurrent);
+        }
+      }
+    }
+    window.setHeadingMode = setHeadingMode;
+
+    function initHeadingHudDefault() {
+      // Wire swap buttons to pass fromUser for iOS permission
+      var toC = document.getElementById('mwh-to-compass');
+      var toW = document.getElementById('mwh-to-wind');
+      if (toC && !toC._wired) {
+        toC._wired = true;
+        toC.addEventListener('click', function(ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          setHeadingMode('compass', { fromUser: true });
+        });
+      }
+      if (toW && !toW._wired) {
+        toW._wired = true;
+        toW.addEventListener('click', function(ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          setHeadingMode('wind', { fromUser: true });
+        });
+      }
+      // Tap the heading dial itself to request motion permission (iOS) if still locked
+      var dial = document.getElementById('heading-compass-dial');
+      if (dial && !dial._wired) {
+        dial._wired = true;
+        dial.style.pointerEvents = 'auto';
+        dial.style.cursor = 'pointer';
+        dial.addEventListener('click', function(ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          setHeadingMode('compass', { fromUser: true });
+        });
+      }
+      // Defaults: desktop → wind, phone → compass
+      var phone = (typeof isPhoneLayout === 'function') ? isPhoneLayout() : false;
+      setHeadingMode(phone ? 'compass' : 'wind', { fromUser: false });
+      // Phone: show HUD immediately so compass is usable before weather loads
+      if (phone) ensureTopHudVisible();
+    }
 
     function updateMapWindHud(wspd, wdir, isCurrent) {
       var hud = document.getElementById('map-wind-hud');
@@ -9352,9 +9866,22 @@
       if (speedEl) speedEl.textContent = mph + ' mph';
       if (dirEl) dirEl.textContent = (isCurrent ? 'Now from ' : 'from ') + from;
       if (scentEl) scentEl.textContent = 'Scent → ' + drift;
+
+      // Always keep top unit visible once we have wind (or compass mode)
       hud.classList.add('active');
       var stack = document.getElementById('map-compass-radar');
-      if (stack) stack.classList.add('has-wind');
+      if (stack) {
+        if (headingHudMode === 'compass') {
+          stack.classList.add('has-heading');
+          stack.classList.remove('has-wind');
+        } else {
+          stack.classList.add('has-wind');
+          stack.classList.remove('has-heading');
+        }
+      }
+
+      // Only spin the wind needle when in wind mode (compass mode has its own dial)
+      if (headingHudMode !== 'wind') return;
 
       var needle = document.getElementById('compass-needle');
       if (!needle) return;
@@ -10431,6 +10958,8 @@
     window.onload = function() {
       // Phone vs desktop layout (also runs early in <head>; re-apply with body ready)
       applyDeviceLayout(true);
+      // Wind (desktop) vs device compass (phone) top dial default
+      if (typeof initHeadingHudDefault === 'function') initHeadingHudDefault();
       calendarTargetDate = new Date();
       selectedDate = new Date();
       renderCalendar();
