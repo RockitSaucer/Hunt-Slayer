@@ -156,6 +156,8 @@
     /* Left: steps 1-3 + weather/water underneath */
     .card-planner {
       min-width: 0;
+      position: relative;
+      z-index: 3; /* always above map column spill in min mode */
     }
     .dashboard-under-steps {
       margin-top: 18px;
@@ -186,6 +188,9 @@
       flex-direction: column;
       padding: 12px 14px 14px;
       min-width: 0;
+      z-index: 1;
+      isolation: isolate;
+      overflow: hidden;
     }
     .card-map .map-section-block {
       flex: 1 1 auto;
@@ -193,6 +198,7 @@
       flex-direction: column;
       min-height: 0;
       height: 100%;
+      overflow: hidden;
     }
     .card-map .map-wrapper {
       flex: 1 1 auto;
@@ -1131,19 +1137,41 @@
     .map-wrapper { margin-top: 15px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); position: relative; }
     /* Map height set in desktop / phone layout blocks above */
     /*
+     * Min-mode map clip (stable): map tiles/overlays stay inside the map column.
+     * Never use extreme z-index on the map — that caused map chrome to cover the app.
+     */
+    .map-wrapper:not(.fullscreen) {
+      overflow: hidden;
+      z-index: auto;
+      contain: layout style;
+    }
+    /*
      * Non-fullscreen: when a map-dot (or similar) popup is open, let it paint over the
-     * REG SLAYER brand banner above the map, and stay anchored to the orange dot.
+     * REG SLAYER brand banner above the map — without covering the planner column.
      */
     html.map-popup-covers-brand .brand-header {
-      z-index: 100;
+      z-index: 1;
     }
-    html.map-popup-covers-brand .card-map,
+    html.map-popup-covers-brand .app-shell {
+      position: relative;
+      z-index: 2;
+      overflow: visible;
+    }
+    html.map-popup-covers-brand .card-planner {
+      z-index: 4; /* still above map spill to the left */
+    }
+    html.map-popup-covers-brand .card-map {
+      overflow: visible;
+      z-index: 2;
+      isolation: auto;
+    }
     html.map-popup-covers-brand .card-map .map-section-block {
       overflow: visible;
     }
     html.map-popup-covers-brand .map-wrapper:not(.fullscreen) {
       overflow: visible;
-      z-index: 6000;
+      z-index: auto;
+      contain: none;
     }
     html.map-popup-covers-brand .map-wrapper:not(.fullscreen) #leaflet-map,
     html.map-popup-covers-brand .map-wrapper:not(.fullscreen) .leaflet-container,
@@ -1193,18 +1221,43 @@
     .detection-toast { background: var(--panel-light); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-top: 10px; display: none; border-left: 5px solid var(--accent); position: absolute; bottom: 70px; left: 20px; z-index: 10002; max-width: 320px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); }
     .detection-toast.active { display: block; }
     /* Free-map dot action menu - high contrast, large tap targets */
-    /* Popups always above free-standing compass dial (z-index 10006) */
+    /*
+     * Stacking (stable):
+     *   leaflet map ………… z 1  (z 20 only while a popup is open → covers compass)
+     *   compass dial ……… z 12
+     *   bottom toolbar …… z 80  (ALWAYS above map — never buried under tiles/popups)
+     *   Max/Min buttons … z 90
+     * Raising the whole Leaflet container over the bottom bar (old z:40 vs z:30) made
+     * the toolbar “randomly disappear” whenever a popup opened or map-popup-open stuck.
+     */
+    .map-wrapper #leaflet-map.leaflet-container,
+    .map-wrapper .leaflet-container {
+      position: relative;
+      z-index: 1;
+    }
     .map-wrapper .leaflet-popup-pane {
-      z-index: 10050 !important;
+      z-index: 700 !important;
     }
     .map-wrapper .leaflet-tooltip-pane {
-      z-index: 10040 !important;
+      z-index: 650 !important;
+    }
+    /* Popup open: lift map (and its popups) above the compass only — not above the toolbar */
+    .map-wrapper.map-popup-open #leaflet-map.leaflet-container,
+    .map-wrapper.map-popup-open .leaflet-container {
+      z-index: 20;
+    }
+    .map-wrapper.map-popup-open .map-compass-radar {
+      z-index: 5 !important;
     }
     .map-wrapper.fullscreen .leaflet-popup-pane {
-      z-index: 2147483050 !important;
+      z-index: 700 !important;
     }
     .map-wrapper.fullscreen .leaflet-tooltip-pane {
-      z-index: 2147483040 !important;
+      z-index: 650 !important;
+    }
+    .map-wrapper.fullscreen.map-popup-open #leaflet-map.leaflet-container,
+    .map-wrapper.fullscreen.map-popup-open .leaflet-container {
+      z-index: 20;
     }
     .map-dot-popup .leaflet-popup-content-wrapper {
       background: #0f120e;
@@ -1483,7 +1536,8 @@
       top: 10px;
       left: 50%;
       transform: translateX(-50%);
-      z-index: 10006;
+      /* Above map tiles (z=1); drops under map when .map-popup-open; always under toolbar */
+      z-index: 12;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -1499,7 +1553,7 @@
       overflow: visible;
     }
     .map-wrapper.fullscreen .map-compass-radar {
-      z-index: 2147483002;
+      z-index: 12;
       top: max(10px, env(safe-area-inset-top, 0px));
     }
     /* User-dragged position (absolute within map-wrapper) */
@@ -2574,8 +2628,11 @@
       left: 50%;
       bottom: max(10px, env(safe-area-inset-bottom, 0px));
       transform: translateX(-50%);
-      z-index: 10006;
-      display: grid;
+      /* Stable: always above map/compass/popups so the bar never vanishes under Leaflet */
+      z-index: 80 !important;
+      display: grid !important;
+      visibility: visible !important;
+      opacity: 1 !important;
       grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
       align-items: center;
       column-gap: var(--mbb-gap);
@@ -2592,8 +2649,17 @@
     }
     .map-bottom-bar > * { pointer-events: auto; }
     .map-wrapper.fullscreen .map-bottom-bar {
-      z-index: 2147483001;
+      z-index: 80 !important;
       bottom: max(14px, env(safe-area-inset-bottom, 0px));
+    }
+    /* Never hide the chrome bar via popup stacking or accidental utility classes */
+    .map-wrapper.map-popup-open .map-bottom-bar,
+    .map-wrapper.draw-mode .map-bottom-bar,
+    .map-wrapper.fullscreen.map-popup-open .map-bottom-bar {
+      display: grid !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      z-index: 80 !important;
     }
     /* Equal-height controls on the bar */
     .map-bottom-bar .mbb-ctrl {
@@ -2746,7 +2812,7 @@
       position: relative;
       pointer-events: auto;
       flex-shrink: 0;
-      z-index: 10006;
+      z-index: 2;
     }
     .map-layers-menu.map-layers-bottom {
       position: relative;
@@ -2754,11 +2820,11 @@
       bottom: auto;
       top: auto;
       transform: none;
-      z-index: 10006;
+      z-index: 2;
       pointer-events: auto;
     }
     .map-wrapper.fullscreen .map-layers-menu.map-layers-bottom {
-      z-index: 2147483001;
+      z-index: 2;
     }
     /* Tools pack tight next to date — never push date around */
     .map-draw-tools {
@@ -2895,18 +2961,29 @@
         transform: translateX(-50%) scale(0.92);
       }
     }
-    /* Settings modal */
+    /* Settings modal — must sit above true-fullscreen map (z 2147483000) */
     #settings-modal {
       display: none;
       position: fixed;
       inset: 0;
-      z-index: 200080;
+      z-index: 2147483640;
       background: rgba(0,0,0,0.65);
       align-items: center;
       justify-content: center;
       padding: 16px;
     }
     #settings-modal.active { display: flex; }
+    /* Other app dialogs also above Max map */
+    #regs-modal {
+      z-index: 2147483640 !important;
+    }
+    #shape-save-modal,
+    #path-edit-modal,
+    #sort-hunts-modal,
+    #dist-address-modal,
+    .app-prompt-modal {
+      z-index: 2147483640 !important;
+    }
     .settings-card {
       background: var(--panel);
       border: 1px solid var(--border);
@@ -3125,7 +3202,7 @@
       position: absolute;
       bottom: 20px;
       right: 20px;
-      z-index: 10001;
+      z-index: 32;
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -3140,7 +3217,7 @@
       left: 50%;
       top: 50%;
       transform: translate(-50%, -50%);
-      z-index: 10040;
+      z-index: 45; /* above leaflet when popup-open (40) */
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 12px;
@@ -3326,7 +3403,7 @@
       position: absolute;
       top: 10px;
       right: 10px;
-      z-index: 10000;
+      z-index: 90; /* above bottom bar; always reachable */
       background: var(--panel);
       border: 1px solid var(--border);
       color: var(--accent);
@@ -3342,7 +3419,7 @@
     }
     .map-fs-btn:hover { border-color: var(--accent); }
     .map-wrapper.fullscreen .map-fs-btn {
-      z-index: 2147483001;
+      z-index: 90;
       top: max(12px, env(safe-area-inset-top, 0px));
       right: max(12px, env(safe-area-inset-right, 0px));
     }
@@ -4606,7 +4683,8 @@
 
     // Public lands overlay + list (ADCNR, TVA, federal) - cached ~30 days
     const ADCNR_BASE = 'https://conservationgis.alabama.gov/adcnrweb/rest/services';
-    const ADCNR_CACHE_KEY = 'alabama_hunt_public_lands_v4'; // v4: adds USACE Corps open-access lands
+    // v5: NWR fill uses FWS Public Hunt Units 2025-2026 (not full admin refuge outline)
+    const ADCNR_CACHE_KEY = 'alabama_hunt_public_lands_v5';
     const ADCNR_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
     const HIDDEN_LOCS_KEY = 'alabama_hunt_hidden_locations_v1';
     const USER_STANDS_KEY = 'alabama_hunt_user_stands_v1';
@@ -4749,7 +4827,8 @@
         fillOpacity: PUBLIC_LAND_COLORS.wma.fillOpacity,
         weight: PUBLIC_LAND_COLORS.wma.weight,
         listMode: 'unit', nameFields: ['Name'],
-        splitByZone: true, drawOnMap: true, maxOffset: 0.00005
+        // ADCNR official WMA polygons (Outdoor Alabama AREA maps)
+        splitByZone: true, drawOnMap: true, maxOffset: 0.00002
       },
       {
         key: 'foreverWild', label: 'Forever Wild', typeLabel: 'Forever Wild',
@@ -4796,15 +4875,24 @@
         nameSuffix: ' (TVA)', splitByZone: true, drawOnMap: true, maxOffset: 0.00008
       },
       {
+        // Official FWS “Public Hunt Units” (50 CFR Part 32, 2025–2026 season layer).
+        // Prefer this over full NWR administrative boundaries — Wheeler’s admin outline
+        // includes Redstone Arsenal, HQ closed zones, and mixed city/state ownership that
+        // are NOT all open FWS hunt land. Huntable=No polygons are excluded in the where.
         key: 'nwr', label: 'National Wildlife Refuge', typeLabel: 'NWR',
-        url: 'https://services.arcgis.com/QVENGdaPbd4LUkLV/arcgis/rest/services/National_Wildlife_Refuge_System_Boundaries/FeatureServer/0/query',
-        where: "RSL_TYPE = 'NWR'", useBbox: true,
-        outFields: 'ORGNAME,RSL_TYPE,ORGCODE,OBJECTID',
+        url: 'https://services.arcgis.com/QVENGdaPbd4LUkLV/arcgis/rest/services/FWS_NWRS_HQ_PublicHuntUnits_view/FeatureServer/0/query',
+        where: "State = 'AL' AND Organization_Type = 'NWR' AND Huntable <> 'No'",
+        useBbox: true,
+        outFields: 'Organization_Name,Hunt_Unit_Name,Huntable,Acreage,Organization_Code,Hunting_Website,Station_Website,Permit_Required,State,OBJECTID',
         color: PUBLIC_LAND_COLORS.nwr.color,
         fillOpacity: PUBLIC_LAND_COLORS.nwr.fillOpacity,
         weight: PUBLIC_LAND_COLORS.nwr.weight,
-        listMode: 'unit', nameFields: ['ORGNAME'],
-        noSunday: true, splitByZone: true, drawOnMap: true, maxOffset: 0.00005
+        // Organization_Name matches deer profiles (Wheeler, Cahaba, …); Hunt_Unit_Name is the subunit
+        listMode: 'unit', nameFields: ['Organization_Name', 'Hunt_Unit_Name'],
+        noSunday: true, splitByZone: true, drawOnMap: true,
+        // Full vertex resolution (no simplification) — Wheeler Main Hunt Area is multi-ring & detailed
+        maxOffset: 0,
+        notes: 'FWS Public Hunt Units 2025–2026 (not full refuge admin boundary). Confirm signed refuge brochure before hunting.'
       },
       {
         key: 'nps', label: 'National Park Service', typeLabel: 'NPS',
@@ -5022,6 +5110,7 @@
 
       // 1) GIS-provided map / AREA permit (most current unit PDF when present)
       var gisCandidates = [
+        { url: attrs.Hunting_Website || attrs.Station_Website, label: 'Refuge hunting map & rules (FWS)' },
         { url: attrs.MapLink || attrs.PMapLink || attrs.Link2, label: 'Area map / AREA permit (PDF)' },
         { url: attrs.Link || attrs.PageLink, label: 'Area rules & map (ADCNR link)' },
         { url: attrs.TractInfoL, label: 'Tract information / map' }
@@ -6752,7 +6841,8 @@
       adcnrLoading = Promise.all(ADCNR_LAYERS.map(fetchAdcnrLayer)).then(function(layers) {
         var payload = {
           timestamp: Date.now(),
-          source: 'ADCNR + TVA + USFWS + USFS + USACE (PAD-US) + NPS',
+          source: 'ADCNR + TVA + FWS Public Hunt Units 2025-26 + USFS + USACE (PAD-US) + NPS',
+          cacheKey: ADCNR_CACHE_KEY,
           layers: layers
         };
         adcnrLandsData = payload;
@@ -6814,13 +6904,19 @@
     function buildAdcnrPopup(layer, attrs) {
       attrs = attrs || {};
       var name = attrName(attrs, layer.nameFields || ['Name']) || layer.label;
-      var acres = attrs.Acres != null ? attrs.Acres : attrs.gis_acres;
+      var acres = attrs.Acres != null ? attrs.Acres : (attrs.Acreage != null ? attrs.Acreage : attrs.gis_acres);
       var html = '<strong style="color:' + layer.color + ';">' + layer.label + '</strong><br><strong>' + name + '</strong>';
+      // FWS hunt-unit subunit (e.g. Wheeler → Main Hunt Area / Flint Creek West)
+      if (attrs.Hunt_Unit_Name && String(attrs.Hunt_Unit_Name).trim() &&
+          String(attrs.Hunt_Unit_Name).trim().toLowerCase() !== String(name || '').toLowerCase()) {
+        html += '<br><span style="color:var(--muted);">Hunt unit: ' + String(attrs.Hunt_Unit_Name).trim() + '</span>';
+      }
       if (acres != null && !isNaN(acres)) html += '<br>' + Math.round(acres).toLocaleString() + ' acres';
       if (attrs.County) html += '<br>' + attrs.County;
       if (attrs.MapYear) html += '<br>Map year: ' + attrs.MapYear;
       if (attrs.REC_TYPE) html += '<br>' + attrs.REC_TYPE;
       if (attrs.RESTRICTED) html += '<br><span style="color:var(--muted);">' + attrs.RESTRICTED + '</span>';
+      if (attrs.Huntable != null && attrs.Huntable !== '') html += '<br>Huntable: ' + attrs.Huntable;
       if (attrs.CanHunt != null && attrs.CanHunt !== '') html += '<br>Can hunt: ' + attrs.CanHunt;
       if (attrs.InWMA) html += '<br>In WMA: ' + attrs.InWMA;
       if (layer.notes) html += '<br><span style="color:var(--accent);">' + layer.notes + '</span>';
@@ -7118,7 +7214,12 @@
 
           // Never list non-huntable refuges (or any NWR not on the deer-hunt whitelist)
           if (layer.key === 'nwr' || layer.typeLabel === 'NWR') {
-            if (!isHuntableDeerRefugeName(name)) return;
+            var orgForList = attrs.Organization_Name || name;
+            if (explicitCanHuntFlag(attrs) === false) return;
+            if (/redstone\s*arsenal|administrative\s*area/i.test(attrs.Hunt_Unit_Name || '')) return;
+            if (!isHuntableDeerRefugeName(orgForList) && !isHuntableDeerRefugeName(name)) return;
+            // List under refuge name (collapse subunits like Main Hunt Area / Garth into one row)
+            name = normalizeUnitName(orgForList || name);
           }
           if (isNonHuntableRefugeName(name)) return;
 
@@ -7674,6 +7775,14 @@
      */
     function explicitCanHuntFlag(attrs) {
       if (!attrs) return null;
+      // FWS Public Hunt Units (2025–2026) — primary signal for NWR hunt polygons
+      if (attrs.Huntable != null && String(attrs.Huntable).trim() !== '') {
+        var h = String(attrs.Huntable).trim().toLowerCase();
+        if (h === 'no' || h === 'n' || h === 'false' || h === '0' || h === 'closed' || h === 'prohibited') return false;
+        if (h === 'yes' || h === 'y' || h === 'true' || h === '1' || h === 'open' || h === 'huntable') return true;
+        // e.g. "Special Regulations Apply" → open under refuge-specific rules
+        if (h.indexOf('special') !== -1 || h.indexOf('regulat') !== -1 || h.indexOf('permit') !== -1) return true;
+      }
       var raw = attrs.CanHunt;
       if (raw == null || raw === '') return null;
       var s = String(raw).trim().toLowerCase();
@@ -7723,9 +7832,19 @@
       // National forests: open under statewide/public rules (stalk / general forest) — keep outline
       if (layer.key === 'usfs') return true;
 
-      // Federal refuges: whitelist only (must have deer-hunt profile / allow list)
+      // Federal refuges: FWS hunt-unit polygons only when Huntable≠No (already filtered in where)
+      // and refuge is on the deer-hunt whitelist (Wheeler, Cahaba, Eufaula, …).
       if (layer.key === 'nwr' || layer.typeLabel === 'NWR' || layer.typeLabel === 'Refuge') {
-        return isHuntableDeerRefugeName(name);
+        // Prefer Organization_Name for profile match (Hunt_Unit_Name alone is "Main Hunt Area")
+        var orgName = attrs.Organization_Name || name;
+        if (canHunt === false) return false;
+        // Closed FWS subunits that sometimes slip through naming (arsenal / admin HQ)
+        if (/redstone\s*arsenal|administrative\s*area|visitor\s*center/i.test(attrs.Hunt_Unit_Name || '') ||
+            /redstone\s*arsenal/i.test(name || '')) {
+          return false;
+        }
+        // Match deer profile on refuge org name (not subunit label)
+        return isHuntableDeerRefugeName(orgName) || isHuntableDeerRefugeName(name);
       }
 
       // Forever Wild: only highlight when CanHunt is explicitly Yes.
@@ -9007,6 +9126,7 @@
       }
       if (typeof wireGpsMarkerZoomScale === 'function') wireGpsMarkerZoomScale();
       if (typeof wireSmartMapPopups === 'function') wireSmartMapPopups();
+      if (typeof ensureMapBottomBarVisible === 'function') ensureMapBottomBarVisible();
 
       map.on('click', function(e) {
         // Stand placement mode: click sets stand coordinates (no free-form menu)
@@ -9183,6 +9303,50 @@
       } catch (eCb) {}
     }
 
+    /** Lift Leaflet above free-standing compass so popups cover the dial (toolbar stays on top). */
+    function setMapPopupOpenStack(on) {
+      try {
+        var w = document.getElementById('map-wrapper') || document.querySelector('.map-wrapper');
+        if (w) w.classList.toggle('map-popup-open', !!on);
+      } catch (ePo) {}
+    }
+
+    /**
+     * True only while Leaflet has an actively bound open popup.
+     * Do NOT scan the popup pane DOM — Leaflet leaves detached/closed nodes that
+     * falsely keep map-popup-open forever and bury the bottom toolbar.
+     */
+    function mapHasOpenPopup() {
+      try {
+        return !!(map && map._popup);
+      } catch (eHp) {
+        return false;
+      }
+    }
+
+    function clearMapPopupStackingState() {
+      setMapPopupCoversBrand(false);
+      setMapPopupOpenStack(false);
+    }
+
+    /** Keep the slim bottom toolbar mounted and visible (defensive). */
+    function ensureMapBottomBarVisible() {
+      try {
+        var bar = document.getElementById('map-bottom-bar');
+        if (!bar) return;
+        bar.style.display = '';
+        bar.style.visibility = 'visible';
+        bar.style.opacity = '1';
+        bar.removeAttribute('hidden');
+        // If something yanked it out of the map chrome, put it back
+        var wrap = document.getElementById('map-wrapper') || document.querySelector('.map-wrapper');
+        if (wrap && bar.parentNode !== wrap) {
+          wrap.appendChild(bar);
+        }
+      } catch (eBar) {}
+    }
+    window.ensureMapBottomBarVisible = ensureMapBottomBarVisible;
+
     function smartPositionMapPopup(popup) {
       if (!map || !popup) return;
       try {
@@ -9253,6 +9417,9 @@
       map._smartPopupsWired = true;
       map.on('popupopen', function(e) {
         if (!e || !e.popup) return;
+        // Popups above compass dial only — bottom toolbar stays on top (z-index 80)
+        setMapPopupOpenStack(true);
+        ensureMapBottomBarVisible();
         // After layout, measure size and pin above the marker
         requestAnimationFrame(function() {
           requestAnimationFrame(function() {
@@ -9261,13 +9428,22 @@
         });
       });
       map.on('popupclose', function() {
-        // Drop brand-cover mode only when no other popup remains open
-        setTimeout(function() {
+        // Always clear stacking when Leaflet reports no active popup
+        var clearIfDone = function() {
           try {
-            if (map && map._popup) return; // another popup still open
+            if (mapHasOpenPopup()) return;
           } catch (e0) {}
-          setMapPopupCoversBrand(false);
-        }, 0);
+          clearMapPopupStackingState();
+          ensureMapBottomBarVisible();
+        };
+        setTimeout(clearIfDone, 0);
+        setTimeout(clearIfDone, 50);
+        setTimeout(clearIfDone, 200);
+      });
+      // Extra safety: clicks / zoom should never leave the toolbar buried
+      map.on('click zoomstart moveend', function() {
+        ensureMapBottomBarVisible();
+        if (!mapHasOpenPopup()) clearMapPopupStackingState();
       });
     }
 
@@ -14530,6 +14706,12 @@
       w.style.right = '';
       w.style.bottom = '';
       w.style.inset = '';
+      // Reset popup stacking so min-mode never keeps elevated overflow after Max→Min
+      try {
+        if (!mapHasOpenPopup()) clearMapPopupStackingState();
+      } catch (eStack) {
+        try { clearMapPopupStackingState(); } catch (e2) {}
+      }
       var mapEl = document.getElementById('leaflet-map');
       if (mapEl) {
         mapEl.style.width = '';
@@ -14631,13 +14813,24 @@
     function openSettingsModal(tab) {
       var modal = document.getElementById('settings-modal');
       if (!modal) return;
+      // Always mount on <body> so Max-mode map (reparented, huge z-index) cannot bury it
+      try {
+        if (modal.parentNode !== document.body) {
+          document.body.appendChild(modal);
+        }
+      } catch (eRe) {}
       syncSettingsUiFromState();
       if (tab) switchSettingsTab(tab);
       modal.classList.add('active');
+      modal.style.zIndex = '2147483640';
+      modal.setAttribute('aria-hidden', 'false');
     }
     function closeSettingsModal() {
       var modal = document.getElementById('settings-modal');
-      if (modal) modal.classList.remove('active');
+      if (modal) {
+        modal.classList.remove('active');
+        modal.setAttribute('aria-hidden', 'true');
+      }
       applyAppSettings({ fromUi: false });
     }
     window.openSettingsModal = openSettingsModal;
@@ -14760,6 +14953,8 @@
         try { stopMapRadar(); } catch (eR) {}
       }
       if (typeof updateCompassToolbarBtn === 'function') updateCompassToolbarBtn();
+      // Never let tool toggles leave the bar itself missing
+      if (typeof ensureMapBottomBarVisible === 'function') ensureMapBottomBarVisible();
     }
 
     /** Slim bottom bar weapon label: PEW (Rifle/Gun) / Bow / Prim / Any */
