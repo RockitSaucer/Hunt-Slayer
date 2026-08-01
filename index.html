@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>REG SLAYER - Alabama Deer Season Planner v4.0</title>
+  <title>REG SLAYER - Alabama Deer Season Planner v4.1</title>
   <!-- Detect phone vs desktop as early as possible (reduces layout flash) -->
   <script>
     (function () {
@@ -45,7 +45,7 @@
     html, body { height: 100%; }
     body { background: var(--bg); color: var(--ink); margin: 0; padding: 0; line-height: 1.5; min-height: 100vh; display: flex; flex-direction: column; }
 
-    /* ========== BRAND HEADER (v4.0 - large logo fills top bar) ========== */
+    /* ========== BRAND HEADER (v4.1 - large logo fills top bar) ========== */
     .brand-header {
       background:
         linear-gradient(180deg, rgba(13,15,12,0.15) 0%, rgba(13,15,12,0.88) 100%),
@@ -446,6 +446,174 @@
       align-items: stretch;
       width: 100%;
       margin-bottom: 16px;
+      position: relative;
+    }
+    /* Desktop: collapse steps 1–3 into a thin strip */
+    .planner-minmax-btn {
+      display: none;
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      z-index: 6;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--accent);
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+    }
+    .planner-minmax-btn:hover {
+      border-color: var(--accent);
+      background: var(--panel-light);
+    }
+    .planner-collapsed-strip {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .planner-mini-steps {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .planner-mini-steps .step-num {
+      width: 26px;
+      height: 26px;
+      font-size: 12px;
+      background: var(--accent);
+      color: #000;
+      margin: 0;
+    }
+    .planner-mini-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+    }
+    html.layout-desktop .planner-minmax-btn {
+      display: inline-flex;
+    }
+    html.layout-desktop .planner-row.is-minimized {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 12px;
+      min-height: 44px;
+      background: var(--panel-light);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-sizing: border-box;
+    }
+    html.layout-desktop .planner-row.is-minimized > .planner-cal-col,
+    html.layout-desktop .planner-row.is-minimized > .planner-wpn-col,
+    html.layout-desktop .planner-row.is-minimized > .planner-loc-col {
+      display: none !important;
+    }
+    html.layout-desktop .planner-row.is-minimized .planner-collapsed-strip {
+      display: flex;
+    }
+    html.layout-desktop .planner-row.is-minimized .planner-minmax-btn {
+      position: static;
+      flex: 0 0 auto;
+    }
+    html.layout-phone .planner-minmax-btn,
+    html.layout-phone .planner-collapsed-strip {
+      display: none !important;
+    }
+    /* Sort-by sheet for Available Hunts */
+    #sort-hunts-modal .shape-save-card {
+      max-width: 360px;
+      padding: 14px 14px 12px;
+    }
+    .sort-options {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin: 4px 0 12px;
+    }
+    .sort-option-btn {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-light);
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.25;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .sort-option-btn:hover {
+      border-color: var(--muted);
+    }
+    .sort-option-btn.active {
+      border-color: var(--green);
+      background: rgba(72, 106, 47, 0.22);
+      box-shadow: inset 0 0 0 1px var(--green);
+    }
+    .sort-option-btn .so-check {
+      flex: 0 0 18px;
+      width: 18px;
+      height: 18px;
+      margin-top: 1px;
+      border-radius: 50%;
+      border: 2px solid var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: transparent;
+      box-sizing: border-box;
+    }
+    .sort-option-btn.active .so-check {
+      border-color: var(--green);
+      background: var(--green);
+      color: #fff;
+    }
+    .sort-option-btn .so-body {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .sort-option-btn .so-title {
+      display: block;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .sort-option-btn .so-sub {
+      display: block;
+      margin-top: 2px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    #sort-by-btn {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+    #sort-by-btn.has-custom {
+      border-color: var(--accent);
+      color: var(--accent);
     }
     .planner-cal-col,
     .planner-wpn-col,
@@ -484,6 +652,10 @@
     .planner-loc-col #step-3-section .step-header {
       margin-bottom: 12px;
       flex-shrink: 0;
+    }
+    /* Room for the desktop − minimize control over step 3 */
+    html.layout-desktop .planner-loc-col #step-3-section .step-header {
+      padding-right: 34px;
     }
     .planner-wpn-col #step-2-section .step-title,
     .planner-loc-col #step-3-section .step-title {
@@ -574,6 +746,12 @@
     .locations-in-step3 .list-toolbar .filter-btn {
       padding: 4px 7px;
       font-size: 10px;
+    }
+    .locations-in-step3 .list-toolbar .list-toolbar-left {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      align-items: center;
     }
     .locations-in-step3 .location-list {
       flex: 1 1 auto;
@@ -2007,6 +2185,44 @@
     .map-draw-stats.active { display: block; }
     /* Phone: active tool chrome is top-left (see .tool-active .mdt-tools-panel) */
     .map-wrapper.draw-mode #leaflet-map { cursor: crosshair; }
+    /* Draw-mode close vertices: DOM markers (not Canvas) so clicks always reach the dot */
+    .draw-vertex-icon {
+      background: transparent !important;
+      border: none !important;
+    }
+    .draw-vertex-dot {
+      width: 18px;
+      height: 18px;
+      margin: 3px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.55);
+      box-sizing: border-box;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+    .draw-vertex-dot.is-close {
+      width: 22px;
+      height: 22px;
+      margin: 1px;
+      background: #fbbf24;
+      cursor: pointer;
+    }
+    .draw-vertex-dot.is-close.is-first {
+      background: #22c55e;
+      width: 24px;
+      height: 24px;
+      margin: 0;
+    }
+    .draw-vertex-dot.is-latest {
+      background: #e59a18;
+      pointer-events: none;
+      cursor: crosshair;
+    }
+    .draw-vertex-dot.is-measure {
+      background: #38bdf8;
+      pointer-events: none;
+    }
 
     /* LiDAR basemaps: className is on the Leaflet layer container */
     .leaflet-layer.basemap-lidar-blend {
@@ -3190,9 +3406,37 @@
       min-width: 0;
     }
     .location-filters-box .lf-seg .filter-btn {
-      flex: 1;
-      padding: 7px 8px;
+      flex: 1 1 0;
+      min-width: 0;
+      padding: 7px 6px;
       font-size: 12px;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    /* From: equal My Location / ZIP / Address; abbreviate Address only when tight */
+    .location-filters-box .lf-seg-from {
+      container-type: inline-size;
+      container-name: distfrom;
+    }
+    .location-filters-box .lf-seg-from .filter-btn {
+      flex: 1 1 0;
+      min-width: 0;
+      box-sizing: border-box;
+    }
+    #dist-origin-address .addr-short { display: none; }
+    #dist-origin-address .addr-full { display: inline; }
+    @container distfrom (max-width: 268px) {
+      #dist-origin-address .addr-full { display: none; }
+      #dist-origin-address .addr-short { display: inline; }
+    }
+    /* Fallback if container queries unsupported: narrow planner / phone */
+    @supports not (container-type: inline-size) {
+      @media (max-width: 1100px) {
+        #dist-origin-address .addr-full { display: none; }
+        #dist-origin-address .addr-short { display: inline; }
+      }
     }
     .location-filters-box #land-private {
       flex: 0 0 auto;
@@ -3239,6 +3483,84 @@
       color: var(--ink);
       font-size: 12px;
     }
+    /* Address origin modal */
+    #dist-address-modal .shape-save-card { max-width: 420px; }
+    #dist-address-input {
+      width: 100%;
+      box-sizing: border-box;
+      background: var(--panel-light);
+      border: 1px solid var(--border);
+      color: var(--ink);
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+    #dist-address-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    #dist-address-status {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.4;
+      min-height: 1.2em;
+    }
+    #dist-address-status.is-error { color: var(--danger); }
+    #dist-address-status.is-ok { color: var(--accent); }
+    #dist-address-suggest-wrap {
+      display: none;
+      margin-top: 10px;
+    }
+    #dist-address-suggest-wrap.active { display: block; }
+    #dist-address-suggest-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    #dist-address-suggest-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: min(40vh, 260px);
+      overflow-y: auto;
+    }
+    .dist-addr-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-light);
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+    .dist-addr-option:hover { border-color: var(--muted); }
+    .dist-addr-option.active {
+      border-color: var(--green);
+      background: rgba(72, 106, 47, 0.22);
+      box-shadow: inset 0 0 0 1px var(--green);
+    }
+    .dist-addr-option .dao-radio {
+      flex: 0 0 16px;
+      width: 16px;
+      height: 16px;
+      margin-top: 2px;
+      border-radius: 50%;
+      border: 2px solid var(--muted);
+      box-sizing: border-box;
+    }
+    .dist-addr-option.active .dao-radio {
+      border-color: var(--green);
+      background: radial-gradient(circle, var(--green) 0 45%, transparent 48%);
+    }
+    .dist-addr-option .dao-text { flex: 1 1 auto; min-width: 0; }
     .location-filters-box #dist-status {
       font-size: 10px;
       color: var(--muted);
@@ -3435,11 +3757,11 @@
   </style>
 </head>
 <body>
-  <!-- Brand header: large logo + small V4.0 at bottom-right of logo -->
+  <!-- Brand header: large logo + small V4.1 at bottom-right of logo -->
   <header class="brand-header" role="banner">
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 4.0">V4.0</span>
+      <span class="brand-version" aria-label="Version 4.1">V4.1</span>
     </div>
   </header>
 
@@ -3475,7 +3797,16 @@
   <div class="container">
     <div class="card card-planner">
       <!-- Square calendar (left fixed) + weapons stacked in freed space on the right -->
-      <div class="planner-row">
+      <div class="planner-row" id="planner-row">
+        <button type="button" class="planner-minmax-btn" id="planner-minmax-btn" onclick="togglePlannerStepsMin()" title="Minimize steps 1–3" aria-label="Minimize steps 1–3" aria-expanded="true">−</button>
+        <div class="planner-collapsed-strip" id="planner-collapsed-strip" aria-hidden="true">
+          <div class="planner-mini-steps" aria-hidden="true">
+            <div class="step-num" id="planner-mini-1">1</div>
+            <div class="step-num" id="planner-mini-2">2</div>
+            <div class="step-num" id="planner-mini-3">3</div>
+          </div>
+          <span class="planner-mini-label">Steps 1–3</span>
+        </div>
         <div class="planner-cal-col" id="planner-cal-col">
           <div class="step-section active" id="step-1-section">
             <div class="step-header"><div class="step-num">1</div><span class="step-title">Select Hunt Date</span></div>
@@ -3523,7 +3854,7 @@
             <div class="btn-group weapon-stack">
               <button class="filter-btn" id="wpn-either" onclick="setWeapon('Either')">Either weapon</button>
               <button class="filter-btn" id="wpn-archery" onclick="setWeapon('Archery')">Archery</button>
-              <button class="filter-btn" id="wpn-gun" onclick="setWeapon('Gun')">Gun</button>
+              <button class="filter-btn" id="wpn-gun" onclick="setWeapon('Gun')" title="Rifle (modern gun season)">Rifle</button>
               <button class="filter-btn" id="wpn-primitive" onclick="setWeapon('Primitive')">Primitive</button>
             </div>
           </div>
@@ -3543,9 +3874,12 @@
               </div>
               <div class="lf-row">
                 <span class="lf-label">From</span>
-                <div class="lf-seg">
+                <div class="lf-seg lf-seg-from" id="dist-origin-seg">
                   <button type="button" class="filter-btn active" id="dist-origin-gps" onclick="setDistOriginMode('gps')">My Location</button>
                   <button type="button" class="filter-btn" id="dist-origin-zip" onclick="setDistOriginMode('zip')">ZIP</button>
+                  <button type="button" class="filter-btn" id="dist-origin-address" onclick="setDistOriginMode('address')" title="Distance from a street address">
+                    <span class="addr-full">Address</span><span class="addr-short">Addr</span>
+                  </button>
                 </div>
               </div>
               <div class="lf-row">
@@ -3571,9 +3905,10 @@
             <!-- List fills dead space under step-3 filters -->
             <div class="locations-in-step3" id="locations-under-steps">
               <div class="list-toolbar">
-                <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                <div class="list-toolbar-left">
                   <button class="filter-btn active" id="v-toggle-all" onclick="setViewFilterMode('all')">Show All</button>
                   <button class="filter-btn" id="v-toggle-sel" onclick="setViewFilterMode('selected')">Selected</button>
+                  <button type="button" class="filter-btn" id="sort-by-btn" onclick="openSortHuntsModal()" title="Change list order">Sort by</button>
                 </div>
                 <button id="restore-hidden-btn" onclick="restoreAllHidden()" style="background:var(--green);border:none;color:#fff;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:10px;font-weight:bold;display:none;">Restore</button>
                 <span id="hidden-count-label" style="font-size:10px;color:var(--muted);"></span>
@@ -3962,6 +4297,66 @@
     </div>
   </footer>
 
+  <!-- Distance origin: street address lookup -->
+  <div id="dist-address-modal" class="app-prompt-modal" hidden style="display:none;" onclick="if(event.target===this)closeDistAddressModal()">
+    <div class="shape-save-card" role="dialog" aria-modal="true" aria-labelledby="dist-address-title" onclick="event.stopPropagation()">
+      <h3 id="dist-address-title">Distance from address</h3>
+      <div class="ss-meta">Enter a street address. Hunt distances are measured from this point (map pin marks the origin).</div>
+      <label for="dist-address-input">Address</label>
+      <input type="text" id="dist-address-input" placeholder="e.g. 123 Main St, Birmingham, AL 35203" autocomplete="street-address" />
+      <div id="dist-address-status" role="status" aria-live="polite"></div>
+      <div id="dist-address-suggest-wrap">
+        <div id="dist-address-suggest-title">Did you mean this address?</div>
+        <div id="dist-address-suggest-list" role="listbox" aria-label="Address suggestions"></div>
+      </div>
+      <div class="shape-save-actions">
+        <button type="button" class="ss-save" id="dist-address-ok-btn" onclick="confirmDistAddressModal()">OK</button>
+        <button type="button" class="ss-cancel" onclick="closeDistAddressModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sort Available Hunts list -->
+  <div id="sort-hunts-modal" class="app-prompt-modal" hidden style="display:none;" onclick="if(event.target===this)closeSortHuntsModal()">
+    <div class="shape-save-card" role="dialog" aria-modal="true" aria-labelledby="sort-hunts-title">
+      <h3 id="sort-hunts-title">Sort Available Hunts</h3>
+      <div class="ss-meta">Choose how open tracts are ordered in the list.</div>
+      <div class="sort-options" id="sort-options">
+        <button type="button" class="sort-option-btn" data-sort="alpha" onclick="applyHuntListSort('alpha')">
+          <span class="so-check" aria-hidden="true">✓</span>
+          <span class="so-body">
+            <span class="so-title">Alphabetical</span>
+            <span class="so-sub">A → Z by area name</span>
+          </span>
+        </button>
+        <button type="button" class="sort-option-btn" data-sort="dist-closest" onclick="applyHuntListSort('dist-closest')">
+          <span class="so-check" aria-hidden="true">✓</span>
+          <span class="so-body">
+            <span class="so-title">Distance: closest</span>
+            <span class="so-sub">Nearest to furthest from your chosen origin (GPS, ZIP, or address)</span>
+          </span>
+        </button>
+        <button type="button" class="sort-option-btn" data-sort="dist-furthest" onclick="applyHuntListSort('dist-furthest')">
+          <span class="so-check" aria-hidden="true">✓</span>
+          <span class="so-body">
+            <span class="so-title">Distance: furthest</span>
+            <span class="so-sub">Furthest to nearest from GPS, ZIP, or address</span>
+          </span>
+        </button>
+        <button type="button" class="sort-option-btn" data-sort="peak-rut" onclick="applyHuntListSort('peak-rut')">
+          <span class="so-check" aria-hidden="true">✓</span>
+          <span class="so-body">
+            <span class="so-title">Peak Rut</span>
+            <span class="so-sub">Closest to each area’s peak-rut day. Post-rut ranks above pre-rut when equally close; name breaks ties</span>
+          </span>
+        </button>
+      </div>
+      <div class="shape-save-actions">
+        <button type="button" class="ss-cancel" onclick="closeSortHuntsModal()" style="flex:1;">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Save drawn shape as custom huntable area (hidden until Finish draw prompts it) -->
   <div id="shape-save-modal" class="app-prompt-modal" hidden style="display:none;" onclick="if(event.target===this)cancelShapeSaveModal()">
     <div class="shape-save-card" role="dialog" aria-modal="true" aria-labelledby="shape-save-title">
@@ -4075,7 +4470,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '4.0';
+    const APP_VERSION = '4.1';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -4114,6 +4509,19 @@
 
     let selectedDate = null, selectedWeapon = null, selectedLand = 'Public', selectedLocationId = null;
     let selectedSubsectionIndex = null, viewFilterMode = 'all', currentSelectedColor = '#e59a18';
+    /** Available Hunts list order: 'alpha' | 'dist-closest' | 'dist-furthest' | 'peak-rut' */
+    let huntListSortMode = 'dist-closest';
+    try {
+      var _savedSort = localStorage.getItem('reg_slayer_hunt_list_sort');
+      if (_savedSort === 'alpha' || _savedSort === 'dist-closest' || _savedSort === 'dist-furthest' || _savedSort === 'peak-rut') {
+        huntListSortMode = _savedSort;
+      }
+    } catch (eSortInit) {}
+    /** Desktop steps 1–3 collapsed into thin strip */
+    let plannerStepsMinimized = false;
+    try {
+      plannerStepsMinimized = localStorage.getItem('reg_slayer_planner_steps_min') === '1';
+    } catch (eMinInit) {}
     let editingEventId = null, userLat = null, userLng = null;
     let selectedPinColor = '#e59a18', selectedHuntColor = '#e59a18';
     let calendarTargetDate = new Date(), usingCurrentLocation = true, currentLocationObj = null;
@@ -4127,9 +4535,16 @@
     let tempClickMarker = null, gpsMarker = null, clickLat = null, clickLng = null;
     // Distance filter (list only)
     let distRadiusMiles = 50;
-    let distOriginMode = 'gps'; // 'gps' | 'zip'
+    let distOriginMode = 'gps'; // 'gps' | 'zip' | 'address'
     let distOriginLat = null, distOriginLng = null, distOriginLabel = '';
     let distZip = '';
+    let distOriginMarker = null; // map pin for address distance origin
+    let distAddressQuery = '';
+    let distAddressCandidates = []; // [{ label, lat, lng }]
+    let distAddressPickIndex = 0;
+    let distAddressPhase = 'entry'; // 'entry' | 'suggest'
+    /** Last successfully applied address origin (restored when re-selecting Address). */
+    let lastAddressOrigin = null; // { lat, lng, label }
     let isShowingCurrentData = false;
     let isHistorical = false;
     let windInitialized = false;
@@ -4151,6 +4566,9 @@
     var tempMeasureLayer = null; // ephemeral measure line (clears on next map click)
 
     let mapDrawPreviewLayer = null; // L.layerGroup for draft line/poly + vertices
+    let mapDrawLineLayer = null; // rubber-band polyline (updated on mousemove without rebuild)
+    let mapDrawFillLayer = null;
+    let mapDrawVertexGroup = null; // DOM markers for vertices (stable; not rebuilt every mousemove)
     let mapDrawMouseLatLng = null;
     let customAreaGroup = null; // saved user shapes on map
     let pendingShapeRing = null; // ring awaiting save modal
@@ -4693,7 +5111,7 @@
     }
 
     function formatSeasonLine(s) {
-      var w = s.weapon || 'General';
+      var w = displayWeaponName(s.weapon || 'General');
       var dates = (s.start && s.end) ? (s.start + ' → ' + s.end) : 'See current permit';
       var target = s.target ? ('; · ' + s.target) : '';
       var limit = s.limit ? ('; · Bag: ' + s.limit) : '';
@@ -4788,7 +5206,7 @@
         if (attrs.address) bullets.push('Parcel address: ' + attrs.address + '.');
         if (attrs.parcelnumb) bullets.push('Parcel #: ' + attrs.parcelnumb + '.');
         bullets.push('Private land: you must have permission from the owner or lawful access. REG SLAYER does not grant hunting rights.');
-        if (weapon && weapon !== 'Either') bullets.push('Your selected weapon filter: ' + weapon + '.');
+        if (weapon && weapon !== 'Either') bullets.push('Your selected weapon filter: ' + displayWeaponName(weapon) + '.');
         else bullets.push('Weapon filter: Either (all legal deer weapons for private land in this zone).');
 
         var matched = typeof matchRulesForLocId === 'function'
@@ -4800,11 +5218,11 @@
         if (canHuntToday) {
           bullets.push('Status on selected day: OPEN for deer on private land under statewide Zone ' + zone + ' seasons (confirm Outdoor Alabama).');
           matched.slice(0, 4).forEach(function(r) {
-            bullets.push('• ' + r.weapon + ' · ' + (r.target || '') + ' · ' + (r.limit || '') +
+            bullets.push('• ' + displayWeaponName(r.weapon) + ' · ' + (r.target || '') + ' · ' + (r.limit || '') +
               (r.notes ? ' — ' + r.notes : ''));
           });
         } else {
-          closedReason = 'Cannot hunt with ' + (weapon === 'Either' ? 'deer weapons' : weapon) +
+          closedReason = 'Cannot hunt with ' + (weapon === 'Either' ? 'deer weapons' : displayWeaponName(weapon)) +
             ' on ' + prettyDate(dateObj) + ' on private land in Zone ' + zone + ' (no open statewide season matched).';
           bullets.push('Status on selected day: CLOSED for deer with the selected weapon under Zone ' + zone + ' statewide seasons.');
         }
@@ -4829,7 +5247,7 @@
       // -- Selected day / weapon context --
       bullets.push('Selected day: ' + prettyDate(dateObj) + '.');
       if (weapon && weapon !== 'Either') {
-        bullets.push('Your selected weapon filter: ' + weapon + '.');
+        bullets.push('Your selected weapon filter: ' + displayWeaponName(weapon) + '.');
       } else {
         bullets.push('Weapon filter: Either (showing all legal deer weapons for this unit).');
       }
@@ -4838,16 +5256,16 @@
       if (profile && profile.archeryOnly) {
         bullets.push('This unit is ARCHERY ONLY for deer (no modern gun deer season).');
       } else if (profile && profile.allow && profile.allow.length) {
-        bullets.push('Deer weapons allowed on this unit: ' + profile.allow.join(', ') + '.');
+        bullets.push('Deer weapons allowed on this unit: ' + profile.allow.map(displayWeaponName).join(', ') + '.');
       } else if (seasons.length) {
         var allowed = [];
         seasons.forEach(function(s) {
           if (s.weapon && allowed.indexOf(s.weapon) === -1 && s.weapon !== 'Youth') allowed.push(s.weapon);
         });
-        if (allowed.length) bullets.push('Deer weapons with scheduled seasons here: ' + allowed.join(', ') + '.');
+        if (allowed.length) bullets.push('Deer weapons with scheduled seasons here: ' + allowed.map(displayWeaponName).join(', ') + '.');
       }
 
-      // Weapon never legal on this unit (e.g. Gun on archery-only)
+      // Weapon never legal on this unit (e.g. Gun/Rifle on archery-only)
       if (weapon && weapon !== 'Either' && profile && profile.allow && profile.allow.length) {
         var weaponOk = profile.allow.indexOf(weapon) !== -1 ||
           (weapon === 'Gun' && profile.allow.indexOf('Primitive') !== -1);
@@ -4857,8 +5275,8 @@
         if (!weaponOk) {
           statusKnown = true;
           canHuntToday = false;
-          closedReason = weapon + ' deer hunting is not allowed on this unit' +
-            (profile.archeryOnly ? ' (archery only for deer)' : ' (allowed: ' + profile.allow.join(', ') + ')') + '.';
+          closedReason = displayWeaponName(weapon) + ' deer hunting is not allowed on this unit' +
+            (profile.archeryOnly ? ' (archery only for deer)' : ' (allowed: ' + profile.allow.map(displayWeaponName).join(', ') + ')') + '.';
         }
       }
 
@@ -4903,12 +5321,12 @@
             statusKnown = true;
             canHuntToday = true;
             openTva.forEach(function(s) {
-              bullets.push('Likely OPEN today for ' + s.weapon + ' under statewide zone seasons · Bag: ' + s.limit + ' · ' + (s.target || ''));
+              bullets.push('Likely OPEN today for ' + displayWeaponName(s.weapon) + ' under statewide zone seasons · Bag: ' + s.limit + ' · ' + (s.target || ''));
             });
           } else {
             statusKnown = true;
             canHuntToday = false;
-            closedReason = 'No statewide deer season open for ' + (weapon === 'Either' ? 'deer weapons' : weapon) + ' on ' + prettyDate(dateObj) + '.';
+            closedReason = 'No statewide deer season open for ' + (weapon === 'Either' ? 'deer weapons' : displayWeaponName(weapon)) + ' on ' + prettyDate(dateObj) + '.';
             bullets.push('Status on selected day: no statewide deer weapon season matched - CLOSED for deer (confirm Outdoor Alabama zone calendar).');
           }
           bullets.push('Antler restrictions: follow statewide zone rules for your zone on Outdoor Alabama.');
@@ -4924,7 +5342,7 @@
       } else if (!openToday.length) {
         statusKnown = true;
         canHuntToday = false;
-        var wLabel = weapon === 'Either' ? 'listed weapons' : weapon;
+        var wLabel = weapon === 'Either' ? 'listed weapons' : displayWeaponName(weapon);
         closedReason = 'Cannot hunt with ' + wLabel + ' on ' + prettyDate(dateObj) + ' - no open deer season for that weapon on this unit.';
         bullets.push('Status on selected day: NO deer season open for ' + wLabel + ' on this unit.');
         var upcoming = seasons.filter(function(s) {
@@ -4998,7 +5416,7 @@
       if (attrs && attrs.RESTRICTED) bullets.push('GIS note: ' + attrs.RESTRICTED);
 
       if (!closedReason && statusKnown && !canHuntToday) {
-        closedReason = 'Cannot hunt with ' + (weapon === 'Either' ? 'deer weapons' : weapon) +
+        closedReason = 'Cannot hunt with ' + (weapon === 'Either' ? 'deer weapons' : displayWeaponName(weapon)) +
           ' on ' + prettyDate(dateObj) + ' at this area.';
       }
 
@@ -5102,7 +5520,7 @@
       var dayLabel = document.getElementById('regs-modal-day-label');
       if (dayLabel) {
         dayLabel.textContent = 'Condensed deer rules - ' + prettyDate(selectedDate || new Date()) +
-          (selectedWeapon ? ' · ' + selectedWeapon : '');
+          (selectedWeapon ? ' · ' + displayWeaponName(selectedWeapon) : '');
       }
 
       // Big banner: closed (red) or open (green) when status is known
@@ -5134,7 +5552,7 @@
           bannerDetail.classList.add('active');
         } else if (showOpen) {
           bannerDetail.textContent = info.jurisdictionLabel +
-            (selectedWeapon ? ' · Weapon filter: ' + selectedWeapon : '');
+            (selectedWeapon ? ' · Weapon filter: ' + displayWeaponName(selectedWeapon) : '');
           bannerDetail.classList.add('active');
         } else {
           bannerDetail.textContent = '';
@@ -5542,7 +5960,7 @@
         lines.push('<div class="mhs-sub">' + escHtml(st.closedReason) + '</div>');
       }
       if (selectedWeapon) {
-        lines.push('<div class="mhs-sub">Weapon filter: ' + escHtml(selectedWeapon) +
+        lines.push('<div class="mhs-sub">Weapon filter: ' + escHtml(displayWeaponName(selectedWeapon)) +
           ' · ' + escHtml(prettyDate(selectedDate || new Date())) + '</div>');
       }
       return (
@@ -5734,6 +6152,15 @@
     locations.push(...loadedPins);
 
     // ========== HELPERS ==========
+    /**
+     * UI label for weapon filter values. Internal season data still uses "Gun";
+     * the Step 2 button and filter copy show "Rifle". Bottom bar uses weaponBarLabel (PEW).
+     */
+    function displayWeaponName(weapon) {
+      if (!weapon) return '';
+      if (weapon === 'Gun') return 'Rifle';
+      return String(weapon);
+    }
     function getDistanceMiles(lat1, lon1, lat2, lon2) {
       const R = 3958.8;
       const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -5741,6 +6168,186 @@
       const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
       return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     }
+    /** Always compute miles from current distance origin when possible (for sort + display). */
+    function ensureLocationDistanceMi(loc) {
+      if (!loc) return null;
+      if (loc.type === 'Statewide') {
+        loc._distanceMi = null;
+        return null;
+      }
+      if (distOriginLat == null || distOriginLng == null || loc.lat == null || loc.lng == null) {
+        if (loc._distanceMi == null) loc._distanceMi = null;
+        return loc._distanceMi;
+      }
+      loc._distanceMi = getDistanceMiles(distOriginLat, distOriginLng, loc.lat, loc.lng);
+      return loc._distanceMi;
+    }
+    /**
+     * Approximate peak-rut mid-dates by Alabama deer zone (planning aid only).
+     * Month is 1–12. Peak year: fall of the hunt season (Jan–Mar hunt dates use previous year).
+     */
+    var ZONE_PEAK_RUT_MMDD = {
+      A: [11, 15],
+      B: [11, 20],
+      C: [11, 25],
+      D: [11, 18],
+      E: [12, 10]
+    };
+    function getPeakRutDateForLoc(loc) {
+      var zone = (loc && loc.zone) ? String(loc.zone).toUpperCase() : 'A';
+      var mmdd = ZONE_PEAK_RUT_MMDD[zone] || ZONE_PEAK_RUT_MMDD.A;
+      var y = selectedDate ? selectedDate.getFullYear() : new Date().getFullYear();
+      if (selectedDate && selectedDate.getMonth() <= 2) y -= 1; // Jan–Mar → previous fall peak
+      return new Date(y, mmdd[0] - 1, mmdd[1]);
+    }
+    function daysBetweenDates(a, b) {
+      var ms = 86400000;
+      var ua = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+      var ub = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+      return Math.round((ua - ub) / ms);
+    }
+    function compareHuntListSort(a, b) {
+      var la = a.location || {};
+      var lb = b.location || {};
+      var na = String(la.name || '').toLowerCase();
+      var nb = String(lb.name || '').toLowerCase();
+      var mode = huntListSortMode || 'dist-closest';
+
+      if (mode === 'alpha') {
+        if (na < nb) return -1;
+        if (na > nb) return 1;
+        return 0;
+      }
+
+      if (mode === 'peak-rut') {
+        var peakA = getPeakRutDateForLoc(la);
+        var peakB = getPeakRutDateForLoc(lb);
+        var ref = selectedDate || new Date();
+        var diffA = daysBetweenDates(ref, peakA); // + = post-rut, − = pre-rut
+        var diffB = daysBetweenDates(ref, peakB);
+        var absA = Math.abs(diffA);
+        var absB = Math.abs(diffB);
+        if (absA !== absB) return absA - absB;
+        // Post-rut outweighs pre-rut when equally far from peak
+        var phaseA = diffA >= 0 ? 0 : 1;
+        var phaseB = diffB >= 0 ? 0 : 1;
+        if (phaseA !== phaseB) return phaseA - phaseB;
+        if (na < nb) return -1;
+        if (na > nb) return 1;
+        return 0;
+      }
+
+      // Distance sorts
+      var da = ensureLocationDistanceMi(la);
+      var db = ensureLocationDistanceMi(lb);
+      var aMissing = (da == null);
+      var bMissing = (db == null);
+      if (aMissing && bMissing) {
+        if (na < nb) return -1;
+        if (na > nb) return 1;
+        return 0;
+      }
+      if (aMissing) return 1;
+      if (bMissing) return -1;
+      if (mode === 'dist-furthest') {
+        if (db !== da) return db - da;
+      } else {
+        // dist-closest (default)
+        if (da !== db) return da - db;
+      }
+      if (na < nb) return -1;
+      if (na > nb) return 1;
+      return 0;
+    }
+    function huntListSortShortLabel(mode) {
+      if (mode === 'alpha') return 'A–Z';
+      if (mode === 'dist-closest') return 'Closest';
+      if (mode === 'dist-furthest') return 'Furthest';
+      if (mode === 'peak-rut') return 'Peak Rut';
+      return 'Sort';
+    }
+    function updateSortByButtonLabel() {
+      var btn = document.getElementById('sort-by-btn');
+      if (!btn) return;
+      var short = huntListSortShortLabel(huntListSortMode);
+      btn.textContent = 'Sort by · ' + short;
+      btn.classList.toggle('has-custom', huntListSortMode !== 'dist-closest');
+      btn.title = 'Sort list: ' + short;
+    }
+    function openSortHuntsModal() {
+      var modal = document.getElementById('sort-hunts-modal');
+      if (!modal) return;
+      var opts = modal.querySelectorAll('.sort-option-btn');
+      for (var i = 0; i < opts.length; i++) {
+        var el = opts[i];
+        var on = el.getAttribute('data-sort') === huntListSortMode;
+        el.classList.toggle('active', on);
+        el.setAttribute('aria-pressed', on ? 'true' : 'false');
+      }
+      modal.hidden = false;
+      modal.style.display = '';
+      modal.classList.add('active');
+    }
+    function closeSortHuntsModal() {
+      var modal = document.getElementById('sort-hunts-modal');
+      if (!modal) return;
+      modal.classList.remove('active');
+      modal.hidden = true;
+      modal.style.display = 'none';
+    }
+    function applyHuntListSort(mode) {
+      if (mode !== 'alpha' && mode !== 'dist-closest' && mode !== 'dist-furthest' && mode !== 'peak-rut') return;
+      huntListSortMode = mode;
+      try { localStorage.setItem('reg_slayer_hunt_list_sort', mode); } catch (e) {}
+      updateSortByButtonLabel();
+      closeSortHuntsModal();
+      if (typeof updateAvailableList === 'function' && selectedDate && selectedWeapon) {
+        updateAvailableList();
+      }
+    }
+    window.openSortHuntsModal = openSortHuntsModal;
+    window.closeSortHuntsModal = closeSortHuntsModal;
+    window.applyHuntListSort = applyHuntListSort;
+
+    function applyPlannerStepsMinState() {
+      var row = document.getElementById('planner-row');
+      var btn = document.getElementById('planner-minmax-btn');
+      var strip = document.getElementById('planner-collapsed-strip');
+      if (!row || !btn) return;
+      // Phone never stays minimized (layout stacks steps)
+      var min = !!plannerStepsMinimized && !(typeof isPhoneLayout === 'function' && isPhoneLayout());
+      row.classList.toggle('is-minimized', min);
+      btn.textContent = min ? '+' : '−';
+      btn.setAttribute('aria-expanded', min ? 'false' : 'true');
+      btn.setAttribute('title', min ? 'Expand steps 1–3' : 'Minimize steps 1–3');
+      btn.setAttribute('aria-label', min ? 'Expand steps 1–3' : 'Minimize steps 1–3');
+      if (strip) strip.setAttribute('aria-hidden', min ? 'false' : 'true');
+      // Sync mini step dots (yellow active-style is always on for visibility when collapsed)
+      ['1', '2', '3'].forEach(function(n) {
+        var mini = document.getElementById('planner-mini-' + n);
+        var sec = document.getElementById('step-' + n + '-section');
+        if (!mini) return;
+        mini.classList.toggle('active', !!(sec && sec.classList.contains('active')));
+      });
+      if (!min && typeof syncPlannerCalendarSquare === 'function') {
+        requestAnimationFrame(function() {
+          try { syncPlannerCalendarSquare(); } catch (eSq) {}
+        });
+      }
+      if (typeof map !== 'undefined' && map && typeof map.invalidateSize === 'function') {
+        setTimeout(function() {
+          try { map.invalidateSize({ animate: false }); } catch (eInv) {}
+        }, 80);
+      }
+    }
+    function togglePlannerStepsMin() {
+      if (typeof isPhoneLayout === 'function' && isPhoneLayout()) return;
+      plannerStepsMinimized = !plannerStepsMinimized;
+      try { localStorage.setItem('reg_slayer_planner_steps_min', plannerStepsMinimized ? '1' : '0'); } catch (e) {}
+      applyPlannerStepsMinState();
+    }
+    window.togglePlannerStepsMin = togglePlannerStepsMin;
+    window.applyPlannerStepsMinState = applyPlannerStepsMinState;
     function getJulianDate(y, m, d) {
       if (m <= 2) { y -= 1; m += 12; }
       const A = Math.floor(y/100), B = Math.floor(A/4), C = 2 - A + B;
@@ -6604,11 +7211,20 @@
 
     // ========== DISTANCE FILTER ==========
     function setDistOriginMode(mode) {
-      distOriginMode = mode === 'zip' ? 'zip' : 'gps';
-      document.getElementById('dist-origin-gps').classList.toggle('active', distOriginMode === 'gps');
-      document.getElementById('dist-origin-zip').classList.toggle('active', distOriginMode === 'zip');
-      document.getElementById('dist-zip-row').classList.toggle('active', distOriginMode === 'zip');
-      if (distOriginMode === 'gps') {
+      if (mode !== 'zip' && mode !== 'address' && mode !== 'gps') mode = 'gps';
+      var prev = distOriginMode;
+      distOriginMode = mode;
+      var gpsBtn = document.getElementById('dist-origin-gps');
+      var zipBtn = document.getElementById('dist-origin-zip');
+      var addrBtn = document.getElementById('dist-origin-address');
+      if (gpsBtn) gpsBtn.classList.toggle('active', mode === 'gps');
+      if (zipBtn) zipBtn.classList.toggle('active', mode === 'zip');
+      if (addrBtn) addrBtn.classList.toggle('active', mode === 'address');
+      var zipRow = document.getElementById('dist-zip-row');
+      if (zipRow) zipRow.classList.toggle('active', mode === 'zip');
+
+      if (mode === 'gps') {
+        clearDistOriginMarker();
         if (userLat != null && userLng != null) {
           distOriginLat = userLat;
           distOriginLng = userLng;
@@ -6618,7 +7234,30 @@
         } else {
           requestDistGps();
         }
-      } else {
+      } else if (mode === 'zip') {
+        clearDistOriginMarker();
+        // Do not keep GPS/address coords while waiting for ZIP apply
+        if (prev !== 'zip') {
+          distOriginLat = null;
+          distOriginLng = null;
+          distOriginLabel = '';
+        }
+        updateDistStatus();
+      } else if (mode === 'address') {
+        // Restore last confirmed address, else clear until user OK’s a match
+        if (lastAddressOrigin && lastAddressOrigin.lat != null) {
+          distOriginLat = lastAddressOrigin.lat;
+          distOriginLng = lastAddressOrigin.lng;
+          distOriginLabel = lastAddressOrigin.label || 'Address';
+          placeDistOriginMarker(distOriginLat, distOriginLng, distOriginLabel);
+          if (selectedWeapon) updateAvailableList();
+        } else if (prev !== 'address') {
+          distOriginLat = null;
+          distOriginLng = null;
+          distOriginLabel = '';
+          clearDistOriginMarker();
+        }
+        openDistAddressModal({ reopen: true });
         updateDistStatus();
       }
     }
@@ -6639,9 +7278,13 @@
         return;
       }
       if (distOriginLat == null || distOriginLng == null) {
-        el.textContent = distOriginMode === 'zip'
-          ? 'Enter a ZIP and click Apply to filter by distance'
-          : 'Waiting for GPS… or switch to ZIP Code';
+        if (distOriginMode === 'zip') {
+          el.textContent = 'Enter a ZIP and click Apply to filter by distance';
+        } else if (distOriginMode === 'address') {
+          el.textContent = 'Enter an address to filter by distance';
+        } else {
+          el.textContent = 'Waiting for GPS… or switch to ZIP / Address';
+        }
         return;
       }
       el.textContent = 'Within ' + distRadiusMiles + ' mi of ' + (distOriginLabel || 'origin');
@@ -6655,15 +7298,321 @@
       navigator.geolocation.getCurrentPosition(function(pos) {
         userLat = pos.coords.latitude;
         userLng = pos.coords.longitude;
-        distOriginLat = userLat;
-        distOriginLng = userLng;
-        distOriginLabel = 'My Location';
-        updateDistStatus();
-        if (selectedWeapon) updateAvailableList();
+        if (distOriginMode === 'gps') {
+          distOriginLat = userLat;
+          distOriginLng = userLng;
+          distOriginLabel = 'My Location';
+          updateDistStatus();
+          if (selectedWeapon) updateAvailableList();
+        }
       }, function() {
         updateDistStatus();
       }, { maximumAge: 60000, timeout: 8000, enableHighAccuracy: false });
     }
+
+    function clearDistOriginMarker() {
+      if (distOriginMarker && map) {
+        try { map.removeLayer(distOriginMarker); } catch (e) {}
+      }
+      distOriginMarker = null;
+    }
+
+    function buildDistOriginIcon() {
+      return L.divIcon({
+        className: '',
+        html: '<div style="position:relative;width:22px;height:28px;">' +
+          '<div style="width:18px;height:18px;border-radius:50% 50% 50% 0;background:#7c3aed;border:2px solid #fff;' +
+          'transform:rotate(-45deg);box-shadow:0 1px 4px rgba(0,0,0,0.45);margin:0 auto;"></div>' +
+          '<div style="position:absolute;left:50%;top:4px;transform:translateX(-50%);width:6px;height:6px;' +
+          'border-radius:50%;background:#fff;"></div></div>',
+        iconSize: [22, 28],
+        iconAnchor: [11, 26],
+        popupAnchor: [0, -22]
+      });
+    }
+
+    function placeDistOriginMarker(lat, lng, label) {
+      if (lat == null || lng == null || typeof L === 'undefined') return;
+      ensureMap().then(function() {
+        if (!map) return;
+        clearDistOriginMarker();
+        distOriginMarker = L.marker([lat, lng], {
+          icon: buildDistOriginIcon(),
+          keyboard: true,
+          title: label || 'Distance origin',
+          zIndexOffset: 650
+        }).addTo(map);
+        try {
+          distOriginMarker.bindTooltip(label || 'Distance origin', {
+            permanent: false,
+            direction: 'top',
+            offset: [0, -18],
+            opacity: 0.95
+          });
+        } catch (eT) {}
+        try {
+          var z = map.getZoom ? map.getZoom() : 10;
+          if (z < 10) map.setView([lat, lng], 11);
+          else map.panTo([lat, lng], { animate: true });
+        } catch (eV) {}
+      });
+    }
+
+    function setDistAddressStatus(msg, kind) {
+      var el = document.getElementById('dist-address-status');
+      if (!el) return;
+      el.textContent = msg || '';
+      el.classList.remove('is-error', 'is-ok');
+      if (kind === 'error') el.classList.add('is-error');
+      if (kind === 'ok') el.classList.add('is-ok');
+    }
+
+    function hideDistAddressSuggestions() {
+      distAddressCandidates = [];
+      distAddressPickIndex = 0;
+      distAddressPhase = 'entry';
+      var wrap = document.getElementById('dist-address-suggest-wrap');
+      var list = document.getElementById('dist-address-suggest-list');
+      if (wrap) wrap.classList.remove('active');
+      if (list) list.innerHTML = '';
+    }
+
+    function showDistAddressSuggestions(matches) {
+      distAddressCandidates = matches || [];
+      distAddressPickIndex = 0;
+      distAddressPhase = 'suggest';
+      var wrap = document.getElementById('dist-address-suggest-wrap');
+      var title = document.getElementById('dist-address-suggest-title');
+      var list = document.getElementById('dist-address-suggest-list');
+      if (!wrap || !list) return;
+      if (title) {
+        title.textContent = matches.length === 1
+          ? 'Did you mean this address?'
+          : 'Did you mean one of these addresses?';
+      }
+      list.innerHTML = '';
+      matches.forEach(function(m, idx) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'dist-addr-option' + (idx === 0 ? ' active' : '');
+        btn.setAttribute('role', 'option');
+        btn.setAttribute('aria-selected', idx === 0 ? 'true' : 'false');
+        btn.innerHTML = '<span class="dao-radio" aria-hidden="true"></span><span class="dao-text"></span>';
+        btn.querySelector('.dao-text').textContent = m.label;
+        btn.onclick = function() {
+          distAddressPickIndex = idx;
+          var opts = list.querySelectorAll('.dist-addr-option');
+          for (var i = 0; i < opts.length; i++) {
+            opts[i].classList.toggle('active', i === idx);
+            opts[i].setAttribute('aria-selected', i === idx ? 'true' : 'false');
+          }
+        };
+        list.appendChild(btn);
+      });
+      wrap.classList.add('active');
+    }
+
+    function openDistAddressModal(opts) {
+      opts = opts || {};
+      var modal = document.getElementById('dist-address-modal');
+      var input = document.getElementById('dist-address-input');
+      if (!modal) return;
+      if (!opts.keepResults) {
+        hideDistAddressSuggestions();
+        setDistAddressStatus('');
+      }
+      if (input) {
+        if (distAddressQuery) input.value = distAddressQuery;
+        else if (distOriginMode === 'address' && distOriginLabel && distOriginLabel !== 'My Location') {
+          input.value = distOriginLabel;
+        }
+        setTimeout(function() {
+          try { input.focus(); input.select(); } catch (eF) {}
+        }, 40);
+      }
+      modal.hidden = false;
+      modal.style.display = '';
+      modal.classList.add('active');
+    }
+
+    function closeDistAddressModal() {
+      var modal = document.getElementById('dist-address-modal');
+      if (!modal) return;
+      modal.classList.remove('active');
+      modal.hidden = true;
+      modal.style.display = 'none';
+      // If user cancels without a confirmed address origin, leave mode on Address
+      // but status already reflects missing coords / previous address.
+      updateDistStatus();
+    }
+
+    function applyDistAddressMatch(match) {
+      if (!match || match.lat == null || match.lng == null) return;
+      distOriginLat = match.lat;
+      distOriginLng = match.lng;
+      distOriginLabel = match.label || 'Address';
+      distAddressQuery = distOriginLabel;
+      lastAddressOrigin = { lat: distOriginLat, lng: distOriginLng, label: distOriginLabel };
+      distOriginMode = 'address';
+      var gpsBtn = document.getElementById('dist-origin-gps');
+      var zipBtn = document.getElementById('dist-origin-zip');
+      var addrBtn = document.getElementById('dist-origin-address');
+      if (gpsBtn) gpsBtn.classList.toggle('active', false);
+      if (zipBtn) zipBtn.classList.toggle('active', false);
+      if (addrBtn) addrBtn.classList.toggle('active', true);
+      var zipRow = document.getElementById('dist-zip-row');
+      if (zipRow) zipRow.classList.remove('active');
+      placeDistOriginMarker(distOriginLat, distOriginLng, distOriginLabel);
+      updateDistStatus();
+      updateAvailableList();
+      closeDistAddressModal();
+    }
+
+    /**
+     * US Census geocoder (street addresses) + Photon fallback for fuzzy “did you mean”.
+     * Returns Promise of [{ label, lat, lng }]
+     */
+    function geocodeStreetAddress(query) {
+      var q = String(query || '').trim();
+      if (!q) return Promise.resolve([]);
+
+      function fromCensus() {
+        var url = 'https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=' +
+          encodeURIComponent(q) + '&benchmark=Public_AR_Current&format=json';
+        return fetch(url, { referrerPolicy: 'no-referrer' })
+          .then(function(res) { return res.ok ? res.json() : null; })
+          .then(function(data) {
+            var matches = (data && data.result && data.result.addressMatches) || [];
+            return matches.map(function(m) {
+              var lat = m.coordinates && parseFloat(m.coordinates.y);
+              var lng = m.coordinates && parseFloat(m.coordinates.x);
+              if (isNaN(lat) || isNaN(lng)) return null;
+              return {
+                label: m.matchedAddress || q,
+                lat: lat,
+                lng: lng,
+                source: 'census'
+              };
+            }).filter(Boolean);
+          })
+          .catch(function() { return []; });
+      }
+
+      function fromPhoton() {
+        // Bias toward Alabama / SE US
+        var url = 'https://photon.komoot.io/api/?q=' + encodeURIComponent(q) +
+          '&limit=6&lang=en&lat=32.8&lon=-86.8&zoom=6';
+        return fetch(url, { referrerPolicy: 'no-referrer' })
+          .then(function(res) { return res.ok ? res.json() : null; })
+          .then(function(data) {
+            var feats = (data && data.features) || [];
+            var out = [];
+            var seen = {};
+            feats.forEach(function(f) {
+              var c = f.geometry && f.geometry.coordinates;
+              if (!c || c.length < 2) return;
+              var lng = parseFloat(c[0]);
+              var lat = parseFloat(c[1]);
+              if (isNaN(lat) || isNaN(lng)) return;
+              // Prefer US results when country is present
+              var p = f.properties || {};
+              if (p.countrycode && String(p.countrycode).toUpperCase() !== 'US') return;
+              var parts = [];
+              if (p.housenumber && p.street) parts.push(p.housenumber + ' ' + p.street);
+              else if (p.street) parts.push(p.street);
+              else if (p.name) parts.push(p.name);
+              if (p.city || p.town || p.village || p.county) {
+                parts.push(p.city || p.town || p.village || p.county);
+              }
+              if (p.state) parts.push(p.state);
+              if (p.postcode) parts.push(p.postcode);
+              var label = parts.join(', ') || p.name || q;
+              var key = label.toLowerCase() + '|' + lat.toFixed(4) + '|' + lng.toFixed(4);
+              if (seen[key]) return;
+              seen[key] = true;
+              out.push({ label: label, lat: lat, lng: lng, source: 'photon' });
+            });
+            return out;
+          })
+          .catch(function() { return []; });
+      }
+
+      return fromCensus().then(function(censusHits) {
+        if (censusHits && censusHits.length) return censusHits;
+        return fromPhoton();
+      });
+    }
+
+    function confirmDistAddressModal() {
+      // Suggest phase: confirm selected suggestion
+      if (distAddressPhase === 'suggest' && distAddressCandidates.length) {
+        var pick = distAddressCandidates[distAddressPickIndex] || distAddressCandidates[0];
+        applyDistAddressMatch(pick);
+        return;
+      }
+      // Entry phase: look up typed address
+      var input = document.getElementById('dist-address-input');
+      var q = (input && input.value || '').trim();
+      if (!q) {
+        setDistAddressStatus('Please enter an address.', 'error');
+        hideDistAddressSuggestions();
+        return;
+      }
+      distAddressQuery = q;
+      setDistAddressStatus('Looking up address…');
+      hideDistAddressSuggestions();
+      var okBtn = document.getElementById('dist-address-ok-btn');
+      if (okBtn) okBtn.disabled = true;
+      geocodeStreetAddress(q).then(function(matches) {
+        if (okBtn) okBtn.disabled = false;
+        if (!matches || !matches.length) {
+          setDistAddressStatus('No matches found, please enter a new address.', 'error');
+          return;
+        }
+        // Single high-confidence Census hit → apply immediately (dot on map)
+        if (matches.length === 1 && matches[0].source === 'census') {
+          applyDistAddressMatch(matches[0]);
+          return;
+        }
+        // Ambiguous / fuzzy → “did you mean…?”
+        setDistAddressStatus(matches.length === 1
+          ? 'Confirm this address, then click OK.'
+          : 'Pick the best match, then click OK.');
+        showDistAddressSuggestions(matches);
+      }).catch(function() {
+        if (okBtn) okBtn.disabled = false;
+        setDistAddressStatus('No matches found, please enter a new address.', 'error');
+      });
+    }
+    window.openDistAddressModal = openDistAddressModal;
+    window.closeDistAddressModal = closeDistAddressModal;
+    window.confirmDistAddressModal = confirmDistAddressModal;
+
+    // Enter key in address field = OK; editing after suggestions restarts lookup
+    (function wireDistAddressInput() {
+      function bind() {
+        var input = document.getElementById('dist-address-input');
+        if (!input || input._distAddrWired) return;
+        input._distAddrWired = true;
+        input.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            confirmDistAddressModal();
+          }
+        });
+        input.addEventListener('input', function() {
+          if (distAddressPhase === 'suggest') {
+            hideDistAddressSuggestions();
+            setDistAddressStatus('Edit the address, then click OK to search again.');
+          }
+        });
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bind);
+      } else {
+        bind();
+      }
+    })();
 
     function applyDistZip() {
       var zip = (document.getElementById('dist-zip-input').value || '').trim();
@@ -6685,6 +7634,7 @@
           distOriginLat = parseFloat(place.latitude);
           distOriginLng = parseFloat(place.longitude);
           distOriginLabel = zip + ' (' + (place['place name'] || 'ZIP') + ', ' + (place['state abbreviation'] || 'AL') + ')';
+          clearDistOriginMarker();
           updateDistStatus();
           updateAvailableList();
         })
@@ -7772,6 +8722,10 @@
         if (!map) initMap();
         mapReady = true;
         if (ph) ph.remove();
+        // Re-place address distance-origin pin after first map mount
+        if (distOriginMode === 'address' && distOriginLat != null && distOriginLng != null && !distOriginMarker) {
+          try { placeDistOriginMarker(distOriginLat, distOriginLng, distOriginLabel); } catch (ePin) {}
+        }
         // iOS / phone: reflow to full width after Leaflet mounts (tiles often start narrow)
         fitPhoneMapSize();
         [40, 120, 320, 700].forEach(function(ms) {
@@ -8078,7 +9032,10 @@
       map.on('mousemove', function(e) {
         if (!mapDrawMode || !e || !e.latlng) return;
         mapDrawMouseLatLng = e.latlng;
-        refreshMapDrawPreview();
+        // Only update the rubber-band guide — do NOT rebuild vertices on every move
+        // (rebuild destroyed Canvas markers mid-click and broke “click a dot to close”).
+        updateMapDrawRubberBand();
+        updateMapDrawStatsOnly();
       });
 
       // Double-click zoom is off globally. While measuring/drawing, dblclick = Finish.
@@ -8648,13 +9605,17 @@
         standMarkerGroup,
         gaugeMarkerGroup
       ];
-      // Leave mapDrawPreviewLayer fully interactive (false) — it's visual only
+      // Leave mapDrawPreviewLayer / vertex dots fully interactive — they close the shape
       groups.forEach(function(g) {
         if (!g || typeof g.eachLayer !== 'function') return;
         g.eachLayer(function(layer) {
           setLayerClickable(layer, !lock);
         });
       });
+      // Lone markers not in groups (would otherwise steal draw clicks)
+      if (typeof gpsMarker !== 'undefined' && gpsMarker) setLayerClickable(gpsMarker, !lock);
+      if (typeof tempClickMarker !== 'undefined' && tempClickMarker) setLayerClickable(tempClickMarker, !lock);
+      if (typeof distOriginMarker !== 'undefined' && distOriginMarker) setLayerClickable(distOriginMarker, !lock);
       // Hard block: while locked, ignore popupopen from any leftover handlers
       if (map) {
         if (lock && !map._drawPopupBlocker) {
@@ -8763,7 +9724,83 @@
     }
 
     function clearMapDrawPreview() {
+      mapDrawLineLayer = null;
+      mapDrawFillLayer = null;
+      mapDrawVertexGroup = null;
       if (mapDrawPreviewLayer) mapDrawPreviewLayer.clearLayers();
+    }
+
+    /** Stats/hint only — safe to call from mousemove (no layer rebuild). */
+    function updateMapDrawStatsOnly() {
+      var stats = document.getElementById('map-draw-stats');
+      if (!stats || !mapDrawMode) return;
+      if (!mapDrawPoints.length) {
+        stats.innerHTML = 'Tap map for first point';
+        stats.classList.add('active');
+        return;
+      }
+      var pts = mapDrawPoints.slice();
+      if (mapDrawMouseLatLng && pts.length) {
+        pts = pts.concat([{ lat: mapDrawMouseLatLng.lat, lng: mapDrawMouseLatLng.lng }]);
+      }
+      var dist = pathDistanceMiles(pts);
+      var line = formatMiles(dist);
+      var drawing = mapDrawMode === 'draw';
+      if (drawing && mapDrawPoints.length >= 3) {
+        stats.innerHTML = mapDrawPoints.length + ' pts · ~' + line;
+      } else {
+        stats.innerHTML = mapDrawPoints.length + ' pt' + (mapDrawPoints.length === 1 ? '' : 's') + ' · ' + line;
+      }
+      stats.classList.add('active');
+    }
+
+    /** Update only the draft line to the cursor — keeps vertex markers stable for click-to-close. */
+    function updateMapDrawRubberBand() {
+      if (!map || !mapDrawPreviewLayer || !mapDrawMode || !mapDrawPoints.length) return;
+      var color = mapDrawMode === 'measure' ? '#38bdf8' : '#e59a18';
+      var latlngs = mapDrawPoints.map(function(p) { return [p.lat, p.lng]; });
+      if (mapDrawMouseLatLng) {
+        latlngs = latlngs.concat([[mapDrawMouseLatLng.lat, mapDrawMouseLatLng.lng]]);
+      }
+      if (mapDrawLineLayer && mapDrawPreviewLayer.hasLayer(mapDrawLineLayer)) {
+        try {
+          mapDrawLineLayer.setLatLngs(latlngs);
+          mapDrawLineLayer.setStyle({
+            color: color,
+            weight: 3,
+            opacity: 0.95,
+            dashArray: mapDrawMode === 'measure' ? '6 6' : null
+          });
+        } catch (eLine) {
+          mapDrawLineLayer = null;
+        }
+      }
+      if (!mapDrawLineLayer) {
+        mapDrawLineLayer = L.polyline(latlngs, {
+          color: color,
+          weight: 3,
+          opacity: 0.95,
+          dashArray: mapDrawMode === 'measure' ? '6 6' : null,
+          interactive: false
+        }).addTo(mapDrawPreviewLayer);
+      }
+    }
+
+    function closeShapeFromVertexClick(ev) {
+      try {
+        if (ev) {
+          if (ev.originalEvent) {
+            L.DomEvent.stopPropagation(ev.originalEvent);
+            L.DomEvent.preventDefault(ev.originalEvent);
+          }
+          L.DomEvent.stop(ev);
+        }
+      } catch (eStop) {}
+      if (mapDrawMode === 'draw' && mapDrawPoints.length >= 3) {
+        mapDrawLastClickAt = 0;
+        mapDrawLastClickLatLng = null;
+        finishMapDraw();
+      }
     }
 
     function refreshMapDrawPreview() {
@@ -8774,22 +9811,10 @@
         return;
       }
       var color = mapDrawMode === 'measure' ? '#38bdf8' : '#e59a18';
-      var latlngs = mapDrawPoints.map(function(p) { return [p.lat, p.lng]; });
-      if (mapDrawMouseLatLng) {
-        latlngs = latlngs.concat([[mapDrawMouseLatLng.lat, mapDrawMouseLatLng.lng]]);
-      }
-      // Draft line
-      L.polyline(latlngs, {
-        color: color,
-        weight: 3,
-        opacity: 0.95,
-        dashArray: mapDrawMode === 'measure' ? '6 6' : null,
-        interactive: false
-      }).addTo(mapDrawPreviewLayer);
-      // Soft fill preview for closed shape
+      // Soft fill preview for shape (3+ corners)
       if (mapDrawMode === 'draw' && mapDrawPoints.length >= 3) {
         var fillPts = mapDrawPoints.map(function(p) { return [p.lat, p.lng]; });
-        L.polygon(fillPts, {
+        mapDrawFillLayer = L.polygon(fillPts, {
           color: color,
           weight: 1,
           fillColor: color,
@@ -8797,41 +9822,59 @@
           interactive: false
         }).addTo(mapDrawPreviewLayer);
       }
-      // Vertices — previous dots (not the latest) close the shape when tapped (3+ points)
+      // Rubber-band line (includes cursor guide)
+      updateMapDrawRubberBand();
+
+      // Vertices as DOM DivIcon markers (marker pane) so preferCanvas cannot eat clicks.
+      // Previous dots (3+ points) close the shape when tapped — first = green, others = gold.
+      mapDrawVertexGroup = L.layerGroup().addTo(mapDrawPreviewLayer);
       mapDrawPoints.forEach(function(p, idx) {
-        var isPrev = mapDrawMode === 'draw' && mapDrawPoints.length >= 3 && idx < mapDrawPoints.length - 1;
-        var cm = L.circleMarker([p.lat, p.lng], {
-          radius: isPrev ? (idx === 0 ? 10 : 8) : (idx === 0 ? 6 : 5),
-          color: '#fff',
-          weight: 2,
-          fillColor: isPrev ? (idx === 0 ? '#22c55e' : '#fbbf24') : color,
-          fillOpacity: 1,
-          interactive: isPrev,
+        var isDraw = mapDrawMode === 'draw';
+        var canClose = isDraw && mapDrawPoints.length >= 3 && idx < mapDrawPoints.length - 1;
+        var isLatest = idx === mapDrawPoints.length - 1;
+        var cls = 'draw-vertex-dot';
+        if (canClose) cls += ' is-close' + (idx === 0 ? ' is-first' : '');
+        else if (mapDrawMode === 'measure') cls += ' is-measure';
+        else if (isLatest) cls += ' is-latest';
+        else cls += ' is-latest';
+
+        var size = canClose ? (idx === 0 ? 24 : 22) : 18;
+        var m = L.marker([p.lat, p.lng], {
+          icon: L.divIcon({
+            className: 'draw-vertex-icon',
+            html: '<div class="' + cls + '" title="' +
+              (canClose ? (idx === 0 ? 'Tap to close shape' : 'Tap previous corner to finish') : '') +
+              '"></div>',
+            iconSize: [size, size],
+            iconAnchor: [size / 2, size / 2]
+          }),
+          interactive: !!canClose,
+          keyboard: false,
+          zIndexOffset: canClose ? 2500 : 2000,
           bubblingMouseEvents: false
         });
-        if (isPrev) {
-          cm.on('click', function(ev) {
+        if (canClose) {
+          // mousedown + click: stop map from adding another vertex on the same tap
+          m.on('mousedown', function(ev) {
             try {
               if (ev && ev.originalEvent) {
                 L.DomEvent.stopPropagation(ev.originalEvent);
                 L.DomEvent.preventDefault(ev.originalEvent);
               }
-              L.DomEvent.stop(ev);
-            } catch (eStop) {}
-            if (mapDrawMode === 'draw' && mapDrawPoints.length >= 3) {
-              mapDrawLastClickAt = 0;
-              mapDrawLastClickLatLng = null;
-              finishMapDraw();
-            }
+            } catch (eMd) {}
           });
-          cm.bindTooltip(idx === 0 ? 'Tap to close shape' : 'Tap previous corner to finish', {
-            direction: 'top',
-            opacity: 0.95,
-            className: 'measured-path-tooltip'
-          });
+          m.on('click', closeShapeFromVertexClick);
+          try {
+            m.bindTooltip(idx === 0 ? 'Tap to close shape' : 'Tap previous corner to finish', {
+              direction: 'top',
+              opacity: 0.95,
+              className: 'measured-path-tooltip'
+            });
+          } catch (eTip) {}
         }
-        cm.addTo(mapDrawPreviewLayer);
+        m.addTo(mapDrawVertexGroup);
       });
+
       // Segment distance labels (measure mode)
       if (mapDrawMode === 'measure' && mapDrawPoints.length >= 2) {
         for (var i = 1; i < mapDrawPoints.length; i++) {
@@ -8840,21 +9883,27 @@
           var seg = haversineMiles(a.lat, a.lng, b.lat, b.lng);
           L.marker([mid.lat, mid.lng], {
             interactive: false,
+            keyboard: false,
             icon: L.divIcon({
               className: '',
-              html: '<div style="background:rgba(15,18,14,0.88);border:1px solid #38bdf8;color:#fff;font-size:10px;font-weight:700;padding:2px 5px;border-radius:4px;white-space:nowrap;">' + formatMiles(seg) + '</div>',
+              html: '<div style="background:rgba(15,18,14,0.88);border:1px solid #38bdf8;color:#fff;font-size:10px;font-weight:700;padding:2px 5px;border-radius:4px;white-space:nowrap;pointer-events:none;">' + formatMiles(seg) + '</div>',
               iconSize: [70, 18],
               iconAnchor: [35, 9]
             })
           }).addTo(mapDrawPreviewLayer);
         }
       }
+      // Keep draft above overlays so close-dots receive the click
+      try {
+        if (mapDrawPreviewLayer.bringToFront) mapDrawPreviewLayer.bringToFront();
+      } catch (eBf) {}
       setMapDrawUi();
     }
 
     function addMapDrawVertex(latlng) {
       if (!mapDrawMode || !latlng) return;
       mapDrawPoints.push({ lat: latlng.lat, lng: latlng.lng });
+      mapDrawMouseLatLng = null; // reset guide so next segment starts clean
       refreshMapDrawPreview();
     }
 
@@ -8869,7 +9918,7 @@
     /** Pixel-radius hit test for existing draw vertices (zoom-independent). */
     function findNearbyDrawVertexIndex(latlng, maxPx) {
       if (!map || !latlng || !mapDrawPoints.length) return -1;
-      maxPx = maxPx == null ? 24 : maxPx;
+      maxPx = maxPx == null ? 36 : maxPx;
       var clickPt;
       try {
         clickPt = map.latLngToContainerPoint(L.latLng(latlng.lat, latlng.lng));
@@ -8916,9 +9965,9 @@
       }
 
       // Draw: click near a previous corner (not the latest) → complete the shape
-      // Pixel hit-test works at any zoom; markers are also clickable directly
+      // Pixel hit-test is the reliable path when marker click is swallowed by Canvas/overlays
       if (!isDouble && mapDrawMode === 'draw' && mapDrawPoints.length >= 3) {
-        var nearIdx = findNearbyDrawVertexIndex(latlng, 28);
+        var nearIdx = findNearbyDrawVertexIndex(latlng, 40);
         if (nearIdx >= 0 && nearIdx < mapDrawPoints.length - 1) {
           mapDrawLastClickAt = 0;
           mapDrawLastClickLatLng = null;
@@ -9887,7 +10936,7 @@
       if (!map || !mapDrawPreviewLayer) return;
       // Clear only our track preview if mixed with draw preview — when tracking, draw mode is off
       if (gpsTrackActive) {
-        mapDrawPreviewLayer.clearLayers();
+        clearMapDrawPreview();
         if (gpsTrackPoints.length >= 2) {
           var latlngs = gpsTrackPoints.map(function(p) { return [p.lat, p.lng]; });
           L.polyline(latlngs, {
@@ -10045,7 +11094,7 @@
 
       var pts = gpsTrackPoints.slice();
       gpsTrackPoints = [];
-      if (mapDrawPreviewLayer) mapDrawPreviewLayer.clearLayers();
+      clearMapDrawPreview();
       updateTrackButtonUi();
 
       if (opts.discard || pts.length < 2) {
@@ -11452,6 +12501,9 @@
           try { map.invalidateSize(true); } catch (e2) {}
         }, 350);
       }
+      if (typeof applyPlannerStepsMinState === 'function') {
+        try { applyPlannerStepsMinState(); } catch (eMin) {}
+      }
       return next;
     }
     window.applyDeviceLayout = applyDeviceLayout;
@@ -12547,17 +13599,11 @@
         visible = visible.filter(function(m) { return String(m.location.id) === String(selectedLocationId); });
       }
 
-      // Sort: areas you are physically inside first, then by distance
-      visible = visible.slice().sort(function(a, b) {
-        var aIn = userIsInsideHuntLocation(a.location) ? 0 : 1;
-        var bIn = userIsInsideHuntLocation(b.location) ? 0 : 1;
-        if (aIn !== bIn) return aIn - bIn;
-        var da = a.location._distanceMi, db = b.location._distanceMi;
-        if (da == null && db == null) return 0;
-        if (da == null) return 1;
-        if (db == null) return -1;
-        return da - db;
+      // Sort by user Sort-by mode (alpha / distance / peak rut)
+      visible.forEach(function(m) {
+        if (m.location) ensureLocationDistanceMi(m.location);
       });
+      visible = visible.slice().sort(compareHuntListSort);
 
       var hiddenCount = open.length - afterHide.length;
       var distDropped = afterHide.length - afterDist.length;
@@ -12607,7 +13653,7 @@
         var distTxt = (match.location._distanceMi != null)
           ? ' · ' + match.location._distanceMi.toFixed(0) + ' mi'
           : '';
-        item.innerHTML = '<div style="flex:1;display:flex;justify-content:space-between;align-items:center;"><div><strong>' + match.location.name + '</strong><div style="font-size:11px;color:var(--muted);margin-top:3px;">Zone ' + match.location.zone + ' - ' + match.rule.weapon + distTxt + '</div></div><div style="display:flex;align-items:center;gap:8px;"><span class="badge ' + badgeClass + '"' + (match.location.isPin ? ' style="background:' + match.location.color + ';color:#000;"' : '') + '>' + typeLabel + '</span>' + delBtn + '</div></div>';
+        item.innerHTML = '<div style="flex:1;display:flex;justify-content:space-between;align-items:center;"><div><strong>' + match.location.name + '</strong><div style="font-size:11px;color:var(--muted);margin-top:3px;">Zone ' + match.location.zone + ' - ' + displayWeaponName(match.rule.weapon) + distTxt + '</div></div><div style="display:flex;align-items:center;gap:8px;"><span class="badge ' + badgeClass + '"' + (match.location.isPin ? ' style="background:' + match.location.color + ';color:#000;"' : '') + '>' + typeLabel + '</span>' + delBtn + '</div></div>';
         item.onclick = function(e) {
           if (e.target.tagName.toLowerCase()==='button') return;
           usingCurrentLocation = false;
@@ -13716,11 +14762,11 @@
       if (typeof updateCompassToolbarBtn === 'function') updateCompassToolbarBtn();
     }
 
-    /** Slim bottom bar weapon label: Gun / Bow / Prim / Any */
+    /** Slim bottom bar weapon label: PEW (Rifle/Gun) / Bow / Prim / Any */
     function weaponBarLabel(weapon) {
       if (!weapon) return '';
       var w = String(weapon).toLowerCase();
-      if (w === 'gun') return 'Gun';
+      if (w === 'gun') return 'PEW';
       if (w === 'archery') return 'Bow';
       if (w === 'primitive') return 'Prim';
       if (w === 'either') return 'Any';
@@ -13751,8 +14797,8 @@
         if (wLabel) {
           wpnEl.textContent = wLabel;
           wpnEl.classList.remove('is-empty');
-          wpnEl.setAttribute('title', selectedWeapon || wLabel);
-          wpnEl.setAttribute('aria-label', 'Weapon: ' + (selectedWeapon || wLabel));
+          wpnEl.setAttribute('title', displayWeaponName(selectedWeapon) || wLabel);
+          wpnEl.setAttribute('aria-label', 'Weapon: ' + (displayWeaponName(selectedWeapon) || wLabel));
           wpnEl.removeAttribute('aria-hidden');
         } else {
           wpnEl.textContent = '';
@@ -13770,7 +14816,7 @@
             parts.push(String(selectedDate));
           }
         }
-        if (selectedWeapon) parts.push(selectedWeapon);
+        if (selectedWeapon) parts.push(displayWeaponName(selectedWeapon));
         ctx.title = parts.length ? parts.join(' · ') : 'Hunt calendar date and weapon';
       }
     }
@@ -13993,6 +15039,8 @@
       selectedDate = new Date();
       renderCalendar();
       if (typeof updateBottomBarContext === 'function') updateBottomBarContext();
+      if (typeof updateSortByButtonLabel === 'function') updateSortByButtonLabel();
+      if (typeof applyPlannerStepsMinState === 'function') applyPlannerStepsMinState();
       // Phone: second pass after fonts/layout so calendar + map fill width on launch
       requestAnimationFrame(function() {
         syncPlannerCalendarSquare();
