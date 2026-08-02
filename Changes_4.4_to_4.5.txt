@@ -84,3 +84,11 @@ Satellite seasons (Winter / Summer / Newest)
 - Newest: Esri World Imagery (latest commercial composite — Maxar & partners).
 - Summer: USGS Imagery Only / USDA NAIP leaf-on summer aerial (1 m).
 - Winter: Esri World Imagery Clarity (clearer archive / leaf-off style detail).
+
+
+--------------------------------
+Satellite imagery date badge
+--------------------------------
+- When Satellite basemap is active, bottom-right shows month + year of imagery
+  under the map center (e.g. Imagery · Aug 2025). Small, legible, above bottom bar.
+- Newest / Winter / Summer query Esri or NAIP metadata; updates on pan/zoom.
