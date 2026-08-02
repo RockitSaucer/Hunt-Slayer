@@ -56,3 +56,12 @@ Hotfix: calendar Next double-tap zoom (mobile)
   page zoom (home-screen / standalone WebKit), not the Leaflet map.
 - Fix: touch-action: manipulation on UI controls; viewport maximum-scale=1 /
   user-scalable=no; light 180ms changeMonth debounce; type=button on cal nav.
+
+
+--------------------------------
+Map-dot popup cleanup
+--------------------------------
+- Removed redundant closedReason line under peak rut (Cannot/Can hunt title is enough).
+- Removed duplicate public/private/name/owner block under the status banner.
+- Actions order: Rules & regs → Get weather → (area map if public) → Add Pin → Share.
+- Add Pin opens in-popup chooser: Pin / Hunt / Stand / Back (same flows as before).

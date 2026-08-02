@@ -6385,9 +6385,8 @@
           '</div>'
         );
       } catch (eRut) {}
-      if (st.statusKnown && !st.canHunt && st.closedReason) {
-        lines.push('<div class="mhs-sub">' + escHtml(st.closedReason) + '</div>');
-      }
+      // closedReason omitted here — "Cannot/Can hunt today" already covers open/closed;
+      // full detail lives in Rules & regs (saves popup space, less redundancy).
       if (selectedWeapon) {
         lines.push('<div class="mhs-sub">Weapon filter: ' + escHtml(displayWeaponName(selectedWeapon)) +
           ' · ' + escHtml(prettyDate(selectedDate || new Date())) + '</div>');
@@ -10400,7 +10399,13 @@
     }
 
     // Inline onclick is reliable inside Leaflet popups (DOM rebuilds strip JS listeners)
-    function buildMapDotActionsHtml() {
+    /**
+     * Orange-dot popup.
+     * opts.addChooser: show Pin / Hunt / Stand picker (from compact "Add Pin" button).
+     * Status banner already has land / owner / zone / peak rut — no duplicate black-space copy.
+     */
+    function buildMapDotActionsHtml(opts) {
+      opts = opts || {};
       var pl = lastClickPublicLand;
       var st = null;
       try {
@@ -10408,11 +10413,10 @@
       } catch (eSt) { st = null; }
       var statusBlock = st ? buildHuntStatusBannerHtml(st) : '';
       var hasPublicLand = !!(pl && pl.name && pl.layer);
-      var isPrivate = !!(st && st.landKind === 'private' && !hasPublicLand);
 
-      var plBlock = '';
+      // Public-land area map link (unique info — not in the status banner)
+      var areaMapBtn = '';
       if (hasPublicLand) {
-        // Refresh regs cache if popup is rebuilt later in the session
         window.__regsCache = window.__regsCache || {};
         if (!pl.cacheId || !window.__regsCache[pl.cacheId]) {
           pl.cacheId = cachePublicLandRegs(pl.layer, pl.attrs || {}, pl.name);
@@ -10420,43 +10424,43 @@
         var mapRules = resolveAreaMapRulesLink(pl.layer, pl.name, pl.attrs || {});
         var mapHref = String(mapRules.url || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
         var mapLabel = String(mapRules.label || 'Area map & rules').replace(/&/g, '&amp;').replace(/</g, '&lt;');
-        plBlock =
-          '<div class="mdm-title" style="margin-top:2px;">Public land</div>' +
-          '<div class="mdm-sub">' + escHtml(pl.name) + (pl.layer.label ? ' · ' + escHtml(pl.layer.label) : '') +
-            ' · Zone ' + escHtml((st && st.zone) || '') + '</div>' +
-          // Single weather + regs for public land (no second generic copies below)
-          '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotPublicLandAction(\'weather\');return false;">Get weather</button>' +
-          '<button type="button" class="mdm-btn regs" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotPublicLandAction(\'regs\');return false;">Rules &amp; regs</button>' +
-          '<a href="' + mapHref + '" target="_blank" rel="noopener" class="mdm-btn" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box;margin-top:0;" onclick="event.stopPropagation();">' + mapLabel + '</a>' +
-          '<div style="height:1px;background:var(--border);margin:6px 0 4px;"></div>';
-      } else if (isPrivate) {
-        plBlock =
-          '<div class="mdm-title" style="margin-top:2px;">Private land · Zone ' + escHtml(st.zone || 'A') + '</div>' +
-          (st.owner
-            ? '<div class="mdm-sub">Owner: ' + escHtml(st.owner) + (st.address ? ' · ' + escHtml(st.address) : '') + '</div>'
-            : st.address
-              ? '<div class="mdm-sub">Addr: ' + escHtml(st.address) + ' · owner not listed</div>'
-              : '<div class="mdm-sub">Owner not listed for this spot · zoom 12–18 &amp; retry, or confirm tax records</div>') +
-          '<div style="height:1px;background:var(--border);margin:6px 0 4px;"></div>';
+        areaMapBtn =
+          '<a href="' + mapHref + '" target="_blank" rel="noopener" class="mdm-btn" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box;margin-top:0;background:#374151;" onclick="event.stopPropagation();">' +
+            mapLabel +
+          '</a>';
       }
 
-      // Weather / regs once only — skip duplicates when public-land block already has them
-      var weatherRegsBtns = hasPublicLand
-        ? ''
-        : (
-          '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'weather\');return false;">Get weather</button>' +
-          '<button type="button" class="mdm-btn regs" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'regs\');return false;">Rules &amp; regs</button>'
-        );
+      var regsHandler = hasPublicLand
+        ? "window.handleMapDotPublicLandAction('regs')"
+        : "window.handleMapDotAction('regs')";
+      var weatherHandler = hasPublicLand
+        ? "window.handleMapDotPublicLandAction('weather')"
+        : "window.handleMapDotAction('weather')";
 
+      // Sub-menu: pick pin vs hunt vs stand (one button on main menu)
+      if (opts.addChooser) {
+        return (
+          '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
+            statusBlock +
+            '<div class="mdm-title">Add to this spot</div>' +
+            '<div class="mdm-sub">Choose what you want to save</div>' +
+            '<button type="button" class="mdm-btn pin" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'pin\');return false;">Pin</button>' +
+            '<button type="button" class="mdm-btn hunt" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'hunt\');return false;">Hunt</button>' +
+            '<button type="button" class="mdm-btn stand" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'stand\');return false;">Stand</button>' +
+            '<button type="button" class="mdm-btn" style="background:#3a4234;" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'add-back\');return false;">Back</button>' +
+          '</div>'
+        );
+      }
+
+      // Main menu: status once → actions (regs above weather; single Add Pin → chooser)
       return (
         '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
           statusBlock +
-          plBlock +
-          '<div class="mdm-title">' + (hasPublicLand ? 'More actions' : 'What do you want to do?') + '</div>' +
-          weatherRegsBtns +
-          '<button type="button" class="mdm-btn stand" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'stand\');return false;">Add stand</button>' +
-          '<button type="button" class="mdm-btn hunt" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'hunt\');return false;">Add hunt</button>' +
-          '<button type="button" class="mdm-btn pin" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'pin\');return false;">Add pin</button>' +
+          '<div class="mdm-title">What do you want to do?</div>' +
+          '<button type="button" class="mdm-btn regs" onclick="event.preventDefault();event.stopPropagation();' + regsHandler + ';return false;">Rules &amp; regs</button>' +
+          '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();' + weatherHandler + ';return false;">Get weather</button>' +
+          areaMapBtn +
+          '<button type="button" class="mdm-btn pin" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'add-menu\');return false;">Add Pin</button>' +
           '<button type="button" class="mdm-btn share" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'share\');return false;">Share location</button>' +
         '</div>'
       );
@@ -10848,6 +10852,20 @@
 
     function handleMapDotAction(act) {
       try {
+        // Compact "Add Pin" → show Pin / Hunt / Stand chooser in the same popup
+        if (act === 'add-menu') {
+          if (tempClickMarker && typeof tempClickMarker.setPopupContent === 'function') {
+            try { tempClickMarker.setPopupContent(buildMapDotActionsHtml({ addChooser: true })); } catch (eM) {}
+          }
+          return false;
+        }
+        if (act === 'add-back') {
+          if (tempClickMarker && typeof tempClickMarker.setPopupContent === 'function') {
+            try { tempClickMarker.setPopupContent(buildMapDotActionsHtml()); } catch (eB) {}
+          }
+          return false;
+        }
+
         if (clickLat == null || clickLng == null) {
           alert('Tap the map to place a spot first, then choose an action.');
           return false;
