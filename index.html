@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>REG SLAYER - Alabama Deer Season Planner v4.2</title>
+  <title>REG SLAYER - Alabama Deer Season Planner v4.3</title>
   <!-- Detect phone vs desktop as early as possible (reduces layout flash) -->
   <script>
     (function () {
@@ -45,7 +45,7 @@
     html, body { height: 100%; }
     body { background: var(--bg); color: var(--ink); margin: 0; padding: 0; line-height: 1.5; min-height: 100vh; display: flex; flex-direction: column; }
 
-    /* ========== BRAND HEADER (v4.2 - large logo fills top bar) ========== */
+    /* ========== BRAND HEADER (v4.3 - tight bar; crop empty logo padding) ========== */
     .brand-header {
       background:
         linear-gradient(180deg, rgba(13,15,12,0.15) 0%, rgba(13,15,12,0.88) 100%),
@@ -57,39 +57,45 @@
           #121b10 44px
         );
       border-bottom: 1px solid var(--border);
-      padding: 18px 20px 16px;
+      /* ~40% less vertical chrome than old 18/16 padding + tall contain logo */
+      padding: 5px 14px 4px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      /* Non-sticky so the large logo doesn't consume the viewport while scrolling */
       position: relative;
       z-index: 5000;
-      box-shadow: 0 4px 18px rgba(0,0,0,0.45);
+      box-shadow: 0 3px 12px rgba(0,0,0,0.4);
       flex-shrink: 0;
     }
     .brand-logo-wrap {
       position: relative;
       display: block;
       line-height: 0;
-      width: min(1100px, 94vw);
-      padding-right: 48px;
-      padding-bottom: 4px;
+      width: min(1000px, 94vw);
+      /* Crop PNG empty top/bottom so shield + REG SLAYER lettering fill the bar */
+      height: min(100px, 12.5vh);
+      max-height: min(100px, 12.5vh);
+      overflow: hidden;
+      padding-right: 40px;
+      padding-bottom: 0;
+      box-sizing: border-box;
     }
     .brand-logo {
       display: block;
       width: 100%;
-      height: auto;
-      max-height: min(168px, 22vh);
-      object-fit: contain;
-      object-position: center;
+      height: 100%;
+      max-height: none;
+      /* Cover crops diagonal padding; keeps shield + wordmark content large */
+      object-fit: cover;
+      object-position: center 50%;
     }
     /* Version only - very small, bottom-right of the logo */
     .brand-version {
       position: absolute;
-      right: 4px;
-      bottom: 8px;
-      font-size: 11px;
+      right: 2px;
+      bottom: 4px;
+      font-size: 10px;
       font-weight: 700;
       letter-spacing: 0.08em;
       color: rgba(160, 175, 150, 0.9);
@@ -153,11 +159,12 @@
       padding: 18px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     }
-    /* Left: steps 1-3 + weather/water underneath */
+    /* Left: steps 1-3 + weather/water underneath — always above map column */
     .card-planner {
       min-width: 0;
       position: relative;
-      z-index: 3; /* always above map column spill in min mode */
+      z-index: 5;
+      isolation: isolate;
     }
     .dashboard-under-steps {
       margin-top: 18px;
@@ -178,7 +185,7 @@
     .dashboard-under-steps #db-loading {
       padding: 36px 12px !important;
     }
-    /* Right: large map column */
+    /* Right: large map column — locked paint box in min mode (never covers steps 1–3) */
     .card-map {
       position: sticky;
       top: 12px;
@@ -190,7 +197,9 @@
       min-width: 0;
       z-index: 1;
       isolation: isolate;
-      overflow: hidden;
+      overflow: hidden !important;
+      /* Contain tiles/popups so sticky map cannot paint over the planner */
+      contain: layout style;
     }
     .card-map .map-section-block {
       flex: 1 1 auto;
@@ -198,12 +207,17 @@
       flex-direction: column;
       min-height: 0;
       height: 100%;
-      overflow: hidden;
+      overflow: hidden !important;
+      position: relative;
+      z-index: 0;
+      isolation: isolate;
     }
     .card-map .map-wrapper {
       flex: 1 1 auto;
       min-height: calc(100vh - 150px);
       margin-top: 8px;
+      position: relative;
+      z-index: 0;
     }
     html.layout-desktop #leaflet-map {
       height: calc(100vh - 150px) !important;
@@ -225,8 +239,12 @@
     @media (max-width: 1100px) {
       html.layout-desktop .container { grid-template-columns: 1fr 1.1fr; gap: 12px; }
       html.layout-desktop .app-shell { padding: 12px; }
-      html.layout-desktop .brand-logo-wrap { width: min(900px, 96vw); }
-      html.layout-desktop .brand-logo { max-height: min(120px, 18vh); }
+      html.layout-desktop .brand-logo-wrap {
+        width: min(900px, 96vw);
+        height: min(88px, 11.5vh);
+        max-height: min(88px, 11.5vh);
+      }
+      html.layout-desktop .brand-logo { height: 100%; max-height: none; object-fit: cover; }
       html.layout-desktop #dashboard-container { position: static; max-height: none; }
       html.layout-desktop #leaflet-map { height: calc(100vh - 150px) !important; min-height: 480px; }
     }
@@ -256,10 +274,15 @@
       box-sizing: border-box;
       overflow-x: hidden;
     }
-    html.layout-phone .brand-header { padding: 12px 14px 10px; position: relative; }
-    html.layout-phone .brand-logo-wrap { width: 92vw; padding-right: 36px; }
-    html.layout-phone .brand-logo { max-height: 72px; }
-    html.layout-phone .brand-version { font-size: 9px; bottom: 4px; }
+    html.layout-phone .brand-header { padding: 4px 10px 3px; position: relative; }
+    html.layout-phone .brand-logo-wrap {
+      width: 92vw;
+      height: 48px;
+      max-height: 48px;
+      padding-right: 32px;
+    }
+    html.layout-phone .brand-logo { height: 100%; max-height: none; object-fit: cover; }
+    html.layout-phone .brand-version { font-size: 8px; bottom: 2px; }
     html.layout-phone .site-footer-inner { gap: 6px 10px; padding-left: 12px; padding-right: 12px; }
     html.layout-phone .site-footer-inner p { font-size: 12px; }
     html.layout-phone #dashboard-container,
@@ -375,10 +398,10 @@
         gap: 12px;
         width: 100%;
       }
-      .brand-header { padding: 12px 14px 10px; position: relative; }
-      .brand-logo-wrap { width: 92vw; padding-right: 36px; }
-      .brand-logo { max-height: 72px; }
-      .brand-version { font-size: 9px; bottom: 4px; }
+      .brand-header { padding: 4px 10px 3px; position: relative; }
+      .brand-logo-wrap { width: 92vw; height: 48px; max-height: 48px; padding-right: 32px; }
+      .brand-logo { height: 100%; max-height: none; object-fit: cover; }
+      .brand-version { font-size: 8px; bottom: 2px; }
       .site-footer-inner { gap: 6px 10px; padding-left: 12px; padding-right: 12px; }
       .site-footer-inner p { font-size: 12px; }
       #dashboard-container,
@@ -1144,16 +1167,18 @@
       flex-shrink: 0;
       cursor: help;
       animation: peakRutBuckFlash 1s ease-in-out infinite;
+      -webkit-animation: peakRutBuckFlash 1s ease-in-out infinite;
     }
     .peak-rut-buck svg {
       width: 20px;
       height: 20px;
       display: block;
-      filter: drop-shadow(0 0 2px rgba(0,0,0,0.55));
+      /* Avoid drop-shadow + transform animation issues on some mobile WebKit builds */
+      filter: none;
     }
     @keyframes peakRutBuckFlash {
-      0%, 100% { opacity: 0.4; transform: scale(0.94); }
-      50% { opacity: 1; transform: scale(1.06); }
+      0%, 100% { opacity: 0.35; }
+      50% { opacity: 1; }
     }
     .location-item .loc-meta-line {
       font-size: 11px;
@@ -1171,15 +1196,7 @@
       color: #ff6b6b;
       font-weight: 800;
     }
-    /* Map: peak-rut pulse ONLY when selected date is in zone peak window (1s loop, softer red) */
-    path.pl-rut-overlay {
-      animation: plRutOverlayPulse 1s linear infinite;
-      pointer-events: none;
-    }
-    @keyframes plRutOverlayPulse {
-      0% { fill-opacity: 0; stroke-opacity: 0.08; }
-      100% { fill-opacity: 0.28; stroke-opacity: 0.45; }
-    }
+    /* Map peak-rut: fill pulse is driven by JS (preferCanvas) — labels still CSS */
     .pl-rut-label {
       background: transparent !important;
       border: none !important;
@@ -1193,12 +1210,18 @@
       line-height: 1;
       text-shadow: 0 0 3px #fff, 0 1px 2px #fff, 0 -1px 2px #fff;
       animation: plRutWordPulse 1s linear infinite;
+      -webkit-animation: plRutWordPulse 1s linear infinite;
       pointer-events: none;
       user-select: none;
     }
     @keyframes plRutWordPulse {
       0% { opacity: 0; }
       100% { opacity: 0.9; }
+    }
+    /* State mask / border: SVG pane stays crisp (no canvas tile flicker) */
+    .state-outside-mask,
+    .state-border-line {
+      pointer-events: none;
     }
     .mdm-rut-line {
       margin-top: 4px;
@@ -1213,47 +1236,65 @@
     .map-wrapper { margin-top: 15px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); position: relative; }
     /* Map height set in desktop / phone layout blocks above */
     /*
-     * Min-mode map clip (stable): map tiles/overlays stay inside the map column.
-     * Never use extreme z-index on the map — that caused map chrome to cover the app.
+     * Min-mode map clip (locked): tiles, panes, and popups stay inside the map column.
+     * Never raise overflow:visible on the map column — that let the map slip over steps 1–3.
      */
     .map-wrapper:not(.fullscreen) {
-      overflow: hidden;
-      z-index: auto;
-      contain: layout style;
+      overflow: hidden !important;
+      z-index: 0;
+      contain: layout style paint;
+      isolation: isolate;
     }
     /*
-     * Non-fullscreen: when a map-dot (or similar) popup is open, let it paint over the
-     * REG SLAYER brand banner above the map — without covering the planner column.
+     * Popup-open: keep stacking INSIDE the map column only.
+     * Planner (steps 1–3 / weather) always stays above the map column.
      */
     html.map-popup-covers-brand .brand-header {
-      z-index: 1;
+      z-index: 6;
+      position: relative;
     }
     html.map-popup-covers-brand .app-shell {
       position: relative;
       z-index: 2;
-      overflow: visible;
     }
     html.map-popup-covers-brand .card-planner {
-      z-index: 4; /* still above map spill to the left */
+      z-index: 5 !important;
+      isolation: isolate;
     }
     html.map-popup-covers-brand .card-map {
-      overflow: visible;
-      z-index: 2;
-      isolation: auto;
+      overflow: hidden !important;
+      z-index: 1 !important;
+      isolation: isolate !important;
+      contain: layout style;
     }
     html.map-popup-covers-brand .card-map .map-section-block {
-      overflow: visible;
+      overflow: hidden !important;
     }
     html.map-popup-covers-brand .map-wrapper:not(.fullscreen) {
-      overflow: visible;
-      z-index: auto;
-      contain: none;
+      overflow: hidden !important;
+      z-index: 0 !important;
+      contain: layout style paint !important;
     }
     html.map-popup-covers-brand .map-wrapper:not(.fullscreen) #leaflet-map,
-    html.map-popup-covers-brand .map-wrapper:not(.fullscreen) .leaflet-container,
-    html.map-popup-covers-brand .map-wrapper:not(.fullscreen) .leaflet-pane,
-    html.map-popup-covers-brand .map-wrapper:not(.fullscreen) .leaflet-map-pane {
-      overflow: visible !important;
+    html.map-popup-covers-brand .map-wrapper:not(.fullscreen) .leaflet-container {
+      overflow: hidden !important;
+    }
+    /* Phone: map stays between planner and dashboard — never paint outside its card */
+    html.layout-phone .card-map {
+      position: relative !important;
+      z-index: 1;
+      isolation: isolate;
+      overflow: hidden !important;
+      contain: layout style;
+    }
+    html.layout-phone .card-planner > .planner-row {
+      position: relative;
+      z-index: 2;
+    }
+    html.layout-phone .card-planner > #dashboard-container,
+    html.layout-phone .card-planner > .dashboard-under-steps {
+      position: relative;
+      z-index: 2;
     }
     /* True fullscreen: covers entire viewport including brand banner (wrapper is reparented to body) */
     .map-wrapper.fullscreen {
@@ -1352,6 +1393,64 @@
       margin: 0;
       min-width: 220px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    /* Mobile: compact map action menus (area info / links) */
+    html.layout-phone .map-dot-popup .leaflet-popup-content {
+      min-width: 0;
+      max-width: min(248px, calc(100vw - 36px));
+    }
+    html.layout-phone .map-dot-menu {
+      min-width: 0;
+      max-width: min(248px, calc(100vw - 36px));
+      padding: 10px 10px 9px;
+      gap: 5px;
+    }
+    html.layout-phone .map-dot-menu .mdm-title {
+      font-size: 12px;
+      margin: 0 24px 2px 0;
+    }
+    html.layout-phone .map-dot-menu .mdm-sub {
+      font-size: 11px;
+      margin: -2px 0 2px;
+    }
+    html.layout-phone .map-dot-menu .mdm-btn {
+      padding: 8px 10px;
+      font-size: 13px;
+      border-radius: 7px;
+    }
+    html.layout-phone .map-dot-menu .mdm-hunt-status {
+      padding: 8px 9px;
+      margin: 0 0 4px;
+    }
+    html.layout-phone .map-dot-menu .mdm-hunt-status .mhs-title { font-size: 13px; }
+    html.layout-phone .map-dot-menu .mdm-hunt-status .mhs-line { font-size: 11px; }
+    html.layout-phone .map-dot-menu .mdm-hunt-status .mhs-sub { font-size: 10px; }
+    html.layout-phone .map-dot-popup .leaflet-popup-close-button {
+      font-size: 20px !important;
+      width: 26px !important;
+      height: 26px !important;
+    }
+    /* Drag affordance for map popups / weather chrome */
+    .map-dot-popup .leaflet-popup-content-wrapper,
+    .map-weather-overlay,
+    .map-weather-details {
+      touch-action: none;
+    }
+    .map-dot-popup .leaflet-popup-content-wrapper { cursor: grab; }
+    .map-dot-popup .leaflet-popup-content-wrapper.is-dragging,
+    .map-weather-overlay.is-dragging,
+    .map-weather-details.is-dragging { cursor: grabbing; }
+    .map-dot-popup .mdm-btn,
+    .map-dot-popup a.mdm-btn,
+    .map-dot-popup button,
+    .map-dot-popup a,
+    .map-dot-popup .leaflet-popup-close-button,
+    .map-weather-overlay .mwo-close,
+    .map-weather-overlay .mwo-more,
+    .map-weather-details .mwo-close,
+    .map-weather-details button {
+      cursor: pointer;
+      touch-action: manipulation;
     }
     .map-dot-popup .leaflet-popup-close-button {
       color: #ffffff !important;
@@ -2701,9 +2800,11 @@
       --mbb-gap: 4px;
       --mbb-icon: 40px;
       position: absolute;
-      left: 50%;
-      bottom: max(10px, env(safe-area-inset-bottom, 0px));
-      transform: translateX(-50%);
+      left: 0;
+      right: 0;
+      /* Flush to bottom edge of the map — no floating gap */
+      bottom: 0 !important;
+      transform: none;
       /* Stable: always above map/compass/popups so the bar never vanishes under Leaflet */
       z-index: 80 !important;
       display: grid !important;
@@ -2713,20 +2814,23 @@
       align-items: center;
       column-gap: var(--mbb-gap);
       pointer-events: none;
-      width: min(640px, calc(100% - 12px));
-      max-width: calc(100% - 12px);
+      width: 100%;
+      max-width: 100%;
       padding: 6px 8px;
+      padding-bottom: max(6px, env(safe-area-inset-bottom, 0px));
       box-sizing: border-box;
-      background: rgba(14, 18, 12, 0.88);
-      border: 1px solid rgba(141, 156, 132, 0.35);
-      border-radius: 14px;
-      box-shadow: 0 6px 22px rgba(0,0,0,0.5);
+      background: rgba(14, 18, 12, 0.92);
+      border: none;
+      border-top: 1px solid rgba(141, 156, 132, 0.4);
+      border-radius: 0;
+      box-shadow: 0 -4px 16px rgba(0,0,0,0.35);
       backdrop-filter: blur(6px);
     }
     .map-bottom-bar > * { pointer-events: auto; }
     .map-wrapper.fullscreen .map-bottom-bar {
       z-index: 80 !important;
-      bottom: max(14px, env(safe-area-inset-bottom, 0px));
+      bottom: 0 !important;
+      padding-bottom: max(6px, env(safe-area-inset-bottom, 0px));
     }
     /* Never hide the chrome bar via popup stacking or accidental utility classes */
     .map-wrapper.map-popup-open .map-bottom-bar,
@@ -2918,16 +3022,20 @@
       --mbb-h: 32px;
       --mbb-gap: 3px;
       --mbb-icon: 32px;
-      width: calc(100% - 8px);
-      max-width: calc(100% - 8px);
+      left: 0;
+      right: 0;
+      bottom: 0 !important;
+      width: 100%;
+      max-width: 100%;
       padding: 5px 6px;
-      border-radius: 11px;
+      padding-bottom: max(5px, env(safe-area-inset-bottom, 0px));
+      border-radius: 0;
       column-gap: var(--mbb-gap);
-      transform: translateX(-50%);
-      transform-origin: center bottom;
+      transform: none;
     }
     html.layout-phone .map-wrapper.fullscreen .map-bottom-bar {
-      transform: translateX(-50%);
+      transform: none;
+      bottom: 0 !important;
     }
     html.layout-phone .mbb-left,
     html.layout-phone .mbb-right {
@@ -3019,7 +3127,11 @@
         --mbb-icon: 30px;
         --mbb-gap: 2px;
         padding: 4px 5px;
-        transform: translateX(-50%) scale(0.96);
+        padding-bottom: max(4px, env(safe-area-inset-bottom, 0px));
+        transform: none;
+        bottom: 0 !important;
+        width: 100%;
+        max-width: 100%;
       }
       html.layout-phone .mbb-context {
         width: 50px;
@@ -3034,7 +3146,11 @@
     @media (max-width: 340px) {
       html.layout-phone .map-bottom-bar,
       html.layout-phone .map-wrapper.fullscreen .map-bottom-bar {
-        transform: translateX(-50%) scale(0.92);
+        transform: none;
+        bottom: 0 !important;
+        width: 100%;
+        --mbb-gap: 2px;
+        padding: 4px 4px;
       }
     }
     /* Settings modal — must sit above true-fullscreen map (z 2147483000) */
@@ -3273,27 +3389,36 @@
     .map-draw-tools.tool-off-track #mdt-track,
     .map-draw-tools.tool-off-track #mdt-track-stop,
     .map-draw-tools.tool-off-track .map-track-live-stats { display: none !important; }
-    /* Weather overlay (map fullscreen / map-only) */
+    /* Weather overlay — always above bottom toolbar (z 80); default lower-right */
     .map-weather-overlay {
       position: absolute;
-      bottom: 20px;
-      right: 20px;
-      z-index: 32;
+      /* Sit just above flush bottom toolbar */
+      bottom: calc(var(--mbb-h, 40px) + 10px);
+      right: 12px;
+      left: auto;
+      top: auto;
+      z-index: 95;
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 12px 14px;
       width: min(300px, calc(100% - 24px));
       box-shadow: 0 4px 15px rgba(0,0,0,0.6);
-      max-height: 70vh;
+      max-height: min(50vh, 360px);
       overflow-y: auto;
+      cursor: grab;
+      user-select: none;
+    }
+    .map-weather-overlay.is-dragged {
+      bottom: auto;
+      right: auto;
     }
     .map-weather-details {
       position: absolute;
       left: 50%;
       top: 50%;
       transform: translate(-50%, -50%);
-      z-index: 70; /* above map/compass; below bottom toolbar (80) */
+      z-index: 96; /* above compact weather + toolbar */
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 12px;
@@ -3302,9 +3427,22 @@
       max-height: min(80vh, 560px);
       overflow-y: auto;
       box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+      cursor: grab;
+      user-select: none;
     }
     .map-weather-details.is-dragged {
       transform: none;
+    }
+    html.layout-phone .map-weather-overlay {
+      width: min(240px, calc(100% - 20px));
+      padding: 10px 11px;
+      max-height: min(42vh, 280px);
+      bottom: calc(var(--mbb-h, 36px) + 8px);
+    }
+    html.layout-phone .map-weather-details {
+      width: min(300px, calc(100% - 20px));
+      padding: 11px;
+      max-height: min(70vh, 480px);
     }
     .mwo-head {
       display: flex;
@@ -3313,13 +3451,8 @@
       margin-bottom: 8px;
       gap: 8px;
     }
-    .map-weather-details .mwo-head {
-      cursor: move;
-      user-select: none;
-      touch-action: none;
-      padding-bottom: 4px;
-    }
-    .map-weather-details .mwo-head .mwo-close { cursor: pointer; }
+    .map-weather-details .mwo-head .mwo-close,
+    .map-weather-overlay .mwo-head .mwo-close { cursor: pointer; }
     .mwo-head strong { font-size: 14px; color: #fff; }
     .mwo-close {
       background: none;
@@ -3910,11 +4043,11 @@
   </style>
 </head>
 <body>
-  <!-- Brand header: large logo + small V4.2 at bottom-right of logo -->
+  <!-- Brand header: large logo + small V4.3 at bottom-right of logo -->
   <header class="brand-header" role="banner">
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 4.2">V4.2</span>
+      <span class="brand-version" aria-label="Version 4.3">V4.3</span>
     </div>
   </header>
 
@@ -4333,12 +4466,13 @@
                             <button type="button" class="pl-toggle-btn on" id="pl-btn-pdha" data-pl="pdha" style="background:#14b8a6;color:#fff;" onclick="togglePublicLandType('pdha')" title="Disabled Hunt Areas (PDHA)" aria-pressed="true">PDHA<span class="pl-sub">on</span></button>
                             <button type="button" class="pl-toggle-btn on" id="pl-btn-usace" data-pl="usace" style="background:#6b7c3a;color:#fff;" onclick="togglePublicLandType('usace')" title="U.S. Army Corps of Engineers open recreation / hunting project lands" aria-pressed="true">USACE<span class="pl-sub">on</span></button>
                             <button type="button" class="pl-toggle-btn on" id="pl-btn-listPins" data-pl="listPins" style="background:#486a2f;color:#fff;" onclick="togglePublicLandType('listPins')" title="Green ✓ pins for Available Hunts list" aria-pressed="true">✓ List<span class="pl-sub">on</span></button>
+                            <button type="button" class="pl-toggle-btn on" id="pl-btn-custom" data-pl="custom" style="background:#c47a0f;color:#fff;" onclick="togglePublicLandType('custom')" title="Custom areas drawn with the Draw tool" aria-pressed="true">Custom<span class="pl-sub">on</span></button>
                           </div>
                           <div class="zone-toggle-actions">
                             <button type="button" onclick="setAllPublicLandTypes(true)">All on</button>
                             <button type="button" onclick="setAllPublicLandTypes(false)">All off</button>
                           </div>
-                          <div class="zone-toggle-hint">Tap a color to show/hide that land type. All on by default. ✓ List = units in your Available Hunts dropdown.</div>
+                          <div class="zone-toggle-hint">Tap a color to show/hide that land type. All on by default. All off also hides Custom areas. ✓ List = Available Hunts pins. Custom = drawn shapes.</div>
                           <div id="adcnr-cache-status" style="font-size:9px;margin-top:6px;color:var(--muted);"></div>
                           <!-- Hidden master for legacy; driven by any public-land type being on -->
                           <input type="checkbox" id="toggle-adcnr-lands-chk" checked style="display:none;" aria-hidden="true">
@@ -4623,7 +4757,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '4.2';
+    const APP_VERSION = '4.3';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -4811,12 +4945,14 @@
       soa: true,
       pdha: true,
       usace: true,
-      listPins: true
+      listPins: true,
+      custom: true // user-drawn shapes (Draw tool)
     };
 
     function isPublicLandLayerKeyVisible(layerKey) {
       if (layerKey === 'usfs' || layerKey === 'nwr') return !!publicLandTypeVisible.forestNwr;
       if (layerKey === 'nps') return false;
+      if (layerKey === 'custom') return !!publicLandTypeVisible.custom;
       return !!publicLandTypeVisible[layerKey];
     }
 
@@ -4828,6 +4964,11 @@
     }
 
     function anyPublicLandTypeVisible() {
+      // GIS fills / list pins (custom is separate but included for master “any lands chrome”)
+      return anyPublicLandFillVisible() || !!publicLandTypeVisible.listPins || !!publicLandTypeVisible.custom;
+    }
+
+    function isPublicLandsGisWanted() {
       return anyPublicLandFillVisible() || !!publicLandTypeVisible.listPins;
     }
 
@@ -4854,14 +4995,17 @@
       if (!publicLandTypeVisible.hasOwnProperty(key)) return;
       publicLandTypeVisible[key] = !publicLandTypeVisible[key];
       updatePublicLandToggleUI();
-      // Redraw fills and/or list pins
-      if (anyPublicLandFillVisible() || publicLandTypeVisible.listPins) {
+      if (key === 'custom') {
+        if (typeof drawCustomAreasOnMap === 'function') drawCustomAreasOnMap();
+        return;
+      }
+      // Redraw GIS fills and/or list pins
+      if (isPublicLandsGisWanted()) {
         syncPublicLandsOverlay({ showLoading: !adcnrLandsData && anyPublicLandFillVisible() });
       } else {
         if (adcnrOverlayGroup) adcnrOverlayGroup.clearLayers();
         if (adcnrOpenPinGroup) adcnrOpenPinGroup.clearLayers();
       }
-      // List pins only change
       if (key === 'listPins' && map && adcnrOpenPinGroup) {
         if (publicLandTypeVisible.listPins) drawListedHuntCheckmarks();
         else adcnrOpenPinGroup.clearLayers();
@@ -4879,6 +5023,7 @@
         if (adcnrOverlayGroup) adcnrOverlayGroup.clearLayers();
         if (adcnrOpenPinGroup) adcnrOpenPinGroup.clearLayers();
       }
+      if (typeof drawCustomAreasOnMap === 'function') drawCustomAreasOnMap();
     }
     window.setAllPublicLandTypes = setAllPublicLandTypes;
 
@@ -6494,8 +6639,44 @@
         '</span>'
       );
     }
+
+    /**
+     * Peak-rut red fill pulse that works with Leaflet preferCanvas.
+     * CSS cannot animate Canvas path fill-opacity; setStyle + rAF does.
+     */
+    function stopPeakRutOverlayPulse(layer) {
+      if (!layer) return;
+      if (layer._rutPulseRaf) {
+        try { cancelAnimationFrame(layer._rutPulseRaf); } catch (eC) {}
+        layer._rutPulseRaf = null;
+      }
+      layer._rutPulseRunning = false;
+    }
+    function attachPeakRutOverlayPulse(layer) {
+      if (!layer || layer._rutPulseRunning) return;
+      layer._rutPulseRunning = true;
+      var t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      function tick(now) {
+        if (!layer._rutPulseRunning || !layer._map) {
+          stopPeakRutOverlayPulse(layer);
+          return;
+        }
+        var t = (now != null ? now : ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now())) - t0;
+        var p = (t % 1000) / 1000; // 0→1 over 1s
+        try {
+          layer.setStyle({
+            fillOpacity: 0.02 + p * 0.26,
+            opacity: 0.08 + p * 0.37
+          });
+        } catch (eS) {}
+        layer._rutPulseRaf = requestAnimationFrame(tick);
+      }
+      layer.on('remove', function() { stopPeakRutOverlayPulse(layer); });
+      layer._rutPulseRaf = requestAnimationFrame(tick);
+    }
     window.isDateInPeakRut = isDateInPeakRut;
     window.formatPeakRutLineForZone = formatPeakRutLineForZone;
+    window.attachPeakRutOverlayPulse = attachPeakRutOverlayPulse;
     function daysBetweenDates(a, b) {
       var ms = 86400000;
       var ua = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
@@ -7162,13 +7343,13 @@
       var mapHref = String(mapRules.url || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
       var mapLabel = String(mapRules.label || 'Area map & rules').replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
+      // One set of actions only (no duplicate weather/regs with the orange-dot menu)
       html += '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px;">';
-      html += '<button type="button" class="adcnr-weather-btn" style="width:100%;padding:7px 10px;background:var(--green);color:#fff;border:none;border-radius:6px;font-weight:bold;font-size:11px;cursor:pointer;">Select area / weather</button>';
-      html += '<button type="button" style="width:100%;padding:7px 10px;background:var(--accent);color:#000;border:none;border-radius:6px;font-weight:bold;font-size:11px;cursor:pointer;" onclick="openDeerRegsFromCache(\'' + cacheId + '\')">Deer rules &amp; legislation</button>';
-      // Always show map/rules link: unit PDF when available, otherwise official hub that should have it
+      html += '<button type="button" class="adcnr-weather-btn" style="width:100%;padding:7px 10px;background:var(--green);color:#fff;border:none;border-radius:6px;font-weight:bold;font-size:11px;cursor:pointer;">Get weather</button>';
+      html += '<button type="button" style="width:100%;padding:7px 10px;background:var(--accent);color:#000;border:none;border-radius:6px;font-weight:bold;font-size:11px;cursor:pointer;" onclick="openDeerRegsFromCache(\'' + cacheId + '\')">Rules &amp; regs</button>';
       html += '<a href="' + mapHref + '" target="_blank" rel="noopener" style="display:block;text-align:center;padding:7px 10px;background:var(--panel-light);border:1px solid var(--border);border-radius:6px;font-size:11px;font-weight:600;color:var(--accent);text-decoration:none;">' + mapLabel + '</a>';
       html += '</div>';
-      html += '<div style="margin-top:8px;font-size:10px;color:var(--muted);line-height:1.35;">Desktop: double-click to drop a pin/dot. Phone: press and hold. Then tap the orange dot for pin actions + these links.</div>';
+      html += '<div style="margin-top:6px;font-size:10px;color:var(--muted);line-height:1.35;">Tap the orange map-dot for stand / hunt / pin / share.</div>';
       return html;
     }
 
@@ -7533,6 +7714,49 @@
     }
 
     // ========== DISTANCE FILTER ==========
+    /**
+     * Weather + wind for the distance-origin (My Location / ZIP / Address).
+     * Stays active until the user picks another spot (map click, list, etc.).
+     */
+    function loadWeatherForDistanceOrigin(opts) {
+      opts = opts || {};
+      if (distOriginLat == null || distOriginLng == null) return;
+      if (typeof weatherFeaturesEnabled === 'function' && !weatherFeaturesEnabled()) return;
+      var lat = distOriginLat;
+      var lng = distOriginLng;
+      var detected = (typeof detectBoundaryAndZone === 'function')
+        ? detectBoundaryAndZone(lat, lng)
+        : { zone: 'A', name: 'Alabama', type: 'Spot' };
+      var label = distOriginLabel || 'Distance origin';
+      if (distOriginMode === 'gps' && (!label || label === 'My Location')) label = 'My Location';
+      var loc = {
+        id: 'dist_origin',
+        name: label,
+        type: distOriginMode === 'gps' ? 'My Location'
+          : (distOriginMode === 'zip' ? 'ZIP' : 'Address'),
+        zone: (detected && detected.zone) || 'A',
+        lat: lat,
+        lng: lng,
+        subSections: [],
+        isMapSpot: true,
+        isDistOrigin: true
+      };
+      usingCurrentLocation = (distOriginMode === 'gps');
+      isShowingCurrentData = (distOriginMode === 'gps' && getDaysFromToday(selectedDate || new Date()) === 0);
+      isHistorical = getDaysFromToday(selectedDate || new Date()) < 0;
+      window._forceMapWeatherOverlay = !!(typeof isMapFullscreen === 'function' && isMapFullscreen()) || !!opts.showOverlay;
+      var rule = {
+        weapon: selectedWeapon || 'General',
+        target: 'Weather at distance origin',
+        limit: '',
+        notes: 'Weather / wind for your distance-from location until you pick another spot.'
+      };
+      if (typeof selectLocation === 'function') {
+        selectLocation(loc, rule, { skipScroll: opts.skipScroll !== false });
+      }
+    }
+    window.loadWeatherForDistanceOrigin = loadWeatherForDistanceOrigin;
+
     function setDistOriginMode(mode) {
       if (mode !== 'zip' && mode !== 'address' && mode !== 'gps') mode = 'gps';
       var prev = distOriginMode;
@@ -7554,6 +7778,7 @@
           distOriginLabel = 'My Location';
           updateDistStatus();
           updateAvailableList();
+          loadWeatherForDistanceOrigin();
         } else {
           requestDistGps();
         }
@@ -7564,6 +7789,9 @@
           distOriginLat = null;
           distOriginLng = null;
           distOriginLabel = '';
+        } else if (distOriginLat != null && distOriginLng != null) {
+          // Same ZIP mode re-tap with known coords — keep weather on origin
+          loadWeatherForDistanceOrigin();
         }
         updateDistStatus();
       } else if (mode === 'address') {
@@ -7574,6 +7802,7 @@
           distOriginLabel = lastAddressOrigin.label || 'Address';
           placeDistOriginMarker(distOriginLat, distOriginLng, distOriginLabel);
           if (selectedWeapon) updateAvailableList();
+          loadWeatherForDistanceOrigin();
         } else if (prev !== 'address') {
           distOriginLat = null;
           distOriginLng = null;
@@ -7627,6 +7856,8 @@
           distOriginLabel = 'My Location';
           updateDistStatus();
           if (selectedWeapon) updateAvailableList();
+          // Default weather/wind = My Location until another spot is chosen
+          if (typeof loadWeatherForDistanceOrigin === 'function') loadWeatherForDistanceOrigin();
         }
       }, function() {
         updateDistStatus();
@@ -7673,11 +7904,7 @@
             opacity: 0.95
           });
         } catch (eT) {}
-        try {
-          var z = map.getZoom ? map.getZoom() : 10;
-          if (z < 10) map.setView([lat, lng], 11);
-          else map.panTo([lat, lng], { animate: true });
-        } catch (eV) {}
+        // Do not auto-pan for distance-origin pins (only My Location / list hunts snap)
       });
     }
 
@@ -7788,6 +8015,7 @@
       placeDistOriginMarker(distOriginLat, distOriginLng, distOriginLabel);
       updateDistStatus();
       updateAvailableList();
+      if (typeof loadWeatherForDistanceOrigin === 'function') loadWeatherForDistanceOrigin();
       closeDistAddressModal();
     }
 
@@ -7960,6 +8188,7 @@
           clearDistOriginMarker();
           updateDistStatus();
           updateAvailableList();
+          if (typeof loadWeatherForDistanceOrigin === 'function') loadWeatherForDistanceOrigin();
         })
         .catch(function() {
           alert('Could not find that ZIP code. Try another.');
@@ -8274,20 +8503,14 @@
     window.drawListedHuntCheckmarks = drawListedHuntCheckmarks;
 
     /**
-     * True if feature centroid is within the Step 3 distance filter
-     * (My Location / ZIP / Address + Within X miles). "Any distance" always passes.
+     * Optional distance gate for map fills.
+     * "Any distance" or missing origin → show all (so lands appear on launch).
+     * When origin + radius are set, still show all public-land context by default
+     * (Available Hunts list remains distance-filtered separately).
      */
     function featureWithinDistanceFilter(lat, lng) {
-      if (!distRadiusMiles || distRadiusMiles <= 0) return true;
-      if (distOriginLat == null || distOriginLng == null || lat == null || lng == null) {
-        // No origin yet — do not paint the whole state; wait for GPS/ZIP/address
-        return false;
-      }
-      try {
-        return getDistanceMiles(distOriginLat, distOriginLng, lat, lng) <= distRadiusMiles;
-      } catch (e) {
-        return false;
-      }
+      // Map color-coded public lands are NOT distance-clipped — always show full context
+      return true;
     }
 
     function drawAdcnrLandsOverlay() {
@@ -8303,12 +8526,8 @@
         return;
       }
 
-      // No date/weapon yet → no unit fills (map should match hunt criteria only)
-      if (!selectedDate || !selectedWeapon) {
-        if (publicLandTypeVisible.listPins) drawListedHuntCheckmarks();
-        updatePublicLandToggleUI();
-        return;
-      }
+      // Color-coded public lands paint whenever their type toggles are ON
+      // (no weapon/date required — open-season styling is an extra highlight only)
 
       // Sort so large non-interactive layers (forests) draw first; clickable units on top
       var layersToDraw = (adcnrLandsData.layers || []).slice().sort(function(a, b) {
@@ -8327,43 +8546,37 @@
 
       layersToDraw.forEach(function(layer) {
         if (layer.drawOnMap === false) return;
-        // National forest outlines are statewide context only — not date/weapon units; skip
-        // so the map does not flood with green outside the distance filter.
+        // National forest outlines are statewide context only — skip mass USFS fill
+        // (Forest/NWR toggle still shows NWR; WMA etc. use their own colors)
         if (layer.key === 'usfs' || layer.key === 'nps') return;
-        // Per-type toggle (Layers menu color buttons)
+        // Per-type toggle (Layers menu color buttons) — default all ON at launch
         if (!isPublicLandLayerKeyVisible(layer.key)) return;
         (layer.features || []).forEach(function(feat) {
           var attrs = feat.attributes || {};
-          // Only draw polygons we can affirm are huntable (see mayDrawHuntableFeature)
+          // Managed hunt / public recreation lands (not parks with CanHunt=No)
           if (!mayDrawHuntableFeature(layer, attrs)) return;
           var c = geometryCentroid(feat.geometry);
           if (!c || !isInAlabama(c.lat, c.lng)) return;
-          // Hard distance gate — never paint units outside Within X miles
-          if (!featureWithinDistanceFilter(c.lat, c.lng)) return;
 
           var featName = featureDisplayName(layer, attrs) || layer.label || '';
-          var inList = isFeatureInListedHunts(featName, c.lat, c.lng);
           var isOpen = false;
           try {
-            isOpen = isOpenForSelectedWeaponAndDate(layer, attrs, c.lat, c.lng);
+            if (selectedDate && selectedWeapon) {
+              isOpen = isOpenForSelectedWeaponAndDate(layer, attrs, c.lat, c.lng);
+            }
           } catch (eOpen) { isOpen = false; }
-
-          // Only units you can hunt for date + weapon + distance (same set as Available Hunts)
-          if (lastListedHuntLocations && lastListedHuntLocations.length) {
-            if (!inList) return;
-          } else if (!isOpen) {
-            return;
-          }
 
           var latlngs = esriRingsToLatLngs(feat.geometry);
           if (!latlngs) return;
 
-          // All remaining units meet criteria — solid available-hunt styling
+          // Base color-coded style for every unit of this type; open today = a bit stronger
           var base = publicLandDrawStyle(layer.key);
           var stroke = base.color;
           var fill = base.color;
-          var fillOp = Math.min(0.48, (base.fillOpacity || 0.3) + 0.12);
-          var wt = (base.weight || 2) + 1.25;
+          var fillOp = isOpen
+            ? Math.min(0.52, (base.fillOpacity || 0.3) + 0.16)
+            : Math.max(0.18, (base.fillOpacity || 0.28));
+          var wt = isOpen ? (base.weight || 2) + 1.1 : (base.weight || 2);
           var interactive = layer.interactive !== false;
 
           var poly = L.polygon(latlngs, {
@@ -8387,7 +8600,13 @@
             inPeakRut = !!(selectedDate && isDateInPeakRut(zoneForRut, selectedDate));
           } catch (ePr) { inPeakRut = false; }
           if (interactive) {
-            poly.bindPopup(buildAdcnrPopup(layer, attrs));
+            poly.bindPopup(buildAdcnrPopup(layer, attrs), {
+              className: 'map-dot-popup adcnr-land-popup',
+              closeButton: true,
+              autoPan: false,
+              maxWidth: (typeof isPhoneLayout === 'function' && isPhoneLayout()) ? 248 : 300,
+              closeOnClick: false
+            });
             // Per-polygon long-press state (phone: hold to drop pin/dot)
             poly._lpTimer = null;
             poly._lpFired = false;
@@ -8522,20 +8741,21 @@
             });
           }
           adcnrOverlayGroup.addLayer(poly);
-          // Peak-rut pulse ONLY when selected hunt date falls in this zone's peak window
-          // (1s: base color → soft red + black RUT). Never drawn outside peak rut.
+          // Peak-rut pulse ONLY when selected hunt date falls in this zone's peak window.
+          // Canvas preferCanvas cannot run CSS fill-opacity on paths — pulse via setStyle (JS).
           if (inPeakRut) {
             var rutOverlay = L.polygon(latlngs, {
               color: '#c41e1e',
               weight: Math.max(1.5, Math.min(wt, 2.5)),
-              opacity: 0.45,
+              opacity: 0.12,
               fillColor: '#e11d1d',
-              fillOpacity: 0,
+              fillOpacity: 0.04,
               interactive: false,
               className: 'pl-rut-overlay',
               bubblingMouseEvents: false
             });
             adcnrOverlayGroup.addLayer(rutOverlay);
+            attachPeakRutOverlayPulse(rutOverlay);
             var rutLabel = L.marker([c.lat, c.lng], {
               interactive: false,
               keyboard: false,
@@ -8552,10 +8772,11 @@
           // NO green ✓ from GIS here — only from drawListedHuntCheckmarks()
         });
       });
-      // Above zone tint + dark AL vignette; markers stay in markerPane on top
+      // Stack: state mask (bottom) → zone tint → public lands → markers
       try {
         if (stateZonesGroup) stateZonesGroup.bringToBack();
       } catch (ez) {}
+      try { if (stateMaskGroup) stateMaskGroup.bringToBack(); } catch (eMask) {}
       try { adcnrOverlayGroup.bringToFront(); } catch (e) {}
       // Exactly one ✓ per dropdown list entry (if that toggle is on)
       if (publicLandTypeVisible.listPins) drawListedHuntCheckmarks();
@@ -8570,8 +8791,8 @@
     }
 
     function isPublicLandsOverlayWanted() {
-      // True if any fill type or list pins should show
-      return anyPublicLandTypeVisible();
+      // GIS public-land fills / list pins only (custom areas are drawn separately)
+      return typeof isPublicLandsGisWanted === 'function' ? isPublicLandsGisWanted() : anyPublicLandTypeVisible();
     }
 
     /**
@@ -8674,20 +8895,235 @@
      * Clean Alabama state outline [lat, lng] — map mask + zone clipping.
      * NW (MS/TN) → east TN → south GA/Chattahoochee → west FL → north MS.
      */
+    /**
+     * Selected-state focus ring (Alabama today).
+     * Multi-state later: set ACTIVE_STATE_KEY + ACTIVE_STATE_RING, then call drawActiveStateMask().
+     * Rule: outside the selected state stays muted / low-detail (mask), border stays crisp.
+     */
+    var ACTIVE_STATE_KEY = 'AL';
+    var stateMaskGroup = null;
+    var stateMaskSvgRenderer = null;
+
+    /**
+     * Accurate Alabama outer ring [lat, lng] for outside-state mask + border.
+     * Source: public US states GeoJSON (simplified ~238 pts). Shade is OUTSIDE this ring.
+     */
     var AL_STATE_RING = [
-      [34.995, -88.200], [34.995, -87.800], [34.995, -87.200], [34.995, -86.600],
-      [34.995, -86.000], [34.995, -85.605],
-      [34.850, -85.540], [34.500, -85.520], [34.100, -85.470], [33.700, -85.400],
-      [33.400, -85.340], [33.100, -85.250], [32.800, -85.120], [32.500, -85.000],
-      [32.250, -84.940], [32.000, -85.000], [31.600, -85.000], [31.200, -85.000],
-      [30.997, -85.002],
-      [30.997, -85.400], [30.997, -85.900], [30.997, -86.400], [30.900, -87.000],
-      [30.600, -87.400], [30.350, -87.550], [30.250, -87.600],
-      [30.220, -88.050], [30.280, -88.300], [30.400, -88.400],
-      [30.800, -88.440], [31.200, -88.455], [31.700, -88.450], [32.200, -88.440],
-      [32.407, -88.417], [32.900, -88.390], [33.400, -88.360], [33.900, -88.300],
-      [34.400, -88.250], [34.750, -88.220], [34.995, -88.200]
+[34.99193, -86.78363], [34.99207, -86.67673], [34.992, -86.67085],
+      [34.99174, -86.64121], [34.9912, -86.58896], [34.99097, -86.55586],
+      [34.99069, -86.4678], [34.99166, -86.3972], [34.9911, -86.31127],
+      [34.98817, -85.82872], [34.98468, -85.60516], [34.92417, -85.59516],
+      [34.70832, -85.55248], [34.65678, -85.54127], [34.62379, -85.53442],
+      [34.52519, -85.51393], [34.52413, -85.5137], [34.50121, -85.50838],
+      [34.47395, -85.50232], [34.26944, -85.45869], [34.25285, -85.45537],
+      [34.08082, -85.42173], [33.9017, -85.38669], [33.76796, -85.36049],
+      [33.57417, -85.3225], [33.53022, -85.31409], [33.48288, -85.30444],
+      [33.12956, -85.23651], [33.06258, -85.22326], [32.87053, -85.18413],
+      [32.76421, -85.13204], [32.74517, -85.13714], [32.64254, -85.10479],
+      [32.60358, -85.08029], [32.58393, -85.06958], [32.54292, -85.02251],
+      [32.51297, -85.00132], [32.51016, -85.00103], [32.46984, -84.99823],
+      [32.41224, -84.97943], [32.3812, -84.98739], [32.32836, -85.0071],
+      [32.30071, -84.93868], [32.26354, -84.90905], [32.23154, -84.92364],
+      [32.18485, -84.99593], [32.06305, -85.05603], [31.99186, -85.06225],
+      [31.94466, -85.08213], [31.88826, -85.13293], [31.78316, -85.14133],
+      [31.77226, -85.13073], [31.76308, -85.1245], [31.72276, -85.12223],
+      [31.69496, -85.12553], [31.62435, -85.06524], [31.61862, -85.05747],
+      [31.51745, -85.04686], [31.30868, -85.08765], [31.25839, -85.11187],
+      [31.16549, -85.10021], [31.15963, -85.08358], [31.10819, -85.03562],
+      [31.07548, -85.02212], [31.00068, -85.00237], [31.00067, -85.02751],
+      [31.00065, -85.03115], [31.00059, -85.0548], [31.0007, -85.14584],
+      [31.00083, -85.15222], [30.99704, -85.4883], [30.99693, -85.49827],
+      [30.99325, -86.05246], [30.99368, -86.16289], [30.9938, -86.1752],
+      [30.99399, -86.18725], [30.99403, -86.3046], [30.99448, -86.36927],
+      [30.99418, -86.38865], [30.99417, -86.39194], [30.99379, -86.4547],
+      [30.9937, -86.51283], [30.99522, -86.56344], [30.99453, -86.66468],
+      [30.99503, -86.68829], [30.99688, -86.72729], [30.99698, -86.78569],
+      [30.9974, -86.8305], [30.99763, -86.87299], [30.99926, -87.02711],
+      [30.99959, -87.03999], [30.99919, -87.06406], [30.99905, -87.16261],
+      [30.99828, -87.25498], [30.99819, -87.257], [30.99817, -87.25969],
+      [30.99827, -87.26556], [30.99835, -87.29099], [30.99819, -87.30403],
+      [30.99827, -87.33397], [30.99822, -87.36401], [30.99809, -87.42577],
+      [30.99827, -87.44981], [30.99839, -87.45866], [30.9982, -87.46178],
+      [30.99818, -87.46688], [30.9982, -87.4797], [30.99793, -87.54854],
+      [30.99746, -87.59893], [30.97633, -87.59411], [30.89751, -87.6222],
+      [30.84571, -87.62414], [30.72237, -87.50293], [30.71651, -87.48122],
+      [30.6718, -87.40712], [30.6417, -87.39422], [30.51469, -87.44992],
+      [30.51306, -87.44833], [30.4102, -87.41918], [30.3915, -87.44068],
+      [30.34626, -87.45096], [30.3002, -87.45238], [30.27566, -87.54453],
+      [30.26926, -87.58136], [30.24068, -87.73553], [30.22718, -87.83846],
+      [30.22952, -87.96225], [30.22237, -88.01457], [30.22271, -88.02927],
+      [30.23562, -87.96685], [30.26147, -87.93604], [30.24784, -87.91376],
+      [30.23924, -87.8932], [30.24029, -87.86008], [30.25305, -87.80209],
+      [30.26235, -87.76663], [30.29122, -87.75552], [30.3242, -87.79672],
+      [30.35381, -87.82988], [30.37745, -87.84513], [30.38345, -87.86502],
+      [30.41424, -87.90891], [30.47065, -87.92003], [30.4811, -87.9319],
+      [30.52585, -87.91114], [30.55088, -87.90171], [30.57311, -87.90789],
+      [30.58589, -87.91496], [30.63606, -87.91935], [30.65743, -87.93672],
+      [30.67509, -87.9812], [30.68319, -88.01244], [30.66149, -88.02671],
+      [30.65257, -88.04434], [30.61909, -88.0596], [30.58829, -88.0649],
+      [30.56326, -88.08549], [30.52871, -88.08279], [30.50975, -88.10087],
+      [30.49303, -88.10299], [30.46122, -88.10065], [30.4273, -88.10407],
+      [30.35657, -88.11543], [30.33851, -88.12805], [30.32718, -88.15578],
+      [30.317, -88.19154], [30.33882, -88.19836], [30.34505, -88.18853],
+      [30.36238, -88.20006], [30.38238, -88.26069], [30.37074, -88.29065],
+      [30.36998, -88.31652], [30.38844, -88.33228], [30.38801, -88.36402],
+      [30.36942, -88.39502], [30.5331, -88.40355], [30.54506, -88.40401],
+      [30.63165, -88.40746], [30.66873, -88.40957], [30.71296, -88.41155],
+      [30.73177, -88.41227], [30.9983, -88.42563], [31.00112, -88.42581],
+      [31.23006, -88.4381], [31.35585, -88.44518], [31.42089, -88.44869],
+      [31.43584, -88.44945], [31.624, -88.45972], [31.69795, -88.46443],
+      [31.85139, -88.47121], [31.93026, -88.46888], [32.03972, -88.45504],
+      [32.17208, -88.43871], [32.22766, -88.43171], [32.44977, -88.40379],
+      [32.57812, -88.38874], [32.62695, -88.38299], [32.9912, -88.34043],
+      [33.39906, -88.29113], [33.51646, -88.2768], [33.57082, -88.27005],
+      [33.57693, -88.26908], [33.59199, -88.26715], [33.68205, -88.25634],
+      [33.69578, -88.25462], [33.74491, -88.24839], [33.91166, -88.22652],
+      [34.05833, -88.20723], [34.29386, -88.17689], [34.32105, -88.17363],
+      [34.3831, -88.16563], [34.5817, -88.13999], [34.58922, -88.13872],
+      [34.8922, -88.09789], [34.99563, -88.20006], [35.00626, -87.98492],
+      [35.00551, -87.87774], [35.00554, -87.85353], [35.00566, -87.85189],
+      [35.00478, -87.7676], [35.00409, -87.70949], [35.00399, -87.70054],
+      [35.00354, -87.6714], [35.00334, -87.60603], [35.00268, -87.42154],
+      [35.00237, -87.39131], [35.00182, -87.35928], [35.00091, -87.29918],
+      [34.99948, -87.23054], [34.99915, -87.21668], [34.99516, -87.01117],
+      [34.99451, -86.97441], [34.99455, -86.97024], [34.99196, -86.86215],
+      [34.99186, -86.84647], [34.99176, -86.83631], [34.99193, -86.78365],
+      [34.99193, -86.78363]
     ];
+    // Active state focus ring — swap when multi-state lands
+    var ACTIVE_STATE_RING = AL_STATE_RING;
+
+    /**
+     * Dim everything outside the selected state + draw a single crisp border.
+     * Uses SVG renderer so the mask/border do not flicker with Canvas tile redraws.
+     */
+    function closedStateRing(ring) {
+      if (!ring || !ring.length) return [];
+      var r = ring.slice();
+      var a0 = r[0], aN = r[r.length - 1];
+      if (!a0 || !aN) return r;
+      if (a0[0] !== aN[0] || a0[1] !== aN[1]) r.push([a0[0], a0[1]]);
+      return r;
+    }
+    function drawActiveStateMask() {
+      if (!map || typeof L === 'undefined') return;
+      var ringSrc = (typeof ACTIVE_STATE_RING !== 'undefined' && ACTIVE_STATE_RING && ACTIVE_STATE_RING.length)
+        ? ACTIVE_STATE_RING
+        : AL_STATE_RING;
+      var ring = closedStateRing(ringSrc);
+      if (ring.length < 4) return;
+
+      if (!stateMaskGroup) {
+        stateMaskGroup = L.layerGroup();
+        stateMaskGroup.addTo(map);
+      } else {
+        stateMaskGroup.clearLayers();
+        if (!map.hasLayer(stateMaskGroup)) stateMaskGroup.addTo(map);
+      }
+      // Dedicated SVG renderer: stable stroke (no Canvas pan/zoom flash)
+      if (!stateMaskSvgRenderer) {
+        stateMaskSvgRenderer = L.svg({ padding: 0.5 });
+      }
+      var outer = [[-90, -180], [-90, 180], [90, 180], [90, -180], [-90, -180]];
+      // Shade ONLY outside the accurate AL ring (hole = state interior)
+      var mask = L.polygon([outer, ring], {
+        stroke: false,
+        color: 'transparent',
+        weight: 0,
+        fillColor: '#0e110d',
+        fillOpacity: 0.82,
+        interactive: false,
+        bubblingMouseEvents: false,
+        className: 'state-outside-mask',
+        smoothFactor: 0,
+        renderer: stateMaskSvgRenderer
+      });
+      // Black border traces the state line; dark shade begins beyond this stroke
+      var border = L.polyline(ring, {
+        color: '#000000',
+        weight: 2.5,
+        opacity: 1,
+        interactive: false,
+        bubblingMouseEvents: false,
+        className: 'state-border-line',
+        smoothFactor: 0,
+        lineJoin: 'round',
+        lineCap: 'round',
+        renderer: stateMaskSvgRenderer
+      });
+      // Thin amber accent just inside black line (reads on dark basemap)
+      var borderAccent = L.polyline(ring, {
+        color: '#d4a84b',
+        weight: 1.25,
+        opacity: 0.85,
+        interactive: false,
+        bubblingMouseEvents: false,
+        className: 'state-border-accent',
+        smoothFactor: 0,
+        lineJoin: 'round',
+        lineCap: 'round',
+        renderer: stateMaskSvgRenderer
+      });
+      stateMaskGroup.addLayer(mask);
+      stateMaskGroup.addLayer(border);
+      stateMaskGroup.addLayer(borderAccent);
+      try { stateMaskGroup.bringToBack(); } catch (eBk) {}
+      // Keep pan locked to active state (+ small pad) whenever mask is redrawn
+      if (typeof applyActiveStateMapBounds === 'function') {
+        try { applyActiveStateMapBounds(); } catch (eB) {}
+      }
+    }
+    window.drawActiveStateMask = drawActiveStateMask;
+
+    /**
+     * Keep the map centered on the active state — no wide SE / out-of-region scrolling.
+     * Multi-state later: swap ACTIVE_STATE_RING and call this again.
+     */
+    function getActiveStateLatLngBounds() {
+      var ring = (typeof ACTIVE_STATE_RING !== 'undefined' && ACTIVE_STATE_RING && ACTIVE_STATE_RING.length)
+        ? ACTIVE_STATE_RING
+        : (typeof AL_STATE_RING !== 'undefined' ? AL_STATE_RING : null);
+      if (!ring || !ring.length || typeof L === 'undefined') return null;
+      var minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+      for (var i = 0; i < ring.length; i++) {
+        var p = ring[i];
+        if (!p || p.length < 2) continue;
+        var la = p[0], ln = p[1];
+        if (la < minLat) minLat = la;
+        if (la > maxLat) maxLat = la;
+        if (ln < minLng) minLng = ln;
+        if (ln > maxLng) maxLng = ln;
+      }
+      // Generous pad — free drag around AL + neighbors (not a hard “stay inside AL” cage)
+      var padLat = 2.8;
+      var padLng = 3.2;
+      return L.latLngBounds(
+        [minLat - padLat, minLng - padLng],
+        [maxLat + padLat, maxLng + padLng]
+      );
+    }
+    /**
+     * Free pan (soft far edges only). Hard limit is minZoom so you cannot
+     * zoom out to the whole US / continental tile spam.
+     */
+    function applyActiveStateMapBounds() {
+      if (!map || typeof L === 'undefined') return;
+      try {
+        // Soft outer cage only — plenty of drag room around Alabama
+        var b = getActiveStateLatLngBounds();
+        if (b && b.isValid()) {
+          map.setMaxBounds(b);
+          map.options.maxBoundsViscosity = 0.2; // gentle rubber-band, not a hard wall
+        }
+        // Data-saving: never zoom out to continental US (≈ z3–4)
+        // z7 still shows AL + nearby states; not the whole country.
+        var minZ = 7;
+        map.setMinZoom(minZ);
+        if (map.getZoom() < minZ) map.setZoom(minZ);
+      } catch (eApply) {}
+    }
+    window.applyActiveStateMapBounds = applyActiveStateMapBounds;
+    window.getActiveStateLatLngBounds = getActiveStateLatLngBounds;
 
     /**
      * Per-zone visibility — all OFF at launch. User turns on only what they need.
@@ -9108,6 +9544,8 @@
       });
 
       try { stateZonesGroup.bringToBack(); } catch (e) {}
+      // Mask must stay under zone tints (outside-state dimming)
+      try { if (stateMaskGroup) stateMaskGroup.bringToBack(); } catch (eMask) {}
       try {
         if (adcnrOverlayGroup && map.hasLayer(adcnrOverlayGroup)) adcnrOverlayGroup.bringToFront();
         if (adcnrOpenPinGroup && map.hasLayer(adcnrOpenPinGroup)) adcnrOpenPinGroup.bringToFront();
@@ -9344,7 +9782,8 @@
         maxNativeZoom: 16,
         attribution: 'USGS'
       }, tilePerf));
-      var street = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', Object.assign({
+      // Positron: major roads/cities/water without dense POI labeling (quieter outside AL under mask)
+      var street = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', Object.assign({
         attribution: '&copy; OpenStreetMap & CARTO',
         maxZoom: 20,
         maxNativeZoom: 20
@@ -9390,13 +9829,15 @@
         lidar: lidar
       };
       activeBasemapKey = 'topo';
+      // Free pan around AL; minZoom blocks continental / whole-US zoom (data)
       map = L.map('leaflet-map', {
         center: [32.7794, -86.8287],
         zoom: 7,
         layers: [topo],
-        maxBounds: [[24, -92.5], [37, -79.5]],
-        maxBoundsViscosity: 1.0,
-        minZoom: 6,
+        // Soft outer cage only — applyActiveStateMapBounds widens pad + soft viscosity
+        maxBounds: [[28.2, -91.8], [36.9, -82.2]],
+        maxBoundsViscosity: 0.2,
+        minZoom: 7,
         maxZoom: LIDAR_MAX_ZOOM,
         preferCanvas: true,
         // Never zoom on double-click — it shoves open popups to the top of the map
@@ -9406,6 +9847,15 @@
       wireMapLayersMenu();
       wireMapToolsMenu();
       setMapBasemap(activeBasemapKey);
+      // minZoom + soft far bounds (free drag, no whole-US zoom-out)
+      if (typeof applyActiveStateMapBounds === 'function') {
+        try { applyActiveStateMapBounds(); } catch (eAB0) {}
+      }
+      map.on('resize', function() {
+        if (typeof applyActiveStateMapBounds === 'function') {
+          try { applyActiveStateMapBounds(); } catch (eABr) {}
+        }
+      });
 
       // Zone tint under public lands; ADCNR polygons under markers so pins stay clickable
       stateZonesGroup = L.layerGroup().addTo(map);
@@ -9420,17 +9870,8 @@
       measuredPathGroup = L.layerGroup().addTo(map);
       mapDrawPreviewLayer = L.layerGroup().addTo(map);
 
-      // Same outline as zone clipping so fills never spill past the state line
-      var alBoundary = AL_STATE_RING.slice();
-      if (alBoundary.length && (
-        alBoundary[0][0] !== alBoundary[alBoundary.length - 1][0] ||
-        alBoundary[0][1] !== alBoundary[alBoundary.length - 1][1]
-      )) {
-        alBoundary.push([alBoundary[0][0], alBoundary[0][1]]);
-      }
-      var outer = [[-90, -180], [-90, 180], [90, 180], [90, -180], [-90, -180]];
-      L.polygon([outer, alBoundary], { color: '#0a0c08', weight: 2, fillColor: '#020302', fillOpacity: 0.88, interactive: false }).addTo(map);
-      L.polyline(alBoundary, { color: '#e59a18', weight: 2, opacity: 0.7, interactive: false }).addTo(map);
+      // Active-state mask + crisp border (multi-state ready: swap ACTIVE_STATE_RING later)
+      drawActiveStateMask();
 
       drawWaterGaugesOnMap(true);
       drawHuntsOnMap(); // respects Past Hunts checkbox (off by default)
@@ -9441,22 +9882,26 @@
       fetchRealTimeGauges(false);
       loadTvaLands(); // silent preload - never drawn on map
 
-      // Public Lands Overlay defaults ON — always paint when checked (weapon not required)
+      // Public Lands Overlay defaults ON — paint all color-coded types (not only open today)
       if (isPublicLandsOverlayWanted()) {
-        // Defer one tick so the map container has size, then load/draw
         setTimeout(function() {
           syncPublicLandsOverlay({ showLoading: !adcnrLandsData });
         }, 0);
-        // Second pass after layout/GPS view settles (fixes "checkbox on but empty" first open)
+        // Second pass after layout settles / GIS finishes loading
         setTimeout(function() {
-          if (isPublicLandsOverlayWanted() && map && adcnrLandsData) {
-            if (!adcnrOverlayGroup || !adcnrOverlayGroup.getLayers().length) {
-              drawAdcnrLandsOverlay();
-            }
-          } else if (isPublicLandsOverlayWanted()) {
+          if (!isPublicLandsOverlayWanted()) return;
+          if (adcnrLandsData) {
+            try { drawAdcnrLandsOverlay(); } catch (eR) {}
+          } else {
             syncPublicLandsOverlay({ showLoading: false });
           }
         }, 700);
+        setTimeout(function() {
+          if (isPublicLandsOverlayWanted() && adcnrLandsData &&
+              (!adcnrOverlayGroup || !adcnrOverlayGroup.getLayers().length)) {
+            try { drawAdcnrLandsOverlay(); } catch (eR2) {}
+          }
+        }, 1800);
       }
       // Deer zones default all ON — draw as soon as map is ready
       updateDeerZoneToggleUI();
@@ -9467,8 +9912,8 @@
         }, 500);
       }
 
+      // GPS marker only — never auto-snap on map open (user must tap Current Location)
       if (userLat != null && userLng != null) {
-        map.setView([userLat, userLng], 9);
         setGpsMarker(userLat, userLng);
       }
       if (typeof wireGpsMarkerZoomScale === 'function') wireGpsMarkerZoomScale();
@@ -9545,9 +9990,11 @@
         if (clickLat != null && clickLng != null) st = evaluateMapSpotHuntStatus(clickLat, clickLng);
       } catch (eSt) { st = null; }
       var statusBlock = st ? buildHuntStatusBannerHtml(st) : '';
+      var hasPublicLand = !!(pl && pl.name && pl.layer);
+      var isPrivate = !!(st && st.landKind === 'private' && !hasPublicLand);
 
       var plBlock = '';
-      if (pl && pl.name && pl.layer) {
+      if (hasPublicLand) {
         // Refresh regs cache if popup is rebuilt later in the session
         window.__regsCache = window.__regsCache || {};
         if (!pl.cacheId || !window.__regsCache[pl.cacheId]) {
@@ -9560,11 +10007,12 @@
           '<div class="mdm-title" style="margin-top:2px;">Public land</div>' +
           '<div class="mdm-sub">' + escHtml(pl.name) + (pl.layer.label ? ' · ' + escHtml(pl.layer.label) : '') +
             ' · Zone ' + escHtml((st && st.zone) || '') + '</div>' +
-          '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotPublicLandAction(\'weather\');return false;">Select area / weather</button>' +
-          '<button type="button" class="mdm-btn regs" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotPublicLandAction(\'regs\');return false;">Deer rules &amp; legislation</button>' +
+          // Single weather + regs for public land (no second generic copies below)
+          '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotPublicLandAction(\'weather\');return false;">Get weather</button>' +
+          '<button type="button" class="mdm-btn regs" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotPublicLandAction(\'regs\');return false;">Rules &amp; regs</button>' +
           '<a href="' + mapHref + '" target="_blank" rel="noopener" class="mdm-btn" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box;margin-top:0;" onclick="event.stopPropagation();">' + mapLabel + '</a>' +
-          '<div style="height:1px;background:var(--border);margin:8px 0 6px;"></div>';
-      } else if (st && st.landKind === 'private') {
+          '<div style="height:1px;background:var(--border);margin:6px 0 4px;"></div>';
+      } else if (isPrivate) {
         plBlock =
           '<div class="mdm-title" style="margin-top:2px;">Private land · Zone ' + escHtml(st.zone || 'A') + '</div>' +
           (st.owner
@@ -9572,16 +10020,23 @@
             : st.address
               ? '<div class="mdm-sub">Addr: ' + escHtml(st.address) + ' · owner not listed</div>'
               : '<div class="mdm-sub">Owner not listed for this spot · zoom 12–18 &amp; retry, or confirm tax records</div>') +
-          '<div style="height:1px;background:var(--border);margin:8px 0 6px;"></div>';
+          '<div style="height:1px;background:var(--border);margin:6px 0 4px;"></div>';
       }
+
+      // Weather / regs once only — skip duplicates when public-land block already has them
+      var weatherRegsBtns = hasPublicLand
+        ? ''
+        : (
+          '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'weather\');return false;">Get weather</button>' +
+          '<button type="button" class="mdm-btn regs" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'regs\');return false;">Rules &amp; regs</button>'
+        );
+
       return (
         '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
           statusBlock +
           plBlock +
-          '<div class="mdm-title">What do you want to do?</div>' +
-          '<div class="mdm-sub">Choose an action for this spot</div>' +
-          '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'weather\');return false;">Get weather</button>' +
-          '<button type="button" class="mdm-btn regs" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'regs\');return false;">Rules &amp; regs</button>' +
+          '<div class="mdm-title">' + (hasPublicLand ? 'More actions' : 'What do you want to do?') + '</div>' +
+          weatherRegsBtns +
           '<button type="button" class="mdm-btn stand" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'stand\');return false;">Add stand</button>' +
           '<button type="button" class="mdm-btn hunt" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'hunt\');return false;">Add hunt</button>' +
           '<button type="button" class="mdm-btn pin" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'pin\');return false;">Add pin</button>' +
@@ -9713,12 +10168,22 @@
         var className = (popup.options && popup.options.className) || '';
         var isMapMenu = /map-dot-popup|saved-item-popup/.test(className);
 
-        // Never auto-pan the map for these menus — that caused the “jump to top” bug
+        // Never auto-pan the map — “jump to top” / view snap on mobile
         popup.options.autoPan = false;
+        // If user already dragged this popup, keep their offset
+        if (popup._rsUserDragged) return;
 
         // Prefer classic placement: tip on marker, content directly above
         var offX = 0;
         var offY = 0;
+
+        // Leave room above the bottom toolbar so menus aren’t buried
+        var barH = 56;
+        try {
+          var barEl = document.getElementById('map-bottom-bar');
+          if (barEl) barH = Math.max(48, barEl.offsetHeight + 12);
+        } catch (eBarH) {}
+        var usableBottom = mapSize.y - barH;
 
         // Horizontal: keep menu on-screen left/right when possible
         if (markerPt.x - halfW < pad) {
@@ -9729,6 +10194,7 @@
 
         var roomAbove = markerPt.y - pad;
         var needAbove = popH + tipH;
+        var roomBelowToolbar = usableBottom - markerPt.y;
 
         if (!isFs && isMapMenu) {
           // Non-fullscreen: allow overflow over the logo banner; stay above the dot
@@ -9738,7 +10204,7 @@
           setMapPopupCoversBrand(false);
           offY = 0;
         } else {
-          // Fullscreen / not enough room above: place beside the marker, still nearby
+          // Not enough room above: place beside the marker (still no map pan)
           setMapPopupCoversBrand(false);
           var sideGap = 18;
           if (markerPt.x < mapSize.x / 2) {
@@ -9746,9 +10212,8 @@
           } else {
             offX = -(halfW + sideGap);
           }
-          // Keep vertical center near the marker (Leaflet origin is the tip under the box)
-          offY = Math.round(popH * 0.45);
-          // Re-clamp horizontal after side placement
+          // Vertical: keep near marker but above toolbar band when possible
+          offY = Math.round(Math.min(popH * 0.45, Math.max(0, roomBelowToolbar - popH * 0.2)));
           var tipX = markerPt.x + offX;
           if (tipX - halfW < pad) offX = pad + halfW - markerPt.x;
           if (tipX + halfW > mapSize.x - pad) offX = (mapSize.x - pad - halfW) - markerPt.x;
@@ -9759,18 +10224,81 @@
       } catch (eSp) {}
     }
 
+    /**
+     * Make Leaflet popups draggable by non-interactive chrome (not buttons/links/close).
+     * Adjusts popup offset so the map view is never panned.
+     */
+    function wireLeafletPopupDrag(popup) {
+      if (!popup || typeof L === 'undefined') return;
+      var el = popup.getElement && popup.getElement();
+      if (!el || el._rsDragWired) return;
+      el._rsDragWired = true;
+      var handle = el.querySelector('.leaflet-popup-content-wrapper') || el;
+      var dragging = false;
+      var startX = 0, startY = 0, baseX = 0, baseY = 0;
+
+      function isInteractiveTarget(t) {
+        if (!t || !t.closest) return false;
+        return !!t.closest(
+          'button, a, input, select, textarea, label, ' +
+          '.leaflet-popup-close-button, .mdm-btn, .adcnr-weather-btn, .mwo-close, .mwo-more'
+        );
+      }
+
+      function onDown(ev) {
+        if (isInteractiveTarget(ev.target)) return;
+        if (ev.button != null && ev.button !== 0) return;
+        dragging = true;
+        popup._rsUserDragged = true;
+        handle.classList.add('is-dragging');
+        startX = ev.clientX;
+        startY = ev.clientY;
+        var off = (popup.options && popup.options.offset) || L.point(0, 0);
+        baseX = off.x || 0;
+        baseY = off.y || 0;
+        // Never pan the map to follow the popup
+        popup.options.autoPan = false;
+        try { handle.setPointerCapture(ev.pointerId); } catch (eCap) {}
+        if (ev.preventDefault) ev.preventDefault();
+        if (ev.stopPropagation) ev.stopPropagation();
+      }
+      function onMove(ev) {
+        if (!dragging) return;
+        var nx = Math.round(baseX + (ev.clientX - startX));
+        var ny = Math.round(baseY + (ev.clientY - startY));
+        popup.options.offset = L.point(nx, ny);
+        try { if (typeof popup.update === 'function') popup.update(); } catch (eU) {}
+        if (ev.preventDefault) ev.preventDefault();
+      }
+      function onUp() {
+        if (!dragging) return;
+        dragging = false;
+        handle.classList.remove('is-dragging');
+      }
+      handle.addEventListener('pointerdown', onDown);
+      handle.addEventListener('pointermove', onMove);
+      handle.addEventListener('pointerup', onUp);
+      handle.addEventListener('pointercancel', onUp);
+    }
+
     function wireSmartMapPopups() {
       if (!map || map._smartPopupsWired) return;
       map._smartPopupsWired = true;
       map.on('popupopen', function(e) {
         if (!e || !e.popup) return;
+        // Never auto-pan — keeps viewed area steady (critical on mobile)
+        try { e.popup.options.autoPan = false; } catch (eAp) {}
+        // Freeze page scroll around the map while popup layout settles
+        if (typeof lockMapInView === 'function') lockMapInView();
         // Popups above compass dial only — bottom toolbar stays on top (z-index 80)
         setMapPopupOpenStack(true);
         ensureMapBottomBarVisible();
-        // After layout, measure size and pin above the marker
+        // After layout, measure size and pin above the marker; then enable drag
         requestAnimationFrame(function() {
           requestAnimationFrame(function() {
             smartPositionMapPopup(e.popup);
+            wireLeafletPopupDrag(e.popup);
+            if (typeof scheduleMapInViewRestore === 'function') scheduleMapInViewRestore();
           });
         });
       });
@@ -11825,8 +12353,8 @@
         line.bindPopup(popHtml, {
           className: 'saved-item-popup map-dot-popup',
           closeButton: true,
-          autoPan: true,
-          maxWidth: 320,
+          autoPan: false,
+          maxWidth: (typeof isPhoneLayout === 'function' && isPhoneLayout()) ? 248 : 320,
           closeOnClick: false
         });
         line.on('popupopen', function() {
@@ -12026,6 +12554,10 @@
     function drawCustomAreasOnMap() {
       if (!map || !customAreaGroup) return;
       customAreaGroup.clearLayers();
+      // Layers menu “Custom” toggle (also cleared by Public lands → All off)
+      if (typeof publicLandTypeVisible !== 'undefined' && publicLandTypeVisible.custom === false) {
+        return;
+      }
       // Prefer storage records (have elev + createdAt); fall back to location entries
       var stored = {};
       loadCustomAreasFromStorage().forEach(function(a) {
@@ -12072,7 +12604,13 @@
             '<button type="button" class="mdm-btn share" onclick="event.preventDefault();event.stopPropagation();window.shareLocationLink(' + Number(area.lat) + ',' + Number(area.lng) + ',\'' + escJsStr(area.name) + '\');return false;">Share location</button>' +
             '<button type="button" class="mdm-btn danger" onclick="event.preventDefault();event.stopPropagation();window.deleteCustomArea(\'' + safeId + '\');return false;">Delete area</button>' +
           '</div>';
-        poly.bindPopup(popupHtml, { className: 'saved-item-popup map-dot-popup', closeButton: true, autoPan: true, maxWidth: 300, closeOnClick: false });
+        poly.bindPopup(popupHtml, {
+          className: 'saved-item-popup map-dot-popup',
+          closeButton: true,
+          autoPan: false,
+          maxWidth: (typeof isPhoneLayout === 'function' && isPhoneLayout()) ? 248 : 300,
+          closeOnClick: false
+        });
         poly.on('popupopen', function() {
           var el = poly.getPopup() && poly.getPopup().getElement();
           if (el) {
@@ -12779,7 +13317,7 @@
             '<button type="button" class="mdm-btn share" onclick="event.preventDefault();event.stopPropagation();window.shareSavedPinLocation(\'' + safeId + '\');return false;">Share location</button>' +
             '<button type="button" class="mdm-btn danger" onclick="event.preventDefault();event.stopPropagation();window.deletePin(\'' + safeId + '\');return false;">Delete pin</button>' +
           '</div>';
-        m.bindPopup(popupHtml, { className: 'saved-item-popup map-dot-popup', closeButton: true, autoPan: true, maxWidth: 280, closeOnClick: false });
+        m.bindPopup(popupHtml, { className: 'saved-item-popup map-dot-popup', closeButton: true, autoPan: false, maxWidth: 280, closeOnClick: false });
         m.on('popupopen', function() {
           var el = m.getPopup() && m.getPopup().getElement();
           if (el) {
@@ -12810,7 +13348,7 @@
             '<div class="mdm-sub">' + escHtml(hunt.name) + '<br>' + escHtml(hunt.date) + '</div>' +
             '<button type="button" class="mdm-btn danger" onclick="event.preventDefault();event.stopPropagation();window.deleteHunt(\'' + safeId + '\');return false;">Delete hunt</button>' +
           '</div>';
-        m.bindPopup(popupHtml, { className: 'saved-item-popup map-dot-popup', closeButton: true, autoPan: true, maxWidth: 280, closeOnClick: false });
+        m.bindPopup(popupHtml, { className: 'saved-item-popup map-dot-popup', closeButton: true, autoPan: false, maxWidth: 280, closeOnClick: false });
         m.on('popupopen', function() {
           var el = m.getPopup() && m.getPopup().getElement();
           if (el) {
@@ -12900,7 +13438,7 @@
             '<div class="mdm-sub">Zone ' + escHtml(loc.zone) + ' - ' + escHtml(match.rule.weapon) + '</div>' +
             '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.selectLocationById(\'' + safeId + '\',{closePopup:true,showOverlay:true});return false;">Get weather</button>' +
           '</div>';
-        m.bindPopup(popupHtml, { className: 'saved-item-popup map-dot-popup', closeButton: true, autoPan: true, maxWidth: 280, closeOnClick: false });
+        m.bindPopup(popupHtml, { className: 'saved-item-popup map-dot-popup', closeButton: true, autoPan: false, maxWidth: 280, closeOnClick: false });
         m.on('popupopen', function() {
           var el = m.getPopup() && m.getPopup().getElement();
           if (el) {
@@ -12911,10 +13449,7 @@
         mapMarkerGroup.addLayer(m);
         layers.push(m);
       });
-      if (layers.length > 0 && selectedLocationId === null) {
-        var group = L.featureGroup(layers);
-        map.fitBounds(group.getBounds().pad(0.15));
-      }
+      // Never auto fitBounds to marker set — only My Location / list hunt may snap
     }
     function plotSubsections(location, rule) {
       if (!map || !standMarkerGroup) return;
@@ -12942,7 +13477,7 @@
             '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.selectSavedStand(\'' + safeLocId + '\',' + fullIdx + ');return false;">Get weather</button>' +
             '<button type="button" class="mdm-btn danger" onclick="event.preventDefault();event.stopPropagation();window.removeSubsection(\'' + safeLocId + '\',' + fullIdx + ');return false;">Delete stand</button>' +
           '</div>';
-        m.bindPopup(popupHtml, { className: 'saved-item-popup map-dot-popup', closeButton: true, autoPan: true, maxWidth: 280, closeOnClick: false });
+        m.bindPopup(popupHtml, { className: 'saved-item-popup map-dot-popup', closeButton: true, autoPan: false, maxWidth: 280, closeOnClick: false });
         m.on('popupopen', function() {
           var el = m.getPopup() && m.getPopup().getElement();
           if (el) {
@@ -14107,6 +14642,9 @@
         if (!loc) return false;
         if (loc.id === 9999 || loc.type === 'Current Location') return false;
         if (loc.name && /^My Location/i.test(String(loc.name))) return false;
+        // Never list bare deer zones (A–E) — only named units inside zones + custom areas
+        if (loc.type === 'Statewide') return false;
+        if (loc.name && /^Statewide\s+Zone\s+[A-E]\b/i.test(String(loc.name))) return false;
         // Custom shapes without hunt permission stay off the Available Hunts list
         if (loc.isCustomArea && loc.hasHuntPermission !== true) return false;
         return true;
@@ -14204,8 +14742,8 @@
           usingCurrentLocation = false;
           isShowingCurrentData = false;
           isHistorical = getDaysFromToday(selectedDate) < 0;
-          // List pick: weather/dashboard only — no map-dot popup. Selected green ✓ grows.
-          selectLocation(match.location, match.rule);
+          // List pick: weather/dashboard + snap map to this Available Hunt (only allowed snap besides My Location).
+          selectLocation(match.location, match.rule, { panMap: true });
         };
         frag.appendChild(item);
       });
@@ -14270,7 +14808,11 @@
         window._forceMapWeatherOverlay = true;
       }
 
-      selectLocation(loc, rule, { skipScroll: !!opts.skipScroll });
+      selectLocation(loc, rule, {
+        skipScroll: !!opts.skipScroll,
+        panMap: !!opts.panMap,
+        panZoom: opts.panZoom
+      });
 
       // Scroll to weather only for list picks on phone (not map taps)
       if (!opts.skipScroll && isPhoneLayout()) {
@@ -14358,9 +14900,14 @@
       });
     }
 
+    /**
+     * Select a location for weather/dashboard.
+     * Map pan ONLY when opts.panMap is true (Available Hunts list or Current Location).
+     */
     async function selectLocation(location, rule, opts) {
       opts = opts || {};
       var skipScroll = !!opts.skipScroll;
+      var panMap = !!opts.panMap;
       if (skipScroll) lockMapInView();
       selectedLocationId = location.id;
       selectedSubsectionIndex = null;
@@ -14374,8 +14921,15 @@
           if (!skipScroll) {
             try { m.closePopup(); } catch (eCp) {}
           }
-          // Map-driven picks: never pan/scroll away from the user's click
-          if (!skipScroll && !location.isMapSpot) m.panTo([location.lat, location.lng]);
+          // Snap ONLY for explicit panMap (list hunt / My Location) — never free map clicks, weather, etc.
+          if (panMap && location.lat != null && location.lng != null) {
+            try {
+              var z = m.getZoom ? m.getZoom() : 10;
+              if (opts.panZoom != null) m.setView([location.lat, location.lng], opts.panZoom, { animate: true });
+              else if (z < 10) m.setView([location.lat, location.lng], 11, { animate: true });
+              else m.panTo([location.lat, location.lng], { animate: true });
+            } catch (ePan) {}
+          }
           plotSubsections(location, rule);
           // Enlarge the green ✓ for this unit; stays big until another area is selected
           if (typeof drawListedHuntCheckmarks === 'function') {
@@ -14396,7 +14950,7 @@
       const loc = locations.find(l => l.id == locId);
       const sub = loc.subSections[subIdx];
       document.querySelectorAll('.subsection-item').forEach((el,i) => { el.classList.remove('selected'); if (i===subIdx) el.classList.add('selected'); });
-      if (map && sub) map.panTo([sub.lat, sub.lng]);
+      // Stands: do not auto-pan (only My Location / Available Hunts list snap)
       const matches = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand);
       const match = matches.find(m => m.location.id == locId);
       if (sub) applyTvaToLocation(loc, sub.lat, sub.lng);
@@ -14935,9 +15489,15 @@
       return bounds;
     }
 
-    function focusMapOnHuntArea(loc) {
+    /**
+     * Optional focus for stand placement context — does NOT pan by default.
+     * Map snap is reserved for Current Location + Available Hunts list only.
+     */
+    function focusMapOnHuntArea(loc, opts) {
+      opts = opts || {};
       return ensureMap().then(function(m) {
         if (!m || !loc) return m;
+        if (!opts.panMap) return m;
         var bounds = findAdcnrBoundsForLocation(loc);
         if (bounds && bounds.isValid && bounds.isValid()) {
           m.fitBounds(bounds.pad(0.1), { maxZoom: 14, animate: true });
@@ -15161,9 +15721,8 @@
         updateDistStatus();
         ensureMap().then(function(m) {
           if (m) {
-            m.setView([userLat, userLng], 12);
             setGpsMarker(userLat, userLng);
-            // No auto popup / weather box for current location - only after selecting an area
+            // No auto popup for current location
             if (map) map.closePopup();
           }
         });
@@ -15171,7 +15730,8 @@
         var dateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
         var tid = detected.zone==='A' ? 10 : 11;
         var rule = rules.find(function(r) { return r.locId==tid && dateStr>=r.start && dateStr<=r.end; }) || { weapon:'General', target:'Statewide Rules', limit:'Statewide Limit', notes:'Check regulations.' };
-        selectLocation(currentLocationObj, rule);
+        // Current Location button: one of only two allowed map snaps
+        selectLocation(currentLocationObj, rule, { panMap: true, panZoom: 12 });
         updateAvailableList();
       }, function(err) { alert('Geolocation failed: ' + err.message); });
     }
@@ -15473,46 +16033,61 @@
     window.closeMapWeatherPopup = closeMapWeatherPopup;
     window.closeMapWeatherDetails = closeMapWeatherDetails;
 
-    function wireMapWeatherDetailsDrag() {
-      var box = document.getElementById('map-weather-details');
+    /**
+     * Drag a map chrome panel from any non-button area (weather compact + details).
+     * Positions stay absolute inside the map wrapper so the toolbar is never covered by default.
+     */
+    function wireDraggableMapPanel(box) {
       if (!box || box._dragWired) return;
-      var head = box.querySelector('.mwo-head');
-      if (!head) return;
       box._dragWired = true;
       var dragging = false;
       var startX = 0, startY = 0, origL = 0, origT = 0;
 
+      function isInteractiveTarget(t) {
+        if (!t || !t.closest) return false;
+        return !!t.closest('button, a, input, select, textarea, label, .mwo-close, .mwo-more, .mdm-btn');
+      }
       function onDown(ev) {
-        if (ev.target && ev.target.closest && ev.target.closest('.mwo-close')) return;
+        if (isInteractiveTarget(ev.target)) return;
         if (ev.button != null && ev.button !== 0) return;
         dragging = true;
+        box.classList.add('is-dragging');
         var parent = box.offsetParent || box.parentElement || document.body;
         var pref = parent.getBoundingClientRect ? parent.getBoundingClientRect() : { left: 0, top: 0 };
         var rect = box.getBoundingClientRect();
-        // Convert from centered transform to absolute left/top so drag works
         box.classList.add('is-dragged');
         box.style.transform = 'none';
+        box.style.right = 'auto';
+        box.style.bottom = 'auto';
         box.style.left = Math.round(rect.left - pref.left) + 'px';
         box.style.top = Math.round(rect.top - pref.top) + 'px';
         startX = ev.clientX;
         startY = ev.clientY;
         origL = parseFloat(box.style.left) || 0;
         origT = parseFloat(box.style.top) || 0;
-        try { head.setPointerCapture(ev.pointerId); } catch (eCap) {}
-        ev.preventDefault();
+        try { box.setPointerCapture(ev.pointerId); } catch (eCap) {}
+        if (ev.preventDefault) ev.preventDefault();
       }
       function onMove(ev) {
         if (!dragging) return;
         box.style.left = Math.round(origL + (ev.clientX - startX)) + 'px';
         box.style.top = Math.round(origT + (ev.clientY - startY)) + 'px';
+        if (ev.preventDefault) ev.preventDefault();
       }
       function onUp() {
+        if (!dragging) return;
         dragging = false;
+        box.classList.remove('is-dragging');
       }
-      head.addEventListener('pointerdown', onDown);
-      head.addEventListener('pointermove', onMove);
-      head.addEventListener('pointerup', onUp);
-      head.addEventListener('pointercancel', onUp);
+      box.addEventListener('pointerdown', onDown);
+      box.addEventListener('pointermove', onMove);
+      box.addEventListener('pointerup', onUp);
+      box.addEventListener('pointercancel', onUp);
+    }
+
+    function wireMapWeatherDetailsDrag() {
+      wireDraggableMapPanel(document.getElementById('map-weather-details'));
+      wireDraggableMapPanel(document.getElementById('map-weather-overlay'));
     }
 
     function expandMapWeatherDetails() {
@@ -15596,7 +16171,15 @@
       lastMapWeatherPayload = { title: name, compactHtml: compact, detailsHtml: details };
       body.innerHTML = compact;
       if (more) more.style.display = 'block';
+      // Default lower-right above toolbar unless user already dragged this session
+      if (!overlay.classList.contains('is-dragged')) {
+        overlay.style.left = '';
+        overlay.style.top = '';
+        overlay.style.right = '12px';
+        overlay.style.bottom = '';
+      }
       overlay.style.display = 'block';
+      wireMapWeatherDetailsDrag();
       closeMapWeatherDetails();
     }
 
@@ -15712,7 +16295,8 @@
           var dateStr = selectedDate.toISOString().split('T')[0];
           var tid = detected.zone==='A' ? 10 : 11;
           var rule = rules.find(function(r) { return r.locId==tid && dateStr>=r.start && dateStr<=r.end; }) || { weapon:'General', target:'Statewide Rules', limit:'Statewide Limit', notes:'Check regulations.' };
-          selectLocation(currentLocationObj, rule);
+          // Prefetch weather only — do NOT pan map until user taps Current Location
+          selectLocation(currentLocationObj, rule, { panMap: false, skipScroll: true });
         }, function() {
           console.warn('Geolocation failed, using center');
           initializeFallback(32.7794, -86.8287);
