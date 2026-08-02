@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>REG SLAYER - Alabama Deer Season Planner v4.4</title>
+  <title>REG SLAYER - Alabama Deer Season Planner v4.5</title>
   <!-- Detect phone vs desktop as early as possible (reduces layout flash) -->
   <script>
     (function () {
@@ -46,7 +46,7 @@
     body { background: var(--bg); color: var(--ink); margin: 0; padding: 0; line-height: 1.5; min-height: 100vh; display: flex; flex-direction: column; }
 
     /*
-     * Brand header (v4.4): 4.2 diagonal green stripes (22px / 22px).
+     * Brand header (v4.5): 4.2 diagonal green stripes (22px / 22px).
      * Logo is drawn near 4.2 scale so its stripe pitch matches the header,
      * then the wrap clips only empty PNG margin — shield + letters stay fully visible.
      */
@@ -433,6 +433,8 @@
       max-width: 100% !important;
     }
     html.layout-phone .location-list { max-height: 250px; }
+    html.layout-phone .location-item:hover { transform: none; }
+    html.layout-phone .location-item:active { background: rgba(229,154,24,0.10); }
 
     /* Same phone shell for narrow viewports (desktop browser resized / no early JS) */
     @media (max-width: 950px) {
@@ -1209,8 +1211,20 @@
     }
     .location-list { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; margin-bottom: 15px; }
     /* max-height set in desktop / phone layout blocks above */
-    .location-item { padding: 12px; border-radius: 8px; background: var(--panel-light); border: 1px solid var(--border); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .location-item {
+      padding: 12px;
+      border-radius: 8px;
+      background: var(--panel-light);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.15s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
     .location-item:hover { border-color: var(--muted); transform: translateX(3px); }
+    .location-item:active { transform: translateX(1px); }
     .location-item.selected { border-left: 5px solid var(--accent); background: rgba(229,154,24,0.08); }
     .badge { font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; }
     .badge.open { background: var(--green); color: white; }
@@ -4126,11 +4140,11 @@
   </style>
 </head>
 <body>
-  <!-- Brand header: centered logo + small V4.4 badge -->
+  <!-- Brand header: centered logo + small V4.5 badge -->
   <header class="brand-header" role="banner">
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 4.4">V4.4</span>
+      <span class="brand-version" aria-label="Version 4.5">V4.5</span>
     </div>
   </header>
 
@@ -4837,7 +4851,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '4.4';
+    const APP_VERSION = '4.5';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -6767,35 +6781,56 @@
      * Peak-rut red fill pulse that works with Leaflet preferCanvas.
      * CSS cannot animate Canvas path fill-opacity; setStyle + rAF does.
      */
+    /** One rAF for all peak-rut fill pulses (was per-polygon — caused map stutter). */
+    var _peakRutPulseLayers = [];
+    var _peakRutPulseRaf = null;
+    var _peakRutPulseT0 = 0;
     function stopPeakRutOverlayPulse(layer) {
       if (!layer) return;
-      if (layer._rutPulseRaf) {
-        try { cancelAnimationFrame(layer._rutPulseRaf); } catch (eC) {}
-        layer._rutPulseRaf = null;
-      }
       layer._rutPulseRunning = false;
+      if (_peakRutPulseLayers.length) {
+        _peakRutPulseLayers = _peakRutPulseLayers.filter(function(Lyr) { return Lyr !== layer; });
+      }
+      if (!_peakRutPulseLayers.length && _peakRutPulseRaf) {
+        try { cancelAnimationFrame(_peakRutPulseRaf); } catch (eC) {}
+        _peakRutPulseRaf = null;
+      }
+    }
+    function ensurePeakRutGlobalPulse() {
+      if (_peakRutPulseRaf) return;
+      _peakRutPulseT0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      function tick(now) {
+        if (!_peakRutPulseLayers.length) {
+          _peakRutPulseRaf = null;
+          return;
+        }
+        var t0 = _peakRutPulseT0;
+        var t = ((typeof now === 'number' ? now : ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now())) - t0);
+        var p = (t % 1000) / 1000;
+        var fo = 0.02 + p * 0.26;
+        var op = 0.08 + p * 0.37;
+        for (var i = _peakRutPulseLayers.length - 1; i >= 0; i--) {
+          var layer = _peakRutPulseLayers[i];
+          if (!layer || !layer._rutPulseRunning || !layer._map) {
+            _peakRutPulseLayers.splice(i, 1);
+            continue;
+          }
+          try { layer.setStyle({ fillOpacity: fo, opacity: op }); } catch (eS) {}
+        }
+        if (!_peakRutPulseLayers.length) {
+          _peakRutPulseRaf = null;
+          return;
+        }
+        _peakRutPulseRaf = requestAnimationFrame(tick);
+      }
+      _peakRutPulseRaf = requestAnimationFrame(tick);
     }
     function attachPeakRutOverlayPulse(layer) {
       if (!layer || layer._rutPulseRunning) return;
       layer._rutPulseRunning = true;
-      var t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-      function tick(now) {
-        if (!layer._rutPulseRunning || !layer._map) {
-          stopPeakRutOverlayPulse(layer);
-          return;
-        }
-        var t = (now != null ? now : ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now())) - t0;
-        var p = (t % 1000) / 1000; // 0→1 over 1s
-        try {
-          layer.setStyle({
-            fillOpacity: 0.02 + p * 0.26,
-            opacity: 0.08 + p * 0.37
-          });
-        } catch (eS) {}
-        layer._rutPulseRaf = requestAnimationFrame(tick);
-      }
+      _peakRutPulseLayers.push(layer);
       layer.on('remove', function() { stopPeakRutOverlayPulse(layer); });
-      layer._rutPulseRaf = requestAnimationFrame(tick);
+      ensurePeakRutGlobalPulse();
     }
 
     /** Peak-rut candidates from last public-lands draw (re-clustered on zoom). */
@@ -6983,10 +7018,16 @@
     function wirePeakRutZoomClustering() {
       if (!map || map._peakRutZoomWired) return;
       map._peakRutZoomWired = true;
+      var _peakRutZoomDebounce = null;
       map.on('zoomend', function() {
-        if (lastPeakRutCandidates && lastPeakRutCandidates.length) {
-          renderPeakRutOverlays(lastPeakRutCandidates);
-        }
+        if (!lastPeakRutCandidates || !lastPeakRutCandidates.length) return;
+        if (_peakRutZoomDebounce) clearTimeout(_peakRutZoomDebounce);
+        _peakRutZoomDebounce = setTimeout(function() {
+          _peakRutZoomDebounce = null;
+          if (lastPeakRutCandidates && lastPeakRutCandidates.length) {
+            renderPeakRutOverlays(lastPeakRutCandidates);
+          }
+        }, 140);
       });
     }
 
@@ -9415,6 +9456,13 @@
      * Free pan (soft far edges only). Hard limit is minZoom so you cannot
      * zoom out to the whole US / continental tile spam.
      */
+    /** Desktop starts/zooms-out at 8. Phone uses a lower floor so a small map can show the same statewide view. */
+    function getMapMinZoomFloor() {
+      try {
+        if (typeof isPhoneLayout === 'function' && isPhoneLayout()) return 6;
+      } catch (eMz) {}
+      return 8;
+    }
     function applyActiveStateMapBounds() {
       if (!map || typeof L === 'undefined') return;
       try {
@@ -9424,14 +9472,48 @@
           map.setMaxBounds(b);
           map.options.maxBoundsViscosity = 0.2; // gentle rubber-band, not a hard wall
         }
-        // Data-saving: min zoom = previous floor (7) + one zoom-in step
-        // (furthest out = old all-the-way-out, then one + press)
-        var minZ = 8;
+        // Desktop minZoom 8 (statewide on a large map). Phone minZoom 6 so pinch-out
+        // matches that same geographic coverage on a small viewport.
+        var minZ = getMapMinZoomFloor();
         map.setMinZoom(minZ);
         if (map.getZoom() < minZ) map.setZoom(minZ);
       } catch (eApply) {}
     }
+    /**
+     * Start both layouts on the same statewide framing: desktop keeps zoom 8;
+     * phone fitBounds so Alabama fills the smaller map (looks like desktop zoom-out).
+     */
+    function applyInitialStatewideView() {
+      if (!map || typeof L === 'undefined') return;
+      try {
+        var phone = (typeof isPhoneLayout === 'function' && isPhoneLayout());
+        var b = (typeof getActiveStateLatLngBounds === 'function') ? getActiveStateLatLngBounds() : null;
+        if (phone && b && b.isValid && b.isValid()) {
+          map.fitBounds(b, { animate: false, padding: [18, 18], maxZoom: 8 });
+          var minZ = getMapMinZoomFloor();
+          if (map.getZoom() < minZ) map.setZoom(minZ);
+        } else {
+          map.setView([32.7794, -86.8287], 8, { animate: false });
+        }
+      } catch (eInitV) {
+        try { map.setView([32.7794, -86.8287], 8, { animate: false }); } catch (e2) {}
+      }
+    }
     window.applyActiveStateMapBounds = applyActiveStateMapBounds;
+
+    /** Coalesce rapid invalidateSize calls (layout toggles, orientation) into one paint. */
+    var _mapInvalidateTimer = null;
+    function scheduleMapInvalidateSize(delayMs, animate) {
+      if (typeof map === 'undefined' || !map || typeof map.invalidateSize !== 'function') return;
+      if (_mapInvalidateTimer) clearTimeout(_mapInvalidateTimer);
+      var d = delayMs != null ? delayMs : 40;
+      var anim = !!animate;
+      _mapInvalidateTimer = setTimeout(function() {
+        _mapInvalidateTimer = null;
+        try { map.invalidateSize(anim); } catch (eInv) {}
+      }, d);
+    }
+    window.scheduleMapInvalidateSize = scheduleMapInvalidateSize;
     window.getActiveStateLatLngBounds = getActiveStateLatLngBounds;
 
     /**
@@ -10081,9 +10163,10 @@
       if (typeof L === 'undefined' || map) return;
       // Shared tile opts: limit work on mobile (no retina 4× tile spam; small buffer; idle updates)
       var phoneTiles = (typeof isPhoneLayout === 'function' && isPhoneLayout());
+      // Phone: still skip retina 4× spam, but allow tiles while zooming so pinch feels smooth
       var tilePerf = {
-        updateWhenIdle: phoneTiles,
-        updateWhenZooming: !phoneTiles,
+        updateWhenIdle: false,
+        updateWhenZooming: true,
         keepBuffer: phoneTiles ? 1 : 2,
         detectRetina: false,
         crossOrigin: true
@@ -10141,7 +10224,8 @@
         lidar: lidar
       };
       activeBasemapKey = 'topo';
-      // Free pan around AL; minZoom 8 = old min (7) + one zoom-in click
+      // Free pan around AL. Phone minZoom lower so small map can match desktop statewide view.
+      var initMinZ = (typeof getMapMinZoomFloor === 'function') ? getMapMinZoomFloor() : 8;
       map = L.map('leaflet-map', {
         center: [32.7794, -86.8287],
         zoom: 8,
@@ -10149,11 +10233,15 @@
         // Soft outer cage only — applyActiveStateMapBounds widens pad + soft viscosity
         maxBounds: [[28.2, -91.8], [36.9, -82.2]],
         maxBoundsViscosity: 0.2,
-        minZoom: 8,
+        minZoom: initMinZ,
         maxZoom: LIDAR_MAX_ZOOM,
         preferCanvas: true,
         // Never zoom on double-click — it shoves open popups to the top of the map
-        doubleClickZoom: false
+        doubleClickZoom: false,
+        // Smoother pan/zoom feel (less janky redraw while interacting)
+        fadeAnimation: true,
+        zoomAnimation: true,
+        markerZoomAnimation: true
       });
       // Basemap + overlay toggles live in #map-layers-menu (bottom center); tools drawer under Tools tab
       wireMapLayersMenu();
@@ -10162,6 +10250,10 @@
       // minZoom + soft far bounds (free drag, no whole-US zoom-out)
       if (typeof applyActiveStateMapBounds === 'function') {
         try { applyActiveStateMapBounds(); } catch (eAB0) {}
+      }
+      // Phone: fit Alabama into the smaller map so start matches desktop zoom-out framing
+      if (typeof applyInitialStatewideView === 'function') {
+        try { applyInitialStatewideView(); } catch (eInitSv) {}
       }
       map.on('resize', function() {
         if (typeof applyActiveStateMapBounds === 'function') {
@@ -10195,34 +10287,27 @@
       fetchRealTimeGauges(false);
       loadTvaLands(); // silent preload - never drawn on map
 
-      // Public Lands Overlay defaults ON — paint all color-coded types (not only open today)
+      // Public Lands Overlay defaults ON — one load + one recovery pass (was 3 full redraws)
       if (isPublicLandsOverlayWanted()) {
         setTimeout(function() {
           syncPublicLandsOverlay({ showLoading: !adcnrLandsData });
         }, 0);
-        // Second pass after layout settles / GIS finishes loading
+        // Recovery only if first pass left the group empty (GIS race)
         setTimeout(function() {
           if (!isPublicLandsOverlayWanted()) return;
-          if (adcnrLandsData) {
+          if (adcnrLandsData && adcnrOverlayGroup && !adcnrOverlayGroup.getLayers().length) {
             try { drawAdcnrLandsOverlay(); } catch (eR) {}
-          } else {
+          } else if (!adcnrLandsData) {
             syncPublicLandsOverlay({ showLoading: false });
           }
-        }, 700);
-        setTimeout(function() {
-          if (isPublicLandsOverlayWanted() && adcnrLandsData &&
-              (!adcnrOverlayGroup || !adcnrOverlayGroup.getLayers().length)) {
-            try { drawAdcnrLandsOverlay(); } catch (eR2) {}
-          }
-        }, 1800);
+        }, 900);
       }
-      // Deer zones default all ON — draw as soon as map is ready
+      // Deer zones: single draw after layout settles
       updateDeerZoneToggleUI();
       if (anyDeerZoneVisible()) {
-        setTimeout(function() { drawStateZonesOverlay(); }, 50);
         setTimeout(function() {
           if (anyDeerZoneVisible()) drawStateZonesOverlay();
-        }, 500);
+        }, 80);
       }
 
       // GPS marker only — never auto-snap on map open (user must tap Current Location)
@@ -10254,13 +10339,18 @@
         placeOrMoveMapDot(e.latlng, { skipWeather: false, openMenu: false });
       });
 
+      var _mapDrawMoveRaf = null;
       map.on('mousemove', function(e) {
         if (!mapDrawMode || !e || !e.latlng) return;
         mapDrawMouseLatLng = e.latlng;
-        // Only update the rubber-band guide — do NOT rebuild vertices on every move
-        // (rebuild destroyed Canvas markers mid-click and broke “click a dot to close”).
-        updateMapDrawRubberBand();
-        updateMapDrawStatsOnly();
+        // Coalesce rubber-band updates to one paint per frame (smooth measure/draw, less stutter)
+        if (_mapDrawMoveRaf) return;
+        _mapDrawMoveRaf = requestAnimationFrame(function() {
+          _mapDrawMoveRaf = null;
+          if (!mapDrawMode) return;
+          updateMapDrawRubberBand();
+          updateMapDrawStatsOnly();
+        });
       });
 
       // Double-click zoom is off globally. While measuring/drawing, dblclick = Finish.

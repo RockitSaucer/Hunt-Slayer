@@ -1,0 +1,49 @@
+REG SLAYER Hunt App — Changes from 4.4 to 4.5
+=============================================
+Baseline: Hunt_app4.4 → Hunt_app4.5
+Date: 2026-08-02
+
+
+--------------------------------
+Mobile map zoom matches desktop
+--------------------------------
+- Desktop still starts and zooms out at minZoom 8 (statewide on a large map).
+- Phone minZoom lowered to 6 so a small screen can show the same geographic
+  coverage as desktop’s zoomed-out view (Leaflet zoom is viewport-based).
+- Phone launch uses fitBounds on Alabama so the starting frame matches the
+  desktop “whole state” look the user likes.
+- Soft far bounds and free pan behavior unchanged.
+
+
+--------------------------------
+Performance / polish (less stutter)
+--------------------------------
+- Peak-rut map fill pulse: one shared requestAnimationFrame for all polygons
+  (was one rAF per polygon — major stutter source when many units were in rut).
+- Peak-rut label recluster on zoom is debounced (~140 ms).
+- Measure/draw rubber-band mousemove coalesced to one paint per frame.
+- Public lands + deer zone startup redraws reduced (fewer duplicate full redraws).
+- Tile layers update while zooming (smoother pinch); still no retina 4× spam.
+- Available Hunts rows: short border/background transitions; no cheap hover-slide
+  on phone; clearer press feedback.
+- Map zoom/fade animations left on for a smoother professional feel.
+- List peak-rut antlers flash (4.4 mobile fix) retained: data-URI icon + rAF pulse.
+
+
+--------------------------------
+Repos
+--------------------------------
+- Active deploy repo renamed: HuntApp1.24 → Hunt-Slayer
+  https://github.com/RockitSaucer/Hunt-Slayer
+- New empty repo for future slim app: Reg-Slayer
+  https://github.com/RockitSaucer/Reg-Slayer
+  (nothing pushed there yet)
+
+
+--------------------------------
+Files
+--------------------------------
+- Deploy: to deploy/Hunt_app4.5/index.html + reg-slayer-logo.png + peak-rut-antlers.png
+- Changelog: Changes_4.4_to_4.5.txt (+ .rtf)
+- APP_VERSION = '4.5', badge V4.5
+- Prior snapshot kept: to deploy/Hunt_app4.4/
