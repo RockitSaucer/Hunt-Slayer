@@ -92,3 +92,12 @@ Satellite imagery date badge
 - When Satellite basemap is active, bottom-right shows month + year of imagery
   under the map center (e.g. Imagery · Aug 2025). Small, legible, above bottom bar.
 - Newest / Winter / Summer query Esri or NAIP metadata; updates on pan/zoom.
+
+
+--------------------------------
+Satellite seasons: date windows
+--------------------------------
+- Winter: newest Esri World Imagery Wayback snapshot dated Dec 1 – Mar 10.
+- Summer: newest Wayback snapshot dated May 1 – Aug 1.
+- Newest: live default Esri World Imagery (most recent composite).
+- Bottom-right date badge shows the selected snapshot month/year (or live date for Newest).

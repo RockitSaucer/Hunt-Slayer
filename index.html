@@ -4623,14 +4623,14 @@
                           </label>
                           <div class="sat-mode-panel" id="satellite-mode-panel" role="group" aria-label="Satellite imagery season">
                             <div class="sat-mode-row">
-                              <button type="button" class="sat-mode-btn" id="sat-mode-winter" data-sat="winter" onclick="setSatelliteMode('winter')" title="Winter / clearer archive imagery">
-                                Winter<span class="sat-mode-sub">Leaf-off style</span>
+                              <button type="button" class="sat-mode-btn" id="sat-mode-winter" data-sat="winter" onclick="setSatelliteMode('winter')" title="Newest Esri World Imagery snapshot dated Dec 1–Mar 10">
+                                Winter<span class="sat-mode-sub">Dec 1–Mar 10</span>
                               </button>
-                              <button type="button" class="sat-mode-btn" id="sat-mode-summer" data-sat="summer" onclick="setSatelliteMode('summer')" title="Summer leaf-on aerial (NAIP)">
-                                Summer<span class="sat-mode-sub">Leaf-on aerial</span>
+                              <button type="button" class="sat-mode-btn" id="sat-mode-summer" data-sat="summer" onclick="setSatelliteMode('summer')" title="Newest Esri World Imagery snapshot dated May 1–Aug 1">
+                                Summer<span class="sat-mode-sub">May 1–Aug 1</span>
                               </button>
-                              <button type="button" class="sat-mode-btn" id="sat-mode-newest" data-sat="newest" onclick="setSatelliteMode('newest')" title="Most recent commercial satellite composite">
-                                Newest<span class="sat-mode-sub">Latest imagery</span>
+                              <button type="button" class="sat-mode-btn" id="sat-mode-newest" data-sat="newest" onclick="setSatelliteMode('newest')" title="Live default satellite — most recent commercial composite">
+                                Newest<span class="sat-mode-sub">Latest available</span>
                               </button>
                             </div>
                           </div>
@@ -10241,9 +10241,139 @@
       return 'sat_' + m;
     }
 
+    /**
+     * Esri Wayback seasonal snapshots (same commercial World Imagery family as Newest).
+     * Winter: newest release dated Dec 1 – Mar 10
+     * Summer: newest release dated May 1 – Aug 1
+     * Newest: live World Imagery (not Wayback)
+     */
+    var waybackSeasonal = { winter: null, summer: null, loading: null, loaded: false };
+
+    function dateInWinterImageryWindow(d) {
+      if (!d || isNaN(d.getTime())) return false;
+      var m = d.getMonth() + 1;
+      var day = d.getDate();
+      if (m === 12 && day >= 1) return true;
+      if (m === 1 || m === 2) return true;
+      if (m === 3 && day <= 10) return true;
+      return false;
+    }
+    function dateInSummerImageryWindow(d) {
+      if (!d || isNaN(d.getTime())) return false;
+      var m = d.getMonth() + 1;
+      var day = d.getDate();
+      if (m === 5 || m === 6 || m === 7) return true;
+      if (m === 8 && day <= 1) return true;
+      return false;
+    }
+
+    function makeWaybackTileLayer(release, tilePerf, seasonLabel) {
+      if (!release || !release.m) return null;
+      var url = 'https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/' +
+        release.m + '/{z}/{y}/{x}';
+      return L.tileLayer(url, Object.assign({
+        maxZoom: 20,
+        maxNativeZoom: 19,
+        attribution: 'Esri World Imagery Wayback · ' + seasonLabel + ' · ' + (release.name || release.m)
+      }, tilePerf || {}));
+    }
+
+    function installWaybackSeasonalIntoBasemaps() {
+      if (!mapBasemaps) return;
+      if (waybackSeasonal.winter && waybackSeasonal.winter.layer) {
+        // Swap out old winter layer if it was on the map
+        var oldW = mapBasemaps.sat_winter;
+        mapBasemaps.sat_winter = waybackSeasonal.winter.layer;
+        if (map && oldW && map.hasLayer(oldW)) {
+          try { map.removeLayer(oldW); } catch (e0) {}
+        }
+      }
+      if (waybackSeasonal.summer && waybackSeasonal.summer.layer) {
+        var oldS = mapBasemaps.sat_summer;
+        mapBasemaps.sat_summer = waybackSeasonal.summer.layer;
+        if (map && oldS && map.hasLayer(oldS)) {
+          try { map.removeLayer(oldS); } catch (e1) {}
+        }
+      }
+      if (map && activeBasemapKey === 'satellite' &&
+          (activeSatelliteMode === 'winter' || activeSatelliteMode === 'summer')) {
+        try { setMapBasemap('satellite'); } catch (e2) {}
+        try { scheduleImageryDateRefresh(60); } catch (e3) {}
+      }
+    }
+
+    function ensureWaybackSeasonalLayers(tilePerf) {
+      if (waybackSeasonal.loaded && waybackSeasonal.winter && waybackSeasonal.summer) {
+        return Promise.resolve(waybackSeasonal);
+      }
+      if (waybackSeasonal.loading) return waybackSeasonal.loading;
+      waybackSeasonal.loading = fetch(
+        'https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer?f=json',
+        { method: 'GET', mode: 'cors', credentials: 'omit' }
+      )
+        .then(function(res) { return res.ok ? res.json() : null; })
+        .then(function(data) {
+          var releases = [];
+          var sel = (data && data.Selection) ? data.Selection : [];
+          for (var i = 0; i < sel.length; i++) {
+            var s = sel[i];
+            if (!s || !s.M) continue;
+            var match = String(s.Name || '').match(/Wayback\s+(\d{4})-(\d{2})-(\d{2})/i);
+            if (!match) continue;
+            releases.push({
+              m: String(s.M),
+              date: new Date(+match[1], +match[2] - 1, +match[3]),
+              name: s.Name,
+              id: s.ID || ''
+            });
+          }
+          // Newest first
+          releases.sort(function(a, b) { return b.date.getTime() - a.date.getTime(); });
+          var winterRel = null;
+          var summerRel = null;
+          for (var j = 0; j < releases.length; j++) {
+            if (!winterRel && dateInWinterImageryWindow(releases[j].date)) winterRel = releases[j];
+            if (!summerRel && dateInSummerImageryWindow(releases[j].date)) summerRel = releases[j];
+            if (winterRel && summerRel) break;
+          }
+          var tp = tilePerf || {};
+          if (winterRel) {
+            waybackSeasonal.winter = {
+              release: winterRel,
+              layer: makeWaybackTileLayer(winterRel, tp, 'Winter Dec 1–Mar 10')
+            };
+          }
+          if (summerRel) {
+            waybackSeasonal.summer = {
+              release: summerRel,
+              layer: makeWaybackTileLayer(summerRel, tp, 'Summer May 1–Aug 1')
+            };
+          }
+          waybackSeasonal.loaded = true;
+          installWaybackSeasonalIntoBasemaps();
+          return waybackSeasonal;
+        })
+        .catch(function(err) {
+          console.warn('Wayback seasonal satellite catalog failed', err);
+          waybackSeasonal.loading = null;
+          return waybackSeasonal;
+        });
+      return waybackSeasonal.loading;
+    }
+
     function getActiveSatelliteLayer() {
       if (!mapBasemaps) return null;
       return mapBasemaps[satelliteLayerKey(activeSatelliteMode)] || mapBasemaps.sat_newest || null;
+    }
+
+    function getSeasonalReleaseDate(mode) {
+      if (mode === 'winter' && waybackSeasonal.winter && waybackSeasonal.winter.release) {
+        return waybackSeasonal.winter.release.date;
+      }
+      if (mode === 'summer' && waybackSeasonal.summer && waybackSeasonal.summer.release) {
+        return waybackSeasonal.summer.release.date;
+      }
+      return null;
     }
 
     function updateSatelliteModeUi() {
@@ -10270,20 +10400,30 @@
       try { localStorage.setItem(SAT_MODE_STORAGE_KEY, mode); } catch (eSave) {}
       updateSatelliteModeUi();
       if (!map || !mapBasemaps) return;
-      // Always switch basemap to satellite with the chosen season
-      setMapBasemap('satellite');
-      try {
-        if (typeof showAppCopyToast === 'function') {
-          var labels = {
-            winter: 'Satellite · Winter (clearer archive / leaf-off style)',
-            summer: 'Satellite · Summer (leaf-on NAIP aerial)',
-            newest: 'Satellite · Newest (latest commercial imagery)'
-          };
-          showAppCopyToast('<span class="act">' + (labels[mode] || 'Satellite') + '</span>');
-        }
-      } catch (eT) {}
+      // Ensure seasonal Wayback layers exist before switching
+      var go = function() {
+        setMapBasemap('satellite');
+        try {
+          if (typeof showAppCopyToast === 'function') {
+            var rel = getSeasonalReleaseDate(mode);
+            var relTxt = rel ? (' · ' + formatImageryMonthYear(rel)) : '';
+            var labels = {
+              winter: 'Satellite · Winter (Dec 1–Mar 10)' + relTxt,
+              summer: 'Satellite · Summer (May 1–Aug 1)' + relTxt,
+              newest: 'Satellite · Newest (live commercial composite)'
+            };
+            showAppCopyToast('<span class="act">' + (labels[mode] || 'Satellite') + '</span>');
+          }
+        } catch (eT) {}
+      };
+      if (mode === 'newest') {
+        go();
+        return;
+      }
+      ensureWaybackSeasonalLayers().then(function() { go(); }).catch(function() { go(); });
     }
     window.setSatelliteMode = setSatelliteMode;
+    window.ensureWaybackSeasonalLayers = ensureWaybackSeasonalLayers;
 
     function setMapBasemap(key) {
       if (!map || !mapBasemaps) return;
@@ -10465,16 +10605,30 @@
         setImageryDateLabel('', false);
         return;
       }
+      var mode = (typeof activeSatelliteMode !== 'undefined' && activeSatelliteMode) ? activeSatelliteMode : 'newest';
+
+      // Winter / Summer: badge = selected Wayback snapshot date (already filtered to season window)
+      if (mode === 'winter' || mode === 'summer') {
+        var relD = getSeasonalReleaseDate(mode);
+        if (relD) {
+          setImageryDateLabel('Imagery · ' + formatImageryMonthYear(relD), true);
+          return;
+        }
+        // Catalog still loading — try again shortly
+        setImageryDateLabel('Imagery · …', true);
+        try { ensureWaybackSeasonalLayers().then(function() { scheduleImageryDateRefresh(40); }); } catch (eW) {}
+        return;
+      }
+
+      // Newest: live World Imagery footprint date under map center
       var c;
       try { c = map.getCenter(); } catch (eC) { setImageryDateLabel('', false); return; }
       if (!c) return;
       var lat = c.lat, lng = c.lng;
       var zoom = 12;
       try { zoom = map.getZoom(); } catch (eZ) {}
-      var mode = (typeof activeSatelliteMode !== 'undefined' && activeSatelliteMode) ? activeSatelliteMode : 'newest';
-      var url = imageryMetaIdentifyUrl(mode, lat, lng, zoom);
+      var url = imageryMetaIdentifyUrl('newest', lat, lng, zoom);
       var reqId = ++_imageryDateReq;
-      // Soft placeholder while fetching
       var el = document.getElementById('map-imagery-date');
       if (el && !el.classList.contains('visible')) {
         setImageryDateLabel('Imagery · …', true);
@@ -10482,7 +10636,7 @@
       fetch(url, { method: 'GET', mode: 'cors', credentials: 'omit' })
         .then(function(res) { return res.ok ? res.json() : null; })
         .then(function(data) {
-          if (reqId !== _imageryDateReq) return; // stale
+          if (reqId !== _imageryDateReq) return;
           if (typeof activeBasemapKey === 'undefined' || activeBasemapKey !== 'satellite') {
             setImageryDateLabel('', false);
             return;
@@ -10493,8 +10647,7 @@
             setImageryDateLabel('Imagery · date n/a', true);
             return;
           }
-          var label = formatImageryMonthYear(d);
-          setImageryDateLabel('Imagery · ' + label, true);
+          setImageryDateLabel('Imagery · ' + formatImageryMonthYear(d), true);
         })
         .catch(function() {
           if (reqId !== _imageryDateReq) return;
@@ -10605,26 +10758,25 @@
       }, tilePerf));
       /*
        * Satellite seasons (Layers → Satellite → Winter / Summer / Newest)
-       * Newest — Esri World Imagery (commercial Maxar/etc composite, most recent)
-       * Summer — USGS Imagery Only / NAIP leaf-on (1 m aerial, growing season)
-       * Winter — Esri World Imagery Clarity (clearer archive; better ground/leaf-off detail)
-       * Choice saved in localStorage; stays default satellite until changed.
+       * Newest — live Esri World Imagery (current default commercial composite)
+       * Winter — newest Esri Wayback snapshot dated Dec 1 – Mar 10
+       * Summer — newest Esri Wayback snapshot dated May 1 – Aug 1
+       * Wayback catalog loads async; winter/summer layers swap in when ready.
        */
       var satNewest = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', Object.assign({
         maxZoom: 20,
         maxNativeZoom: 19,
         attribution: 'Esri World Imagery · Maxar, Earthstar Geographics & GIS User Community'
       }, tilePerf));
-      var satSummer = L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}', Object.assign({
-        maxZoom: 20,
-        maxNativeZoom: 16,
-        attribution: 'USGS National Map · USDA NAIP leaf-on (summer) orthoimagery'
-      }, tilePerf));
-      var satWinter = L.tileLayer('https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', Object.assign({
-        maxZoom: 20,
-        maxNativeZoom: 19,
-        attribution: 'Esri World Imagery Clarity · clearer archive / leaf-off style'
-      }, tilePerf));
+      // Placeholders until Wayback catalog resolves (same family as Newest)
+      var satWinter = satNewest;
+      var satSummer = satNewest;
+      try {
+        ensureWaybackSeasonalLayers(tilePerf).then(function() {
+          if (waybackSeasonal.winter && waybackSeasonal.winter.layer) satWinter = waybackSeasonal.winter.layer;
+          if (waybackSeasonal.summer && waybackSeasonal.summer.layer) satSummer = waybackSeasonal.summer.layer;
+        });
+      } catch (eWb) {}
 
       /*
        * LiDAR terrain (high zoom safe):
@@ -10661,6 +10813,8 @@
         sat_winter: satWinter
       };
       activeBasemapKey = 'topo';
+      // If Wayback already finished, install true seasonal layers now
+      try { installWaybackSeasonalIntoBasemaps(); } catch (eInst) {}
       // Restore satellite-mode button highlight (panel shows when Satellite selected)
       try { updateSatelliteModeUi(); } catch (eSatUi) {}
       // Free pan around AL. Phone minZoom lower so small map can match desktop statewide view.
