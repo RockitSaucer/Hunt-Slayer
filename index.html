@@ -5553,6 +5553,79 @@
       return x.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
     }
 
+    /**
+     * Relative to the selected hunt date vs real "today" (local calendar).
+     * Returns 'past' | 'today' | 'future'. Use for tense in status copy — only
+     * say "today" / "now" when the selected date is actually today.
+     */
+    function getSelectedDateRelation(dateObj) {
+      var d = (dateObj instanceof Date && !isNaN(dateObj.getTime()))
+        ? dateObj
+        : (selectedDate || new Date());
+      var days = 0;
+      try {
+        if (typeof getDaysFromToday === 'function') days = getDaysFromToday(d);
+        else {
+          var t0 = new Date(); t0.setHours(0, 0, 0, 0);
+          var t1 = new Date(d); t1.setHours(0, 0, 0, 0);
+          days = Math.round((t1 - t0) / 86400000);
+        }
+      } catch (eRel) { days = 0; }
+      if (days < 0) return 'past';
+      if (days > 0) return 'future';
+      return 'today';
+    }
+    /** Map-dot / regs title when open for selected date */
+    function huntCanTitle(dateObj) {
+      var r = getSelectedDateRelation(dateObj);
+      if (r === 'past') return 'Could hunt that day';
+      if (r === 'future') return 'Can hunt that day';
+      return 'Can hunt today';
+    }
+    function huntCanTitleWithConfirm(dateObj) {
+      return huntCanTitle(dateObj) + ' (confirm official regs)';
+    }
+    /** Map-dot / regs title when closed for selected date */
+    function huntCannotTitle(dateObj) {
+      var r = getSelectedDateRelation(dateObj);
+      if (r === 'past') return 'Could not hunt that day!';
+      if (r === 'future') return 'Cannot hunt that day!';
+      return 'Cannot hunt today!';
+    }
+    /**
+     * Tag when selected date falls inside that zone's peak-rut window.
+     * style: 'short' | 'list' | 'caps'
+     */
+    function peakRutInWindowTag(dateObj, style) {
+      var r = getSelectedDateRelation(dateObj);
+      style = style || 'short';
+      if (style === 'caps') {
+        if (r === 'past') return ' · WAS PEAK RUT';
+        if (r === 'future') return ' · PEAK RUT THAT DAY';
+        return ' · IN PEAK RUT';
+      }
+      if (style === 'list') {
+        if (r === 'past') return ' · was peak that day';
+        if (r === 'future') return ' · peak that day';
+        return ' · now';
+      }
+      // short
+      if (r === 'past') return ' · was peak';
+      if (r === 'future') return ' · peak that day';
+      return ' · now';
+    }
+    /** "Likely OPEN today for Bow …" tense-aware */
+    function likelyOpenSeasonLead(dateObj, weaponLabel) {
+      var r = getSelectedDateRelation(dateObj);
+      var w = weaponLabel || 'deer weapons';
+      if (r === 'past') return 'Likely was OPEN that day for ' + w;
+      if (r === 'future') return 'Likely OPEN that day for ' + w;
+      return 'Likely OPEN today for ' + w;
+    }
+    window.getSelectedDateRelation = getSelectedDateRelation;
+    window.huntCanTitle = huntCanTitle;
+    window.huntCannotTitle = huntCannotTitle;
+
     function seasonCoversDate(s, ds) {
       return !!(s && s.start && s.end && ds >= s.start && ds <= s.end);
     }
@@ -5739,7 +5812,7 @@
             statusKnown = true;
             canHuntToday = true;
             openTva.forEach(function(s) {
-              bullets.push('Likely OPEN today for ' + displayWeaponName(s.weapon) + ' under statewide zone seasons · Bag: ' + s.limit + ' · ' + (s.target || ''));
+              bullets.push(likelyOpenSeasonLead(dateObj, displayWeaponName(s.weapon)) + ' under statewide zone seasons · Bag: ' + s.limit + ' · ' + (s.target || ''));
             });
           } else {
             statusKnown = true;
@@ -5948,12 +6021,12 @@
       var showOpen = !!(info.statusKnown && info.canHuntToday);
       if (banner) {
         if (showClosed) {
-          banner.textContent = 'Cannot hunt today!';
+          banner.textContent = huntCannotTitle(selectedDate);
           banner.classList.add('active');
           banner.style.background = '';
           banner.style.color = '';
         } else if (showOpen) {
-          banner.textContent = 'Can hunt today (confirm official regs)';
+          banner.textContent = huntCanTitleWithConfirm(selectedDate);
           banner.classList.add('active');
           banner.style.background = 'rgba(74,124,42,0.35)';
           banner.style.color = '#bbf7d0';
@@ -6355,10 +6428,10 @@
       var title = 'Verify before hunting';
       if (st.statusKnown && st.canHunt) {
         cls = 'open';
-        title = 'Can hunt today';
+        title = huntCanTitle(selectedDate);
       } else if (st.statusKnown && !st.canHunt) {
         cls = 'closed';
-        title = 'Cannot hunt today!';
+        title = huntCannotTitle(selectedDate);
       }
       var lines = [];
       if (st.landKind === 'private') {
@@ -6381,11 +6454,11 @@
           '<div class="mdm-rut-line' + (rutInfo.inPeak ? ' is-peak' : '') + '">' +
             (rutInfo.inPeak ? '🦌 ' : '') +
             'Zone ' + escHtml(rutInfo.zone) + ' peak rut: ' + escHtml(rutInfo.label) +
-            (rutInfo.inPeak ? ' · IN PEAK RUT' : '') +
+            (rutInfo.inPeak ? peakRutInWindowTag(selectedDate, 'caps') : '') +
           '</div>'
         );
       } catch (eRut) {}
-      // closedReason omitted here — "Cannot/Can hunt today" already covers open/closed;
+      // closedReason omitted here — Can/Cannot (tense by selected date) already covers open/closed;
       // full detail lives in Rules & regs (saves popup space, less redundancy).
       if (selectedWeapon) {
         lines.push('<div class="mhs-sub">Weapon filter: ' + escHtml(displayWeaponName(selectedWeapon)) +
@@ -6730,7 +6803,8 @@
         zone: w.zone,
         label: w.label,
         inPeak: inPeak,
-        text: 'Zone ' + w.zone + ' peak rut: ' + w.label + (inPeak ? ' · NOW' : ''),
+        text: 'Zone ' + w.zone + ' peak rut: ' + w.label + (inPeak ? peakRutInWindowTag(dateObj || selectedDate, 'short') : ''),
+        inPeakTag: inPeak ? peakRutInWindowTag(dateObj || selectedDate, 'list') : '',
         short: w.label
       };
     }
@@ -7690,7 +7764,7 @@
         var rutP = formatPeakRutLineForZone(zGuess, selectedDate || new Date());
         html += '<br><span class="mdm-rut-line' + (rutP.inPeak ? ' is-peak' : '') + '" style="display:inline-block;margin-top:4px;">' +
           'Zone ' + rutP.zone + ' peak rut: ' + rutP.label +
-          (rutP.inPeak ? ' · IN PEAK RUT' : '') +
+          (rutP.inPeak ? peakRutInWindowTag(selectedDate, 'caps') : '') +
           '</span>';
       } catch (eRp) {}
       if (layer.notes) html += '<br><span style="color:var(--accent);">' + layer.notes + '</span>';
@@ -15204,7 +15278,7 @@
               '<div class="loc-meta-line">Zone ' + zoneLetter + ' · ' + displayWeaponName(match.rule.weapon) + distTxt + '</div>' +
               '<div class="loc-rut-line' + (inPeak ? ' is-peak' : '') + '">' +
                 'Peak rut (Zone ' + rutLine.zone + '): ' + rutLine.label +
-                (inPeak ? ' · now' : '') +
+                (inPeak ? (rutLine.inPeakTag || peakRutInWindowTag(selectedDate, 'list')) : '') +
               '</div>' +
             '</div>' +
             '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">' +

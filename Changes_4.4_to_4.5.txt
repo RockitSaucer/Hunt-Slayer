@@ -65,3 +65,12 @@ Map-dot popup cleanup
 - Removed duplicate public/private/name/owner block under the status banner.
 - Actions order: Rules & regs → Get weather → (area map if public) → Add Pin → Share.
 - Add Pin opens in-popup chooser: Pin / Hunt / Stand / Back (same flows as before).
+
+
+--------------------------------
+Date-aware tense for hunt status
+--------------------------------
+- Status titles (map-dot + Rules & regs) use past / today / future wording based
+  on selected hunt date vs real today.
+- Peak-rut tags: now / was peak that day / peak that day (not always NOW).
+- Only uses "today" or "now" when the selected calendar day is actually today.
