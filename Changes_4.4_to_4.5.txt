@@ -47,3 +47,12 @@ Files
 - Changelog: Changes_4.4_to_4.5.txt (+ .rtf)
 - APP_VERSION = '4.5', badge V4.5
 - Prior snapshot kept: to deploy/Hunt_app4.4/
+
+
+--------------------------------
+Hotfix: calendar Next double-tap zoom (mobile)
+--------------------------------
+- Rapid Next/Prev on the calendar was triggering the browser's double-tap
+  page zoom (home-screen / standalone WebKit), not the Leaflet map.
+- Fix: touch-action: manipulation on UI controls; viewport maximum-scale=1 /
+  user-scalable=no; light 180ms changeMonth debounce; type=button on cal nav.

@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>REG SLAYER - Alabama Deer Season Planner v4.5</title>
   <!-- Detect phone vs desktop as early as possible (reduces layout flash) -->
   <script>
@@ -44,6 +47,17 @@
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     html, body { height: 100%; }
     body { background: var(--bg); color: var(--ink); margin: 0; padding: 0; line-height: 1.5; min-height: 100vh; display: flex; flex-direction: column; }
+    /*
+     * Mobile / home-screen: stop browser double-tap page-zoom when hammering
+     * calendar Next/Prev, filters, etc. Map keeps pinch-zoom via Leaflet handlers.
+     */
+    button, a, input, select, textarea, label,
+    .filter-btn, .cal-cell, .location-item, .step-section,
+    .calendar-header, .calendar-container, .planner-row,
+    .map-bottom-bar, .mdm-btn, .sort-option-btn {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
 
     /*
      * Brand header (v4.5): 4.2 diagonal green stripes (22px / 22px).
@@ -4195,9 +4209,9 @@
             <div class="step-header"><div class="step-num">1</div><span class="step-title">Select Hunt Date</span></div>
             <div class="calendar-container" id="calendar-container">
               <div class="calendar-header">
-                <button onclick="changeMonth(-1)">&lt; Prev</button>
+                <button type="button" class="cal-nav-btn" onclick="changeMonth(-1)">&lt; Prev</button>
                 <h3 id="calendar-month-year" style="margin:0;font-size:15px;">November 2026</h3>
-                <button onclick="changeMonth(1)">Next &gt;</button>
+                <button type="button" class="cal-nav-btn" onclick="changeMonth(1)">Next &gt;</button>
               </div>
               <div class="calendar-grid" id="calendar-grid"></div>
             </div>
@@ -14135,7 +14149,15 @@
         requestAnimationFrame(syncPlannerCalendarSquare);
       });
     }
-    function changeMonth(dir) { calendarTargetDate.setMonth(calendarTargetDate.getMonth() + dir); renderCalendar(); }
+    var _changeMonthLockUntil = 0;
+    function changeMonth(dir) {
+      // Ignore accidental double-fires from fast taps (home-screen WebKit)
+      var now = Date.now();
+      if (now < _changeMonthLockUntil) return;
+      _changeMonthLockUntil = now + 180;
+      calendarTargetDate.setMonth(calendarTargetDate.getMonth() + dir);
+      renderCalendar();
+    }
     function selectDateStep(day) {
       selectedDate = new Date(calendarTargetDate.getFullYear(), calendarTargetDate.getMonth(), day);
       renderCalendar(); updateEventsList(); clearEventForm();
