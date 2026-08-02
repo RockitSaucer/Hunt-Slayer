@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>REG SLAYER - Alabama Deer Season Planner v4.3</title>
+  <title>REG SLAYER - Alabama Deer Season Planner v4.4</title>
   <!-- Detect phone vs desktop as early as possible (reduces layout flash) -->
   <script>
     (function () {
@@ -45,56 +45,70 @@
     html, body { height: 100%; }
     body { background: var(--bg); color: var(--ink); margin: 0; padding: 0; line-height: 1.5; min-height: 100vh; display: flex; flex-direction: column; }
 
-    /* ========== BRAND HEADER (v4.3 - tight bar; crop empty logo padding) ========== */
+    /*
+     * Brand header (v4.4): 4.2 diagonal green stripes (22px / 22px).
+     * Logo is drawn near 4.2 scale so its stripe pitch matches the header,
+     * then the wrap clips only empty PNG margin — shield + letters stay fully visible.
+     */
     .brand-header {
+      --brand-stripe: 22px; /* must match repeating-linear-gradient period */
       background:
         linear-gradient(180deg, rgba(13,15,12,0.15) 0%, rgba(13,15,12,0.88) 100%),
         repeating-linear-gradient(
           -35deg,
           #0f160e 0px,
-          #0f160e 22px,
-          #121b10 22px,
-          #121b10 44px
+          #0f160e var(--brand-stripe),
+          #121b10 var(--brand-stripe),
+          #121b10 calc(var(--brand-stripe) * 2)
         );
       border-bottom: 1px solid var(--border);
-      /* ~40% less vertical chrome than old 18/16 padding + tall contain logo */
-      padding: 5px 14px 4px;
+      padding: 4px 14px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       position: relative;
       z-index: 5000;
-      box-shadow: 0 3px 12px rgba(0,0,0,0.4);
+      box-shadow: 0 4px 18px rgba(0,0,0,0.45);
       flex-shrink: 0;
+      box-sizing: border-box;
+      /* Compact bar; logo may extend into clip (empty margins only) */
+      height: 104px;
+      min-height: 104px;
+      max-height: 104px;
+      overflow: hidden;
     }
     .brand-logo-wrap {
       position: relative;
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       line-height: 0;
-      width: min(1000px, 94vw);
-      /* Crop PNG empty top/bottom so shield + REG SLAYER lettering fill the bar */
-      height: min(100px, 12.5vh);
-      max-height: min(100px, 12.5vh);
-      overflow: hidden;
-      padding-right: 40px;
-      padding-bottom: 0;
+      width: min(1100px, 96vw);
+      max-width: 100%;
+      height: 100%;
+      padding-right: 48px;
       box-sizing: border-box;
+      margin: 0 auto;
+      overflow: hidden;
     }
     .brand-logo {
       display: block;
-      width: 100%;
-      height: 100%;
+      /* ~4.2 display height so logo stripe bands ≈ header 22px bands */
+      width: auto;
+      height: 168px;
       max-height: none;
-      /* Cover crops diagonal padding; keeps shield + wordmark content large */
-      object-fit: cover;
-      object-position: center 50%;
+      max-width: none;
+      object-fit: contain;
+      object-position: center center;
+      /* Centered; top/bottom empty stripe padding of PNG is clipped by wrap */
+      flex-shrink: 0;
     }
-    /* Version only - very small, bottom-right of the logo */
+    /* Version only - very small, bottom-right of the logo frame */
     .brand-version {
       position: absolute;
-      right: 2px;
-      bottom: 4px;
+      right: 6px;
+      bottom: 8px;
       font-size: 10px;
       font-weight: 700;
       letter-spacing: 0.08em;
@@ -193,7 +207,8 @@
       max-height: calc(100vh - 40px);
       display: flex;
       flex-direction: column;
-      padding: 12px 14px 14px;
+      /* Tighter top pad — map title row removed */
+      padding: 8px 14px 14px;
       min-width: 0;
       z-index: 1;
       isolation: isolate;
@@ -214,14 +229,34 @@
     }
     .card-map .map-wrapper {
       flex: 1 1 auto;
-      min-height: calc(100vh - 150px);
-      margin-top: 8px;
+      min-height: calc(100vh - 130px);
+      margin-top: 0;
       position: relative;
       z-index: 0;
     }
+    /*
+     * Desktop only: map fills remaining viewport so bottom toolbar is visible
+     * without scrolling. Mobile keeps the shorter phone map heights below.
+     * JS fitDesktopMapHeight() refines this after layout / sticky / resize.
+     */
+    html.layout-desktop .card-map {
+      /* header ~104px + shell pad ~14px + small bottom gap */
+      height: calc(100vh - 130px);
+      height: calc(100dvh - 130px);
+      max-height: calc(100vh - 130px);
+      max-height: calc(100dvh - 130px);
+      min-height: 0;
+      top: 12px;
+      box-sizing: border-box;
+    }
+    html.layout-desktop .card-map .map-wrapper {
+      flex: 1 1 auto;
+      min-height: 0 !important;
+      height: 100%;
+    }
     html.layout-desktop #leaflet-map {
-      height: calc(100vh - 150px) !important;
-      min-height: 520px;
+      height: 100% !important;
+      min-height: 0 !important;
       width: 100%;
       background: #e5e3df;
     }
@@ -239,14 +274,15 @@
     @media (max-width: 1100px) {
       html.layout-desktop .container { grid-template-columns: 1fr 1.1fr; gap: 12px; }
       html.layout-desktop .app-shell { padding: 12px; }
-      html.layout-desktop .brand-logo-wrap {
-        width: min(900px, 96vw);
-        height: min(88px, 11.5vh);
-        max-height: min(88px, 11.5vh);
-      }
-      html.layout-desktop .brand-logo { height: 100%; max-height: none; object-fit: cover; }
+      html.layout-desktop .brand-header { height: 104px; min-height: 104px; max-height: 104px; }
+      html.layout-desktop .brand-logo-wrap { width: min(1100px, 96vw); }
+      html.layout-desktop .brand-logo { height: 168px; width: auto; object-fit: contain; }
       html.layout-desktop #dashboard-container { position: static; max-height: none; }
-      html.layout-desktop #leaflet-map { height: calc(100vh - 150px) !important; min-height: 480px; }
+      html.layout-desktop .card-map {
+        height: calc(100dvh - 128px);
+        max-height: calc(100dvh - 128px);
+      }
+      html.layout-desktop #leaflet-map { height: 100% !important; min-height: 0 !important; }
     }
 
     /* Phone shell via JS class (works even on wider phone landscape) */
@@ -274,15 +310,30 @@
       box-sizing: border-box;
       overflow-x: hidden;
     }
-    html.layout-phone .brand-header { padding: 4px 10px 3px; position: relative; }
-    html.layout-phone .brand-logo-wrap {
-      width: 92vw;
-      height: 48px;
-      max-height: 48px;
-      padding-right: 32px;
+    html.layout-phone .brand-header {
+      padding: 3px 10px;
+      position: relative;
+      height: 64px;
+      min-height: 64px;
+      max-height: 64px;
+      overflow: hidden;
     }
-    html.layout-phone .brand-logo { height: 100%; max-height: none; object-fit: cover; }
-    html.layout-phone .brand-version { font-size: 8px; bottom: 2px; }
+    html.layout-phone .brand-logo-wrap {
+      width: 94vw;
+      max-width: 100%;
+      height: 100%;
+      padding-right: 36px;
+      overflow: hidden;
+    }
+    /* Phone: slightly smaller but still stripe-matched-ish; full mark stays in view */
+    html.layout-phone .brand-logo {
+      width: auto;
+      height: 100px;
+      max-height: none;
+      object-fit: contain;
+      object-position: center;
+    }
+    html.layout-phone .brand-version { font-size: 8px; bottom: 6px; right: 4px; }
     html.layout-phone .site-footer-inner { gap: 6px 10px; padding-left: 12px; padding-right: 12px; }
     html.layout-phone .site-footer-inner p { font-size: 12px; }
     html.layout-phone #dashboard-container,
@@ -398,10 +449,17 @@
         gap: 12px;
         width: 100%;
       }
-      .brand-header { padding: 4px 10px 3px; position: relative; }
-      .brand-logo-wrap { width: 92vw; height: 48px; max-height: 48px; padding-right: 32px; }
-      .brand-logo { height: 100%; max-height: none; object-fit: cover; }
-      .brand-version { font-size: 8px; bottom: 2px; }
+      .brand-header {
+        padding: 3px 10px;
+        position: relative;
+        height: 64px;
+        min-height: 64px;
+        max-height: 64px;
+        overflow: hidden;
+      }
+      .brand-logo-wrap { width: 94vw; height: 100%; padding-right: 36px; overflow: hidden; }
+      .brand-logo { width: auto; height: 100px; max-height: none; object-fit: contain; object-position: center; }
+      .brand-version { font-size: 8px; bottom: 6px; }
       .site-footer-inner { gap: 6px 10px; padding-left: 12px; padding-right: 12px; }
       .site-footer-inner p { font-size: 12px; }
       #dashboard-container,
@@ -1157,23 +1215,29 @@
     .badge { font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; }
     .badge.open { background: var(--green); color: white; }
     .badge.refuge { background: var(--blue-refuge); color: white; }
-    /* Peak-rut buck badge on Available Hunts rows */
+    /* Peak-rut antlers badge on Available Hunts rows (front-view rack) */
     .peak-rut-buck {
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      /* Same footprint as before so list rows / layout do not grow */
       width: 22px;
       height: 22px;
       flex-shrink: 0;
       cursor: help;
+      overflow: visible;
       animation: peakRutBuckFlash 1s ease-in-out infinite;
       -webkit-animation: peakRutBuckFlash 1s ease-in-out infinite;
     }
-    .peak-rut-buck svg {
-      width: 20px;
-      height: 20px;
+    .peak-rut-buck svg,
+    .peak-rut-buck img {
+      /* Modelled on front-view whitetail skull/rack; slight overflow, row size unchanged */
+      width: 30px;
+      height: 30px;
       display: block;
-      /* Avoid drop-shadow + transform animation issues on some mobile WebKit builds */
+      margin: -4px -4px;
+      object-fit: contain;
+      object-position: center top;
       filter: none;
     }
     @keyframes peakRutBuckFlash {
@@ -1208,7 +1272,13 @@
       color: #000;
       text-align: center;
       line-height: 1;
-      text-shadow: 0 0 3px #fff, 0 1px 2px #fff, 0 -1px 2px #fff;
+      /* Thin red outline (not white) so RUT reads on any basemap */
+      text-shadow:
+        -1px -1px 0 #c41e1e,
+         1px -1px 0 #c41e1e,
+        -1px  1px 0 #c41e1e,
+         1px  1px 0 #c41e1e,
+         0 0 2px #e11d1d;
       animation: plRutWordPulse 1s linear infinite;
       -webkit-animation: plRutWordPulse 1s linear infinite;
       pointer-events: none;
@@ -2141,26 +2211,20 @@
       color: #fca5a5;
     }
     .mwh-swap-btn .mwh-swap-label { line-height: 1; }
-    /* GPS location: blue dot (wind mode) or heading arrow (compass mode).
-       Scale is applied in JS (~1.5× until max zoom). Darker blue + thin black outline. */
+    /* GPS location: red heading arrow (default — all modes). Scale in JS (~1.5× until max zoom). */
     .gps-loc-dot {
-      background: #1a5f9e;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      border: 1.5px solid #000;
-      box-shadow: 0 0 6px rgba(26,95,158,0.85), 0 0 0 1px rgba(255,255,255,0.35);
-      box-sizing: border-box;
+      /* Legacy class kept; marker always uses the arrow now */
+      display: none;
     }
     .gps-heading-tri-wrap {
-      width: 22px;
-      height: 28px;
+      width: 19px;
+      height: 24px;
       display: flex;
       align-items: center;
       justify-content: center;
       will-change: transform;
       transform-origin: center center;
-      filter: drop-shadow(0 1px 3px rgba(0,0,0,0.55));
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.45));
     }
     .gps-heading-tri-wrap svg {
       display: block;
@@ -4043,11 +4107,11 @@
   </style>
 </head>
 <body>
-  <!-- Brand header: large logo + small V4.3 at bottom-right of logo -->
+  <!-- Brand header: centered logo + small V4.4 badge -->
   <header class="brand-header" role="banner">
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 4.3">V4.3</span>
+      <span class="brand-version" aria-label="Version 4.4">V4.4</span>
     </div>
   </header>
 
@@ -4291,9 +4355,6 @@
 
     <div class="card card-map">
       <div class="map-section-block">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-          <span class="step-title" style="font-size:11px;">Alabama Map & Bordering States</span>
-        </div>
         <div class="map-wrapper" id="map-wrapper">
           <!-- Free-standing compass / wind dials — absolute on map; draggable when enlarged -->
           <div class="map-compass-radar" id="map-compass-radar">
@@ -4757,7 +4818,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '4.3';
+    const APP_VERSION = '4.4';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -6628,14 +6689,15 @@
       };
     }
 
-    /** SVG buck silhouette for list / map peak-rut indicator */
+    /**
+     * Peak-rut list icon: red silhouette from the user-supplied front-view
+     * white-tailed deer skull/antler reference (peak-rut-antlers.png).
+     */
     function peakRutBuckHtml(title) {
       var t = title || 'Peak rut';
       return (
         '<span class="peak-rut-buck" title="' + escHtml(t) + '" aria-label="' + escHtml(t) + '">' +
-          '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-            '<path fill="#e11d1d" d="M18 22c-2-6 2-12 8-12 1 0 2 1 3 2 1-4 4-7 8-7s7 3 8 7c1-1 2-2 3-2 6 0 10 6 8 12l-2 3c2 1 4 3 5 6 1 4-1 8-5 10v6c0 2-1 4-3 5l-4 2v7h-6v-6h-4v6h-6v-7l-4-2c-2-1-3-3-3-5v-6c-4-2-6-6-5-10 1-3 3-5 5-6l-2-3zm10-8c-2 0-3 2-3 4h6c0-2-1-4-3-4zm12 0c-2 0-3 2-3 4h6c0-2-1-4-3-4zM24 34c-1 3 1 6 4 7h12c3-1 5-4 4-7-2-1-5-2-10-2s-8 1-10 2z"/>' +
-          '</svg>' +
+          '<img src="peak-rut-antlers.png" width="30" height="30" alt="" draggable="false" />' +
         '</span>'
       );
     }
@@ -6674,9 +6736,203 @@
       layer.on('remove', function() { stopPeakRutOverlayPulse(layer); });
       layer._rutPulseRaf = requestAnimationFrame(tick);
     }
+
+    /** Peak-rut candidates from last public-lands draw (re-clustered on zoom). */
+    var lastPeakRutCandidates = [];
+    var peakRutOverlayGroup = null;
+
+    function ensurePeakRutOverlayGroup() {
+      if (!map || typeof L === 'undefined') return null;
+      if (!peakRutOverlayGroup) {
+        peakRutOverlayGroup = L.layerGroup().addTo(map);
+      } else if (!map.hasLayer(peakRutOverlayGroup)) {
+        peakRutOverlayGroup.addTo(map);
+      }
+      return peakRutOverlayGroup;
+    }
+
+    function clearPeakRutOverlays() {
+      if (peakRutOverlayGroup) {
+        try { peakRutOverlayGroup.clearLayers(); } catch (eC) {}
+      }
+    }
+
+    /**
+     * Cluster peak-rut units by screen distance so RUT labels do not stack when zoomed out.
+     * Fixed pixel separation: zoomed out → more merges; zoomed in → each unit separates.
+     */
+    function clusterPeakRutByScreen(cands, minSepPx) {
+      if (!cands || !cands.length) return [];
+      if (!map || typeof L === 'undefined') return cands.map(function(c) { return [c]; });
+      var sep = minSepPx != null ? minSepPx : 72;
+      var n = cands.length;
+      var parent = [];
+      var i, j;
+      for (i = 0; i < n; i++) parent[i] = i;
+      function find(x) {
+        while (parent[x] !== x) {
+          parent[x] = parent[parent[x]];
+          x = parent[x];
+        }
+        return x;
+      }
+      function union(a, b) {
+        var ra = find(a), rb = find(b);
+        if (ra !== rb) parent[ra] = rb;
+      }
+      var pts = [];
+      for (i = 0; i < n; i++) {
+        try {
+          pts.push(map.latLngToContainerPoint([cands[i].lat, cands[i].lng]));
+        } catch (eP) {
+          pts.push({ x: 0, y: 0 });
+        }
+      }
+      var sep2 = sep * sep;
+      for (i = 0; i < n; i++) {
+        for (j = i + 1; j < n; j++) {
+          var dx = pts[i].x - pts[j].x;
+          var dy = pts[i].y - pts[j].y;
+          if (dx * dx + dy * dy < sep2) union(i, j);
+        }
+      }
+      var groups = {};
+      for (i = 0; i < n; i++) {
+        var r = find(i);
+        if (!groups[r]) groups[r] = [];
+        groups[r].push(cands[i]);
+      }
+      var out = [];
+      Object.keys(groups).forEach(function(k) { out.push(groups[k]); });
+      return out;
+    }
+
+    function peakRutBoundsFromLatLngs(latlngs) {
+      if (!latlngs || typeof L === 'undefined') return null;
+      try {
+        var b = L.latLngBounds([]);
+        function walk(node) {
+          if (!node) return;
+          if (typeof node.lat === 'number' && typeof node.lng === 'number') {
+            b.extend(node);
+            return;
+          }
+          if (Array.isArray(node)) {
+            if (node.length >= 2 && typeof node[0] === 'number' && typeof node[1] === 'number') {
+              b.extend([node[0], node[1]]);
+              return;
+            }
+            for (var k = 0; k < node.length; k++) walk(node[k]);
+          }
+        }
+        walk(latlngs);
+        return b.isValid() ? b : null;
+      } catch (eB) {
+        return null;
+      }
+    }
+
+    function addPeakRutLabel(lat, lng) {
+      var g = ensurePeakRutOverlayGroup();
+      if (!g) return;
+      var rutLabel = L.marker([lat, lng], {
+        interactive: false,
+        keyboard: false,
+        zIndexOffset: 350,
+        icon: L.divIcon({
+          className: 'pl-rut-label',
+          html: '<div class="pl-rut-word">RUT</div>',
+          iconSize: [52, 18],
+          iconAnchor: [26, 9]
+        })
+      });
+      g.addLayer(rutLabel);
+    }
+
+    function addPeakRutPolyPulse(latlngs, weight) {
+      var g = ensurePeakRutOverlayGroup();
+      if (!g || !latlngs) return;
+      var wt = weight != null ? weight : 2;
+      var rutOverlay = L.polygon(latlngs, {
+        color: '#c41e1e',
+        weight: Math.max(1.5, Math.min(wt, 2.5)),
+        opacity: 0.12,
+        fillColor: '#e11d1d',
+        fillOpacity: 0.04,
+        interactive: false,
+        className: 'pl-rut-overlay',
+        bubblingMouseEvents: false
+      });
+      g.addLayer(rutOverlay);
+      attachPeakRutOverlayPulse(rutOverlay);
+    }
+
+    function addPeakRutBoundsPulse(bounds) {
+      var g = ensurePeakRutOverlayGroup();
+      if (!g || !bounds || !bounds.isValid()) return;
+      var rect = L.rectangle(bounds.pad(0.04), {
+        color: '#c41e1e',
+        weight: 2,
+        opacity: 0.12,
+        fillColor: '#e11d1d',
+        fillOpacity: 0.04,
+        interactive: false,
+        className: 'pl-rut-overlay',
+        bubblingMouseEvents: false
+      });
+      g.addLayer(rect);
+      attachPeakRutOverlayPulse(rect);
+    }
+
+    /**
+     * Draw peak-rut pulses/labels. When zoomed out, nearby units share one RUT word
+     * (no stacked labels). Pulse only the real unit polygons — never a big bounding box.
+     */
+    function renderPeakRutOverlays(candidates) {
+      lastPeakRutCandidates = candidates || [];
+      clearPeakRutOverlays();
+      if (!lastPeakRutCandidates.length || !map) return;
+      ensurePeakRutOverlayGroup();
+      // ~RUT label footprint: merge labels if centers closer than this on screen
+      var clusters = clusterPeakRutByScreen(lastPeakRutCandidates, 76);
+      clusters.forEach(function(cluster) {
+        if (!cluster || !cluster.length) return;
+        // Always flash each unit’s own polygon (the zone), never an encompassing rectangle
+        var slat = 0, slng = 0, n = 0;
+        for (var i = 0; i < cluster.length; i++) {
+          var c = cluster[i];
+          addPeakRutPolyPulse(c.latlngs, c.weight);
+          slat += c.lat;
+          slng += c.lng;
+          n++;
+        }
+        // One RUT word per cluster (centers when zoomed out so labels don’t stack)
+        if (n === 1) {
+          addPeakRutLabel(cluster[0].lat, cluster[0].lng);
+        } else if (n > 1) {
+          addPeakRutLabel(slat / n, slng / n);
+        }
+      });
+      try {
+        if (peakRutOverlayGroup) peakRutOverlayGroup.bringToFront();
+        if (adcnrOpenPinGroup) adcnrOpenPinGroup.bringToFront();
+      } catch (eF) {}
+    }
+
+    function wirePeakRutZoomClustering() {
+      if (!map || map._peakRutZoomWired) return;
+      map._peakRutZoomWired = true;
+      map.on('zoomend', function() {
+        if (lastPeakRutCandidates && lastPeakRutCandidates.length) {
+          renderPeakRutOverlays(lastPeakRutCandidates);
+        }
+      });
+    }
+
     window.isDateInPeakRut = isDateInPeakRut;
     window.formatPeakRutLineForZone = formatPeakRutLineForZone;
     window.attachPeakRutOverlayPulse = attachPeakRutOverlayPulse;
+    window.renderPeakRutOverlays = renderPeakRutOverlays;
     function daysBetweenDates(a, b) {
       var ms = 86400000;
       var ua = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
@@ -8518,6 +8774,8 @@
       adcnrOverlayGroup.clearLayers();
       // Clear old GIS-derived checks; list-driven checks are drawn separately below
       if (adcnrOpenPinGroup) adcnrOpenPinGroup.clearLayers();
+      clearPeakRutOverlays();
+      lastPeakRutCandidates = [];
 
       if (!anyPublicLandFillVisible()) {
         // No polygon types on — still may show list ✓ pins
@@ -8525,6 +8783,7 @@
         updatePublicLandToggleUI();
         return;
       }
+      var peakRutCandidates = [];
 
       // Color-coded public lands paint whenever their type toggles are ON
       // (no weapon/date required — open-season styling is an extra highlight only)
@@ -8741,43 +9000,32 @@
             });
           }
           adcnrOverlayGroup.addLayer(poly);
-          // Peak-rut pulse ONLY when selected hunt date falls in this zone's peak window.
-          // Canvas preferCanvas cannot run CSS fill-opacity on paths — pulse via setStyle (JS).
+          // Collect peak-rut units; draw/cluster after loop (zoom-aware, no stacked RUT labels)
           if (inPeakRut) {
-            var rutOverlay = L.polygon(latlngs, {
-              color: '#c41e1e',
-              weight: Math.max(1.5, Math.min(wt, 2.5)),
-              opacity: 0.12,
-              fillColor: '#e11d1d',
-              fillOpacity: 0.04,
-              interactive: false,
-              className: 'pl-rut-overlay',
-              bubblingMouseEvents: false
+            peakRutCandidates.push({
+              lat: c.lat,
+              lng: c.lng,
+              latlngs: latlngs,
+              weight: wt,
+              zone: zoneForRut,
+              name: featName
             });
-            adcnrOverlayGroup.addLayer(rutOverlay);
-            attachPeakRutOverlayPulse(rutOverlay);
-            var rutLabel = L.marker([c.lat, c.lng], {
-              interactive: false,
-              keyboard: false,
-              zIndexOffset: 350,
-              icon: L.divIcon({
-                className: 'pl-rut-label',
-                html: '<div class="pl-rut-word">RUT</div>',
-                iconSize: [52, 18],
-                iconAnchor: [26, 9]
-              })
-            });
-            adcnrOverlayGroup.addLayer(rutLabel);
           }
           // NO green ✓ from GIS here — only from drawListedHuntCheckmarks()
         });
       });
+      // Peak-rut: one flash per cluster when zoomed out; per-unit when zoomed in enough
+      try {
+        wirePeakRutZoomClustering();
+        renderPeakRutOverlays(peakRutCandidates);
+      } catch (eRut) { console.warn(eRut); }
       // Stack: state mask (bottom) → zone tint → public lands → markers
       try {
         if (stateZonesGroup) stateZonesGroup.bringToBack();
       } catch (ez) {}
       try { if (stateMaskGroup) stateMaskGroup.bringToBack(); } catch (eMask) {}
       try { adcnrOverlayGroup.bringToFront(); } catch (e) {}
+      try { if (peakRutOverlayGroup) peakRutOverlayGroup.bringToFront(); } catch (eR) {}
       // Exactly one ✓ per dropdown list entry (if that toggle is on)
       if (publicLandTypeVisible.listPins) drawListedHuntCheckmarks();
       try {
@@ -9115,9 +9363,9 @@
           map.setMaxBounds(b);
           map.options.maxBoundsViscosity = 0.2; // gentle rubber-band, not a hard wall
         }
-        // Data-saving: never zoom out to continental US (≈ z3–4)
-        // z7 still shows AL + nearby states; not the whole country.
-        var minZ = 7;
+        // Data-saving: min zoom = previous floor (7) + one zoom-in step
+        // (furthest out = old all-the-way-out, then one + press)
+        var minZ = 8;
         map.setMinZoom(minZ);
         if (map.getZoom() < minZ) map.setZoom(minZ);
       } catch (eApply) {}
@@ -9616,6 +9864,7 @@
       if (mapReady && map) {
         requestAnimationFrame(function() {
           fitPhoneMapSize();
+          if (typeof fitDesktopMapHeight === 'function') fitDesktopMapHeight();
           if (map) map.invalidateSize();
         });
         return Promise.resolve(map);
@@ -9632,9 +9881,11 @@
         }
         // iOS / phone: reflow to full width after Leaflet mounts (tiles often start narrow)
         fitPhoneMapSize();
+        if (typeof fitDesktopMapHeight === 'function') fitDesktopMapHeight();
         [40, 120, 320, 700].forEach(function(ms) {
           setTimeout(function() {
             fitPhoneMapSize();
+            if (typeof fitDesktopMapHeight === 'function') fitDesktopMapHeight();
             if (map) { try { map.invalidateSize(true); } catch (e) {} }
           }, ms);
         });
@@ -9829,15 +10080,15 @@
         lidar: lidar
       };
       activeBasemapKey = 'topo';
-      // Free pan around AL; minZoom blocks continental / whole-US zoom (data)
+      // Free pan around AL; minZoom 8 = old min (7) + one zoom-in click
       map = L.map('leaflet-map', {
         center: [32.7794, -86.8287],
-        zoom: 7,
+        zoom: 8,
         layers: [topo],
         // Soft outer cage only — applyActiveStateMapBounds widens pad + soft viscosity
         maxBounds: [[28.2, -91.8], [36.9, -82.2]],
         maxBoundsViscosity: 0.2,
-        minZoom: 7,
+        minZoom: 8,
         maxZoom: LIDAR_MAX_ZOOM,
         preferCanvas: true,
         // Never zoom on double-click — it shoves open popups to the top of the map
@@ -9861,6 +10112,7 @@
       stateZonesGroup = L.layerGroup().addTo(map);
       adcnrOverlayGroup = L.layerGroup().addTo(map);
       adcnrOpenPinGroup = L.layerGroup().addTo(map); // green ✓ pins for open units
+      peakRutOverlayGroup = L.layerGroup().addTo(map); // peak-rut pulse + RUT labels (clustered by zoom)
       mapMarkerGroup = L.layerGroup().addTo(map);
       standMarkerGroup = L.layerGroup().addTo(map);
       gaugeMarkerGroup = L.layerGroup().addTo(map);
@@ -12895,40 +13147,31 @@
 
     function buildGpsMarkerIcon(headingDeg) {
       var scale = getGpsMarkerScale();
-      // Compass mode + known heading → navigation arrow (point = facing direction)
-      var useTri = (typeof headingHudMode !== 'undefined' && headingHudMode === 'compass' &&
-        headingDeg != null && !isNaN(headingDeg));
-      if (useTri) {
-        var rot = ((Number(headingDeg) % 360) + 360) % 360;
-        // Wider base, clear nose — darker blue fill + thin black outline
-        var w = Math.round(20 * scale);
-        var h = Math.round(28 * scale);
-        var html =
-          '<div class="gps-heading-tri-wrap" style="width:' + w + 'px;height:' + h + 'px;' +
-            'transform:rotate(' + rot.toFixed(1) + 'deg);transform-origin:center center;">' +
-            '<svg viewBox="0 0 24 32" width="' + w + '" height="' + h + '" aria-hidden="true">' +
-              // Outer black outline (slightly larger path via stroke)
-              '<path d="M12 1.5 L22.5 29.5 L12 23.2 L1.5 29.5 Z" fill="#1a5f9e" stroke="#000" ' +
-                'stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>' +
-              // Inner highlight notch so the nose reads clearly
-              '<path d="M12 6.5 L17.2 24.5 L12 20.5 L6.8 24.5 Z" fill="#2477c4" opacity="0.55"/>' +
-            '</svg>' +
-            '<div class="gps-heading-tri" aria-hidden="true"></div>' +
-          '</div>';
-        return L.divIcon({
-          className: 'gps-heading-icon',
-          html: html,
-          iconSize: [w, h],
-          iconAnchor: [w / 2, h / 2]
-        });
+      // Always the red heading arrow (default location marker in all modes).
+      // Point = facing direction when heading known; otherwise points north (0°).
+      var rot = 0;
+      if (headingDeg != null && !isNaN(headingDeg)) {
+        rot = ((Number(headingDeg) % 360) + 360) % 360;
       }
-      var dsz = Math.round(16 * scale);
-      var border = Math.max(1, Math.round(1.5 * scale));
+      // ~15% smaller than previous 20×28 base; red fill + thin black outline
+      var w = Math.round(17 * scale);
+      var h = Math.round(24 * scale);
+      var html =
+        '<div class="gps-heading-tri-wrap" style="width:' + w + 'px;height:' + h + 'px;' +
+          'transform:rotate(' + rot.toFixed(1) + 'deg);transform-origin:center center;">' +
+          '<svg viewBox="0 0 24 32" width="' + w + '" height="' + h + '" aria-hidden="true">' +
+            '<path d="M12 1.5 L22.5 29.5 L12 23.2 L1.5 29.5 Z" fill="#e11d1d" stroke="#000" ' +
+              'stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' +
+            // Soft inner highlight for a clean, readable nose
+            '<path d="M12 6.5 L17.2 24.5 L12 20.5 L6.8 24.5 Z" fill="#ff4d4d" opacity="0.35"/>' +
+          '</svg>' +
+          '<div class="gps-heading-tri" aria-hidden="true"></div>' +
+        '</div>';
       return L.divIcon({
-        className: 'gps-dot-icon',
-        html: '<div class="gps-loc-dot" style="width:' + dsz + 'px;height:' + dsz + 'px;border-width:' + border + 'px;"></div>',
-        iconSize: [dsz, dsz],
-        iconAnchor: [dsz / 2, dsz / 2]
+        className: 'gps-heading-icon',
+        html: html,
+        iconSize: [w, h],
+        iconAnchor: [w / 2, h / 2]
       });
     }
 
@@ -12948,7 +13191,7 @@
 
     /** Lightweight GPS marker rotation without rebuilding the whole icon (smooth heading). */
     function updateGpsMarkerHeading(headingDeg) {
-      if (!gpsMarker || headingHudMode !== 'compass') return;
+      if (!gpsMarker) return;
       if (headingDeg == null || isNaN(headingDeg)) return;
       try {
         var el = gpsMarker.getElement && gpsMarker.getElement();
@@ -12958,7 +13201,7 @@
           wrap.style.transform =
             'rotate(' + (((Number(headingDeg) % 360) + 360) % 360).toFixed(1) + 'deg)';
         } else {
-          // Was a circle — upgrade to triangle once
+          // Ensure arrow icon is present
           if (userLat != null && userLng != null) setGpsMarker(userLat, userLng, headingDeg);
         }
       } catch (eU) {}
@@ -13567,6 +13810,48 @@
     window.applyDeviceLayout = applyDeviceLayout;
     window.isPhoneLayout = isPhoneLayout;
 
+    /**
+     * Desktop only: size the map column so its bottom (toolbar) sits in the
+     * visible viewport — no need to scroll just to reach map chrome.
+     * Uses current card top (works with sticky) so height tracks the screen.
+     * Phone layout is left completely alone.
+     */
+    function fitDesktopMapHeight() {
+      if (typeof isPhoneLayout === 'function' && isPhoneLayout()) return;
+      try {
+        if (!document.documentElement.classList.contains('layout-desktop')) return;
+      } catch (eCls) {}
+      var wrap = document.getElementById('map-wrapper') || document.querySelector('.map-wrapper');
+      // Fullscreen Max mode owns its own sizing
+      if (wrap && wrap.classList.contains('fullscreen')) return;
+      var card = document.querySelector('.card-map');
+      var mapEl = document.getElementById('leaflet-map');
+      if (!card || !mapEl) return;
+      var vh = window.innerHeight || document.documentElement.clientHeight || 0;
+      if (vh < 200) return;
+      var rect = card.getBoundingClientRect();
+      var top = rect.top;
+      // If card is off-screen above, use sticky offset
+      if (top < 0) top = 12;
+      var bottomGap = 10;
+      var avail = Math.floor(vh - top - bottomGap);
+      if (avail < 280) avail = Math.max(280, Math.floor(vh - 24));
+      card.style.height = avail + 'px';
+      card.style.maxHeight = avail + 'px';
+      card.style.minHeight = '0';
+      if (wrap) {
+        wrap.style.flex = '1 1 auto';
+        wrap.style.minHeight = '0';
+        wrap.style.height = '100%';
+      }
+      mapEl.style.height = '100%';
+      mapEl.style.minHeight = '0';
+      if (typeof map !== 'undefined' && map) {
+        try { map.invalidateSize(false); } catch (eInv) {}
+      }
+    }
+    window.fitDesktopMapHeight = fitDesktopMapHeight;
+
     /** Force map container to match phone width and tell Leaflet to reflow tiles. */
     function fitPhoneMapSize() {
       if (!isPhoneLayout()) return;
@@ -13986,8 +14271,8 @@
       if (cardEl) cardEl.textContent = getCardinal(heading);
       if (hintEl) hintEl.textContent = '';
 
-      // Map triangle (only in compass mode)
-      if (headingHudMode === 'compass') updateGpsMarkerHeading(heading);
+      // Always rotate the red location arrow when device heading updates
+      updateGpsMarkerHeading(heading);
     }
 
     function onDeviceOrientationEvent(e) {
@@ -16201,14 +16486,17 @@
       requestAnimationFrame(function() {
         syncPlannerCalendarSquare();
         fitPhoneMapSize();
+        if (typeof fitDesktopMapHeight === 'function') fitDesktopMapHeight();
         requestAnimationFrame(function() {
           syncPlannerCalendarSquare();
           fitPhoneMapSize();
+          if (typeof fitDesktopMapHeight === 'function') fitDesktopMapHeight();
         });
       });
       setTimeout(function() {
         syncPlannerCalendarSquare();
         fitPhoneMapSize();
+        if (typeof fitDesktopMapHeight === 'function') fitDesktopMapHeight();
       }, 200);
       setLand('Public');
       updateDistStatus();
@@ -16220,18 +16508,28 @@
       updatePublicLandToggleUI();
       updateDeerZoneToggleUI();
       var _plannerResizeTimer = null;
+      var _desktopMapScrollTimer = null;
       function onViewportChange() {
         clearTimeout(_plannerResizeTimer);
         _plannerResizeTimer = setTimeout(function() {
           applyDeviceLayout(true);
           syncPlannerCalendarSquare();
           fitPhoneMapSize();
+          if (typeof fitDesktopMapHeight === 'function') fitDesktopMapHeight();
           if (map) {
             try { map.invalidateSize(true); } catch (e) {}
           }
         }, 140);
       }
       window.addEventListener('resize', onViewportChange);
+      // Sticky map: re-measure available height as the page scrolls (desktop only)
+      window.addEventListener('scroll', function() {
+        if (typeof isPhoneLayout === 'function' && isPhoneLayout()) return;
+        clearTimeout(_desktopMapScrollTimer);
+        _desktopMapScrollTimer = setTimeout(function() {
+          if (typeof fitDesktopMapHeight === 'function') fitDesktopMapHeight();
+        }, 50);
+      }, { passive: true });
       window.addEventListener('orientationchange', function() {
         // iOS fires orientationchange before new dimensions settle
         onViewportChange();
