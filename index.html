@@ -3102,7 +3102,8 @@
     /* Satellite imagery acquisition date (bottom-right, above bottom bar) */
     .map-imagery-date {
       position: absolute;
-      right: 8px;
+      left: 8px;
+      right: auto;
       bottom: 50px;
       z-index: 850;
       pointer-events: none;
@@ -3123,10 +3124,11 @@
       text-overflow: ellipsis;
     }
     .map-imagery-date.visible { display: block; }
-    .map-wrapper.fullscreen .map-imagery-date { bottom: 52px; }
+    .map-wrapper.fullscreen .map-imagery-date { bottom: 52px; left: 8px; right: auto; }
     html.layout-phone .map-imagery-date {
       font-size: 9px;
-      right: 6px;
+      left: 6px;
+      right: auto;
       bottom: 46px;
       padding: 2px 6px;
     }
@@ -3671,10 +3673,14 @@
       position: absolute;
       top: calc(100% + 6px);
       right: 0;
-      min-width: 240px;
-      max-width: min(300px, calc(100vw - 24px));
+      left: auto;
+      min-width: 248px;
+      width: min(280px, calc(100vw - 16px));
+      max-width: min(280px, calc(100vw - 16px));
       max-height: min(70vh, 520px);
+      overflow-x: hidden;
       overflow-y: auto;
+      box-sizing: border-box;
       background: rgba(15, 18, 14, 0.98);
       border: 1px solid var(--border);
       border-radius: 12px;
@@ -3682,13 +3688,13 @@
       box-shadow: 0 10px 28px rgba(0,0,0,0.6);
       z-index: 10007;
     }
-    /* Bottom placement: open panel upward, centered on the Layers button */
+    /* Bottom: open upward, flush to right of Layers control so full frame stays on-screen */
     .map-layers-menu.map-layers-bottom .map-layers-panel {
       top: auto;
       bottom: calc(100% + 6px);
-      left: 50%;
-      right: auto;
-      transform: translateX(-50%);
+      left: auto;
+      right: 0;
+      transform: none;
       max-height: min(60vh, 480px);
     }
     /* Invisible bridge so hover doesn't drop when moving from button → panel */
@@ -3785,13 +3791,53 @@
     }
     .map-layers-panel .ml-option.loading { opacity: 0.7; }
     .map-layers-panel .ml-option .ml-opt-text { min-width: 0; }
-    .map-layers-panel .ml-option .ml-opt-sub {
-      display: block;
-      font-size: 10px;
-      font-weight: 500;
-      color: var(--muted);
-      margin-top: 2px;
+    .map-layers-panel .ml-option .ml-opt-sub { display: none !important; }
+    .map-layers-panel .ml-option {
+      align-items: center;
+      padding: 8px 10px;
     }
+    /* Collapsible Public lands / Deer zones */
+    .ml-fold-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      box-sizing: border-box;
+      background: var(--panel-light);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--ink);
+      cursor: pointer;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      margin: 8px 0 0;
+      text-align: left;
+      letter-spacing: 0.01em;
+    }
+    .ml-fold-btn:hover { border-color: var(--accent); color: #fff; }
+    .ml-fold-btn.open {
+      border-color: var(--accent);
+      background: rgba(229,154,24,0.12);
+    }
+    .ml-fold-btn .ml-fold-caret {
+      color: var(--muted);
+      font-size: 11px;
+      transition: transform 0.15s ease;
+    }
+    .ml-fold-btn.open .ml-fold-caret {
+      transform: rotate(90deg);
+      color: var(--accent);
+    }
+    .ml-fold-body {
+      display: none;
+      margin-top: 6px;
+      padding: 0 0 2px;
+    }
+    .ml-fold-body.open { display: block; }
+    .map-layers-panel .zone-toggle-hint { display: none !important; }
     .map-fs-btn {
       position: absolute;
       top: 10px;
@@ -4604,47 +4650,50 @@
                           <div class="ml-section">Base map</div>
                           <label class="ml-option">
                             <input type="radio" name="map-basemap" id="basemap-topo" value="topo" checked onchange="setMapBasemap('topo')">
-                            <span class="ml-opt-text">USGS Topography<span class="ml-opt-sub">Terrain / contours</span></span>
+                            <span class="ml-opt-text">USGS Topography</span>
                           </label>
                           <label class="ml-option">
                             <input type="radio" name="map-basemap" id="basemap-street" value="street" onchange="setMapBasemap('street')">
-                            <span class="ml-opt-text">Roads &amp; Waterways<span class="ml-opt-sub">Street map</span></span>
+                            <span class="ml-opt-text">Roads &amp; Waterways</span>
                           </label>
                           <label class="ml-option">
                             <input type="radio" name="map-basemap" id="basemap-satellite" value="satellite" onchange="setMapBasemap('satellite')">
-                            <span class="ml-opt-text">Satellite<span class="ml-opt-sub">High-def aerial / satellite · pick season below</span></span>
+                            <span class="ml-opt-text">Satellite</span>
                           </label>
                           <div class="sat-mode-panel" id="satellite-mode-panel" role="group" aria-label="Satellite imagery season">
                             <div class="sat-mode-row">
+                              <button type="button" class="sat-mode-btn" id="sat-mode-newest" data-sat="newest" onclick="setSatelliteMode('newest')" title="Default live satellite basemap">Default</button>
                               <button type="button" class="sat-mode-btn" id="sat-mode-winter" data-sat="winter" onclick="setSatelliteMode('winter')" title="Winter imagery (Dec 1–Mar 10 snapshots)">Winter</button>
                               <button type="button" class="sat-mode-btn" id="sat-mode-summer" data-sat="summer" onclick="setSatelliteMode('summer')" title="Summer imagery (May 1–Aug 1 snapshots)">Summer</button>
-                              <button type="button" class="sat-mode-btn" id="sat-mode-newest" data-sat="newest" onclick="setSatelliteMode('newest')" title="Default live satellite basemap">Default</button>
                             </div>
                           </div>
                           <label class="ml-option">
                             <input type="radio" name="map-basemap" id="basemap-lidar" value="lidar" onchange="setMapBasemap('lidar')">
-                            <span class="ml-opt-text">LiDAR Terrain<span class="ml-opt-sub">Hillshade from LiDAR DEMs — zoom in stays visible</span></span>
+                            <span class="ml-opt-text">LiDAR Terrain</span>
                           </label>
           
                           <div class="ml-section">Overlays</div>
                           <label class="ml-option">
                             <input type="checkbox" id="toggle-prev-hunts-chk" onchange="drawHuntsOnMap()">
-                            <span class="ml-opt-text">Past Hunts<span class="ml-opt-sub">Your logged hunt pins</span></span>
+                            <span class="ml-opt-text">Past Hunts</span>
                           </label>
                           <label class="ml-option">
                             <input type="checkbox" id="toggle-parcels-chk" onchange="togglePropertyLines(this.checked)">
-                            <span class="ml-opt-text">Property lines<span class="ml-opt-sub">Parcel boundaries (zoom in) · owner on click when available</span></span>
+                            <span class="ml-opt-text">Property lines</span>
                           </label>
                           <label class="ml-option">
                             <input type="checkbox" id="toggle-roads-overlay-chk" onchange="toggleRoadsOverlay(this.checked)">
-                            <span class="ml-opt-text">Roads &amp; waterways<span class="ml-opt-sub">Overlay roads/streams on satellite or LiDAR</span></span>
+                            <span class="ml-opt-text">Roads &amp; waterways</span>
                           </label>
                           <label class="ml-option">
                             <input type="checkbox" id="toggle-topo-overlay-chk" onchange="toggleTopoOverlay(this.checked)">
-                            <span class="ml-opt-text">Topo lines<span class="ml-opt-sub">Contour / topo sheet overlay on satellite or LiDAR</span></span>
+                            <span class="ml-opt-text">Topo lines</span>
                           </label>
           
-                          <div class="ml-section">Public lands</div>
+                          <button type="button" class="ml-fold-btn" id="ml-fold-public-lands" onclick="toggleLayersFold('public-lands')" aria-expanded="false">
+                            Public lands<span class="ml-fold-caret" aria-hidden="true">▸</span>
+                          </button>
+                          <div class="ml-fold-body" id="ml-fold-body-public-lands" hidden>
                           <div class="pl-toggles" id="pl-toggles" role="group" aria-label="Toggle public land types">
                             <button type="button" class="pl-toggle-btn on" id="pl-btn-wma" data-pl="wma" style="background:#e59a18;" onclick="togglePublicLandType('wma')" title="Wildlife Management Areas" aria-pressed="true">WMA<span class="pl-sub">on</span></button>
                             <button type="button" class="pl-toggle-btn on" id="pl-btn-forestNwr" data-pl="forestNwr" style="background:#2f9e4f;color:#fff;" onclick="togglePublicLandType('forestNwr')" title="National Forests &amp; NWR" aria-pressed="true">Forest/NWR<span class="pl-sub">on</span></button>
@@ -4660,13 +4709,16 @@
                             <button type="button" onclick="setAllPublicLandTypes(true)">All on</button>
                             <button type="button" onclick="setAllPublicLandTypes(false)">All off</button>
                           </div>
-                          <div class="zone-toggle-hint">Tap a color to show/hide that land type. All on by default. All off also hides Custom areas. ✓ List = Available Hunts pins. Custom = drawn shapes.</div>
                           <div id="adcnr-cache-status" style="font-size:9px;margin-top:6px;color:var(--muted);"></div>
                           <!-- Hidden master for legacy; driven by any public-land type being on -->
                           <input type="checkbox" id="toggle-adcnr-lands-chk" checked style="display:none;" aria-hidden="true">
                           <span id="toggle-adcnr-label" style="display:none;" aria-hidden="true"></span>
-          
-                          <div class="ml-section">Deer season zones</div>
+                          </div><!-- /ml-fold-body-public-lands -->
+
+                          <button type="button" class="ml-fold-btn" id="ml-fold-deer-zones" onclick="toggleLayersFold('deer-zones')" aria-expanded="false">
+                            Deer season zones<span class="ml-fold-caret" aria-hidden="true">▸</span>
+                          </button>
+                          <div class="ml-fold-body" id="ml-fold-body-deer-zones" hidden>
                           <div class="zone-toggles" id="zone-toggles" role="group" aria-label="Toggle deer season zones">
                             <button type="button" class="zone-toggle-btn" id="zone-btn-A" data-zone="A" style="background:#8a8a8a;" onclick="toggleDeerZone('A')" title="Zone A — default statewide" aria-pressed="false">A<span class="zt-sub">off</span></button>
                             <button type="button" class="zone-toggle-btn" id="zone-btn-B" data-zone="B" style="background:#e6d29a;" onclick="toggleDeerZone('B')" title="Zone B — south of US-80 line" aria-pressed="false">B<span class="zt-sub">off</span></button>
@@ -4678,9 +4730,9 @@
                             <button type="button" onclick="setAllDeerZones(true)">All on</button>
                             <button type="button" onclick="setAllDeerZones(false)">All off</button>
                           </div>
-                          <div class="zone-toggle-hint">Tap a color to show/hide that zone. Off by default — turn on only what you need. Confirm Outdoor Alabama before hunting.</div>
                           <!-- Hidden master flag; driven by any zone being on -->
                           <input type="checkbox" id="toggle-state-zones-chk" style="display:none;" aria-hidden="true">
+                          </div><!-- /ml-fold-body-deer-zones -->
               </div>
             </div>
             <button type="button" class="map-settings-btn mbb-ctrl" id="map-settings-btn" onclick="openSettingsModal()" title="Settings">⚙</button>
@@ -10652,6 +10704,25 @@
     }
     window.scheduleImageryDateRefresh = scheduleImageryDateRefresh;
     window.refreshImageryDateLabel = refreshImageryDateLabel;
+
+    function toggleLayersFold(key) {
+      var body = document.getElementById('ml-fold-body-' + key);
+      var btn = document.getElementById('ml-fold-' + key);
+      if (!body) return;
+      var open = !body.classList.contains('open');
+      if (open) {
+        body.classList.add('open');
+        body.removeAttribute('hidden');
+      } else {
+        body.classList.remove('open');
+        body.setAttribute('hidden', '');
+      }
+      if (btn) {
+        btn.classList.toggle('open', open);
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
+    }
+    window.toggleLayersFold = toggleLayersFold;
 
     function wireMapLayersMenu() {
       var menu = document.getElementById('map-layers-menu');
