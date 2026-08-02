@@ -3740,8 +3740,8 @@
     .sat-mode-panel {
       display: none;
       flex-direction: column;
-      gap: 6px;
-      margin: 0 0 8px 28px;
+      gap: 4px;
+      margin: 0 0 6px 28px;
       padding: 0;
     }
     .sat-mode-panel.visible {
@@ -3749,33 +3749,27 @@
     }
     .sat-mode-row {
       display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
+      flex-wrap: nowrap;
+      gap: 4px;
+      width: 100%;
     }
     .sat-mode-btn {
-      flex: 1 1 auto;
-      min-width: 72px;
-      padding: 8px 10px;
-      border-radius: 8px;
+      flex: 1 1 0;
+      min-width: 0;
+      padding: 5px 6px;
+      border-radius: 6px;
       border: 1px solid var(--border);
       background: rgba(0,0,0,0.25);
       color: var(--ink);
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 800;
-      letter-spacing: 0.02em;
+      letter-spacing: 0.01em;
       cursor: pointer;
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
-      line-height: 1.2;
+      line-height: 1.15;
       text-align: center;
-    }
-    .sat-mode-btn .sat-mode-sub {
-      display: block;
-      font-size: 9px;
-      font-weight: 600;
-      color: var(--muted);
-      margin-top: 2px;
-      letter-spacing: 0;
+      white-space: nowrap;
     }
     .sat-mode-btn:hover { border-color: var(--accent); color: #fff; }
     .sat-mode-btn.active {
@@ -3784,7 +3778,6 @@
       color: #fff;
       box-shadow: 0 0 0 1px rgba(229,154,24,0.35);
     }
-    .sat-mode-btn.active .sat-mode-sub { color: #f0d9a8; }
     .map-layers-panel .ml-option input {
       margin: 2px 0 0;
       cursor: pointer;
@@ -4623,15 +4616,9 @@
                           </label>
                           <div class="sat-mode-panel" id="satellite-mode-panel" role="group" aria-label="Satellite imagery season">
                             <div class="sat-mode-row">
-                              <button type="button" class="sat-mode-btn" id="sat-mode-winter" data-sat="winter" onclick="setSatelliteMode('winter')" title="Newest Esri World Imagery snapshot dated Dec 1–Mar 10">
-                                Winter<span class="sat-mode-sub">Dec 1–Mar 10</span>
-                              </button>
-                              <button type="button" class="sat-mode-btn" id="sat-mode-summer" data-sat="summer" onclick="setSatelliteMode('summer')" title="Newest Esri World Imagery snapshot dated May 1–Aug 1">
-                                Summer<span class="sat-mode-sub">May 1–Aug 1</span>
-                              </button>
-                              <button type="button" class="sat-mode-btn" id="sat-mode-newest" data-sat="newest" onclick="setSatelliteMode('newest')" title="Live default satellite — most recent commercial composite">
-                                Newest<span class="sat-mode-sub">Latest available</span>
-                              </button>
+                              <button type="button" class="sat-mode-btn" id="sat-mode-winter" data-sat="winter" onclick="setSatelliteMode('winter')" title="Winter imagery (Dec 1–Mar 10 snapshots)">Winter</button>
+                              <button type="button" class="sat-mode-btn" id="sat-mode-summer" data-sat="summer" onclick="setSatelliteMode('summer')" title="Summer imagery (May 1–Aug 1 snapshots)">Summer</button>
+                              <button type="button" class="sat-mode-btn" id="sat-mode-newest" data-sat="newest" onclick="setSatelliteMode('newest')" title="Default live satellite basemap">Default</button>
                             </div>
                           </div>
                           <label class="ml-option">
@@ -10410,7 +10397,7 @@
             var labels = {
               winter: 'Satellite · Winter (Dec 1–Mar 10)' + relTxt,
               summer: 'Satellite · Summer (May 1–Aug 1)' + relTxt,
-              newest: 'Satellite · Newest (live commercial composite)'
+              newest: 'Satellite · Default (live basemap)'
             };
             showAppCopyToast('<span class="act">' + (labels[mode] || 'Satellite') + '</span>');
           }
