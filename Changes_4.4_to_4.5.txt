@@ -74,3 +74,13 @@ Date-aware tense for hunt status
   on selected hunt date vs real today.
 - Peak-rut tags: now / was peak that day / peak that day (not always NOW).
 - Only uses "today" or "now" when the selected calendar day is actually today.
+
+
+--------------------------------
+Satellite seasons (Winter / Summer / Newest)
+--------------------------------
+- Layers → Satellite reveals three buttons: Winter, Summer, Newest.
+- Choice is saved (localStorage) and remains the default satellite until changed.
+- Newest: Esri World Imagery (latest commercial composite — Maxar & partners).
+- Summer: USGS Imagery Only / USDA NAIP leaf-on summer aerial (1 m).
+- Winter: Esri World Imagery Clarity (clearer archive / leaf-off style detail).
