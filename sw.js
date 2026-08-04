@@ -1,8 +1,8 @@
-/* REG SLAYER — production service worker
+﻿/* REG SLAYER â€” production service worker
  * Caches app shell for return visits with no signal.
  * Map tiles: cache-first when already stored; network otherwise (then cache).
  */
-const SHELL_CACHE = 'reg-slayer-shell-v26';
+const SHELL_CACHE = 'reg-slayer-shell-v27';
 const TILE_CACHE = 'reg-slayer-tiles-v2';
 const DATA_CACHE = 'reg-slayer-data-v1';
 
@@ -20,7 +20,7 @@ const SHELL_ASSETS = [
   './icons/tools/draw.png',
   './icons/tools/track.png',
   './icons/tools/layers.png',
-  // Pin glyphs — needed offline when opening a map with saved pins
+  // Pin glyphs â€” needed offline when opening a map with saved pins
   './icons/pins/alligator.png',
   './icons/pins/arrow.png',
   './icons/pins/beaver_dam.png',

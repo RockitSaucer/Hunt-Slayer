@@ -201,12 +201,12 @@
       min-height: 0;
     }
 
-    /* Site links / tagline live in page footer (v3.9) */
+    /* Site links / tagline — compact; mobile only after scroll to page end (#21) */
     .site-footer {
       margin-top: auto;
       border-top: 1px solid var(--border);
       background: var(--brand-bar);
-      padding: 16px 20px 20px;
+      padding: 6px 12px 8px;
       flex-shrink: 0;
     }
     .site-footer-inner {
@@ -217,19 +217,41 @@
       flex-wrap: wrap;
       align-items: center;
       justify-content: center;
-      gap: 8px 16px;
+      gap: 4px 10px;
       text-align: center;
     }
     .site-footer-inner p {
       margin: 0;
       color: var(--muted);
-      font-size: 12.5px;
+      font-size: 10px;
+      line-height: 1.3;
     }
-    .site-footer-inner a { color: var(--accent); text-decoration: none; font-size: 12px; }
+    .site-footer-inner a { color: var(--accent); text-decoration: none; font-size: 10px; }
     .site-footer-inner a:hover { text-decoration: underline; }
     .version-badge {
-      font-size: 11px; color: var(--muted); background: var(--panel-light);
-      padding: 3px 9px; border-radius: 6px; border: 1px solid var(--border);
+      font-size: 9px; color: var(--muted); background: var(--panel-light);
+      padding: 2px 6px; border-radius: 5px; border: 1px solid var(--border);
+    }
+    /* Desktop: tiny chrome strip so map/planner keep room (#21) */
+    html.layout-desktop .site-footer {
+      padding: 3px 10px 4px;
+      opacity: 0.85;
+    }
+    html.layout-desktop .site-footer-inner {
+      gap: 2px 8px;
+    }
+    html.layout-desktop .site-footer-inner p,
+    html.layout-desktop .site-footer-inner a {
+      font-size: 9px;
+    }
+    /* Phone: footer is in document flow after content — scroll to see it */
+    html.layout-phone .site-footer {
+      padding: 10px 12px 18px;
+      margin-top: 8px;
+      opacity: 0.9;
+    }
+    html.layout-phone .site-footer-inner p {
+      font-size: 11px;
     }
 
     /* ========== DESKTOP SHELL (v3.9 - planner+weather left, big map right) ========== */
@@ -242,8 +264,9 @@
     }
     .container {
       display: grid;
-      grid-template-columns: minmax(360px, 0.88fr) minmax(560px, 1.55fr);
-      gap: 14px;
+      /* Planner wider, map narrower so steps 1–3 fit without side scroll (#16) */
+      grid-template-columns: minmax(420px, 1.2fr) minmax(300px, 1fr);
+      gap: 12px;
       align-items: start;
       width: 100%;
     }
@@ -348,15 +371,15 @@
       min-height: 0;
       height: 100%;
       align-items: stretch;
-      /* Horizontal scroll only if planner min-width needs it; never grow page height */
-      overflow-x: auto;
+      /* Prefer fitting steps 1–3; avoid side scroll when possible (#16) */
+      overflow-x: hidden;
       overflow-y: hidden;
     }
     html.layout-desktop .card-planner {
       min-height: 0;
       max-height: 100%;
       height: 100%;
-      overflow-x: auto;
+      overflow-x: hidden;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
@@ -400,7 +423,7 @@
 
     /* Mid-width hybrid only while desktop mode is active */
     @media (max-width: 1100px) {
-      html.layout-desktop .container { grid-template-columns: 1fr 1.1fr; gap: 12px; }
+      html.layout-desktop .container { grid-template-columns: minmax(380px, 1.15fr) minmax(260px, 0.95fr); gap: 10px; }
       html.layout-desktop .app-shell { padding: 12px; }
       html.layout-desktop .brand-header { height: 104px; min-height: 104px; max-height: 104px; }
       html.layout-desktop .brand-logo-wrap { width: min(1100px, 96vw); }
@@ -1177,18 +1200,36 @@
       background: #fffef8;
     }
     .pin-icon-grid button svg { width: 16px; height: 16px; }
-    /* Desktop: keep planner readable — horizontal scroll on planner card if needed */
+    /* Desktop: steps 1–3 fit without horizontal scroll (#16) */
     html.layout-desktop .card-planner {
-      font-size: 14px;
-      min-width: min(720px, 100%);
+      font-size: 13.5px;
+      min-width: 0;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
     }
     html.layout-desktop .planner-row {
-      gap: 14px;
-      min-width: 680px;
-      grid-template-columns: minmax(280px, 1.55fr) minmax(140px, 0.48fr) minmax(220px, 1.05fr);
+      gap: 10px;
+      min-width: 0;
+      width: 100%;
+      grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.52fr) minmax(0, 1.05fr);
     }
     html.layout-desktop .step-section {
       min-width: 0;
+      overflow: hidden;
+    }
+    html.layout-desktop .planner-cal-col,
+    html.layout-desktop .planner-wpn-col,
+    html.layout-desktop .planner-loc-col {
+      min-width: 0;
+      max-width: 100%;
+    }
+    html.layout-desktop .calendar-container {
+      padding: 10px;
+    }
+    html.layout-desktop .weapon-btn {
+      padding-left: 6px;
+      padding-right: 6px;
     }
     html.layout-desktop #calendar-month-year {
       font-size: 14px !important;
@@ -2216,8 +2257,7 @@
       color: var(--ink);
     }
     .map-layers-toggle-btn.mdt-icon-btn:hover,
-    .map-layers-menu.open .map-layers-toggle-btn.mdt-icon-btn,
-    .map-layers-menu:hover .map-layers-toggle-btn.mdt-icon-btn {
+    .map-layers-menu.open .map-layers-toggle-btn.mdt-icon-btn {
       border-color: var(--accent) !important;
       background: rgba(229, 154, 24, 0.14) !important;
     }
@@ -3044,6 +3084,19 @@
     .map-draw-stats.active { display: block; }
     /* Phone: active tool chrome is top-left (see .tool-active .mdt-tools-panel) */
     .map-wrapper.draw-mode #leaflet-map { cursor: crosshair; }
+    /* Tool-shaped cursors (#17) — use toolbar icon art */
+    .map-wrapper.draw-mode.mode-measure #leaflet-map,
+    .map-wrapper.draw-mode.mode-measure #leaflet-map .leaflet-container,
+    .map-wrapper.draw-mode.mode-measure .leaflet-grab,
+    .map-wrapper.draw-mode.mode-measure .leaflet-dragging .leaflet-grab {
+      cursor: url('icons/tools/measure.png') 12 12, crosshair !important;
+    }
+    .map-wrapper.draw-mode.mode-draw #leaflet-map,
+    .map-wrapper.draw-mode.mode-draw #leaflet-map .leaflet-container,
+    .map-wrapper.draw-mode.mode-draw .leaflet-grab,
+    .map-wrapper.draw-mode.mode-draw .leaflet-dragging .leaflet-grab {
+      cursor: url('icons/tools/draw.png') 4 20, crosshair !important;
+    }
     /* Draw-mode close vertices: DOM markers (not Canvas) so clicks always reach the dot */
     .draw-vertex-icon {
       background: transparent !important;
@@ -3093,27 +3146,342 @@
       pointer-events: none;
     }
 
-    /* LiDAR basemaps: className is on the Leaflet layer container */
+    /* LiDAR basemaps: underlay + hillshade stack (#19) */
+    .leaflet-layer.basemap-lidar-under {
+      filter: saturate(0.55) brightness(0.92) contrast(1.05);
+    }
     .leaflet-layer.basemap-lidar-tiles {
-      /* Contrast so hillshade does not read as washed-out low-def topo */
-      filter: contrast(1.12) brightness(1.02);
+      filter: contrast(1.22) brightness(1.04) saturate(0.9);
     }
     .leaflet-layer.basemap-lidar-blend {
       mix-blend-mode: multiply;
-      opacity: 0.55 !important;
       pointer-events: none;
     }
-    .leaflet-layer.basemap-lidar-tiles {
-      /* slight boost so ditches/ridges read on phone screens */
-      filter: contrast(1.08) brightness(1.02);
+    .leaflet-layer.basemap-lidar-boost {
+      mix-blend-mode: soft-light;
+      filter: contrast(1.15);
+      pointer-events: none;
     }
     /* Smooth scale when overzooming past native LiDAR tile depth */
     .leaflet-layer.basemap-lidar-tiles .leaflet-tile,
-    .leaflet-layer.basemap-lidar-blend .leaflet-tile {
+    .leaflet-layer.basemap-lidar-blend .leaflet-tile,
+    .leaflet-layer.basemap-lidar-under .leaflet-tile,
+    .leaflet-layer.basemap-lidar-boost .leaflet-tile {
       image-rendering: auto;
     }
     @media (prefers-reduced-motion: reduce) {
-      .leaflet-layer.basemap-lidar-tiles { filter: none; }
+      .leaflet-layer.basemap-lidar-tiles,
+      .leaflet-layer.basemap-lidar-under,
+      .leaflet-layer.basemap-lidar-boost { filter: none; }
+    }
+
+
+    /* ========== V6.3: track HUD dock, compass mode, pin sheet ========== */
+    .map-track-live-hud.is-draggable {
+      touch-action: none;
+      user-select: none;
+    }
+    .map-track-live-hud .mtl-drag {
+      cursor: grab;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #fecaca;
+      margin-bottom: 4px;
+      text-align: center;
+    }
+    .map-track-live-hud.is-dragging .mtl-drag { cursor: grabbing; }
+    .path-probe-popup {
+      background: rgba(12, 16, 10, 0.94);
+      color: #fff;
+      border: 1px solid rgba(229, 154, 24, 0.55);
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.35;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+      white-space: nowrap;
+    }
+    .compass-mode-line {
+      pointer-events: stroke !important;
+    }
+    .compass-mode-probe-label {
+      background: rgba(12, 16, 10, 0.94);
+      color: #fff;
+      border: 1px solid rgba(56, 189, 248, 0.5);
+      border-radius: 8px;
+      padding: 5px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    .dial-expand-menu {
+      position: absolute;
+      left: 50%;
+      top: calc(100% + 6px);
+      transform: translateX(-50%);
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      z-index: 10020;
+      min-width: 132px;
+      padding: 8px;
+      background: rgba(15, 18, 14, 0.98);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.55);
+    }
+    .dial-expand-menu.open { display: flex; }
+    .dial-expand-menu button {
+      border: 1px solid var(--border);
+      background: var(--panel-light);
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .dial-expand-menu button.is-active {
+      border-color: var(--accent);
+      background: rgba(229, 154, 24, 0.18);
+      color: var(--accent);
+    }
+    /* Pin editor docked above bottom toolbar (#18) */
+    #pin-editor-sheet {
+      display: none;
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      bottom: calc(var(--mbb-bar-h, 45px) + env(safe-area-inset-bottom, 0px) + 6px);
+      z-index: 95;
+      max-height: min(58vh, 420px);
+      overflow: auto;
+      background: rgba(15, 18, 14, 0.98);
+      border: 1px solid var(--border);
+      border-radius: 14px 14px 10px 10px;
+      box-shadow: 0 -6px 28px rgba(0,0,0,0.55);
+      padding: 10px 12px 12px;
+      pointer-events: auto;
+    }
+    #pin-editor-sheet.open { display: block; }
+    #pin-editor-sheet .pes-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      cursor: grab;
+    }
+    #pin-editor-sheet .pes-head strong {
+      font-size: 13px;
+      color: #fff;
+    }
+    #pin-editor-sheet .pes-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0 4px;
+    }
+    #pin-editor-sheet .pin-icon-grid button {
+      border-radius: 50% !important;
+      width: 42px !important;
+      height: 42px !important;
+      min-width: 42px !important;
+      padding: 4px !important;
+    }
+    #pin-editor-sheet .pin-icon-search {
+      width: 100%;
+      box-sizing: border-box;
+      margin: 6px 0 8px;
+      padding: 6px 8px;
+      font-size: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-light);
+      color: var(--ink);
+    }
+    #pin-editor-sheet .pes-notes {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 48px;
+      margin: 6px 0;
+      padding: 6px 8px;
+      font-size: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-light);
+      color: var(--ink);
+      resize: vertical;
+    }
+    #pin-editor-sheet .pes-customize-btn {
+      width: 100%;
+      margin: 4px 0 8px;
+      padding: 8px;
+      font-size: 12px;
+      font-weight: 800;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-light);
+      color: var(--ink);
+      cursor: pointer;
+    }
+    #pin-editor-sheet .pes-customize-btn.is-open {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    #pin-editor-sheet .pes-slot-btns {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    #pin-editor-sheet .pes-slot-btns button {
+      flex: 1;
+      padding: 7px 4px;
+      font-size: 11px;
+      font-weight: 800;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-light);
+      color: var(--ink);
+      cursor: pointer;
+    }
+    #pin-editor-sheet .pes-slot-btns button.is-active {
+      border-color: var(--accent);
+      background: rgba(229, 154, 24, 0.16);
+      color: var(--accent);
+    }
+    #pin-editor-sheet .pes-preview {
+      display: flex;
+      justify-content: center;
+      margin: 8px 0;
+      min-height: 56px;
+      align-items: center;
+    }
+    #pin-editor-sheet .pes-checks {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin: 8px 0;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    #pin-editor-sheet .pes-checks label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+    #pin-editor-sheet .pes-advanced {
+      margin-top: 8px;
+      font-size: 10px;
+    }
+    #pin-editor-sheet .pes-advanced summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-weight: 700;
+      user-select: none;
+    }
+    #pin-editor-sheet .pes-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    #pin-editor-sheet .pes-actions button {
+      flex: 1;
+      border: none;
+      border-radius: 8px;
+      padding: 9px 10px;
+      font-weight: 800;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    #pin-editor-sheet .pes-save { background: var(--green); color: #fff; }
+    #pin-editor-sheet .pes-cancel { background: var(--panel-light); color: var(--muted); border: 1px solid var(--border) !important; }
+    .pin-ideal-pulse {
+      animation: pinIdealPulse 1.2s ease-in-out infinite;
+      filter: drop-shadow(0 0 6px #facc15) drop-shadow(0 0 12px rgba(250, 204, 21, 0.55));
+    }
+    @keyframes pinIdealPulse {
+      0%, 100% { filter: drop-shadow(0 0 4px #facc15) drop-shadow(0 0 8px rgba(250, 204, 21, 0.4)); transform: scale(1); }
+      50% { filter: drop-shadow(0 0 10px #fde047) drop-shadow(0 0 18px rgba(250, 204, 21, 0.7)); transform: scale(1.06); }
+    }
+    .mdm-footer-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .mdm-footer-row .mdm-edit-btn {
+      flex: 1;
+      background: #3a4234;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-weight: 800;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .mdm-footer-row .mdm-trash-btn {
+      width: 40px;
+      height: 36px;
+      border-radius: 8px;
+      border: 1px solid rgba(217, 65, 54, 0.55);
+      background: rgba(217, 65, 54, 0.15);
+      color: #f87171;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .mdm-footer-row .mdm-trash-btn svg { width: 18px; height: 18px; }
+    .settings-compass-mode-btn {
+      width: 100%;
+      margin-top: 6px;
+      padding: 9px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-light);
+      color: var(--ink);
+      font-weight: 800;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    #compass-mode-settings-modal .cm-preview {
+      height: 54px;
+      margin: 10px 0 4px;
+      border-radius: 8px;
+      background: #1a2218;
+      position: relative;
+      overflow: hidden;
+    }
+    #compass-mode-settings-modal .cm-preview-line {
+      position: absolute;
+      left: 12%;
+      right: 12%;
+      top: 50%;
+      height: 0;
+      border-top-style: solid;
+      transform: translateY(-50%);
+    }
+    #compass-mode-settings-modal .cm-preview-dot {
+      position: absolute;
+      top: 50%;
+      left: 62%;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      border: 2px solid #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.45);
     }
 
     /* Save custom shape / edit path modals — never visible until .active is set by user action */
@@ -3800,14 +4168,36 @@
     .mbb-icon-btn svg { width: 22px; height: 22px; display: block; }
     .mbb-icon-btn:hover { border-color: var(--accent); color: #fff; }
     .mbb-icon-btn.mbb-gps {
-      background: var(--green);
+      background: #3d7a22;
       border-color: #5d8e3d;
       color: #fff;
     }
     .mbb-icon-btn.mbb-gps:hover {
-      background: var(--green-hover);
+      background: #4a9429;
       border-color: #7ab050;
       color: #fff;
+    }
+    /* Bottom bar uses !important chrome — keep snap distinct & larger (#22) */
+    .map-bottom-bar .mbb-icon-btn.mbb-gps {
+      background: #3d7a22 !important;
+      border-color: #5aa832 !important;
+      color: #fff !important;
+      box-shadow: 0 0 0 1px rgba(90, 168, 50, 0.45), 0 2px 10px rgba(0, 0, 0, 0.4) !important;
+    }
+    .map-bottom-bar .mbb-icon-btn.mbb-gps:hover {
+      background: #4a9429 !important;
+      border-color: #7ab050 !important;
+      color: #fff !important;
+    }
+    .map-bottom-bar .mbb-icon-btn.mbb-gps svg {
+      width: 26px !important;
+      height: 26px !important;
+      transform: scale(1.12);
+    }
+    html.layout-phone .map-bottom-bar .mbb-icon-btn.mbb-gps svg {
+      width: 24px !important;
+      height: 24px !important;
+      transform: scale(1.08);
     }
 
     /* Satellite imagery date — on the map only, never over the bottom toolbar */
@@ -4438,8 +4828,7 @@
       flex-shrink: 0;
     }
     .map-layers-toggle-btn:hover,
-    .map-layers-menu.open .map-layers-toggle-btn,
-    .map-layers-menu:hover .map-layers-toggle-btn {
+    .map-layers-menu.open .map-layers-toggle-btn {
       border-color: var(--accent);
       background: rgba(229, 154, 24, 0.14);
     }
@@ -4452,13 +4841,11 @@
     .map-layers-menu.map-layers-bottom .map-layers-toggle-btn .ml-caret {
       transform: rotate(180deg);
     }
-    .map-layers-menu.open .map-layers-toggle-btn .ml-caret,
-    .map-layers-menu:hover .map-layers-toggle-btn .ml-caret {
+    .map-layers-menu.open .map-layers-toggle-btn .ml-caret {
       transform: rotate(0deg);
       color: var(--accent);
     }
-    .map-layers-menu.map-layers-bottom.open .map-layers-toggle-btn .ml-caret,
-    .map-layers-menu.map-layers-bottom:hover .map-layers-toggle-btn .ml-caret {
+    .map-layers-menu.map-layers-bottom.open .map-layers-toggle-btn .ml-caret {
       transform: rotate(0deg);
       color: var(--accent);
     }
@@ -4505,8 +4892,7 @@
       bottom: -10px;
       height: 10px;
     }
-    /* Hover (desktop) or .open (click/tap) reveals options */
-    .map-layers-menu:hover .map-layers-panel,
+    /* Click/tap only — no hover open (#20) */
     .map-layers-menu.open .map-layers-panel {
       display: block;
     }
@@ -5390,7 +5776,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.2 Beta">V6.2 Beta</span>
+      <span class="brand-version" aria-label="Version 6.3 Beta">V6.3 Beta</span>
     </div>
   </header>
 
@@ -5699,7 +6085,7 @@
       <div class="map-section-block">
         <div class="map-wrapper" id="map-wrapper">
           <!-- Free-standing compass / wind dials — absolute on map; draggable when enlarged -->
-          <div class="map-compass-radar" id="map-compass-radar">
+          <div class="map-compass-radar" id="map-compass-radar" data-v63="1">
             <div id="map-wind-hud" class="map-wind-hud mode-wind" aria-live="polite">
               <!-- WIND dial -->
               <div class="mwh-panel mwh-wind-panel" id="mwh-wind-panel">
@@ -5765,7 +6151,8 @@
                 </button>
                 <button type="button" class="mdt-btn mdt-track-stop" id="mdt-track-stop" onclick="stopGpsTrack()" title="Stop" aria-label="Stop GPS tracking" tabindex="-1">Stop</button>
                 <!-- Live track stats + stop — anchored above the Track icon while recording -->
-                <div class="map-track-live-hud" id="map-track-live-hud" role="status" aria-live="polite" hidden>
+                <div class="map-track-live-hud is-draggable" id="map-track-live-hud" role="status" aria-live="polite" hidden>
+                  <div class="mtl-drag" id="mtl-drag-handle" title="Drag to move">⠿ drag</div>
                   <div class="mtl-title">Tracking</div>
                   <div class="mtl-row"><span class="mtl-k">Distance</span><span class="mtl-v" id="mtl-dist">0 mi</span></div>
                   <div class="mtl-row"><span class="mtl-k">Time</span><span class="mtl-v" id="mtl-time">0:00</span></div>
@@ -5914,7 +6301,15 @@
                               <button type="button" onclick="setAllPinTypesVisible(true)">All on</button>
                               <button type="button" onclick="setAllPinTypesVisible(false)">All off</button>
                             </div>
-                            <input type="checkbox" id="toggle-prev-hunts-chk" checked style="display:none;" aria-hidden="true" onchange="drawHuntsOnMap()">
+                            <input type="checkbox" id="toggle-prev-hunts-chk" data-v63="1" checked style="display:none;" aria-hidden="true" onchange="drawHuntsOnMap()">
+                            <label class="ml-option" style="margin-top:8px;">
+                              <input type="checkbox" id="toggle-show-hunts-chk" checked onchange="onShowHuntsOverlayChange()">
+                              <span class="ml-opt-text">Show hunts</span>
+                            </label>
+                            <label class="ml-option">
+                              <input type="checkbox" id="toggle-show-ideal-hunts-chk" checked onchange="onShowIdealHuntsOverlayChange()">
+                              <span class="ml-opt-text">Show ideal hunts</span>
+                            </label>
                           </div>
 
                           <!-- 3) Roads & waterways -->
@@ -5988,45 +6383,10 @@
               <button id="dt-button" style="padding:6px 10px; font-weight:bold; background:var(--green); color:white; border:none; border-radius:4px; cursor:pointer; font-size:11px; width:100%;">Get Local Weather</button>
               <div style="display:flex; gap:6px; width:100%;">
                 <button id="dt-add-pin-btn" style="flex:1; padding:6px 10px; font-weight:bold; background:var(--accent); color:black; border:none; border-radius:4px; cursor:pointer; font-size:11px;">Add Pin</button>
-                <button id="dt-add-hunt-btn" style="flex:1; padding:6px 10px; font-weight:bold; background:var(--blue-refuge); color:white; border:none; border-radius:4px; cursor:pointer; font-size:11px;">Add Hunt</button>
               </div>
             </div>
-            <div id="dt-pin-form" style="display:none; margin-top:8px; border-top:1px solid var(--border); padding-top:8px;">
-              <span style="font-size:11px; font-weight:bold; color:var(--accent); text-transform:uppercase;">Save Spot as Pin</span>
-              <input type="text" id="pin-name-input" class="toast-form-control" placeholder="Name (optional — defaults to pin type)">
-              <div style="margin-top:6px;">
-                <span style="font-size:10px;color:var(--muted);font-weight:700;display:block;margin-bottom:4px;">Pin icon (optional)</span>
-                <div id="pin-icon-picker" style="display:block;margin-top:4px;">
-                  <div id="pin-icon-recent" style="display:none;margin-bottom:6px;"></div>
-                  <input type="search" id="pin-icon-search" class="toast-form-control" placeholder="Search icons..." oninput="renderPinIconGrid()" style="margin-bottom:6px;">
-                  <div id="pin-icon-grid" class="pin-icon-grid"></div>
-                  <button type="button" class="filter-btn" style="width:100%;margin-top:6px;font-size:10px;" onclick="clearSelectedPinIcon()">No icon (plain pin)</button>
-                </div>
-              </div>
-              <div class="pin-color-slots" style="margin-top:8px;display:flex;flex-direction:column;gap:8px;">
-                <div>
-                  <span style="font-size:10px;color:var(--muted);font-weight:700;">Pin (outer)</span>
-                  <div class="color-picker" id="cp-pin" data-input-id="pin-color-value" data-initial="#e59a18" data-bind-var="selectedPinColor"></div>
-                  <input type="hidden" id="pin-color-value" value="#e59a18" />
-                  <input type="hidden" id="pin-outer-color" value="#e59a18" />
-                </div>
-                <div>
-                  <span style="font-size:10px;color:var(--muted);font-weight:700;">Inside</span>
-                  <div class="color-picker" id="cp-pin-inner" data-input-id="pin-inner-color" data-initial="#ffffff" data-bind-var="selectedPinInnerColor"></div>
-                  <input type="hidden" id="pin-inner-color" value="#ffffff" />
-                </div>
-                <div>
-                  <span style="font-size:10px;color:var(--muted);font-weight:700;">Icon</span>
-                  <div class="color-picker" id="cp-pin-glyph" data-input-id="pin-glyph-color" data-initial="#111111" data-bind-var="selectedPinGlyphColor"></div>
-                  <input type="hidden" id="pin-glyph-color" value="#111111" />
-                </div>
-              </div>
-              <textarea id="pin-notes-input" class="toast-form-control" placeholder="Notes..." style="height:50px; resize:none;"></textarea>
-              <div style="display:flex; gap:4px; margin-top:6px;">
-                <button onclick="savePinFromMap()" style="flex:1; background:var(--green); color:white; border:none; padding:4px; font-size:11px; font-weight:bold; border-radius:4px; cursor:pointer;">Save Pin</button>
-                <button onclick="cancelToastForm()" style="flex:1; background:var(--panel); border:1px solid var(--border); color:var(--muted); padding:4px; font-size:11px; border-radius:4px; cursor:pointer;">Cancel</button>
-              </div>
-            </div>
+            <!-- legacy pin form removed — pin editor is #pin-editor-sheet (#18) -->
+            <div id="dt-pin-form" style="display:none;"></div>
             <div id="dt-hunt-form" style="display:none; margin-top:8px; border-top:1px solid var(--border); padding-top:8px;">
               <span style="font-size:11px; font-weight:bold; color:var(--blue-refuge); text-transform:uppercase;">Log Past Hunt</span>
               <div id="hunt-stand-type-row" style="display:flex;gap:6px;margin:6px 0;">
@@ -6045,6 +6405,65 @@
                 <button onclick="saveHuntFromMap()" style="flex:1; background:var(--green); color:white; border:none; padding:4px; font-size:11px; font-weight:bold; border-radius:4px; cursor:pointer;">Save Hunt</button>
                 <button onclick="cancelToastForm()" style="flex:1; background:var(--panel); border:1px solid var(--border); color:var(--muted); padding:4px; font-size:11px; border-radius:4px; cursor:pointer;">Cancel</button>
               </div>
+            </div>
+          </div>
+
+
+          <!-- V6.3 pin editor docked above toolbar (#18) -->
+          <div id="pin-editor-sheet" aria-hidden="true">
+            <div class="pes-head" id="pes-drag-head">
+              <strong id="pes-title">Add pin</strong>
+              <button type="button" class="pes-close" onclick="closePinEditorSheet()" title="Close" aria-label="Close">&times;</button>
+            </div>
+            <div id="pin-icon-recent" style="display:none;margin-bottom:6px;"></div>
+            <div id="pin-icon-grid" class="pin-icon-grid"></div>
+            <input type="search" id="pin-icon-search" class="pin-icon-search" placeholder="Search pins…" oninput="renderPinIconGrid()" />
+            <textarea id="pin-notes-input" class="pes-notes" placeholder="Notes…"></textarea>
+            <button type="button" class="pes-customize-btn" id="pes-customize-btn" onclick="togglePinCustomizePanel()">Customize pin</button>
+            <div id="pes-customize-panel" style="display:none;">
+              <div class="pes-slot-btns">
+                <button type="button" class="is-active" id="pes-slot-pin" onclick="setPinColorSlot('pin')">Pin</button>
+                <button type="button" id="pes-slot-inside" onclick="setPinColorSlot('inside')">Inside</button>
+                <button type="button" id="pes-slot-icon" onclick="setPinColorSlot('icon')">Icon</button>
+              </div>
+              <div class="color-picker" id="cp-pin" data-input-id="pin-color-value" data-initial="#e59a18" data-bind-var="selectedPinColor"></div>
+              <input type="hidden" id="pin-color-value" value="#e59a18" />
+              <input type="hidden" id="pin-outer-color" value="#e59a18" />
+              <input type="hidden" id="pin-inner-color" value="#ffffff" />
+              <input type="hidden" id="pin-glyph-color" value="natural" />
+              <!-- keep legacy pickers for any bind code -->
+              <div style="display:none;">
+                <div class="color-picker" id="cp-pin-inner" data-input-id="pin-inner-color" data-initial="#ffffff" data-bind-var="selectedPinInnerColor"></div>
+                <div class="color-picker" id="cp-pin-glyph" data-input-id="pin-glyph-color" data-initial="#111111" data-bind-var="selectedPinGlyphColor"></div>
+              </div>
+              <div class="pes-preview" id="pes-preview" aria-label="Pin preview"></div>
+              <label for="pin-name-input" style="display:block;font-size:10px;font-weight:700;color:var(--muted);margin:6px 0 4px;">Custom name</label>
+              <input type="text" id="pin-name-input" class="toast-form-control" placeholder="Leave blank for default pin name" style="width:100%;box-sizing:border-box;" />
+              <div class="pes-checks">
+                <label><input type="checkbox" id="pin-as-hunt" onchange="onPinAsHuntStandChange()"> Make this a hunt</label>
+                <label><input type="checkbox" id="pin-as-stand" onchange="onPinAsHuntStandChange()"> Make this a stand</label>
+                <label id="pin-save-weather-row" style="display:none;"><input type="checkbox" id="pin-save-weather" checked> Save weather for this day</label>
+              </div>
+              <div id="pin-ideal-block" style="display:none;margin-top:6px;">
+                <button type="button" class="pes-customize-btn" onclick="togglePinIdealPanel()">Ideal conditions</button>
+                <div id="pin-ideal-panel" style="display:none;font-size:11px;">
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                    <label>Ideal high °F<input type="number" id="pin-ideal-high" class="toast-form-control" style="width:100%;"></label>
+                    <label>Ideal low °F<input type="number" id="pin-ideal-low" class="toast-form-control" style="width:100%;"></label>
+                    <label style="grid-column:1/-1;">Ideal wind dir (deg 0–360)<input type="number" id="pin-ideal-wind" class="toast-form-control" style="width:100%;" min="0" max="360"></label>
+                  </div>
+                </div>
+              </div>
+              <details class="pes-advanced">
+                <summary>Advanced options</summary>
+                <label style="display:flex;align-items:center;gap:8px;margin-top:6px;cursor:pointer;">
+                  <input type="checkbox" id="pin-ignore-overlay"> Ignore overlay rules
+                </label>
+              </details>
+            </div>
+            <div class="pes-actions">
+              <button type="button" class="pes-save" onclick="savePinFromMap()">Save</button>
+              <button type="button" class="pes-cancel" onclick="closePinEditorSheet()">Cancel</button>
             </div>
           </div>
 
@@ -6174,6 +6593,8 @@
       <input type="text" id="path-edit-distance" placeholder="e.g. 1.25" inputmode="decimal" />
       <label for="path-edit-notes">Notes</label>
       <input type="text" id="path-edit-notes" placeholder="Optional notes…" maxlength="240" />
+      <label for="path-edit-weight">Line thickness <span id="path-edit-weight-val" style="font-weight:600;color:var(--accent);">5</span>px</label>
+      <input type="range" id="path-edit-weight" min="2" max="14" step="1" value="5" oninput="var v=document.getElementById('path-edit-weight-val');if(v)v.textContent=this.value;" />
       <div class="shape-save-actions">
         <button type="button" class="ss-save" onclick="confirmPathEdit()">Save</button>
         <button type="button" class="ss-cancel" onclick="cancelPathEditModal()">Cancel</button>
@@ -6194,9 +6615,37 @@
       <label>Track line color</label>
       <div class="color-picker" id="cp-track-finish" data-input-id="track-finish-color" data-initial="#d94136"></div>
       <input type="hidden" id="track-finish-color" value="#d94136" />
+      <label for="track-finish-weight">Line thickness <span id="track-finish-weight-val" style="font-weight:600;color:var(--accent);">5</span>px</label>
+      <input type="range" id="track-finish-weight" min="2" max="14" step="1" value="5" oninput="var v=document.getElementById('track-finish-weight-val');if(v)v.textContent=this.value;" />
       <div class="shape-save-actions">
         <button type="button" class="ss-save" onclick="confirmTrackFinishSave()">Save track</button>
         <button type="button" class="ss-cancel" style="border-color:var(--danger);color:var(--danger);" onclick="confirmTrackFinishDelete()">Delete track</button>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="compass-mode-settings-modal" class="app-prompt-modal" hidden style="display:none;" onclick="if(event.target===this)closeCompassModeSettings()">
+    <div class="shape-save-card" role="dialog" aria-modal="true" aria-labelledby="cm-settings-title" onclick="event.stopPropagation()">
+      <h3 id="cm-settings-title">Compass mode</h3>
+      <div class="ss-meta">Line and probe colors (same default palette as pins). Preview matches the map.</div>
+      <label>Line color</label>
+      <div class="color-picker" id="cp-cm-line" data-input-id="cm-line-color" data-initial="#38bdf8"></div>
+      <input type="hidden" id="cm-line-color" value="#38bdf8" />
+      <label>Dot color</label>
+      <div class="color-picker" id="cp-cm-dot" data-input-id="cm-dot-color" data-initial="#facc15"></div>
+      <input type="hidden" id="cm-dot-color" value="#facc15" />
+      <label for="cm-line-weight">Line thickness <span id="cm-line-weight-val">3</span>px</label>
+      <input type="range" id="cm-line-weight" min="1" max="10" step="1" value="3" oninput="document.getElementById('cm-line-weight-val').textContent=this.value;updateCompassModePreview();" />
+      <label for="cm-dot-size">Dot size <span id="cm-dot-size-val">8</span>px</label>
+      <input type="range" id="cm-dot-size" min="4" max="18" step="1" value="8" oninput="document.getElementById('cm-dot-size-val').textContent=this.value;updateCompassModePreview();" />
+      <div class="cm-preview" id="cm-preview" aria-hidden="true">
+        <div class="cm-preview-line" id="cm-preview-line"></div>
+        <div class="cm-preview-dot" id="cm-preview-dot"></div>
+      </div>
+      <div class="shape-save-actions">
+        <button type="button" class="ss-save" onclick="saveCompassModeSettings()">Save</button>
+        <button type="button" class="ss-cancel" onclick="closeCompassModeSettings()">Cancel</button>
       </div>
     </div>
   </div>
@@ -6223,9 +6672,12 @@
           <label class="settings-row"><input type="checkbox" id="set-tool-gps" onchange="onSettingsToolsChange()"><span class="sr-text">Current Location<span class="sr-sub">Red GPS arrow on map + snap button (on by default)</span></span></label>
           <p class="settings-hint">Unchecked tools are removed from the bottom bar. Active Measure/Draw still show Undo/Finish/Cancel top-left.</p>
           <div class="settings-section-title">Map chrome</div>
-          <label class="settings-row"><input type="checkbox" id="set-show-compass" onchange="onSettingsToolsChange()"><span class="sr-text">Wind / compass<span class="sr-sub">Top dial — hides both wind indicator and compass</span></span></label>
+          <div class="settings-section-title">Compass</div>
+          <label class="settings-row"><input type="checkbox" id="set-show-compass" onchange="onSettingsToolsChange()"><span class="sr-text">Wind / compass display<span class="sr-sub">Top dial + toolbar button</span></span></label>
+          <button type="button" class="settings-compass-mode-btn" onclick="openCompassModeSettings()">Compass mode…</button>
+          <p class="settings-hint">Compass mode draws a heading line from your location with a distance probe.</p>
           <label class="settings-row"><input type="checkbox" id="set-show-radar" onchange="onSettingsToolsChange()"><span class="sr-text">Radar<span class="sr-sub">Radar dish on the bottom bar</span></span></label>
-          <p class="settings-hint">Wind and compass share one setting. Radar is separate on the slim bottom bar.</p>
+          <p class="settings-hint">Radar is separate on the slim bottom bar.</p>
           <div class="settings-section-title">Account</div>
           <p class="settings-hint" id="auth-user-chip">Not signed in</p>
           <button type="button" class="settings-subbtn" id="set-signout-btn">Sign out on this device</button>
@@ -6310,7 +6762,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.2-beta';
+    const APP_VERSION = '6.3-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -12052,23 +12504,19 @@
       if (lidarRadio) lidarRadio.checked = (key === 'lidar');
       updateSatelliteModeUi();
       try { scheduleImageryDateRefresh(80); } catch (eImgD) {}
-      // LiDAR: deep overzoom + topo contour lines default ON (roads stay off unless user enables them)
-      // Leaving LiDAR turns the auto-enabled topo overlay OFF
+      // LiDAR: deep overzoom. Topo lines stay USER-controlled (no longer auto-forced) (#19)
       try {
         if (key === 'lidar') {
-          if (map.setMaxZoom) map.setMaxZoom(20);
-          if (typeof toggleTopoOverlay === 'function') toggleTopoOverlay(true);
+          if (map.setMaxZoom) map.setMaxZoom(22);
           if (!window._lidarZoomHintShown) {
             window._lidarZoomHintShown = true;
             if (typeof showAppCopyToast === 'function') {
               showAppCopyToast(
                 '<span class="act">LiDAR terrain on</span><br>' +
-                'Topo lines on. Best detail ~12–16× — tiles scale past native depth instead of blanking out.'
+                'Hillshade over imagery. Optional topo lines in Overlays. Best ~12–16× — overzooms instead of blanking.'
               );
             }
           }
-        } else if (prevKey === 'lidar' && key !== 'lidar') {
-          if (typeof toggleTopoOverlay === 'function') toggleTopoOverlay(false);
         }
       } catch (eLidarHint) {}
       // GPS marker size depends on max zoom (LiDAR allows deeper zoom)
@@ -12282,6 +12730,539 @@
     }
     window.toggleLayersFold = toggleLayersFold;
 
+    
+    // ========== V6.3 helpers: pin sheet, compass mode, overlays ==========
+    var pinColorSlot = 'pin'; // pin | inside | icon
+    var compassModeEnabled = false;
+    var compassModeLineLayer = null;
+    var compassModeProbe = null; // { marker, label, distMi }
+    var COMPASS_MODE_KEY = 'reg_slayer_compass_mode_v1';
+    var compassModeStyle = (function() {
+      try {
+        var o = JSON.parse(localStorage.getItem(COMPASS_MODE_KEY) || '{}');
+        return Object.assign({ lineColor: '#38bdf8', dotColor: '#facc15', lineWeight: 3, dotSize: 8 }, o || {});
+      } catch (e) {
+        return { lineColor: '#38bdf8', dotColor: '#facc15', lineWeight: 3, dotSize: 8 };
+      }
+    })();
+
+    function openPinEditorSheet(opts) {
+      opts = opts || {};
+      var sheet = document.getElementById('pin-editor-sheet');
+      if (!sheet) return;
+      ensureHuntContext();
+      if (opts.mode === 'edit' && opts.loc) {
+        editingPinId = opts.loc.id;
+        clickLat = opts.loc.lat;
+        clickLng = opts.loc.lng;
+        var bare = String(opts.loc.name || '').replace(/\s*\(Pin - .*\)\s*$/, '');
+        var nEl = document.getElementById('pin-name-input');
+        var notesEl = document.getElementById('pin-notes-input');
+        if (nEl) nEl.value = bare;
+        if (notesEl) notesEl.value = opts.loc.notes || '';
+        selectedPinColor = opts.loc.color || (opts.loc.iconId ? pinIconDefaultColor(opts.loc.iconId) : '#e59a18');
+        selectedPinInnerColor = opts.loc.innerColor || '#ffffff';
+        selectedPinGlyphColor = (opts.loc.iconColor == null || opts.loc.iconColor === '') ? 'natural' : opts.loc.iconColor;
+        selectedPinIconId = opts.loc.iconId || null;
+        var asH = document.getElementById('pin-as-hunt');
+        var asS = document.getElementById('pin-as-stand');
+        var ign = document.getElementById('pin-ignore-overlay');
+        if (asH) asH.checked = !!opts.loc.isHunt;
+        if (asS) asS.checked = !!opts.loc.isStand;
+        if (ign) ign.checked = !!opts.loc.ignoreOverlayRules;
+        if (opts.loc.idealConditions) {
+          var ih = document.getElementById('pin-ideal-high');
+          var il = document.getElementById('pin-ideal-low');
+          var iw = document.getElementById('pin-ideal-wind');
+          if (ih && opts.loc.idealConditions.high != null) ih.value = opts.loc.idealConditions.high;
+          if (il && opts.loc.idealConditions.low != null) il.value = opts.loc.idealConditions.low;
+          if (iw && opts.loc.idealConditions.windDir != null) iw.value = opts.loc.idealConditions.windDir;
+        }
+        var title = document.getElementById('pes-title');
+        if (title) title.textContent = 'Edit pin';
+      } else {
+        editingPinId = null;
+        if (document.getElementById('pin-name-input')) document.getElementById('pin-name-input').value = '';
+        if (document.getElementById('pin-notes-input')) document.getElementById('pin-notes-input').value = '';
+        selectedPinIconId = null;
+        selectedPinColor = '#e59a18';
+        selectedPinInnerColor = '#ffffff';
+        selectedPinGlyphColor = 'natural';
+        var asH0 = document.getElementById('pin-as-hunt');
+        var asS0 = document.getElementById('pin-as-stand');
+        var ign0 = document.getElementById('pin-ignore-overlay');
+        if (asH0) asH0.checked = false;
+        if (asS0) asS0.checked = false;
+        if (ign0) ign0.checked = false;
+        var title0 = document.getElementById('pes-title');
+        if (title0) title0.textContent = 'Add pin';
+      }
+      pinColorSlot = 'pin';
+      setPinColorSlot('pin');
+      var cust = document.getElementById('pes-customize-panel');
+      var custBtn = document.getElementById('pes-customize-btn');
+      if (cust) cust.style.display = 'none';
+      if (custBtn) custBtn.classList.remove('is-open');
+      onPinAsHuntStandChange();
+      if (typeof selectPinColor === 'function') selectPinColor(selectedPinColor);
+      if (typeof renderPinIconGrid === 'function') renderPinIconGrid();
+      if (typeof initAllColorPickers === 'function') initAllColorPickers();
+      var outer = document.getElementById('pin-outer-color');
+      var inn = document.getElementById('pin-inner-color');
+      var gly = document.getElementById('pin-glyph-color');
+      var pcv = document.getElementById('pin-color-value');
+      if (outer) outer.value = selectedPinColor;
+      if (pcv) pcv.value = selectedPinColor;
+      if (inn) inn.value = selectedPinInnerColor;
+      if (gly) gly.value = (selectedPinGlyphColor === 'natural') ? '#000000' : selectedPinGlyphColor;
+      var cp = document.getElementById('cp-pin');
+      if (cp && typeof setColorPickerValue === 'function') setColorPickerValue(cp, selectedPinColor);
+      updatePinEditorPreview();
+      sheet.classList.add('open');
+      sheet.setAttribute('aria-hidden', 'false');
+      try { wirePinEditorSheetDrag(); } catch (eD) {}
+      // Close layers if open
+      try {
+        var menu = document.getElementById('map-layers-menu');
+        if (menu) menu.classList.remove('open');
+      } catch (eL) {}
+    }
+    function closePinEditorSheet() {
+      var sheet = document.getElementById('pin-editor-sheet');
+      if (sheet) {
+        sheet.classList.remove('open');
+        sheet.setAttribute('aria-hidden', 'true');
+      }
+      editingPinId = null;
+    }
+    function togglePinCustomizePanel() {
+      var p = document.getElementById('pes-customize-panel');
+      var b = document.getElementById('pes-customize-btn');
+      if (!p) return;
+      var open = p.style.display === 'none' || !p.style.display;
+      p.style.display = open ? 'block' : 'none';
+      if (b) b.classList.toggle('is-open', open);
+      if (open) updatePinEditorPreview();
+    }
+    function togglePinIdealPanel() {
+      var p = document.getElementById('pin-ideal-panel');
+      if (!p) return;
+      p.style.display = (p.style.display === 'none' || !p.style.display) ? 'block' : 'none';
+    }
+    function setPinColorSlot(slot) {
+      pinColorSlot = slot === 'inside' ? 'inside' : (slot === 'icon' ? 'icon' : 'pin');
+      ['pin', 'inside', 'icon'].forEach(function(s) {
+        var el = document.getElementById('pes-slot-' + s);
+        if (el) el.classList.toggle('is-active', s === pinColorSlot);
+      });
+      var cp = document.getElementById('cp-pin');
+      var val = selectedPinColor;
+      if (pinColorSlot === 'inside') val = selectedPinInnerColor || '#ffffff';
+      if (pinColorSlot === 'icon') val = (selectedPinGlyphColor && selectedPinGlyphColor !== 'natural') ? selectedPinGlyphColor : '#111111';
+      if (cp && typeof setColorPickerValue === 'function') setColorPickerValue(cp, val);
+    }
+    function updatePinEditorPreview() {
+      var box = document.getElementById('pes-preview');
+      if (!box) return;
+      var loc = {
+        color: selectedPinColor || '#e59a18',
+        innerColor: selectedPinInnerColor || '#ffffff',
+        iconColor: selectedPinGlyphColor,
+        iconId: selectedPinIconId || null
+      };
+      box.innerHTML = (typeof buildCustomPinMarkerHtml === 'function') ? buildCustomPinMarkerHtml(loc) : '';
+    }
+    function onPinAsHuntStandChange() {
+      var asH = document.getElementById('pin-as-hunt');
+      var row = document.getElementById('pin-save-weather-row');
+      var ideal = document.getElementById('pin-ideal-block');
+      var on = !!(asH && asH.checked);
+      if (row) row.style.display = on ? 'flex' : 'none';
+      if (ideal) ideal.style.display = on ? 'block' : 'none';
+    }
+    function wirePinEditorSheetDrag() {
+      var sheet = document.getElementById('pin-editor-sheet');
+      var head = document.getElementById('pes-drag-head');
+      if (!sheet || !head || head._wiredPesDrag) return;
+      head._wiredPesDrag = true;
+      var dragging = false, sx = 0, sy = 0, origBottom = 0, origLeft = 0;
+      head.addEventListener('mousedown', function(ev) {
+        if (ev.target && ev.target.closest && ev.target.closest('.pes-close')) return;
+        dragging = true;
+        sx = ev.clientX; sy = ev.clientY;
+        var r = sheet.getBoundingClientRect();
+        origBottom = window.innerHeight - r.bottom;
+        origLeft = r.left;
+        sheet.style.right = 'auto';
+        sheet.style.width = r.width + 'px';
+        ev.preventDefault();
+      });
+      window.addEventListener('mousemove', function(ev) {
+        if (!dragging) return;
+        var dx = ev.clientX - sx;
+        var dy = ev.clientY - sy;
+        sheet.style.position = 'fixed';
+        sheet.style.left = Math.max(4, origLeft + dx) + 'px';
+        sheet.style.bottom = Math.max(4, origBottom - dy) + 'px';
+        sheet.style.transform = 'none';
+      });
+      window.addEventListener('mouseup', function() { dragging = false; });
+    }
+    function captureMapSpotWeatherSnapshot() {
+      // Best-effort from live dashboard / last weather payload
+      try {
+        if (window._lastWeatherSnapshot) return Object.assign({}, window._lastWeatherSnapshot);
+        var high = null, low = null, windDir = null, windMph = null;
+        var elH = document.querySelector('#db-high, .db-high, [data-weather-high]');
+        var elL = document.querySelector('#db-low, .db-low, [data-weather-low]');
+        // Stored by weather fetch if present
+        if (window.lastMapWeather) {
+          high = window.lastMapWeather.high != null ? window.lastMapWeather.high : window.lastMapWeather.tempMax;
+          low = window.lastMapWeather.low != null ? window.lastMapWeather.low : window.lastMapWeather.tempMin;
+          windDir = window.lastMapWeather.windDir;
+          windMph = window.lastMapWeather.windMph;
+        }
+        return {
+          high: high, low: low, windDir: windDir, windMph: windMph,
+          date: selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          lat: clickLat, lng: clickLng,
+          locked: false
+        };
+      } catch (e) { return null; }
+    }
+    function onShowHuntsOverlayChange() {
+      try { drawPinsOnMap(); drawHuntsOnMap(); } catch (e) {}
+    }
+    function onShowIdealHuntsOverlayChange() {
+      try { drawPinsOnMap(); } catch (e) {}
+    }
+    window.openPinEditorSheet = openPinEditorSheet;
+    window.closePinEditorSheet = closePinEditorSheet;
+    window.togglePinCustomizePanel = togglePinCustomizePanel;
+    window.togglePinIdealPanel = togglePinIdealPanel;
+    window.setPinColorSlot = setPinColorSlot;
+    window.updatePinEditorPreview = updatePinEditorPreview;
+    window.onPinAsHuntStandChange = onPinAsHuntStandChange;
+    window.onShowHuntsOverlayChange = onShowHuntsOverlayChange;
+    window.onShowIdealHuntsOverlayChange = onShowIdealHuntsOverlayChange;
+    window.captureMapSpotWeatherSnapshot = captureMapSpotWeatherSnapshot;
+
+    // Color picker binding for pin slot
+    (function wirePinSlotColorApply() {
+      var prev = window.setColorPickerValue;
+      // Hook via change on hidden pin-color-value
+      document.addEventListener('change', function(ev) {
+        if (!ev.target || ev.target.id !== 'pin-color-value') return;
+        var v = ev.target.value;
+        if (!v) return;
+        if (pinColorSlot === 'inside') {
+          selectedPinInnerColor = v;
+          var inn = document.getElementById('pin-inner-color');
+          if (inn) inn.value = v;
+        } else if (pinColorSlot === 'icon') {
+          selectedPinGlyphColor = v;
+          var g = document.getElementById('pin-glyph-color');
+          if (g) g.value = v;
+        } else {
+          selectedPinColor = v;
+          var o = document.getElementById('pin-outer-color');
+          if (o) o.value = v;
+        }
+        updatePinEditorPreview();
+        if (typeof renderPinIconGrid === 'function') renderPinIconGrid();
+      });
+    })();
+
+    // Compass mode
+    function loadCompassModeStyleToUi() {
+      var lc = document.getElementById('cm-line-color');
+      var dc = document.getElementById('cm-dot-color');
+      var lw = document.getElementById('cm-line-weight');
+      var ds = document.getElementById('cm-dot-size');
+      if (lc) lc.value = compassModeStyle.lineColor;
+      if (dc) dc.value = compassModeStyle.dotColor;
+      if (lw) { lw.value = compassModeStyle.lineWeight; var lwv = document.getElementById('cm-line-weight-val'); if (lwv) lwv.textContent = String(compassModeStyle.lineWeight); }
+      if (ds) { ds.value = compassModeStyle.dotSize; var dsv = document.getElementById('cm-dot-size-val'); if (dsv) dsv.textContent = String(compassModeStyle.dotSize); }
+      if (typeof initAllColorPickers === 'function') initAllColorPickers();
+      var cpL = document.getElementById('cp-cm-line');
+      var cpD = document.getElementById('cp-cm-dot');
+      if (cpL && typeof setColorPickerValue === 'function') setColorPickerValue(cpL, compassModeStyle.lineColor);
+      if (cpD && typeof setColorPickerValue === 'function') setColorPickerValue(cpD, compassModeStyle.dotColor);
+      updateCompassModePreview();
+    }
+    function updateCompassModePreview() {
+      var line = document.getElementById('cm-preview-line');
+      var dot = document.getElementById('cm-preview-dot');
+      var lc = document.getElementById('cm-line-color');
+      var dc = document.getElementById('cm-dot-color');
+      var lw = document.getElementById('cm-line-weight');
+      var ds = document.getElementById('cm-dot-size');
+      if (line) {
+        line.style.borderTopColor = (lc && lc.value) || compassModeStyle.lineColor;
+        line.style.borderTopWidth = ((lw && lw.value) || compassModeStyle.lineWeight) + 'px';
+      }
+      if (dot) {
+        var sz = parseInt((ds && ds.value) || compassModeStyle.dotSize, 10) || 8;
+        dot.style.width = sz + 'px';
+        dot.style.height = sz + 'px';
+        dot.style.background = (dc && dc.value) || compassModeStyle.dotColor;
+      }
+    }
+    function openCompassModeSettings() {
+      loadCompassModeStyleToUi();
+      showAppPromptModal('compass-mode-settings-modal');
+    }
+    function closeCompassModeSettings() {
+      hideAppPromptModal('compass-mode-settings-modal');
+    }
+    function saveCompassModeSettings() {
+      var lc = document.getElementById('cm-line-color');
+      var dc = document.getElementById('cm-dot-color');
+      var lw = document.getElementById('cm-line-weight');
+      var ds = document.getElementById('cm-dot-size');
+      compassModeStyle.lineColor = (lc && lc.value) || '#38bdf8';
+      compassModeStyle.dotColor = (dc && dc.value) || '#facc15';
+      compassModeStyle.lineWeight = parseInt((lw && lw.value) || 3, 10) || 3;
+      compassModeStyle.dotSize = parseInt((ds && ds.value) || 8, 10) || 8;
+      try { localStorage.setItem(COMPASS_MODE_KEY, JSON.stringify(compassModeStyle)); } catch (e) {}
+      closeCompassModeSettings();
+      if (compassModeEnabled) refreshCompassModeLine();
+      showAppCopyToast('<span class="act">Compass mode style saved</span>');
+    }
+    window.openCompassModeSettings = openCompassModeSettings;
+    window.closeCompassModeSettings = closeCompassModeSettings;
+    window.saveCompassModeSettings = saveCompassModeSettings;
+    window.updateCompassModePreview = updateCompassModePreview;
+
+    function setCompassModeEnabled(on) {
+      compassModeEnabled = !!on;
+      if (compassModeEnabled) {
+        // Ensure compass heading is active
+        try {
+          if (typeof setHeadingMode === 'function') setHeadingMode('compass', { fromUser: true });
+        } catch (eH) {}
+        dialHudVisible = true;
+        try { applyDialHudVisibility(); } catch (eV) {}
+        refreshCompassModeLine();
+      } else {
+        clearCompassModeGraphics();
+      }
+      try { updateCompassToolbarBtn(); } catch (eB) {}
+      try { updateDialExpandMenuUi(); } catch (eM) {}
+    }
+    function clearCompassModeGraphics() {
+      try {
+        if (compassModeLineLayer && map) map.removeLayer(compassModeLineLayer);
+      } catch (e1) {}
+      compassModeLineLayer = null;
+      try {
+        if (compassModeProbe) {
+          if (compassModeProbe.marker && map) map.removeLayer(compassModeProbe.marker);
+          if (compassModeProbe.label && map) map.removeLayer(compassModeProbe.label);
+        }
+      } catch (e2) {}
+      compassModeProbe = null;
+    }
+    function compassModeDestPoint(lat, lng, bearingDeg, distMi) {
+      // Haversine destination
+      var R = 3958.7613; // miles
+      var br = bearingDeg * Math.PI / 180;
+      var lat1 = lat * Math.PI / 180;
+      var lng1 = lng * Math.PI / 180;
+      var ang = distMi / R;
+      var lat2 = Math.asin(Math.sin(lat1) * Math.cos(ang) + Math.cos(lat1) * Math.sin(ang) * Math.cos(br));
+      var lng2 = lng1 + Math.atan2(Math.sin(br) * Math.sin(ang) * Math.cos(lat1), Math.cos(ang) - Math.sin(lat1) * Math.sin(lat2));
+      return { lat: lat2 * 180 / Math.PI, lng: lng2 * 180 / Math.PI };
+    }
+    function refreshCompassModeLine() {
+      if (!compassModeEnabled || !map) return;
+      if (userLat == null || userLng == null) return;
+      var heading = (typeof deviceHeadingDeg === 'number' && !isNaN(deviceHeadingDeg)) ? deviceHeadingDeg : 0;
+      // Long line (~3 miles each direction visual: forward only infinite-ish within view)
+      var farMi = 2.5;
+      var tip = compassModeDestPoint(userLat, userLng, heading, 0.012); // small offset from triangle tip
+      var end = compassModeDestPoint(userLat, userLng, heading, farMi);
+      clearCompassModeGraphics();
+      compassModeLineLayer = L.polyline([[tip.lat, tip.lng], [end.lat, end.lng]], {
+        color: compassModeStyle.lineColor,
+        weight: compassModeStyle.lineWeight,
+        opacity: 0.95,
+        className: 'compass-mode-line',
+        interactive: true,
+        bubblingMouseEvents: false
+      }).addTo(map);
+      compassModeLineLayer.on('click', function(e) {
+        L.DomEvent.stop(e);
+        placeCompassModeProbe(e.latlng);
+      });
+      // Keep probe on line if present
+      if (window._cmProbeDistMi != null) {
+        placeCompassModeProbeAtDistance(window._cmProbeDistMi);
+      }
+    }
+    function placeCompassModeProbe(latlng) {
+      if (userLat == null || userLng == null || !latlng) return;
+      var dMi = haversineMiles(userLat, userLng, latlng.lat, latlng.lng);
+      window._cmProbeDistMi = dMi;
+      placeCompassModeProbeAtDistance(dMi);
+    }
+    function placeCompassModeProbeAtDistance(distMi) {
+      if (!map || userLat == null || userLng == null) return;
+      var heading = (typeof deviceHeadingDeg === 'number' && !isNaN(deviceHeadingDeg)) ? deviceHeadingDeg : 0;
+      distMi = Math.max(0.01, Math.min(3, distMi || 0.1));
+      window._cmProbeDistMi = distMi;
+      var pt = compassModeDestPoint(userLat, userLng, heading, distMi);
+      try {
+        if (compassModeProbe) {
+          if (compassModeProbe.marker) map.removeLayer(compassModeProbe.marker);
+          if (compassModeProbe.label) map.removeLayer(compassModeProbe.label);
+        }
+      } catch (e) {}
+      var r = Math.max(4, (compassModeStyle.dotSize || 8) / 2);
+      var marker = L.circleMarker([pt.lat, pt.lng], {
+        radius: r,
+        color: '#fff',
+        weight: 2,
+        fillColor: compassModeStyle.dotColor,
+        fillOpacity: 1,
+        interactive: true
+      }).addTo(map);
+      // elev delta best-effort
+      var elevTxt = '—';
+      try {
+        if (typeof fetchPathElevation === 'function') {
+          // async update label later
+        }
+      } catch (eE) {}
+      var yards = distMi * 1760;
+      var distLabel = yards < 900 ? (Math.round(yards) + ' yd') : formatMiles(distMi);
+      var html = '<div class="compass-mode-probe-label">' + distLabel + '<br>Elev Δ ' + elevTxt + '</div>';
+      var label = L.marker([pt.lat, pt.lng], {
+        interactive: false,
+        icon: L.divIcon({ className: '', html: html, iconSize: [110, 44], iconAnchor: [55, 52] })
+      }).addTo(map);
+      compassModeProbe = { marker: marker, label: label, distMi: distMi };
+      // Drag along heading line
+      var dragging = false;
+      marker.on('mousedown', function(e) {
+        dragging = true;
+        L.DomEvent.stop(e);
+        map.dragging.disable();
+      });
+      function onMove(e) {
+        if (!dragging || !e.latlng) return;
+        // Project click onto heading ray
+        var d = haversineMiles(userLat, userLng, e.latlng.lat, e.latlng.lng);
+        placeCompassModeProbeAtDistance(d);
+      }
+      function onUp() {
+        if (!dragging) return;
+        dragging = false;
+        try { map.dragging.enable(); } catch (e2) {}
+      }
+      map.on('mousemove', onMove);
+      map.on('mouseup', onUp);
+      // Fetch elev delta for probe
+      try {
+        fetch('https://api.open-meteo.com/v1/elevation?latitude=' + encodeURIComponent(userLat + ',' + pt.lat) +
+          '&longitude=' + encodeURIComponent(userLng + ',' + pt.lng))
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (!data || !data.elevation || data.elevation.length < 2) return;
+            var dFt = (data.elevation[1] - data.elevation[0]) * 3.28084;
+            var elev2 = formatElevDeltaFt(dFt);
+            var yards2 = distMi * 1760;
+            var dist2 = yards2 < 900 ? (Math.round(yards2) + ' yd') : formatMiles(distMi);
+            if (compassModeProbe && compassModeProbe.label) {
+              compassModeProbe.label.setIcon(L.divIcon({
+                className: '',
+                html: '<div class="compass-mode-probe-label">' + dist2 + '<br>Elev Δ ' + elev2 + '</div>',
+                iconSize: [110, 44],
+                iconAnchor: [55, 52]
+              }));
+            }
+          }).catch(function() {});
+      } catch (eF) {}
+    }
+    // Refresh line when heading updates
+    var _prevApplyHeading = null;
+    (function hookHeadingForCompassMode() {
+      var tries = 0;
+      function hook() {
+        if (typeof applyHeadingToUi === 'function' && !applyHeadingToUi._cmHooked) {
+          var orig = applyHeadingToUi;
+          applyHeadingToUi = function(deg) {
+            orig.apply(this, arguments);
+            if (compassModeEnabled) {
+              try { refreshCompassModeLine(); } catch (e) {}
+            }
+          };
+          applyHeadingToUi._cmHooked = true;
+          return;
+        }
+        if (tries++ < 40) setTimeout(hook, 250);
+      }
+      hook();
+    })();
+
+    function ensureDialExpandMenu() {
+      var stack = document.getElementById('map-compass-radar');
+      if (!stack) return null;
+      var menu = document.getElementById('dial-expand-menu');
+      if (!menu) {
+        menu = document.createElement('div');
+        menu.id = 'dial-expand-menu';
+        menu.className = 'dial-expand-menu';
+        menu.innerHTML =
+          '<button type="button" id="dial-menu-wind" onclick="event.stopPropagation();setHeadingMode(\'wind\',{fromUser:true});updateDialExpandMenuUi();">Wind</button>' +
+          '<button type="button" id="dial-menu-cmode" onclick="event.stopPropagation();setCompassModeEnabled(!compassModeEnabled);">Compass Mode</button>';
+        stack.style.position = stack.style.position || 'absolute';
+        stack.appendChild(menu);
+      }
+      return menu;
+    }
+    function updateDialExpandMenuUi() {
+      var w = document.getElementById('dial-menu-wind');
+      var c = document.getElementById('dial-menu-cmode');
+      if (w) w.classList.toggle('is-active', headingHudMode === 'wind');
+      if (c) c.classList.toggle('is-active', !!compassModeEnabled);
+    }
+    function toggleDialExpandMenu() {
+      var menu = ensureDialExpandMenu();
+      if (!menu) return;
+      menu.classList.toggle('open');
+      updateDialExpandMenuUi();
+    }
+    window.setCompassModeEnabled = setCompassModeEnabled;
+    window.toggleDialExpandMenu = toggleDialExpandMenu;
+    window.updateDialExpandMenuUi = updateDialExpandMenuUi;
+
+    // Wire dial click → expand menu (Wind / Compass Mode)
+    (function wireDialExpand() {
+      function attach() {
+        var dials = [
+          document.getElementById('wind-compass-dial'),
+          document.getElementById('device-compass-dial'),
+          document.querySelector('#map-wind-hud .compass-dial'),
+          document.querySelector('#map-wind-hud')
+        ].filter(Boolean);
+        dials.forEach(function(el) {
+          if (el._wiredDialExpand) return;
+          el._wiredDialExpand = true;
+          el.addEventListener('click', function(ev) {
+            // Only when not dragging enlarged dial - simple always open menu on small tap
+            if (el.classList && el.classList.contains('is-dragging')) return;
+            // Don't fight enlarge; open menu under dial
+            try { toggleDialExpandMenu(); } catch (e) {}
+          });
+        });
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attach);
+      else attach();
+      setTimeout(attach, 800);
+    })();
+
+
     function wireMapLayersMenu() {
       var menu = document.getElementById('map-layers-menu');
       var btn = document.getElementById('map-layers-toggle-btn');
@@ -12305,7 +13286,7 @@
         panel.addEventListener('click', function(ev) { ev.stopPropagation(); });
       }
 
-      // Click outside closes (touch-friendly; hover still works on desktop via CSS)
+      // Click outside closes (click-only panel; no hover open)
       document.addEventListener('click', function(ev) {
         if (!menu.classList.contains('open')) return;
         if (menu.contains(ev.target)) return;
@@ -12318,6 +13299,69 @@
       });
     }
     window.wireMapLayersMenu = wireMapLayersMenu;
+
+    // V6.3 boot hooks
+    (function v63Boot() {
+      function go() {
+        try { if (typeof wireTrackLiveHudDrag === 'function') wireTrackLiveHudDrag(); } catch (e1) {}
+        var addPin = document.getElementById('dt-add-pin-btn');
+        if (addPin && !addPin._v63) {
+          addPin._v63 = true;
+          addPin.addEventListener('click', function(ev) {
+            ev.preventDefault();
+            if (typeof openPinEditorSheet === 'function') openPinEditorSheet({ mode: 'create' });
+            try { closeDetectionToast(); } catch (e) {}
+          });
+        }
+        // Click map closes layers (already) and pin sheet when outside
+        document.addEventListener('click', function(ev) {
+          var sheet = document.getElementById('pin-editor-sheet');
+          if (!sheet || !sheet.classList.contains('open')) return;
+          if (sheet.contains(ev.target)) return;
+          if (ev.target && ev.target.closest && ev.target.closest('.map-dot-menu')) return;
+          // only close when clicking map tiles
+          if (ev.target && ev.target.closest && ev.target.closest('#leaflet-map')) {
+            // don't auto-close on every map interaction - user cancels explicitly
+          }
+        });
+        // Color picker may set selectedPinColor via data-bind-var — also refresh preview
+        var obs = document.getElementById('pin-color-value');
+        if (obs && !obs._v63obs) {
+          obs._v63obs = true;
+          var mo = new MutationObserver(function() {
+            try {
+              if (typeof onPinColorInputsChange === 'function') onPinColorInputsChange();
+              if (typeof updatePinEditorPreview === 'function') updatePinEditorPreview();
+            } catch (e) {}
+          });
+          // Also input events
+          obs.addEventListener('input', function() {
+            var v = obs.value;
+            if (pinColorSlot === 'inside') selectedPinInnerColor = v;
+            else if (pinColorSlot === 'icon') selectedPinGlyphColor = v;
+            else selectedPinColor = v;
+            updatePinEditorPreview();
+          });
+        }
+        // GPS marker moves → refresh compass line
+        var _sg = window.setGpsMarker;
+        if (typeof setGpsMarker === 'function' && !setGpsMarker._cmHook) {
+          var origSg = setGpsMarker;
+          setGpsMarker = function() {
+            var r = origSg.apply(this, arguments);
+            if (typeof compassModeEnabled !== 'undefined' && compassModeEnabled) {
+              try { refreshCompassModeLine(); } catch (e) {}
+            }
+            return r;
+          };
+          setGpsMarker._cmHook = true;
+        }
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go);
+      else go();
+      setTimeout(go, 500);
+    })();
+
 
     /** Keep active-tool chrome reachable (legacy name kept for call sites). */
     function setMapToolsMenuOpen(open) {
@@ -12397,32 +13441,47 @@
       } catch (eWb) {}
 
       /*
-       * LiDAR terrain (high zoom safe):
-       * - Esri World Hillshade is updated with USGS 3DEP LiDAR DTMs; solid tiles through ~z16.
-       * - maxNativeZoom 16 = use sharpest native tiles; beyond that Leaflet scales them up so
-       *   the basemap never blanks when you zoom past native depth (stand / ditch level).
-       * - maxZoom matches (and exceeds) map maxZoom so the layer is never removed on pinch-zoom.
-       * Cached tiles only — not raw point clouds.
+       * LiDAR terrain (V6.3): shaded relief that still reads when topo lines are OFF (#19).
+       * Stack: muted terrain/imagery base + hillshade multiply (true 3DEP relief, not topo sheet).
+       * maxNativeZoom 16 + high maxZoom so overzoom scales tiles instead of blanking.
        */
-      var LIDAR_MAX_ZOOM = 20;
+      var LIDAR_MAX_ZOOM = 22;
       var LIDAR_NATIVE_ZOOM = 16;
-      // LiDAR: hillshade only (not topo). Slightly larger buffer + no crossOrigin so deep overzoom stays filled.
-      var lidarHillOpts = Object.assign({}, tilePerf, {
+      var lidarCommon = Object.assign({}, tilePerf, {
         maxZoom: LIDAR_MAX_ZOOM,
         maxNativeZoom: LIDAR_NATIVE_ZOOM,
         minZoom: 5,
-        attribution: 'Esri World Hillshade · USGS 3DEP LiDAR DEMs',
-        className: 'basemap-lidar-tiles',
-        keepBuffer: phoneTiles ? 2 : 5,
+        keepBuffer: phoneTiles ? 3 : 6,
         crossOrigin: false,
         errorTileUrl: ''
       });
+      // Soft satellite underlay so pure hillshade is never a blank gray field
+      var lidarUnder = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        Object.assign({}, lidarCommon, {
+          opacity: 0.42,
+          className: 'basemap-lidar-under',
+          attribution: 'Esri World Imagery + Hillshade · USGS 3DEP LiDAR DEMs'
+        })
+      );
       var lidarHill = L.tileLayer(
         'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',
-        lidarHillOpts
+        Object.assign({}, lidarCommon, {
+          opacity: 0.88,
+          className: 'basemap-lidar-tiles basemap-lidar-blend',
+          attribution: 'Esri World Hillshade · USGS 3DEP LiDAR DEMs'
+        })
       );
-      // Pure LiDAR / DEM hillshade basemap (LiDAR+Aerial removed — identical feel to satellite for most users)
-      var lidar = lidarHill;
+      // Dark multi-directional-style boost when available (same endpoint family; extra contrast layer)
+      var lidarHillBoost = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',
+        Object.assign({}, lidarCommon, {
+          opacity: 0.35,
+          className: 'basemap-lidar-boost',
+          attribution: ''
+        })
+      );
+      var lidar = L.layerGroup([lidarUnder, lidarHill, lidarHillBoost]);
 
       mapBasemaps = {
         topo: topo,
@@ -12460,6 +13519,7 @@
       try { window.map = map; } catch (eWm) {}
       // Basemap + overlay toggles live in #map-layers-menu (bottom center); tools drawer under Tools tab
       wireMapLayersMenu();
+      try { if (typeof wireTrackLiveHudDrag === 'function') wireTrackLiveHudDrag(); } catch (eTd) {}
       wireMapToolsMenu();
       setMapBasemap(activeBasemapKey);
       try { wireImageryDateUpdates(); } catch (eImgW) {}
@@ -13091,9 +14151,12 @@
 
     function handleMapDotAction(act) {
       try {
-        // Compact "Add Pin" → show Pin / Hunt / Stand chooser in the same popup
-        if (act === 'add-menu') {
-          setMapDotMenuContent({ addChooser: true, fromGps: mapDotMenuSource === 'gps' });
+        // V6.3: Add pin goes straight to pin editor (hunt/stand moved into editor) (#18)
+        if (act === 'add-menu' || act === 'pin') {
+          if (typeof openPinEditorSheet === 'function') {
+            openPinEditorSheet({ mode: 'create' });
+          }
+          if (map) map.closePopup();
           return false;
         }
         if (act === 'add-back') {
@@ -13506,14 +14569,18 @@
       var drawing = mapDrawMode === 'draw';
       var active = !!(measuring || drawing);
       var wrap = document.querySelector('.map-wrapper');
-      if (wrap) wrap.classList.toggle('draw-mode', active);
+      if (wrap) {
+        wrap.classList.toggle('draw-mode', active);
+        wrap.classList.toggle('mode-measure', measuring);
+        wrap.classList.toggle('mode-draw', drawing);
+        wrap.classList.toggle('tool-chrome-active', active);
+      }
       var tools = document.getElementById('map-draw-tools');
       if (tools) {
         tools.classList.toggle('tool-active', active);
         tools.classList.toggle('mode-measure', measuring);
         tools.classList.toggle('mode-draw', drawing);
       }
-      if (wrap) wrap.classList.toggle('tool-chrome-active', active);
       // Keep Tools drawer open while a tool is active so Finish / Cancel stay reachable (panel docks top-left)
       if (active && typeof setMapToolsMenuOpen === 'function') setMapToolsMenuOpen(true);
       applyMapDrawInteractionLock();
@@ -14896,10 +15963,12 @@
       return sign + Math.round(abs) + ' ft';
     }
 
+    var trackHudDragOffset = null; // {left, bottom} when user dragged HUD
     function positionTrackLiveHud() {
       var hud = document.getElementById('map-track-live-hud');
       var trackBtn = document.getElementById('mdt-track');
-      if (!hud || !trackBtn) return;
+      var bar = document.querySelector('.map-bottom-bar');
+      if (!hud) return;
       if (!gpsTrackActive) {
         hud.hidden = true;
         hud.style.display = 'none';
@@ -14907,16 +15976,67 @@
       }
       hud.hidden = false;
       hud.style.display = 'block';
-      // Fixed above the Track button (draw-tools uses display:contents on the bar)
+      // Docked just above the bottom toolbar (not behind / not on top of it) (#23)
       try {
-        var tr = trackBtn.getBoundingClientRect();
         hud.style.position = 'fixed';
-        hud.style.left = (tr.left + tr.width / 2) + 'px';
-        hud.style.top = 'auto';
-        hud.style.bottom = Math.max(8, window.innerHeight - tr.top + 8) + 'px';
-        hud.style.transform = 'translateX(-50%)';
         hud.style.zIndex = '2147483005';
+        if (trackHudDragOffset) {
+          hud.style.left = trackHudDragOffset.left + 'px';
+          hud.style.bottom = trackHudDragOffset.bottom + 'px';
+          hud.style.top = 'auto';
+          hud.style.transform = 'none';
+        } else {
+          var barRect = bar ? bar.getBoundingClientRect() : null;
+          var tr = trackBtn ? trackBtn.getBoundingClientRect() : null;
+          var left = tr ? (tr.left + tr.width / 2) : (window.innerWidth / 2);
+          var barTop = barRect ? barRect.top : (window.innerHeight - 48);
+          // Sit flush above the bar top edge
+          var bottom = Math.max(8, window.innerHeight - barTop + 4);
+          hud.style.left = left + 'px';
+          hud.style.top = 'auto';
+          hud.style.bottom = bottom + 'px';
+          hud.style.transform = 'translateX(-50%)';
+        }
       } catch (ePos) {}
+    }
+    function wireTrackLiveHudDrag() {
+      var hud = document.getElementById('map-track-live-hud');
+      var handle = document.getElementById('mtl-drag-handle') || hud;
+      if (!hud || !handle || handle._wiredTrackDrag) return;
+      handle._wiredTrackDrag = true;
+      var dragging = false, startX = 0, startY = 0, origL = 0, origB = 0;
+      function onDown(ev) {
+        if (ev.target && ev.target.closest && ev.target.closest('.mtl-stop')) return;
+        dragging = true;
+        hud.classList.add('is-dragging');
+        var pt = ev.touches ? ev.touches[0] : ev;
+        startX = pt.clientX; startY = pt.clientY;
+        var r = hud.getBoundingClientRect();
+        origL = r.left;
+        origB = window.innerHeight - r.bottom;
+        ev.preventDefault();
+      }
+      function onMove(ev) {
+        if (!dragging) return;
+        var pt = ev.touches ? ev.touches[0] : ev;
+        var dx = pt.clientX - startX;
+        var dy = pt.clientY - startY;
+        trackHudDragOffset = {
+          left: Math.max(4, Math.min(window.innerWidth - 40, origL + dx)),
+          bottom: Math.max(4, Math.min(window.innerHeight - 40, origB - dy))
+        };
+        positionTrackLiveHud();
+      }
+      function onUp() {
+        dragging = false;
+        hud.classList.remove('is-dragging');
+      }
+      handle.addEventListener('mousedown', onDown);
+      handle.addEventListener('touchstart', onDown, { passive: false });
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('touchmove', onMove, { passive: false });
+      window.addEventListener('mouseup', onUp);
+      window.addEventListener('touchend', onUp);
     }
 
     function stopGpsTrackLiveTimer() {
@@ -14983,7 +16103,10 @@
             color: color,
             weight: 4,
             opacity: 0.95,
-            interactive: false
+            interactive: false,
+            smoothFactor: 1.4,
+            lineCap: 'round',
+            lineJoin: 'round'
           }).addTo(mapDrawPreviewLayer);
           var last = pts[pts.length - 1];
           L.circleMarker([last.lat, last.lng], {
@@ -15048,7 +16171,23 @@
       // If only time passed but we barely moved, skip (jitter)
       if (!moveOk && dMi < GPS_TRACK_MIN_MOVE_MI * 0.4) return;
 
-      gpsTrackPoints.push({ lat: lat, lng: lng, t: now, elevM: elevM });
+      // Exponential average to smooth GPS jitter / jagged lines (#23)
+      var alpha = 0.32;
+      if (accuracy != null && accuracy < 12) alpha = 0.55;
+      else if (accuracy != null && accuracy > 35) alpha = 0.22;
+      var sLat = last.lat + (lat - last.lat) * alpha;
+      var sLng = last.lng + (lng - last.lng) * alpha;
+      // Light look-ahead blend with previous two points when available
+      if (gpsTrackPoints.length >= 2) {
+        var prev = gpsTrackPoints[gpsTrackPoints.length - 2];
+        sLat = 0.15 * prev.lat + 0.5 * last.lat + 0.35 * sLat;
+        sLng = 0.15 * prev.lng + 0.5 * last.lng + 0.35 * sLng;
+      }
+      var sElev = elevM;
+      if (elevM != null && last.elevM != null && !isNaN(last.elevM)) {
+        sElev = last.elevM + (elevM - last.elevM) * alpha;
+      }
+      gpsTrackPoints.push({ lat: sLat, lng: sLng, t: now, elevM: sElev });
       gpsTrackLastAcceptedAt = now;
       refreshGpsTrackPreview();
 
@@ -15178,6 +16317,9 @@
       var name = (nEl && nEl.value) ? String(nEl.value).trim() : '';
       if (!name) name = gpsTrackPending.defaultName || 'GPS track';
       var color = (cEl && cEl.value) ? cEl.value : (gpsTrackPending.color || '#d94136');
+      var wEl = document.getElementById('track-finish-weight');
+      var weight = wEl ? parseInt(wEl.value, 10) : 5;
+      if (isNaN(weight)) weight = 5;
       var p = gpsTrackPending;
       gpsTrackPending = null;
       clearMapDrawPreview();
@@ -15186,6 +16328,7 @@
         kind: 'track',
         name: name,
         color: color,
+        weight: weight,
         durationMs: p.durationMs,
         avgSpeedMph: p.avgSpeedMph,
         notes: p.notes || ''
@@ -15334,6 +16477,7 @@
         distanceMiAuto: distanceMi != null ? distanceMi : pathDistanceMiles(points),
         durationMs: opts.durationMs != null ? opts.durationMs : null,
         avgSpeedMph: opts.avgSpeedMph != null ? opts.avgSpeedMph : null,
+        weight: opts.weight != null ? opts.weight : (isTrack ? 5 : 4),
         createdAt: new Date().toISOString(),
         elev: null,
         elevError: false
@@ -15379,21 +16523,109 @@
       return path;
     }
 
+    var pathProbeState = null; // { pathId, marker, label, frac }
+    function clearPathProbe() {
+      if (!pathProbeState) return;
+      try {
+        if (pathProbeState.marker && measuredPathGroup) measuredPathGroup.removeLayer(pathProbeState.marker);
+        if (pathProbeState.label && measuredPathGroup) measuredPathGroup.removeLayer(pathProbeState.label);
+      } catch (eC) {}
+      pathProbeState = null;
+    }
+    function placePathProbe(path, latlng) {
+      if (!map || !measuredPathGroup || !path || !path.points) return;
+      clearPathProbe();
+      var along = nearestAlongTimedPath(path.points, latlng);
+      if (!along || along.lat == null) return;
+      var color = path.color || '#d94136';
+      var marker = L.circleMarker([along.lat, along.lng], {
+        radius: 7,
+        color: '#fff',
+        weight: 2,
+        fillColor: color,
+        fillOpacity: 1,
+        interactive: true,
+        draggable: false
+      });
+      var distMi = along.distFromStartMi != null ? along.distFromStartMi : 0;
+      var timeMs = along.elapsedMs != null ? along.elapsedMs : null;
+      var elevTxt = '—';
+      try {
+        if (along.elevM != null && path.points[0] && path.points[0].elevM != null) {
+          elevTxt = formatElevDeltaFt((along.elevM - path.points[0].elevM) * 3.28084);
+        } else if (path.elev && path.elev.netFt != null && path.distanceMi) {
+          elevTxt = formatElevDeltaFt((along.distFromStartMi / Math.max(path.distanceMi, 1e-6)) * path.elev.netFt);
+        }
+      } catch (eE) {}
+      var html = '<div class="path-probe-popup">' +
+        formatMiles(distMi) + ' from start' +
+        (timeMs != null ? '<br>' + formatDurationMs(timeMs) : '') +
+        '<br>Elev Δ ' + elevTxt +
+        '</div>';
+      var label = L.marker([along.lat, along.lng], {
+        interactive: false,
+        icon: L.divIcon({
+          className: '',
+          html: html,
+          iconSize: [140, 54],
+          iconAnchor: [70, 62]
+        })
+      });
+      measuredPathGroup.addLayer(marker);
+      measuredPathGroup.addLayer(label);
+      pathProbeState = { pathId: path.id, marker: marker, label: label, path: path, along: along };
+      // Drag probe along line
+      var dragging = false;
+      marker.on('mousedown', function(e) {
+        dragging = true;
+        L.DomEvent.stop(e);
+        map.dragging.disable();
+      });
+      function onMove(e) {
+        if (!dragging || !e.latlng) return;
+        var a2 = nearestAlongTimedPath(path.points, e.latlng);
+        if (!a2 || a2.lat == null) return;
+        marker.setLatLng([a2.lat, a2.lng]);
+        var elev2 = '—';
+        try {
+          if (a2.elevM != null && path.points[0] && path.points[0].elevM != null) {
+            elev2 = formatElevDeltaFt((a2.elevM - path.points[0].elevM) * 3.28084);
+          }
+        } catch (e2) {}
+        var h2 = '<div class="path-probe-popup">' +
+          formatMiles(a2.distFromStartMi || 0) + ' from start' +
+          (a2.elapsedMs != null ? '<br>' + formatDurationMs(a2.elapsedMs) : '') +
+          '<br>Elev Δ ' + elev2 + '</div>';
+        label.setLatLng([a2.lat, a2.lng]);
+        label.setIcon(L.divIcon({ className: '', html: h2, iconSize: [140, 54], iconAnchor: [70, 62] }));
+      }
+      function onUp() {
+        if (!dragging) return;
+        dragging = false;
+        try { map.dragging.enable(); } catch (eEn) {}
+      }
+      map.on('mousemove', onMove);
+      map.on('mouseup', onUp);
+      marker.on('mouseup', onUp);
+    }
     function drawMeasuredPathsOnMap() {
       if (!map || !measuredPathGroup) return;
+      clearPathProbe();
       measuredPathGroup.clearLayers();
       var paths = loadMeasuredPathsFromStorage();
       paths.forEach(function(path) {
         if (!path || !path.points || path.points.length < 2) return;
         var isTrack = path.kind === 'track';
         var color = path.color || (isTrack ? '#d94136' : '#38bdf8');
+        var baseW = path.weight != null ? path.weight : (isTrack ? 5 : 4);
         var latlngs = path.points.map(function(p) { return [p.lat, p.lng]; });
         var line = L.polyline(latlngs, {
           color: color,
-          weight: isTrack ? 5 : 4,
+          weight: baseW,
           opacity: 0.92,
           lineCap: 'round',
           lineJoin: 'round',
+          smoothFactor: 1.25,
           interactive: true,
           bubblingMouseEvents: false
         });
@@ -15410,11 +16642,27 @@
           line.setTooltipContent(measuredPathTooltipHtml(path, along));
         });
         line.on('mouseover', function() {
-          try { line.setStyle({ weight: isTrack ? 6 : 5, opacity: 1 }); } catch (e0) {}
+          try { line.setStyle({ weight: baseW + 1, opacity: 1 }); } catch (e0) {}
         });
         line.on('mouseout', function() {
-          try { line.setStyle({ weight: isTrack ? 5 : 4, opacity: 0.92 }); } catch (e1) {}
+          try { line.setStyle({ weight: baseW, opacity: 0.92 }); } catch (e1) {}
           line.setTooltipContent(measuredPathTooltipHtml(path));
+        });
+        // Click line: first click selects; second click places probe (#23)
+        line.on('click', function(e) {
+          L.DomEvent.stop(e);
+          if (pathProbeState && String(pathProbeState.pathId) === String(path.id)) {
+            placePathProbe(path, e.latlng);
+            return;
+          }
+          clearPathProbe();
+          pathProbeState = { pathId: path.id, marker: null, label: null, path: path };
+          // Open edit popup; next click places probe
+          line.openPopup(e.latlng);
+        });
+        line.on('dblclick', function(e) {
+          L.DomEvent.stop(e);
+          placePathProbe(path, e.latlng);
         });
 
         var safeId = escJsStr(path.id);
@@ -15422,7 +16670,8 @@
           '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
             '<div class="mdm-title">' + escHtml(path.name || (isTrack ? 'GPS track' : 'Measured line')) + '</div>' +
             '<div class="mdm-sub">' + measuredPathTooltipHtml(path) + '</div>' +
-            '<button type="button" class="mdm-btn pin" onclick="event.preventDefault();event.stopPropagation();window.openPathEditModal(\'' + safeId + '\');return false;">Edit name / color / notes</button>' +
+            '<div class="mdm-sub" style="margin-top:4px;">Click line again for distance probe · drag probe</div>' +
+            '<button type="button" class="mdm-btn pin" onclick="event.preventDefault();event.stopPropagation();window.openPathEditModal(\'' + safeId + '\');return false;">Edit name / color / thickness</button>' +
             '<button type="button" class="mdm-btn danger" onclick="event.preventDefault();event.stopPropagation();window.deleteMeasuredPath(\'' + safeId + '\');return false;">Delete line</button>' +
           '</div>';
         line.bindPopup(popHtml, {
@@ -15488,11 +16737,16 @@
       var c = document.getElementById('path-edit-color');
       var d = document.getElementById('path-edit-distance');
       var notes = document.getElementById('path-edit-notes');
+      var w = document.getElementById('path-edit-weight');
+      var wv = document.getElementById('path-edit-weight-val');
       if (n) n.value = path.name || '';
       var pathColor = path.color || (path.kind === 'track' ? '#d94136' : '#38bdf8');
       if (c) c.value = pathColor;
       if (d) d.value = path.distanceMi != null ? String(Math.round(path.distanceMi * 1000) / 1000) : '';
       if (notes) notes.value = path.notes || '';
+      var ww = path.weight != null ? path.weight : (path.kind === 'track' ? 5 : 4);
+      if (w) w.value = String(ww);
+      if (wv) wv.textContent = String(ww);
       if (typeof initAllColorPickers === 'function') initAllColorPickers();
       var pathCp = document.getElementById('cp-path-edit');
       if (pathCp && typeof setColorPickerValue === 'function') setColorPickerValue(pathCp, pathColor);
@@ -15513,6 +16767,7 @@
       var c = document.getElementById('path-edit-color');
       var d = document.getElementById('path-edit-distance');
       var notes = document.getElementById('path-edit-notes');
+      var w = document.getElementById('path-edit-weight');
       var name = n ? n.value.trim() : '';
       if (!name) {
         alert('Please enter a name.');
@@ -15526,6 +16781,10 @@
           paths[i].name = name;
           paths[i].color = (c && c.value) ? c.value : paths[i].color;
           paths[i].notes = notes ? notes.value.trim() : '';
+          if (w) {
+            var wv = parseInt(w.value, 10);
+            if (!isNaN(wv)) paths[i].weight = wv;
+          }
           if (!isNaN(distVal) && distVal >= 0) {
             paths[i].distanceMi = distVal;
             // Recalc avg speed if we have duration
@@ -16707,6 +17966,7 @@
     function clearSelectedPinIcon() {
       selectedPinIconId = null;
       renderPinIconGrid();
+      try { if (typeof updatePinEditorPreview === 'function') updatePinEditorPreview(); } catch (e) {}
     }
     function selectPinIcon(id) {
       selectedPinIconId = id || null;
@@ -16756,6 +18016,7 @@
         }
       }
       renderPinIconGrid();
+      try { if (typeof updatePinEditorPreview === 'function') updatePinEditorPreview(); } catch (ePrev) {}
     }
     function onPinColorInputsChange() {
       var o = document.getElementById('pin-outer-color');
@@ -16789,7 +18050,11 @@
           return a.name.localeCompare(b.name);
         });
       }
-      grid.innerHTML = list.map(function(ic) {
+      var plainSel = !selectedPinIconId ? ' selected' : '';
+      var plainBtn = '<button type="button" class="' + plainSel + '" data-name="Pin" title="Plain pin" aria-label="Plain pin" onclick="clearSelectedPinIcon()">' +
+        '<div style="width:100%;height:100%;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:' +
+        (selectedPinColor || '#e59a18') + ';border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.35);"></div></button>';
+      grid.innerHTML = plainBtn + list.map(function(ic) {
         var sel = selectedPinIconId === ic.id ? ' selected' : '';
         var safeName = String(ic.name || ic.id).replace(/"/g, '&quot;');
         return '<button type="button" class="' + sel + '" data-name="' + safeName + '" title="' + safeName +
@@ -16831,15 +18096,17 @@
     window.setHuntStandType = setHuntStandType;
 
     function savePinFromMap() {
-      var nameIn = document.getElementById('pin-name-input').value.trim();
-      let notes = document.getElementById('pin-notes-input').value.trim();
+      var nameEl = document.getElementById('pin-name-input');
+      var notesEl = document.getElementById('pin-notes-input');
+      var nameIn = nameEl ? nameEl.value.trim() : '';
+      let notes = notesEl ? notesEl.value.trim() : '';
       const detected = detectBoundaryAndZone(clickLat, clickLng);
       const tva = lastClickTva;
       if (tva) {
         var tvaLine = 'TVA Land: ' + tva.reservoir + ' (' + tva.recType + ')' + (tva.restricted ? ' - ' + tva.restricted : '');
         notes = notes ? (notes + '\n' + tvaLine) : tvaLine;
       }
-      onPinColorInputsChange();
+      try { if (typeof onPinColorInputsChange === 'function') onPinColorInputsChange(); } catch (eC) {}
       // Default name: icon name if chosen, else "Pin"
       var defaultName = 'Pin';
       if (selectedPinIconId) {
@@ -16850,19 +18117,22 @@
       var isEdit = !!editingPinId;
       var pinId = isEdit ? editingPinId : ('pin_' + Date.now());
       // Enforce disc ≠ icon before save
-      applyPinInnerIconDistinct('icon');
-      // Natural = PNG as-is (already isolated colors); null stores natural
+      try { applyPinInnerIconDistinct('icon'); } catch (eD) {}
       var iconColorFinal = (selectedPinGlyphColor && selectedPinGlyphColor !== 'natural')
         ? selectedPinGlyphColor
         : null;
       var pinBodyColor = selectedPinColor ||
         (selectedPinIconId ? pinIconDefaultColor(selectedPinIconId) : '#e59a18');
       var discColor = selectedPinInnerColor || '#ffffff';
-      // Final safety: if a solid icon tint matches disc, force dark icon
-      if (iconColorFinal && normalizeHexColor(iconColorFinal) === normalizeHexColor(discColor)) {
+      if (iconColorFinal && typeof normalizeHexColor === 'function' &&
+          normalizeHexColor(iconColorFinal) === normalizeHexColor(discColor)) {
         iconColorFinal = hexLuminance(discColor) > 0.55 ? '#111111' : '#ffffff';
         selectedPinGlyphColor = iconColorFinal;
       }
+      var asHunt = !!(document.getElementById('pin-as-hunt') && document.getElementById('pin-as-hunt').checked);
+      var asStand = !!(document.getElementById('pin-as-stand') && document.getElementById('pin-as-stand').checked);
+      var ignoreOv = !!(document.getElementById('pin-ignore-overlay') && document.getElementById('pin-ignore-overlay').checked);
+      var saveWx = !!(document.getElementById('pin-save-weather') && document.getElementById('pin-save-weather').checked);
       var newLoc = {
         id: pinId,
         name: name,
@@ -16876,19 +18146,44 @@
         iconId: selectedPinIconId || null,
         notes: notes,
         isPin: true,
+        isHunt: asHunt,
+        isStand: asStand,
+        ignoreOverlayRules: ignoreOv,
         parentId: detected.id,
         subSections: [],
         tva: tva ? { reservoir: tva.reservoir, recType: tva.recType, restricted: tva.restricted, url: tva.url } : null,
         tvaChecked: true
       };
-      // Preserve stand flag + owner meta on edit
+      if (asHunt) {
+        var ideal = {};
+        var ih = document.getElementById('pin-ideal-high');
+        var il = document.getElementById('pin-ideal-low');
+        var iw = document.getElementById('pin-ideal-wind');
+        if (ih && ih.value !== '') ideal.high = parseFloat(ih.value);
+        if (il && il.value !== '') ideal.low = parseFloat(il.value);
+        if (iw && iw.value !== '') ideal.windDir = parseFloat(iw.value);
+        if (Object.keys(ideal).length) newLoc.idealConditions = ideal;
+        // Auto-save weather snapshot for hunt pins
+        if (saveWx || true) {
+          try {
+            var snap = (typeof captureMapSpotWeatherSnapshot === 'function')
+              ? captureMapSpotWeatherSnapshot()
+              : null;
+            if (snap) newLoc.savedWeather = snap;
+            else newLoc.savedWeather = { pending: true, date: (selectedDate ? selectedDate.toISOString().split('T')[0] : null) };
+          } catch (eWx) {
+            newLoc.savedWeather = { pending: true };
+          }
+        }
+      }
+      // Preserve owner meta on edit
       if (isEdit) {
         var prev = locations.find(function(l) { return String(l.id) === String(editingPinId); });
         if (prev) {
-          if (prev.isStand) newLoc.isStand = true;
           if (prev.ownerId) newLoc.ownerId = prev.ownerId;
           if (prev.ownerName) newLoc.ownerName = prev.ownerName;
           if (prev.createdAt) newLoc.createdAt = prev.createdAt;
+          if (prev.savedWeather && !newLoc.savedWeather) newLoc.savedWeather = prev.savedWeather;
           newLoc.updatedAt = new Date().toISOString();
         }
       } else {
@@ -16915,17 +18210,18 @@
         localStorage.setItem('alabama_hunt_custom_pins', JSON.stringify(pinsE));
       } else {
         locations.push(newLoc);
-        const pins = JSON.parse(localStorage.getItem('alabama_hunt_custom_pins') || '[]');
+        var pins = [];
+        try { pins = JSON.parse(localStorage.getItem('alabama_hunt_custom_pins') || '[]'); } catch (eP0) { pins = []; }
+        if (!Array.isArray(pins)) pins = [];
         pins.push(newLoc);
         localStorage.setItem('alabama_hunt_custom_pins', JSON.stringify(pins));
       }
-      document.getElementById('pin-name-input').value = '';
-      document.getElementById('pin-notes-input').value = '';
+      if (nameEl) nameEl.value = '';
+      if (notesEl) notesEl.value = '';
       selectedPinIconId = null;
       editingPinId = null;
-      var saveBtn = document.querySelector('#dt-pin-form button[onclick="savePinFromMap()"]');
-      if (saveBtn) saveBtn.textContent = 'Save Pin';
-      closeDetectionToast();
+      try { closePinEditorSheet(); } catch (eClose) {}
+      try { closeDetectionToast(); } catch (eT) {}
       clearMapDot();
       lastVisibleMarkerKey = '';
       updateAvailableList();
@@ -16941,7 +18237,6 @@
       isShowingCurrentData = false;
       isHistorical = getDaysFromToday(selectedDate) < 0;
       selectLocation(newLoc, rule);
-      // No confirmation dialog — return straight to the map
     }
     function saveHuntFromMap() {
       var nameIn = document.getElementById('hunt-name-input').value.trim();
@@ -17114,69 +18409,93 @@
     function openEditPin(id) {
       var loc = locations.find(function(l) { return String(l.id) === String(id); });
       if (!loc || !loc.isPin) return;
-      editingPinId = loc.id;
-      clickLat = loc.lat;
-      clickLng = loc.lng;
-      ensureHuntContext();
-      document.getElementById('dt-name').innerText = loc.name || 'Pin';
-      document.getElementById('dt-zone').innerText = '';
-      document.getElementById('dt-desc').innerText = 'Edit this pin.';
-      document.getElementById('dt-zone').style.display = 'none';
-      cancelToastForm();
-      document.getElementById('dt-main-actions').style.display = 'none';
-      document.getElementById('dt-hunt-form').style.display = 'none';
-      document.getElementById('dt-pin-form').style.display = 'block';
-      if (typeof renderPinIconGrid === 'function') renderPinIconGrid();
-      var bare = String(loc.name || '').replace(/\s*\(Pin - .*\)\s*$/, '');
-      document.getElementById('pin-name-input').value = bare;
-      document.getElementById('pin-notes-input').value = loc.notes || '';
-      selectedPinColor = loc.color || (loc.iconId ? pinIconDefaultColor(loc.iconId) : '#e59a18');
-      selectedPinInnerColor = loc.innerColor || '#ffffff';
-      selectedPinGlyphColor = (loc.iconColor == null || loc.iconColor === '') ? 'natural' : loc.iconColor;
-      selectedPinIconId = loc.iconId || null;
-      if (typeof selectPinColor === 'function') selectPinColor(selectedPinColor);
-      var inn = document.getElementById('pin-inner-color');
-      var gly = document.getElementById('pin-glyph-color');
-      if (inn) inn.value = selectedPinInnerColor;
-      if (gly) gly.value = (selectedPinGlyphColor === 'natural') ? '#000000' : selectedPinGlyphColor;
-      var cpI = document.getElementById('cp-pin-inner');
-      var cpG = document.getElementById('cp-pin-glyph');
-      if (cpI && typeof setColorPickerValue === 'function') setColorPickerValue(cpI, selectedPinInnerColor);
-      if (cpG && typeof setColorPickerValue === 'function' && selectedPinGlyphColor !== 'natural') {
-        setColorPickerValue(cpG, selectedPinGlyphColor);
-      }
-      var saveBtn = document.querySelector('#dt-pin-form button[onclick="savePinFromMap()"]');
-      if (saveBtn) saveBtn.textContent = 'Save changes';
-      document.getElementById('detection-toast').classList.add('active');
       if (map) map.closePopup();
+      if (typeof openPinEditorSheet === 'function') {
+        openPinEditorSheet({ mode: 'edit', loc: loc });
+      }
     }
     window.openEditPin = openEditPin;
 
+    function pinIsIdealNow(loc) {
+      if (!loc || !loc.idealConditions) return false;
+      var idc = loc.idealConditions;
+      var wx = loc.savedWeather || null;
+      if (!wx) return false;
+      var ok = true;
+      if (idc.high != null && wx.high != null && Math.abs(Number(wx.high) - Number(idc.high)) > 5) ok = false;
+      if (idc.low != null && wx.low != null && Math.abs(Number(wx.low) - Number(idc.low)) > 5) ok = false;
+      if (idc.windDir != null && wx.windDir != null) {
+        var ad = Math.abs(Number(wx.windDir) - Number(idc.windDir)) % 360;
+        if (ad > 180) ad = 360 - ad;
+        if (ad > 30) ok = false;
+      }
+      return ok;
+    }
     function drawPinsOnMap() {
       if (!map || !pinMarkerGroup) return;
       pinMarkerGroup.clearLayers();
+      var showIdealOnly = false;
+      try {
+        var idealChk = document.getElementById('toggle-show-ideal-hunts-chk');
+        var huntsChk = document.getElementById('toggle-show-hunts-chk');
+        // When ideal filter is off, hide ideal-glow pins only if user unchecked ideal; when hunts off, hide isHunt
+        if (huntsChk && !huntsChk.checked) {
+          /* hide hunt pins via filter below */
+        }
+      } catch (eF) {}
       locations.filter(function(l) { return l.isPin; }).forEach(function(loc) {
-        if (!isPinTypeVisible(pinTypeKeyForLoc(loc))) return;
+        // Advanced: ignore overlay rules → always show
+        if (!loc.ignoreOverlayRules) {
+          if (!isPinTypeVisible(pinTypeKeyForLoc(loc))) return;
+          if (loc.isHunt) {
+            var hChk = document.getElementById('toggle-show-hunts-chk');
+            if (hChk && !hChk.checked) return;
+            var iChk = document.getElementById('toggle-show-ideal-hunts-chk');
+            if (iChk && !iChk.checked && pinIsIdealNow(loc)) {
+              /* still show non-ideal path: if only ideal filter off, show all hunts that aren't ideal-only mode */
+            }
+          }
+        }
         var isStandPin = !!loc.isStand;
+        var isIdeal = !!loc.isHunt && pinIsIdealNow(loc);
+        var pinHtml = (typeof buildCustomPinMarkerHtml === 'function')
+          ? buildCustomPinMarkerHtml(loc)
+          : '<div style="background:' + (loc.color || (isStandPin ? '#1f6f9f' : '#e59a18')) + ';width:20px;height:20px;border-radius:50%;border:2px solid white;"></div>';
+        if (isIdeal) {
+          pinHtml = '<div class="pin-ideal-pulse">' + pinHtml + '</div>';
+        }
         var m = L.marker([loc.lat, loc.lng], {
           icon: L.divIcon({
             className: '',
-            html: (typeof buildCustomPinMarkerHtml === 'function')
-              ? buildCustomPinMarkerHtml(loc)
-              : '<div style="background:' + (loc.color || (isStandPin ? '#1f6f9f' : '#e59a18')) + ';width:20px;height:20px;border-radius:50%;border:2px solid white;"></div>',
+            html: pinHtml,
             iconSize: [43, 53],
             iconAnchor: [21, 50]
           })
         });
         var safeId = escJsStr(loc.id);
+        var showQualifier = !loc.name || String(loc.name).toLowerCase() === 'pin';
+        var titleLine = showQualifier
+          ? (isStandPin ? 'Stand' : (loc.isHunt ? 'Hunt' : 'Pin'))
+          : escHtml(loc.name);
+        var notesBlock = (loc.notes && String(loc.notes).trim())
+          ? '<div class="mdm-sub" style="margin-top:4px;white-space:pre-wrap;">' + escHtml(String(loc.notes).trim()) + '</div>'
+          : '';
+        var weatherBtn = '';
+        if (loc.isHunt || loc.savedWeather) {
+          weatherBtn = '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.selectSavedPin(\'' + safeId + '\');return false;">Weather</button>';
+        }
         var popupHtml =
           '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
-            '<div class="mdm-title">' + (isStandPin ? 'Stand' : 'Pin') + '</div>' +
-            '<div class="mdm-sub">' + escHtml(loc.name) + '</div>' +
-            '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.selectSavedPin(\'' + safeId + '\');return false;">Get weather</button>' +
-            '<button type="button" class="mdm-btn pin" onclick="event.preventDefault();event.stopPropagation();window.openEditPin(\'' + safeId + '\');return false;">Edit pin</button>' +
+            (showQualifier ? '<div class="mdm-title">' + titleLine + '</div><div class="mdm-sub">' + escHtml(loc.name || 'Pin') + '</div>' : '<div class="mdm-title">' + titleLine + '</div>') +
+            notesBlock +
+            weatherBtn +
             '<button type="button" class="mdm-btn share" onclick="event.preventDefault();event.stopPropagation();window.shareSavedPinLocation(\'' + safeId + '\');return false;">Share location</button>' +
-            '<button type="button" class="mdm-btn danger" onclick="event.preventDefault();event.stopPropagation();window.deletePin(\'' + safeId + '\');return false;">Delete ' + (isStandPin ? 'stand' : 'pin') + '</button>' +
+            '<div class="mdm-footer-row">' +
+              '<button type="button" class="mdm-edit-btn" onclick="event.preventDefault();event.stopPropagation();window.openEditPin(\'' + safeId + '\');return false;">Edit</button>' +
+              '<button type="button" class="mdm-trash-btn" title="Delete" aria-label="Delete" onclick="event.preventDefault();event.stopPropagation();window.deletePin(\'' + safeId + '\');return false;">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5h6v2M8 7l1 12h6l1-12"/></svg>' +
+              '</button>' +
+            '</div>' +
           '</div>';
         m.bindPopup(popupHtml, { className: 'saved-item-popup map-dot-popup', closeButton: true, autoPan: false, maxWidth: 280, closeOnClick: false });
         m.on('popupopen', function() {
@@ -18173,20 +19492,24 @@
       var on = !!dialHudVisible;
       btn.classList.toggle('is-on', on);
       btn.classList.toggle('is-off', !on);
-      btn.classList.toggle('mode-wind', headingHudMode === 'wind');
-      btn.classList.toggle('mode-compass', headingHudMode === 'compass');
+      var cmOn = (typeof compassModeEnabled !== 'undefined' && compassModeEnabled);
+      btn.classList.toggle('mode-wind', headingHudMode === 'wind' && !cmOn);
+      btn.classList.toggle('mode-compass', headingHudMode === 'compass' || cmOn);
+      btn.classList.toggle('compass-mode-on', !!cmOn);
       btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-      if (headingHudMode === 'wind') {
-        btn.innerHTML = 'Wind';
-        btn.title = on ? 'Wind indicator on — tap to hide' : 'Wind indicator hidden — tap to show';
+      // Always show compass icon on toolbar (not the word Wind) so it never looks missing (#24)
+      btn.innerHTML =
+        '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+        '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/>' +
+        '<path d="M12 5.5 L14.2 12 L12 18.5 L9.8 12 Z" fill="currentColor"/>' +
+        '<circle cx="12" cy="12" r="1.4" fill="#161a12"/>' +
+        '</svg>';
+      if (typeof compassModeEnabled !== 'undefined' && compassModeEnabled) {
+        btn.title = 'Compass mode on — tap to turn off';
+      } else if (on) {
+        btn.title = 'Compass on — tap to hide';
       } else {
-        btn.innerHTML =
-          '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
-          '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/>' +
-          '<path d="M12 5.5 L14.2 12 L12 18.5 L9.8 12 Z" fill="currentColor"/>' +
-          '<circle cx="12" cy="12" r="1.4" fill="#161a12"/>' +
-          '</svg>';
-        btn.title = on ? 'Compass on — tap to hide' : 'Compass hidden — tap to show';
+        btn.title = 'Compass hidden — tap to show';
       }
     }
 
@@ -18199,15 +19522,26 @@
     }
 
     function toggleDialHudFromToolbar() {
-      dialHudVisible = !dialHudVisible;
-      applyDialHudVisibility();
-      // Showing again: restore HUD active state for current mode
-      if (dialHudVisible && typeof ensureTopHudVisible === 'function') {
-        ensureTopHudVisible();
-        if (headingHudMode === 'compass' && typeof setHeadingMode === 'function') {
-          setHeadingMode('compass', { fromUser: true });
-        }
+      // If compass mode is active, toolbar toggles compass mode off/on (#24)
+      if (compassModeEnabled && dialHudVisible) {
+        setCompassModeEnabled(false);
+        return;
       }
+      if (!dialHudVisible) {
+        dialHudVisible = true;
+        applyDialHudVisibility();
+        // Showing compass: default compass mode ON; line appears after this press
+        try {
+          if (typeof setHeadingMode === 'function') setHeadingMode('compass', { fromUser: true });
+        } catch (eH) {}
+        try { ensureTopHudVisible(); } catch (eE) {}
+        setCompassModeEnabled(true);
+        return;
+      }
+      // Hide dial (and clear mode graphics)
+      dialHudVisible = false;
+      if (compassModeEnabled) setCompassModeEnabled(false);
+      applyDialHudVisibility();
     }
     window.toggleDialHudFromToolbar = toggleDialHudFromToolbar;
     window.updateCompassToolbarBtn = updateCompassToolbarBtn;
@@ -19933,6 +21267,24 @@
     }
     function snapToGPS() {
       if (!navigator.geolocation) { alert('Geolocation not supported.'); return; }
+      // Snap only: turn location display ON if needed, never turn it off (#22)
+      try {
+        if (typeof appSettings !== 'undefined' && appSettings && appSettings.tools) {
+          if (appSettings.tools.gps === false) {
+            appSettings.tools.gps = true;
+            try {
+              var gChk = document.getElementById('set-tool-gps');
+              if (gChk) gChk.checked = true;
+            } catch (eG) {}
+            try {
+              if (typeof persistAppSettings === 'function') persistAppSettings();
+            } catch (eS) {}
+            try {
+              if (typeof applyAppSettings === 'function') applyAppSettings({ fromUi: false });
+            } catch (eA) {}
+          }
+        }
+      } catch (eSnapOn) {}
       navigator.geolocation.getCurrentPosition(function(pos) {
         userLat = pos.coords.latitude; userLng = pos.coords.longitude;
         var detected = detectBoundaryAndZone(userLat, userLng);

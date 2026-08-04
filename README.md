@@ -1,6 +1,6 @@
 # REG SLAYER — Hunt Slayer
 
-**Current release:** **V5.6 Beta**
+**Current release:** **V6.3 Beta**
 
 Alabama deer planner with map tools, offline map packs, account login, personal/shared maps, and parties.
 
@@ -24,12 +24,16 @@ Alabama deer planner with map tools, offline map packs, account login, personal/
 | `peak-rut-antlers.png` | Peak-rut list skull badge |
 | `manifest.webmanifest` | PWA / Add to Home Screen |
 
-## V5.6 notes
+## V6.3 notes
 
-- My Maps: active maps first; tap to expand View/Share + details (code/party under selection)
-- Sign out + cloud sync / offline mode moved to Tools tab (sync at bottom)
-- Layers overlays order: Public lands → Pins → Roads → Topo → Property → Deer zones
-- Public lands opacity slider (all types at once)
+- Desktop planner fits steps 1–3 without horizontal scroll; map column narrower
+- Measure/draw tool cursors; layers menu click-only (no hover)
+- Compact footer; green larger “snap to location” button
+- LiDAR basemap = hillshade over imagery (works without topo lines); no auto-topo force
+- Pin editor sheet above toolbar; hunt/stand/ideal/ignore-overlay options
+- Track HUD docked + draggable; GPS smooth; line thickness; path probe
+- Compass mode: heading line + distance probe; settings for colors/size
+- See `Changes_6.2_to_6.3.txt` and `V6.3_CHANGELOG_AND_UNDO.md`
 
 ## V5.5 notes
 
