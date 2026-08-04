@@ -1,6 +1,6 @@
 # REG SLAYER — Hunt Slayer
 
-**Current release:** **V5.2 Beta**
+**Current release:** **V5.3 Beta**
 
 Alabama deer planner with map tools, offline map packs, account login, personal/shared maps, and parties.
 
@@ -21,7 +21,14 @@ Alabama deer planner with map tools, offline map packs, account login, personal/
 | `party-maps.js` | Parties, live location share |
 | `vendor/leaflet/` | Bundled map engine (works offline after first visit) |
 | `icons/pins/` · `icons/tools/` | Custom map pins and toolbar icons |
+| `peak-rut-antlers.png` | Peak-rut list skull badge |
 | `manifest.webmanifest` | PWA / Add to Home Screen |
+
+## V5.3 notes
+
+- Peak-rut red skull badge: reliable on desktop (opacity pulse, PNG + data-URI fallback)
+- Green ✓ list pins: snap to live GIS centroids so markers sit on the public-land overlay
+- Wheeler North/South coords corrected to FWS Public Hunt Units (Main Hunt Area / Flint Creek West)
 
 ## Offline use
 
@@ -40,10 +47,4 @@ python -m http.server 8080
 
 ## Pin & tool icons
 
-See [`docs/PIN_AND_TOOL_ICONS.md`](docs/PIN_AND_TOOL_ICONS.md). Scripts: `tools/process_pin_icons.py`, `tools/process_tool_icons.py`.
-
-## V5.2 notes
-
-- Promoted from TestOffline: offline packs, pin pack, multi-file shell, toolbar tool icons  
-- Tile pack cache aligned with service worker (`reg-slayer-tiles-v2`)  
-- Production branding (no TestOffline labels)
+See [`docs/PIN_AND_TOOL_ICONS.md`](docs/PIN_AND_TOOL_ICONS.md).

@@ -1520,33 +1520,45 @@
     .badge { font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; }
     .badge.open { background: var(--green); color: white; }
     .badge.refuge { background: var(--blue-refuge); color: white; }
-    /* Peak-rut antlers badge on Available Hunts rows (front-view rack)
+    /* Peak-rut antlers/skull badge on Available Hunts rows (front-view rack)
        Mobile WebKit: CSS opacity alone is unreliable — layout here; pulse via JS rAF.
-       Image is inlined (data URI) so badges never depend on a second network fetch. */
+       PNG file + data-URI fallback. Opacity-only pulse (no filter) so desktop Chromium
+       does not drop the red skull when compositing filters + opacity. */
     .peak-rut-buck {
-      display: inline-block;
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
       vertical-align: middle;
-      width: 26px;
-      height: 26px;
+      width: 28px;
+      height: 28px;
+      min-width: 28px;
+      min-height: 28px;
       flex-shrink: 0;
       cursor: help;
       overflow: visible;
       line-height: 0;
       opacity: 1;
-      /* Own compositor layer — iOS/Android keep the pulse smooth */
+      visibility: visible !important;
+      position: relative;
+      z-index: 2;
       -webkit-transform: translateZ(0);
       transform: translateZ(0);
-      -webkit-backface-visibility: hidden;
-      backface-visibility: hidden;
-      /* CSS fallback if JS pulse not running */
+      /* CSS fallback if JS pulse not running — opacity only (reliable on desktop) */
       -webkit-animation: peakRutBuckFlash 1s ease-in-out infinite;
       animation: peakRutBuckFlash 1s ease-in-out infinite;
     }
+    html.layout-desktop .peak-rut-buck {
+      display: inline-flex !important;
+      visibility: visible !important;
+      opacity: 1;
+    }
     .peak-rut-buck svg,
     .peak-rut-buck img {
-      width: 26px;
-      height: 26px;
-      display: block;
+      width: 28px !important;
+      height: 28px !important;
+      max-width: none !important;
+      max-height: none !important;
+      display: block !important;
       margin: 0;
       object-fit: contain;
       object-position: center center;
@@ -1554,14 +1566,17 @@
       -webkit-user-drag: none;
       user-select: none;
       -webkit-user-select: none;
+      /* Keep red skull fully opaque; parent span owns the pulse */
+      opacity: 1 !important;
+      filter: none !important;
     }
     @-webkit-keyframes peakRutBuckFlash {
-      0%, 100% { opacity: 0.2; filter: brightness(0.85); }
-      50% { opacity: 1; filter: brightness(1.35) drop-shadow(0 0 4px rgba(255,80,80,0.85)); }
+      0%, 100% { opacity: 0.25; }
+      50% { opacity: 1; }
     }
     @keyframes peakRutBuckFlash {
-      0%, 100% { opacity: 0.2; filter: brightness(0.85); }
-      50% { opacity: 1; filter: brightness(1.35) drop-shadow(0 0 4px rgba(255,80,80,0.85)); }
+      0%, 100% { opacity: 0.25; }
+      50% { opacity: 1; }
     }
     /* When JS drives opacity, kill CSS animation so they do not fight */
     .peak-rut-buck.rut-js-pulse {
@@ -5210,7 +5225,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 5.2 Beta">V5.2 Beta</span>
+      <span class="brand-version" aria-label="Version 5.3 Beta">V5.3 Beta</span>
     </div>
   </header>
 
@@ -6098,7 +6113,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '5.2-beta';
+    const APP_VERSION = '5.3-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -7770,8 +7785,9 @@
       // subSections start empty - only user-added stands appear in Location Subsections
       { id: 1, name: "Black Warrior WMA", type: "WMA", zone: "B", lat: 34.3411, lng: -87.3386, subSections: [] },
       { id: 2, name: "James D. Martin - Skyline WMA", type: "WMA", zone: "A", lat: 34.9189, lng: -86.1364, subSections: [] },
-      { id: 3, name: "Wheeler North Wildlife Refuge", type: "Refuge", zone: "A", lat: 34.6200, lng: -86.8500, subSections: [] },
-      { id: 4, name: "Wheeler South Wildlife Refuge", type: "Refuge", zone: "C", lat: 34.4800, lng: -87.0500, subSections: [] },
+      /* Coords from FWS Public Hunt Units (Main Hunt Area / Flint Creek West) — on green NWR overlay */
+      { id: 3, name: "Wheeler North Wildlife Refuge", type: "Refuge", zone: "A", lat: 34.5628, lng: -86.8659, subSections: [] },
+      { id: 4, name: "Wheeler South Wildlife Refuge", type: "Refuge", zone: "C", lat: 34.5447, lng: -86.9529, subSections: [] },
       { id: 5, name: "Bankhead National Forest (Stalk Land)", type: "Forest", zone: "D", lat: 34.3021, lng: -87.3511, subSections: [] },
       { id: 6, name: "Talladega National Forest (Talladega)", type: "Forest", zone: "A", lat: 33.6111, lng: -85.8211, subSections: [] },
       { id: 7, name: "Talladega National Forest (Oakmulgee)", type: "Forest", zone: "A", lat: 32.9411, lng: -87.3511, subSections: [] },
@@ -8083,12 +8099,15 @@
      * Inlined as data URI so mobile never fails to show the badge if the
      * sidecar PNG is missing, cached wrong, or blocked.
      */
-    var PEAK_RUT_ANTLERS_DATA_URI = 'data:image/png;base64,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';
+    var PEAK_RUT_ANTLERS_DATA_URI = window.PEAK_RUT_ANTLERS_DATA_URI = 'data:image/png;base64,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';
     function peakRutBuckHtml(title) {
       var t = title || 'Peak rut';
+      // Prefer on-disk PNG (cached by SW); fall back to inlined data URI if missing.
+      var src = 'peak-rut-antlers.png?v=53';
       return (
         '<span class="peak-rut-buck" title="' + escHtml(t) + '" aria-label="' + escHtml(t) + '">' +
-          '<img src="' + PEAK_RUT_ANTLERS_DATA_URI + '" width="28" height="28" alt="" draggable="false" decoding="async" />' +
+          '<img src="' + src + '" width="28" height="28" alt="" draggable="false" decoding="async" ' +
+            'onerror="this.onerror=null;if(window.PEAK_RUT_ANTLERS_DATA_URI)this.src=window.PEAK_RUT_ANTLERS_DATA_URI;" />' +
         '</span>'
       );
     }
@@ -8126,10 +8145,10 @@
         if (o < 0.15) o = 0.15;
         if (o > 1) o = 1;
         var s = String(o);
-        var br = (0.9 + o * 0.55).toFixed(2);
         for (var j = 0; j < els.length; j++) {
+          // Opacity only — desktop Chromium can fail to paint filtered red PNGs
           els[j].style.opacity = s;
-          els[j].style.filter = 'brightness(' + br + ') drop-shadow(0 0 ' + (2 + o * 4).toFixed(1) + 'px rgba(255,70,70,' + (0.35 + o * 0.5).toFixed(2) + '))';
+          els[j].style.filter = 'none';
         }
         _peakRutListFlashRaf = requestAnimationFrame(tick);
       }
@@ -9308,6 +9327,41 @@
       return false;
     }
 
+
+    /**
+     * When GIS lists a unit that already has a built-in row (e.g. Wheeler North/South),
+     * snap the built-in lat/lng onto the live FWS/ADCNR polygon centroid so green ✓
+     * markers sit on the color overlay instead of stale hardcoded points.
+     */
+    function trySnapBuiltInListCoords(gisName, lat, lng, zone) {
+      if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) return false;
+      var snapped = false;
+      for (var i = 0; i < locations.length; i++) {
+        var l = locations[i];
+        if (!l || l.isPublicLand || l.isPin || l.isCustomArea || l.isMapSpot) continue;
+        if (l.type === 'Statewide') continue;
+        if (!namesRoughMatch(l.name, gisName) && !namesRoughMatch(gisName, l.name)) continue;
+
+        // Wheeler is two built-in rows for one FWS org name — split North/South by zone + lat
+        if (/wheeler/i.test(String(l.name || '')) && /wheeler/i.test(String(gisName || ''))) {
+          var locNorth = /north/i.test(l.name);
+          var locSouth = /south/i.test(l.name);
+          if (locNorth || locSouth) {
+            var gisNorth = (zone === 'A') || (zone !== 'C' && Number(lat) >= 34.56);
+            if (zone === 'C') gisNorth = false;
+            if (locNorth && !gisNorth) continue;
+            if (locSouth && gisNorth) continue;
+          }
+        }
+
+        l.lat = Number(lat);
+        l.lng = Number(lng);
+        l._pinSnappedFromGis = true;
+        snapped = true;
+      }
+      return snapped;
+    }
+
     // One list pin per huntable unit (not per GIS tract). Split only when hunt zones differ.
     // Forever Wild is never listed (map-only). Tracts inside WMAs never become list destinations.
     function syncPublicLandsToLocations(payload) {
@@ -9385,7 +9439,7 @@
 
         Object.keys(units).forEach(function(unitKey) {
           var unit = units[unitKey];
-          if (isDuplicateBuiltInName(unit.name)) return;
+          // Do not return early on built-in duplicates — still snap their coords from GIS below
 
           var zoneKeys = Object.keys(unit.zones);
           var splitZones = !!layer.splitByZone && zoneKeys.length > 1;
@@ -9411,6 +9465,16 @@
             var lng = pts.reduce(function(s, p) { return s + p.lng; }, 0) / pts.length;
             var display = unit.name + (layer.nameSuffix || '');
             if (splitZones) display += ' (Zone ' + zone + ')';
+
+            // Snap matching built-in list rows (Wheeler N/S, etc.) onto this GIS centroid
+            try {
+              if (typeof trySnapBuiltInListCoords === 'function') {
+                trySnapBuiltInListCoords(unit.name, lat, lng, zone);
+              }
+            } catch (eSnap) {}
+
+            // Built-in rows already cover this name — do not duplicate in the list
+            if (isDuplicateBuiltInName(unit.name)) return;
 
             var attrs = Object.assign({}, unit.attrs);
             if (acresSum > 0) attrs.Acres = acresSum;
@@ -10169,6 +10233,65 @@
      * (same distance / hide / weapon / date filters). Never from "all open GIS units".
      * Click opens the same full map-dot menu as any other free-map orange dot.
      */
+    /**
+     * Prefer a GIS polygon centroid that matches this Available Hunts row so the
+     * green ✓ sits on the color overlay (fixes stale built-in coords like old Wheeler South).
+     */
+    function resolveListedHuntPinLatLng(loc) {
+      if (!loc) return null;
+      var fallback = (loc.lat != null && loc.lng != null && !isNaN(loc.lat) && !isNaN(loc.lng))
+        ? { lat: Number(loc.lat), lng: Number(loc.lng) }
+        : null;
+
+      if (!adcnrLandsData || !adcnrLandsData.layers) return fallback;
+
+      var best = null;
+      var bestScore = -1;
+      var locName = String(loc.name || '');
+      var locNorth = /wheeler/i.test(locName) && /north/i.test(locName);
+      var locSouth = /wheeler/i.test(locName) && /south/i.test(locName);
+
+      (adcnrLandsData.layers || []).forEach(function(layer) {
+        if (!layer || layer.drawOnMap === false) return;
+        (layer.features || []).forEach(function(feat) {
+          var attrs = feat.attributes || {};
+          var fname = '';
+          try {
+            fname = (typeof featureDisplayName === 'function')
+              ? (featureDisplayName(layer, attrs) || '')
+              : '';
+          } catch (eN) { fname = ''; }
+          if (!fname) {
+            try {
+              fname = attrName(attrs, layer.nameFields || ['Name', 'Organization_Name', 'Hunt_Unit_Name']) || '';
+            } catch (eA) { fname = ''; }
+          }
+          if (!fname) return;
+          if (!namesRoughMatch(fname, locName) && !namesRoughMatch(locName, fname)) {
+            // Wheeler built-ins vs org name "Wheeler National Wildlife Refuge"
+            if (!(/wheeler/i.test(locName) && /wheeler/i.test(fname))) return;
+          }
+          var c = geometryCentroid(feat.geometry);
+          if (!c || c.lat == null || c.lng == null) return;
+          if (locNorth && c.lat < 34.56) return;
+          if (locSouth && c.lat >= 34.56) return;
+
+          var score = 1;
+          if (namesRoughMatch(fname, locName)) score += 3;
+          if (layer.key === 'nwr' && /wheeler|cahaba|eufaula|choctaw/i.test(locName)) score += 2;
+          if (layer.key === 'wma' && /wma/i.test(locName)) score += 1;
+          var ac = parseFloat(attrs.Acreage != null ? attrs.Acreage : attrs.Acres);
+          if (!isNaN(ac)) score += Math.min(2, ac / 20000);
+          if (score > bestScore) {
+            bestScore = score;
+            best = { lat: c.lat, lng: c.lng };
+          }
+        });
+      });
+      return best || fallback;
+    }
+    window.resolveListedHuntPinLatLng = resolveListedHuntPinLatLng;
+
     function drawListedHuntCheckmarks() {
       if (!map || typeof L === 'undefined') return;
       if (!adcnrOpenPinGroup) adcnrOpenPinGroup = L.layerGroup().addTo(map);
@@ -10178,9 +10301,14 @@
 
       var seen = {};
       (lastListedHuntLocations || []).forEach(function(loc) {
-        if (!loc || loc.lat == null || loc.lng == null) return;
+        if (!loc) return;
         if (loc.id === 9999 || loc.type === 'Current Location' || loc.isMapSpot) return;
         if (loc.type === 'Statewide') return;
+        var ll = resolveListedHuntPinLatLng(loc);
+        if (!ll || ll.lat == null || ll.lng == null) return;
+        // Keep loc in sync so pan/select uses the same point as the ✓
+        loc.lat = ll.lat;
+        loc.lng = ll.lng;
         // One check per list entry id
         var key = String(loc.id);
         if (seen[key]) return;
@@ -10193,7 +10321,7 @@
         var sz = isSelected ? 34 : 18;
         var fs = isSelected ? 18 : 10;
         var bw = isSelected ? 3 : 2;
-        var pin = L.marker([loc.lat, loc.lng], {
+        var pin = L.marker([ll.lat, ll.lng], {
           icon: L.divIcon({
             className: isSelected ? 'list-hunt-check list-hunt-check-selected' : 'list-hunt-check',
             html: '<div style="background:#486a2f;width:' + sz + 'px;height:' + sz + 'px;border-radius:50%;border:' + bw + 'px solid #fff;box-shadow:0 2px ' + (isSelected ? '10' : '5') + 'px rgba(0,0,0,' + (isSelected ? '0.65' : '0.55') + ');display:flex;align-items:center;justify-content:center;font-size:' + fs + 'px;color:#fff;font-weight:bold;line-height:1;">✓</div>',
