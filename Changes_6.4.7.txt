@@ -1,0 +1,24 @@
+V6.4.7
+
+Map stuck in grab/move mode (cannot click pins, orange dots, or compass probe)
+
+Cause
+- Compass-mode probe drag and measured-path probe drag call map.dragging.disable()
+  (and touchZoom / scrollWheelZoom for compass). If pointerup / touchend is missed,
+  or compass mode is turned off mid-drag, interactions never re-enable.
+- Leaflet can also leave class "leaflet-dragging" on document.body when a pan is
+  interrupted, which forces grab/grabbing cursors on interactive markers.
+
+Fix
+- restoreMapPointerInteractions() central teardown: re-enable pan/zoom, clear
+  touch-action, strip leaflet-dragging from body/map, clear probe drag flags.
+- endCompassProbeDrag() releases pointer capture + restores.
+- clearCompassModeGraphics always restores (was only setting _cmDragging=false).
+- Document pointerup soft-recover if drag left disabled or leaflet-dragging stuck.
+- visibilitychange / window blur / Escape also restore.
+- Path probe uses document-level mouseup/pointerup (release outside map works).
+- Map click escape hatch if pan is disabled with no active probe drag.
+- Shell cache reg-slayer-shell-v35
+
+Undo
+- Revert index.html + sw.js to V6.4.6 (tag v6.4.6-beta) or restore from bak if present.

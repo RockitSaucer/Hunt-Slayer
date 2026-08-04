@@ -6121,7 +6121,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.4.6 Beta">V6.4.6 Beta</span>
+      <span class="brand-version" aria-label="Version 6.4.7 Beta">V6.4.7 Beta</span>
     </div>
   </header>
 
@@ -7122,7 +7122,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.4.6-beta';
+    const APP_VERSION = '6.4.7-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -13772,7 +13772,16 @@
           if (chip) chip.style.display = 'none';
         }
       } catch (e4) {}
-      window._cmDragging = false;
+      // Always restore pan/click if we had disabled them mid-probe-drag
+      try {
+        if (typeof restoreMapPointerInteractions === 'function') {
+          restoreMapPointerInteractions({ skipCmRefresh: true });
+        } else {
+          window._cmDragging = false;
+        }
+      } catch (e5) {
+        window._cmDragging = false;
+      }
     }
 
     function compassModeDestPoint(lat, lng, bearingDeg, distMi) {
@@ -13938,6 +13947,74 @@
       return Math.max(0.02, Math.min(20, d));
     }
 
+    /**
+     * Re-enable map pan/zoom and clear stuck grab/dragging state.
+     * Compass probe + path probe temporarily disable map.dragging; if pointerup is
+     * missed (or compass mode toggles mid-drag), the map stays in grab-only mode and
+     * pins / probe / dots stop receiving clicks. Call this on every drag end path.
+     */
+    function restoreMapPointerInteractions(opts) {
+      opts = opts || {};
+      var wasCmDrag = !!window._cmDragging;
+      var wasPathDrag = !!window._pathProbeDragging;
+      window._cmDragging = false;
+      window._pathProbeDragging = false;
+      window._cmDragPointerId = null;
+      window._cmDragCaptureEl = null;
+      try {
+        if (map) {
+          try { if (map.dragging && !map.dragging.enabled()) map.dragging.enable(); } catch (eD) {}
+          try { if (map.touchZoom && !map.touchZoom.enabled()) map.touchZoom.enable(); } catch (eT) {}
+          try { if (map.scrollWheelZoom && !map.scrollWheelZoom.enabled()) map.scrollWheelZoom.enable(); } catch (eS) {}
+          try {
+            var c = map.getContainer();
+            if (c) {
+              c.style.touchAction = '';
+              if (typeof L !== 'undefined' && L.DomUtil) {
+                L.DomUtil.removeClass(c, 'leaflet-dragging');
+                L.DomUtil.removeClass(c, 'leaflet-drag-target');
+              } else {
+                c.classList.remove('leaflet-dragging', 'leaflet-drag-target');
+              }
+            }
+          } catch (eC) {}
+        }
+      } catch (eM) {}
+      // Leaflet leaves this on <body> if a pan/drag is interrupted mid-gesture
+      try {
+        if (document.body) document.body.classList.remove('leaflet-dragging');
+        if (document.documentElement) document.documentElement.classList.remove('leaflet-dragging');
+      } catch (eB) {}
+      if (opts.clearUiDragging) {
+        try {
+          document.querySelectorAll('.is-dragging').forEach(function(el) {
+            el.classList.remove('is-dragging');
+          });
+        } catch (eU) {}
+      }
+      // After compass probe drag, refresh elev once (not on soft recover)
+      if (wasCmDrag && compassModeEnabled && !opts.skipCmRefresh) {
+        try {
+          updateCompassModeGraphics({ soft: true, skipElev: false });
+        } catch (eG) {}
+      }
+      return wasCmDrag || wasPathDrag;
+    }
+    window.restoreMapPointerInteractions = restoreMapPointerInteractions;
+
+    function endCompassProbeDrag(opts) {
+      if (!window._cmDragging && !(opts && opts.force)) return false;
+      // Release pointer capture if we still hold it
+      try {
+        var el = window._cmDragCaptureEl;
+        var pid = window._cmDragPointerId;
+        if (el && pid != null && el.releasePointerCapture) {
+          try { el.releasePointerCapture(pid); } catch (eR) {}
+        }
+      } catch (e0) {}
+      return restoreMapPointerInteractions(opts || {});
+    }
+
     function ensureCompassProbeDrag() {
       if (window._cmDocDragWired) return;
       window._cmDocDragWired = true;
@@ -13969,17 +14046,24 @@
         // Only move probe + line (cheap)
         updateCompassModeGraphics({ soft: true, skipElev: true, skipHudElevFetch: true, skipStyle: true });
       }
-      function onUp() {
-        if (!window._cmDragging) return;
-        window._cmDragging = false;
-        try { map.dragging.enable(); } catch (eE) {}
-        try { if (map.touchZoom) map.touchZoom.enable(); } catch (eT) {}
-        try { if (map.scrollWheelZoom) map.scrollWheelZoom.enable(); } catch (eS) {}
-        try {
-          var c = map.getContainer();
-          if (c) c.style.touchAction = '';
-        } catch (eC) {}
-        updateCompassModeGraphics({ soft: true, skipElev: false });
+      function onUp(ev) {
+        if (window._cmDragging) {
+          endCompassProbeDrag();
+          return;
+        }
+        // Soft recover: pointer is up but Leaflet left grab/dragging stuck
+        if (ev && (ev.buttons === 0 || ev.type === 'pointercancel' || ev.type === 'touchcancel' ||
+            ev.type === 'mouseup' || ev.type === 'pointerup' || ev.type === 'touchend')) {
+          try {
+            var stuck = (document.body && document.body.classList.contains('leaflet-dragging')) ||
+              (map && map.getContainer && map.getContainer() &&
+                map.getContainer().classList.contains('leaflet-dragging'));
+            var dragOff = map && map.dragging && !map.dragging.enabled();
+            if (stuck || dragOff) {
+              restoreMapPointerInteractions({ skipCmRefresh: true });
+            }
+          } catch (eSoft) {}
+        }
       }
       // Capture phase so we win over map handlers on mobile
       document.addEventListener('mousemove', onMove, { passive: false, capture: true });
@@ -13990,10 +14074,35 @@
       document.addEventListener('touchcancel', onUp, true);
       document.addEventListener('pointerup', onUp, true);
       document.addEventListener('pointercancel', onUp, true);
+      // Lost focus / tab hide mid-drag leaves map.dragging disabled
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'hidden') {
+          endCompassProbeDrag({ force: true, skipCmRefresh: true });
+          restoreMapPointerInteractions({ skipCmRefresh: true, clearUiDragging: true });
+        }
+      });
+      window.addEventListener('blur', function() {
+        endCompassProbeDrag({ force: true, skipCmRefresh: true });
+        restoreMapPointerInteractions({ skipCmRefresh: true });
+      });
+      document.addEventListener('keydown', function(ev) {
+        if (ev.key === 'Escape' || ev.keyCode === 27) {
+          endCompassProbeDrag({ force: true });
+          restoreMapPointerInteractions({ clearUiDragging: true });
+        }
+      });
     }
 
     function startCompassProbeDrag(e) {
       if (!compassModeEnabled) return;
+      // Debounce multi-fire: pointerdown + mousedown + touchstart + Leaflet + DOM
+      if (window._cmDragging) {
+        try {
+          if (e && e.originalEvent) L.DomEvent.stop(e);
+          else if (e && e.preventDefault) e.preventDefault();
+        } catch (eDup) {}
+        return;
+      }
       window._cmDragging = true;
       try {
         var oe = e && (e.originalEvent || e);
@@ -14005,7 +14114,11 @@
           try { if (e.preventDefault) e.preventDefault(); } catch (e3) {}
         }
         if (oe && oe.pointerId != null && oe.target && oe.target.setPointerCapture) {
-          try { oe.target.setPointerCapture(oe.pointerId); } catch (e4) {}
+          try {
+            oe.target.setPointerCapture(oe.pointerId);
+            window._cmDragPointerId = oe.pointerId;
+            window._cmDragCaptureEl = oe.target;
+          } catch (e4) {}
         }
       } catch (eS) {}
       try { map.dragging.disable(); } catch (eD) {}
@@ -14784,8 +14897,20 @@
       if (typeof wireGpsMarkerZoomScale === 'function') wireGpsMarkerZoomScale();
       if (typeof wireSmartMapPopups === 'function') wireSmartMapPopups();
       if (typeof ensureMapBottomBarVisible === 'function') ensureMapBottomBarVisible();
+      // Wire document-level drag recovery even if compass mode never used
+      try { if (typeof ensureCompassProbeDrag === 'function') ensureCompassProbeDrag(); } catch (eCm) {}
 
       map.on('click', function(e) {
+        // Escape hatch: if a prior drag left pan disabled / grab class stuck, restore then continue
+        try {
+          var dragOff = map.dragging && !map.dragging.enabled();
+          var stuck = document.body && document.body.classList.contains('leaflet-dragging');
+          if ((dragOff && !window._cmDragging && !window._pathProbeDragging) || stuck) {
+            if (typeof restoreMapPointerInteractions === 'function') {
+              restoreMapPointerInteractions({ skipCmRefresh: true, clearUiDragging: true });
+            }
+          }
+        } catch (eRec) {}
         // Stand placement mode: click sets stand coordinates (no free-form menu)
         if (standPlaceMode) {
           placeStandAt(e.latlng.lat, e.latlng.lng);
@@ -17810,6 +17935,17 @@
         if (pathProbeState.label && measuredPathGroup) measuredPathGroup.removeLayer(pathProbeState.label);
       } catch (eC) {}
       pathProbeState = null;
+      // If path probe drag left map.dragging disabled, restore clicks/pan
+      if (window._pathProbeDragging || (map && map.dragging && !map.dragging.enabled() && !window._cmDragging)) {
+        try {
+          if (typeof restoreMapPointerInteractions === 'function') {
+            restoreMapPointerInteractions({ skipCmRefresh: true });
+          } else {
+            window._pathProbeDragging = false;
+            try { map.dragging.enable(); } catch (eEn) {}
+          }
+        } catch (eR) {}
+      }
     }
     function placePathProbe(path, latlng) {
       if (!map || !measuredPathGroup || !path || !path.points) return;
@@ -17853,15 +17989,19 @@
       measuredPathGroup.addLayer(marker);
       measuredPathGroup.addLayer(label);
       pathProbeState = { pathId: path.id, marker: marker, label: label, path: path, along: along };
-      // Drag probe along line
-      var dragging = false;
+      // Drag probe along line (document-level end so release outside map still re-enables pan)
       marker.on('mousedown', function(e) {
-        dragging = true;
+        window._pathProbeDragging = true;
         L.DomEvent.stop(e);
-        map.dragging.disable();
+        try { map.dragging.disable(); } catch (eD) {}
+      });
+      marker.on('pointerdown', function(e) {
+        window._pathProbeDragging = true;
+        L.DomEvent.stop(e);
+        try { map.dragging.disable(); } catch (eD) {}
       });
       function onMove(e) {
-        if (!dragging || !e.latlng) return;
+        if (!window._pathProbeDragging || !e.latlng) return;
         var a2 = nearestAlongTimedPath(path.points, e.latlng);
         if (!a2 || a2.lat == null) return;
         marker.setLatLng([a2.lat, a2.lng]);
@@ -17879,13 +18019,40 @@
         label.setIcon(L.divIcon({ className: '', html: h2, iconSize: [140, 54], iconAnchor: [70, 62] }));
       }
       function onUp() {
-        if (!dragging) return;
-        dragging = false;
-        try { map.dragging.enable(); } catch (eEn) {}
+        if (!window._pathProbeDragging) return;
+        window._pathProbeDragging = false;
+        try {
+          if (typeof restoreMapPointerInteractions === 'function') {
+            restoreMapPointerInteractions({ skipCmRefresh: true });
+          } else {
+            try { map.dragging.enable(); } catch (eEn) {}
+          }
+        } catch (eU) {
+          try { map.dragging.enable(); } catch (eEn2) {}
+        }
       }
       map.on('mousemove', onMove);
       map.on('mouseup', onUp);
       marker.on('mouseup', onUp);
+      // Document capture: mouseup outside map / pointer cancel previously left drag stuck
+      if (!window._pathProbeDocWired) {
+        window._pathProbeDocWired = true;
+        function endPathProbeDragDoc() {
+          if (!window._pathProbeDragging) return;
+          window._pathProbeDragging = false;
+          try {
+            if (typeof restoreMapPointerInteractions === 'function') {
+              restoreMapPointerInteractions({ skipCmRefresh: true });
+            } else if (map && map.dragging) {
+              map.dragging.enable();
+            }
+          } catch (eDoc) {}
+        }
+        document.addEventListener('mouseup', endPathProbeDragDoc, true);
+        document.addEventListener('pointerup', endPathProbeDragDoc, true);
+        document.addEventListener('pointercancel', endPathProbeDragDoc, true);
+        document.addEventListener('touchend', endPathProbeDragDoc, true);
+      }
     }
     function drawMeasuredPathsOnMap() {
       if (!map || !measuredPathGroup) return;
