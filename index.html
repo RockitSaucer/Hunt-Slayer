@@ -5288,7 +5288,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 5.4 Beta">V5.4 Beta</span>
+      <span class="brand-version" aria-label="Version 5.5 Beta">V5.5 Beta</span>
     </div>
   </header>
 
@@ -6200,7 +6200,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '5.4-beta';
+    const APP_VERSION = '5.5-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -13963,37 +13963,23 @@
       });
     }
 
+    /**
+     * Radar used to remove public-land / pin layers for tile performance, which
+     * “cleared” the map and could leave Max/Min + compass buried after restore.
+     * Radar tiles now draw on top of everything — never strip the map.
+     */
     function pauseHeavyMapLayersForRadar() {
-      if (!map || radarState.pausedHeavy) return;
-      var snap = [];
-      var groups = [
-        adcnrOverlayGroup, adcnrOpenPinGroup, stateZonesGroup,
-        gaugeMarkerGroup, mapMarkerGroup, huntMarkerGroup
-      ];
-      groups.forEach(function(g) {
-        if (g && map.hasLayer(g)) {
-          snap.push(g);
-          try { map.removeLayer(g); } catch (e0) {}
-        }
-      });
-      radarState.pausedHeavy = snap;
+      // no-op: keep all map overlays, pins, Max/Min, compass visible
+      radarState.pausedHeavy = null;
     }
 
     function restoreHeavyMapLayersAfterRadar() {
-      if (!map || !radarState.pausedHeavy) return;
-      radarState.pausedHeavy.forEach(function(g) {
-        try { if (g && !map.hasLayer(g)) map.addLayer(g); } catch (e1) {}
-      });
+      // no-op paired with pauseHeavyMapLayersForRadar
       radarState.pausedHeavy = null;
       try {
-        if (typeof isPublicLandsOverlayWanted === 'function' && isPublicLandsOverlayWanted() &&
-            typeof drawAdcnrLandsOverlay === 'function' && adcnrLandsData) {
-          drawAdcnrLandsOverlay();
-        }
-        if (typeof ensureStateZonesDrawn === 'function' && typeof anyDeerZoneVisible === 'function' && anyDeerZoneVisible()) {
-          ensureStateZonesDrawn();
-        }
-      } catch (e2) {}
+        if (typeof clearMapPopupStackingState === 'function') clearMapPopupStackingState();
+        if (typeof ensureMapBottomBarVisible === 'function') ensureMapBottomBarVisible();
+      } catch (eRest) {}
     }
 
     function clearRadarTimer() {
@@ -14028,6 +14014,11 @@
       restoreHeavyMapLayersAfterRadar();
       setRadarChromeActive(false);
       setRadarUiClock(null);
+      // Ensure map chrome (Max/Min, compass/wind, bottom bar) is never left buried
+      try {
+        if (typeof clearMapPopupStackingState === 'function') clearMapPopupStackingState();
+        if (typeof ensureMapBottomBarVisible === 'function') ensureMapBottomBarVisible();
+      } catch (eStopChrome) {}
     }
     window.stopMapRadar = stopMapRadar;
 
@@ -14189,10 +14180,16 @@
         setRadarChromeActive(true);
         setRadarUiClock(null);
 
+        // Do NOT strip map overlays / pins / chrome — radar paints on top only
         pauseHeavyMapLayersForRadar();
+        // Close menus only; leave map dots, lands, Max/Min, compass alone
         if (map.closePopup) try { map.closePopup(); } catch (eP) {}
+        try {
+          if (typeof clearMapPopupStackingState === 'function') clearMapPopupStackingState();
+        } catch (eStack0) {}
 
         destroyRadarLayers();
+        // zIndex high so frames sit above basemap + land fills, not remove them
         radarState.layers[0] = makeRadarTileLayer(380).addTo(map);
         radarState.layers[1] = makeRadarTileLayer(381).addTo(map);
         radarState.front = 0;
@@ -14922,8 +14919,14 @@
         gpsTrackStartedAt = Date.now();
         gpsTrackLastAcceptedAt = 0;
         gpsTrackPreviewColor = '#d94136';
-        if (map) map.closePopup();
-        clearMapDot();
+        // Do not clear the map (dots / lands / chrome). Only dismiss open menus.
+        if (map) {
+          try { map.closePopup(); } catch (eCp) {}
+        }
+        try {
+          if (typeof clearMapPopupStackingState === 'function') clearMapPopupStackingState();
+          if (typeof ensureMapBottomBarVisible === 'function') ensureMapBottomBarVisible();
+        } catch (eTrackChrome) {}
 
         try {
           gpsTrackWatchId = navigator.geolocation.watchPosition(
@@ -15042,6 +15045,10 @@
       var pts = gpsTrackPoints.slice();
       gpsTrackPoints = [];
       updateTrackButtonUi();
+      try {
+        if (typeof clearMapPopupStackingState === 'function') clearMapPopupStackingState();
+        if (typeof ensureMapBottomBarVisible === 'function') ensureMapBottomBarVisible();
+      } catch (eStopTrackChrome) {}
 
       if (opts.discard || pts.length < 2) {
         clearMapDrawPreview();

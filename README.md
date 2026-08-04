@@ -1,6 +1,6 @@
 # REG SLAYER — Hunt Slayer
 
-**Current release:** **V5.4 Beta**
+**Current release:** **V5.5 Beta**
 
 Alabama deer planner with map tools, offline map packs, account login, personal/shared maps, and parties.
 
@@ -23,6 +23,11 @@ Alabama deer planner with map tools, offline map packs, account login, personal/
 | `icons/pins/` · `icons/tools/` | Custom map pins and toolbar icons |
 | `peak-rut-antlers.png` | Peak-rut list skull badge |
 | `manifest.webmanifest` | PWA / Add to Home Screen |
+
+## V5.5 notes
+
+- Radar and Track no longer strip map overlays / clear the map
+- Max/Min and compass/wind stay visible when radar or track turns off
 
 ## V5.4 notes
 
