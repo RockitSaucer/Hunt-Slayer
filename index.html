@@ -5382,7 +5382,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 5.8 Beta">V5.8 Beta</span>
+      <span class="brand-version" aria-label="Version 5.9 Beta">V5.9 Beta</span>
     </div>
   </header>
 
@@ -6212,7 +6212,7 @@
           <label class="settings-row"><input type="checkbox" id="set-tool-measure" onchange="onSettingsToolsChange()"><span class="sr-text">Measure<span class="sr-sub">Distance path on map</span></span></label>
           <label class="settings-row"><input type="checkbox" id="set-tool-draw" onchange="onSettingsToolsChange()"><span class="sr-text">Draw shape<span class="sr-sub">Custom hunt areas</span></span></label>
           <label class="settings-row"><input type="checkbox" id="set-tool-track" onchange="onSettingsToolsChange()"><span class="sr-text">GPS track<span class="sr-sub">Record movement</span></span></label>
-          <label class="settings-row"><input type="checkbox" id="set-tool-gps" onchange="onSettingsToolsChange()"><span class="sr-text">Current Location<span class="sr-sub">Snap map to GPS</span></span></label>
+          <label class="settings-row"><input type="checkbox" id="set-tool-gps" onchange="onSettingsToolsChange()"><span class="sr-text">Current Location<span class="sr-sub">Red GPS arrow on map + snap button (on by default)</span></span></label>
           <p class="settings-hint">Unchecked tools are removed from the bottom bar. Active Measure/Draw still show Undo/Finish/Cancel top-left.</p>
           <div class="settings-section-title">Map chrome</div>
           <label class="settings-row"><input type="checkbox" id="set-show-compass" onchange="onSettingsToolsChange()"><span class="sr-text">Wind / compass<span class="sr-sub">Top dial — hides both wind indicator and compass</span></span></label>
@@ -6302,7 +6302,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '5.8-beta';
+    const APP_VERSION = '5.9-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -11783,10 +11783,18 @@
         // iOS / phone: reflow to full width after Leaflet mounts (tiles often start narrow)
         fitPhoneMapSize();
         if (typeof fitDesktopMapHeight === 'function') fitDesktopMapHeight();
+        // Red current-location arrow as soon as map exists (if GPS allowed)
+        try {
+          if (typeof ensureUserGpsMarker === 'function') ensureUserGpsMarker();
+          if (typeof startUserGpsPresence === 'function') startUserGpsPresence();
+        } catch (eGpsMap) {}
         [40, 120, 320, 700].forEach(function(ms) {
           setTimeout(function() {
             fitPhoneMapSize();
             if (typeof fitDesktopMapHeight === 'function') fitDesktopMapHeight();
+            try {
+              if (typeof ensureUserGpsMarker === 'function') ensureUserGpsMarker();
+            } catch (eGpsT) {}
             if (map) { try { map.invalidateSize(true); } catch (e) {} }
           }, ms);
         });
@@ -12508,10 +12516,12 @@
         }, 80);
       }
 
-      // GPS marker only — never auto-snap on map open (user must tap Current Location)
-      if (userLat != null && userLng != null) {
-        setGpsMarker(userLat, userLng);
-      }
+      // Red current-location arrow by default whenever GPS tool is on and we have a fix
+      try {
+        if (typeof ensureUserGpsMarker === 'function') ensureUserGpsMarker();
+        else if (userLat != null && userLng != null && typeof setGpsMarker === 'function') setGpsMarker(userLat, userLng);
+        if (typeof startUserGpsPresence === 'function') startUserGpsPresence();
+      } catch (eGps0) {}
       if (typeof wireGpsMarkerZoomScale === 'function') wireGpsMarkerZoomScale();
       if (typeof wireSmartMapPopups === 'function') wireSmartMapPopups();
       if (typeof ensureMapBottomBarVisible === 'function') ensureMapBottomBarVisible();
@@ -16051,8 +16061,113 @@
     }
     window.openGpsMapDotMenu = openGpsMapDotMenu;
 
+    /** Settings → Tools → Current Location (default ON). */
+    function isGpsLocationToolOn() {
+      try {
+        return !(appSettings && appSettings.tools && appSettings.tools.gps === false);
+      } catch (e) {
+        return true;
+      }
+    }
+
+    function clearGpsMarker() {
+      if (gpsMarker && map) {
+        try { map.removeLayer(gpsMarker); } catch (eRm) {}
+      }
+      gpsMarker = null;
+    }
+
+    /**
+     * Place/update the red current-location arrow when the GPS tool is enabled.
+     * Does not pan the map (tap Current Location still snaps the view).
+     */
+    function ensureUserGpsMarker(headingDeg) {
+      if (!isGpsLocationToolOn()) {
+        clearGpsMarker();
+        return;
+      }
+      if (userLat == null || userLng == null || isNaN(userLat) || isNaN(userLng)) return;
+      if (!map || typeof L === 'undefined') return;
+      setGpsMarker(userLat, userLng, headingDeg);
+    }
+    window.ensureUserGpsMarker = ensureUserGpsMarker;
+    window.clearGpsMarker = clearGpsMarker;
+
+    /** Soft GPS watch so the red arrow stays current whenever location is allowed. */
+    var userGpsWatchId = null;
+    function stopUserGpsPresence() {
+      if (userGpsWatchId != null && navigator.geolocation) {
+        try { navigator.geolocation.clearWatch(userGpsWatchId); } catch (eW) {}
+      }
+      userGpsWatchId = null;
+    }
+    function onUserGpsPosition(pos) {
+      if (!pos || !pos.coords) return;
+      if (!isGpsLocationToolOn()) {
+        clearGpsMarker();
+        return;
+      }
+      var lat = pos.coords.latitude;
+      var lng = pos.coords.longitude;
+      if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) return;
+      userLat = lat;
+      userLng = lng;
+      // Keep distance-origin in sync when user is on GPS mode
+      try {
+        if (typeof distOriginMode === 'undefined' || distOriginMode === 'gps' || distOriginLat == null) {
+          distOriginLat = userLat;
+          distOriginLng = userLng;
+          distOriginLabel = 'My Location';
+          if (typeof updateDistStatus === 'function') updateDistStatus();
+        }
+      } catch (eD) {}
+      // Keep current-location object coords fresh
+      try {
+        if (currentLocationObj) {
+          currentLocationObj.lat = userLat;
+          currentLocationObj.lng = userLng;
+        }
+      } catch (eC) {}
+      if (map) {
+        ensureUserGpsMarker();
+      } else if (typeof ensureMap === 'function') {
+        ensureMap().then(function() { ensureUserGpsMarker(); }).catch(function() {});
+      }
+    }
+    function startUserGpsPresence() {
+      if (!navigator.geolocation) return;
+      if (!isGpsLocationToolOn()) {
+        stopUserGpsPresence();
+        clearGpsMarker();
+        return;
+      }
+      // One-shot first (fast marker), then low-power watch for updates
+      try {
+        navigator.geolocation.getCurrentPosition(onUserGpsPosition, function() {}, {
+          maximumAge: 60000,
+          timeout: 10000,
+          enableHighAccuracy: false
+        });
+      } catch (eG) {}
+      if (userGpsWatchId != null) return;
+      try {
+        userGpsWatchId = navigator.geolocation.watchPosition(
+          onUserGpsPosition,
+          function() { /* keep last known marker if watch errors */ },
+          { maximumAge: 15000, timeout: 20000, enableHighAccuracy: false }
+        );
+      } catch (eW2) {}
+    }
+    window.startUserGpsPresence = startUserGpsPresence;
+    window.stopUserGpsPresence = stopUserGpsPresence;
+
     function setGpsMarker(lat, lng, headingDeg) {
       if (!map || typeof L === 'undefined') return;
+      // Honor Settings → Current Location off
+      if (typeof isGpsLocationToolOn === 'function' && !isGpsLocationToolOn()) {
+        clearGpsMarker();
+        return;
+      }
       if (headingDeg == null && typeof deviceHeadingDeg !== 'undefined') headingDeg = deviceHeadingDeg;
       var icon = buildGpsMarkerIcon(headingDeg);
       if (gpsMarker) {
@@ -19983,6 +20098,16 @@
       if (!t.radar && typeof mapRadarActive !== 'undefined' && mapRadarActive && typeof stopMapRadar === 'function') {
         try { stopMapRadar(); } catch (eR) {}
       }
+      // Current Location tool off → remove red GPS arrow; on → show/update it
+      try {
+        if (!t.gps) {
+          if (typeof stopUserGpsPresence === 'function') stopUserGpsPresence();
+          if (typeof clearGpsMarker === 'function') clearGpsMarker();
+        } else {
+          if (typeof startUserGpsPresence === 'function') startUserGpsPresence();
+          if (typeof ensureUserGpsMarker === 'function') ensureUserGpsMarker();
+        }
+      } catch (eGpsVis) {}
       if (typeof updateCompassToolbarBtn === 'function') updateCompassToolbarBtn();
       // Never let tool toggles leave the bar itself missing
       if (typeof ensureMapBottomBarVisible === 'function') ensureMapBottomBarVisible();
@@ -20461,7 +20586,9 @@
           applyDisplayVisibility();
         } catch (eSet) { console.warn(eSet); }
       }, 400);
-      // Prefetch GPS without loading the map stack
+      // Default: show red current-location arrow whenever location is available
+      // (Settings → Tools → Current Location can hide button + marker).
+      // Does not pan the map — tap Current Location still snaps the view.
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function(pos) {
           userLat = pos.coords.latitude; userLng = pos.coords.longitude;
@@ -20479,8 +20606,13 @@
           var dateStr = selectedDate.toISOString().split('T')[0];
           var tid = detected.zone==='A' ? 10 : 11;
           var rule = rules.find(function(r) { return r.locId==tid && dateStr>=r.start && dateStr<=r.end; }) || { weapon:'General', target:'Statewide Rules', limit:'Statewide Limit', notes:'Check regulations.' };
-          // Prefetch weather only — do NOT pan map until user taps Current Location
+          // Weather without pan
           selectLocation(currentLocationObj, rule, { panMap: false, skipScroll: true });
+          // Put red GPS arrow on the map as soon as the map shell is ready
+          ensureMap().then(function() {
+            if (typeof ensureUserGpsMarker === 'function') ensureUserGpsMarker();
+            if (typeof startUserGpsPresence === 'function') startUserGpsPresence();
+          }).catch(function() {});
         }, function() {
           console.warn('Geolocation failed, using center');
           initializeFallback(32.7794, -86.8287);
