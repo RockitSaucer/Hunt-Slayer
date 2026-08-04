@@ -2938,10 +2938,8 @@
     /* Live track HUD — sits above the Track button while recording */
     .map-track-live-hud {
       display: none;
-      position: absolute;
-      bottom: calc(100% + 8px);
-      left: 0;
-      z-index: 120;
+      position: fixed;
+      z-index: 2147483005;
       min-width: 148px;
       max-width: min(200px, 70vw);
       padding: 8px 10px 9px;
@@ -2956,6 +2954,16 @@
       pointer-events: auto;
       transform: translateX(-50%);
       white-space: nowrap;
+      box-sizing: border-box;
+    }
+    /* Not a bar flex item — never participate in toolbar layout */
+    .map-bottom-bar .map-track-live-hud,
+    .map-bottom-bar .mdt-tools-panel {
+      position: fixed !important;
+      flex: none !important;
+      width: auto !important;
+      height: auto !important;
+      max-width: min(200px, 70vw) !important;
     }
     .map-track-live-hud::after {
       content: '';
@@ -3427,16 +3435,15 @@
     .map-wind-hud.active { display: flex; }
 
     /*
-     * Slim bottom bar — cohesive 3-zone grid:
-     *   [ date + weapon + tools  |  GPS  |  radar · compass · layers · settings ]
-     * Date/weapon sit in a fixed left slot and never shift when tools hide/show.
-     * Gaps between buttons are tight and uniform; empty space is only the
-     * balanced mid-zones around GPS (not between individual buttons).
+     * HARD RULE — bottom bar tools:
+     *  - One horizontal flex row (no wrap)
+     *  - Equal gap between every control on desktop and mobile
+     *  - Buttons never shrink, never pack toward center, never overlap
+     *  - Zone wrappers use display:contents so all controls share the same gap
      */
     .map-bottom-bar {
-      /* Buttons +20% vs 36px → 43px; bar only ~5% taller than buttons */
       --mbb-h: 43px;
-      --mbb-gap: 4px;
+      --mbb-gap: 6px;
       --mbb-icon: 43px;
       --mbb-bar-h: calc(var(--mbb-h) * 1.05);
       position: absolute;
@@ -3445,24 +3452,21 @@
       bottom: 0 !important;
       transform: none;
       z-index: 80 !important;
-      display: grid !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-      /* Exactly 3 cells: left | center | right — never a 4th child or tools wrap under the bar */
-      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-      /* Content row is button height; safe-area is padding below so tools stay on the bar strip */
-      grid-template-rows: var(--mbb-bar-h);
-      align-items: center;
-      justify-items: stretch;
-      column-gap: var(--mbb-gap);
+      display: flex !important;
+      flex-direction: row !important;
+      flex-wrap: nowrap !important;
+      align-items: center !important;
+      justify-content: space-evenly !important;
+      column-gap: var(--mbb-gap) !important;
+      row-gap: 0 !important;
+      gap: var(--mbb-gap) !important;
       pointer-events: none;
       width: 100%;
       max-width: 100%;
-      /* Total bar height = button strip + home-indicator inset (never shrink content with padding) */
       height: calc(var(--mbb-bar-h) + env(safe-area-inset-bottom, 0px)) !important;
       min-height: calc(var(--mbb-bar-h) + env(safe-area-inset-bottom, 0px)) !important;
       max-height: calc(var(--mbb-bar-h) + env(safe-area-inset-bottom, 0px)) !important;
-      padding: 0 6px;
+      padding: 0 8px;
       padding-bottom: env(safe-area-inset-bottom, 0px);
       box-sizing: border-box;
       background: rgba(14, 18, 12, 0.92);
@@ -3471,14 +3475,30 @@
       border-radius: 0;
       box-shadow: 0 -4px 16px rgba(0,0,0,0.35);
       backdrop-filter: blur(6px);
-      /* visible so popovers (radar HUD / layers) can rise above the bar; tools stay in the single grid row */
-      overflow: visible;
+      overflow: visible !important;
+      visibility: visible !important;
+      opacity: 1 !important;
     }
-    .map-bottom-bar > * {
+    /* Flatten zones so every button is a peer with the same gap */
+    .map-bottom-bar > .mbb-left,
+    .map-bottom-bar > .mbb-center,
+    .map-bottom-bar > .mbb-right {
+      display: contents !important;
       pointer-events: auto;
-      align-self: center;
-      min-height: 0;
-      max-height: var(--mbb-h);
+    }
+    .map-bottom-bar .map-draw-tools {
+      display: contents !important;
+    }
+    .map-bottom-bar > *,
+    .map-bottom-bar .mbb-context,
+    .map-bottom-bar .mdt-btn,
+    .map-bottom-bar .mbb-icon-btn,
+    .map-bottom-bar .mbb-compass-btn,
+    .map-bottom-bar .map-radar-control,
+    .map-bottom-bar .map-layers-menu,
+    .map-bottom-bar .map-settings-btn {
+      pointer-events: auto;
+      flex-shrink: 0 !important;
     }
     .map-wrapper.fullscreen .map-bottom-bar {
       z-index: 80 !important;
@@ -3491,7 +3511,7 @@
     .map-wrapper.map-popup-open .map-bottom-bar,
     .map-wrapper.draw-mode .map-bottom-bar,
     .map-wrapper.fullscreen.map-popup-open .map-bottom-bar {
-      display: grid !important;
+      display: flex !important;
       visibility: visible !important;
       opacity: 1 !important;
       z-index: 80 !important;
@@ -3589,86 +3609,60 @@
       min-width: 52px !important;
       max-width: none !important;
     }
+    /* HARD RULE: every toolbar control is the same square; never auto-width / never shrink */
     .map-bottom-bar .mbb-compass-btn.mode-wind,
     .map-bottom-bar .mbb-compass-btn {
-      width: auto !important;
+      width: var(--mbb-icon) !important;
       min-width: var(--mbb-icon) !important;
-      max-width: 56px !important;
+      max-width: var(--mbb-icon) !important;
+      flex: 0 0 var(--mbb-icon) !important;
+      padding: 0 !important;
     }
-    /* Left zone: date/weapon (fixed) + tools (tight), packed start */
-    .mbb-left {
-      grid-column: 1;
-      grid-row: 1;
-      display: flex;
-      flex-direction: row;
-      flex-wrap: nowrap;
-      align-items: center;
-      gap: var(--mbb-gap);
-      min-width: 0;
-      height: var(--mbb-h) !important;
-      max-height: var(--mbb-h) !important;
-      justify-content: flex-start;
-      justify-self: start;
-      overflow: hidden;
+    .map-bottom-bar .mdt-btn.mdt-icon-btn,
+    .map-bottom-bar .mbb-icon-btn,
+    .map-bottom-bar .map-settings-btn,
+    .map-bottom-bar .map-radar-toggle,
+    .map-bottom-bar .map-layers-toggle-btn {
+      width: var(--mbb-icon) !important;
+      min-width: var(--mbb-icon) !important;
+      max-width: var(--mbb-icon) !important;
+      flex: 0 0 var(--mbb-icon) !important;
+      flex-shrink: 0 !important;
     }
-    /* Center zone: GPS + share as one grid cell (keeps right tools on the same row) */
-    .mbb-center {
-      grid-column: 2;
-      grid-row: 1;
-      justify-self: center;
-      display: flex;
-      flex-direction: row;
-      flex-wrap: nowrap;
-      align-items: center;
-      gap: var(--mbb-gap);
-      height: var(--mbb-h) !important;
-      max-height: var(--mbb-h) !important;
+    /* Zone shells are flattened (display:contents); keep anchors for absolute HUDs */
+    .mbb-left,
+    .mbb-center,
+    .mbb-right {
       margin: 0;
       padding: 0;
-    }
-    /* Right zone: radar · compass · layers · settings — one straight horizontal row, equal height */
-    .mbb-right {
-      grid-column: 3;
-      grid-row: 1;
-      display: flex !important;
-      flex-direction: row !important;
-      flex-wrap: nowrap !important;
-      align-items: center !important;
-      align-content: center;
-      gap: var(--mbb-gap);
       min-width: 0;
-      width: auto;
-      height: var(--mbb-h) !important;
-      max-height: var(--mbb-h) !important;
-      justify-content: flex-end;
-      justify-self: end;
-      overflow: visible;
-      line-height: 0;
+      overflow: visible !important;
     }
-    .mbb-right > * {
-      flex: 0 0 auto;
-      align-self: center !important;
-      height: var(--mbb-h) !important;
-      max-height: var(--mbb-h) !important;
-      margin: 0 !important;
-      vertical-align: middle;
-    }
-    .map-bottom-bar .map-draw-tools,
+    /* Radar / layers keep a real box so panels can anchor above the bar */
     .map-bottom-bar .map-radar-control,
     .map-bottom-bar .map-layers-menu {
       display: inline-flex !important;
       flex-direction: row !important;
       flex-wrap: nowrap !important;
       align-items: center !important;
+      justify-content: center !important;
+      width: var(--mbb-icon) !important;
+      min-width: var(--mbb-icon) !important;
+      max-width: var(--mbb-icon) !important;
       height: var(--mbb-h) !important;
       max-height: var(--mbb-h) !important;
       min-height: var(--mbb-h) !important;
-      margin: 0;
-      padding: 0;
-      position: relative;
-      flex-shrink: 0;
+      margin: 0 !important;
+      padding: 0 !important;
+      position: relative !important;
+      flex: 0 0 var(--mbb-icon) !important;
+      flex-shrink: 0 !important;
       line-height: 0;
       overflow: visible !important;
+    }
+    /* Track button anchors live HUD when draw-tools is display:contents */
+    .map-bottom-bar #mdt-track {
+      position: relative !important;
     }
     /* Radar extras + layers panel: out of flow so they never push the bar taller or wrap tools */
     .map-bottom-bar .map-radar-hud,
@@ -3867,7 +3861,7 @@
     .map-wrapper.fullscreen .map-layers-menu.map-layers-bottom {
       z-index: 2;
     }
-    /* Tools pack tight next to date — never push date around */
+    /* Draw-tools shell flattened on bar (display:contents) — keep base for non-bar use */
     .map-draw-tools {
       gap: var(--mbb-gap);
       flex: 0 0 auto;
@@ -3875,15 +3869,14 @@
     }
 
     /*
-     * Mobile bottom bar:
-     *  - Date + weapon reserved on the far left (readable, never crushed)
-     *  - Tool icons keep tight spacing but pack toward the middle
-     *  - Bar height = buttons × 1.05 (same ratio as desktop); safe-area is extra below
+     * Mobile bottom bar — SAME hard rule as desktop:
+     * equal gaps, equal squares, no packing, no overlap, no overflow crush.
+     * Icon size scales down only so everything still fits.
      */
     html.layout-phone .map-bottom-bar {
-      --mbb-h: 34px;
-      --mbb-icon: 34px;
-      --mbb-gap: 2px;
+      --mbb-h: 32px;
+      --mbb-icon: 32px;
+      --mbb-gap: 4px;
       --mbb-bar-h: calc(var(--mbb-h) * 1.05);
       left: 0;
       right: 0;
@@ -3893,16 +3886,18 @@
       height: calc(var(--mbb-bar-h) + env(safe-area-inset-bottom, 0px)) !important;
       min-height: calc(var(--mbb-bar-h) + env(safe-area-inset-bottom, 0px)) !important;
       max-height: calc(var(--mbb-bar-h) + env(safe-area-inset-bottom, 0px)) !important;
-      padding: 0 4px;
+      padding: 0 6px;
       padding-bottom: env(safe-area-inset-bottom, 0px);
       border-radius: 0;
-      /* equal side tracks so GPS stays centered; tools hug the center from both sides */
-      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
-      grid-template-rows: var(--mbb-bar-h) !important;
-      column-gap: 4px !important;
+      display: flex !important;
+      flex-direction: row !important;
+      flex-wrap: nowrap !important;
+      align-items: center !important;
+      justify-content: space-evenly !important;
+      gap: var(--mbb-gap) !important;
+      column-gap: var(--mbb-gap) !important;
       transform: none;
-      align-items: center;
-      overflow: visible;
+      overflow: visible !important;
     }
     html.layout-phone .map-wrapper.fullscreen .map-bottom-bar {
       transform: none;
@@ -3910,97 +3905,53 @@
       height: calc(var(--mbb-bar-h) + env(safe-area-inset-bottom, 0px)) !important;
       max-height: calc(var(--mbb-bar-h) + env(safe-area-inset-bottom, 0px)) !important;
     }
-    html.layout-phone .mbb-left,
-    html.layout-phone .mbb-right,
-    html.layout-phone .mbb-center {
-      flex-wrap: nowrap !important;
-      flex-direction: row !important;
-      align-items: center !important;
-      gap: var(--mbb-gap) !important;
-      height: var(--mbb-h) !important;
-      max-height: var(--mbb-h) !important;
-      min-width: 0;
-      box-sizing: border-box;
-    }
-    /* Far-left date/weapon; measure/draw/track pushed toward center */
-    html.layout-phone .mbb-left {
-      justify-content: flex-start !important;
-      justify-self: stretch !important;
-      width: 100%;
-      max-width: 100%;
-      overflow: hidden;
-      gap: 0 !important; /* gap lives between tools only; context is reserved */
+    html.layout-phone .map-bottom-bar > .mbb-left,
+    html.layout-phone .map-bottom-bar > .mbb-center,
+    html.layout-phone .map-bottom-bar > .mbb-right,
+    html.layout-phone .map-bottom-bar .map-draw-tools {
+      display: contents !important;
     }
     html.layout-phone .mbb-left .map-draw-tools {
-      margin-left: auto; /* sit next to the center cluster */
-      padding-left: 6px;
+      margin-left: 0 !important;
+      padding-left: 0 !important;
     }
-    html.layout-phone .mbb-center {
-      justify-content: center !important;
-      justify-self: center !important;
-      flex: 0 0 auto;
-      z-index: 3;
-      overflow: visible;
-      padding: 0 2px;
-    }
-    /* Right tools pack toward center (not the far right edge) */
-    html.layout-phone .mbb-right {
-      justify-content: flex-start !important;
-      justify-self: stretch !important;
-      width: 100%;
-      max-width: 100%;
-      overflow: hidden;
-      line-height: 0;
-      padding-right: 0;
-    }
-    html.layout-phone .mbb-right > * {
-      flex: 0 0 auto !important;
-      height: var(--mbb-h) !important;
-      max-height: var(--mbb-h) !important;
-    }
-    /* Reserved date + weapon slot — far left; date scales to fit, never abbreviated with … */
+    /* Date/weapon block — one flex item; may be slightly wider than an icon */
     html.layout-phone .mbb-context {
       width: auto;
-      min-width: 72px;
-      max-width: min(42vw, 140px);
+      min-width: 0;
+      max-width: 4.8rem;
       height: var(--mbb-h) !important;
       gap: 1px;
-      padding: 0 3px 0 0;
-      flex: 0 1 auto;
+      padding: 0 2px;
+      flex: 0 0 auto !important;
+      flex-shrink: 0 !important;
       overflow: hidden;
       justify-content: center;
+      box-sizing: border-box;
     }
     html.layout-phone .mbb-date {
-      font-size: 10px;
+      font-size: 9px;
       letter-spacing: 0;
       line-height: 1.05;
       font-weight: 800;
       text-overflow: clip;
+      white-space: nowrap;
     }
     html.layout-phone .mbb-weapon {
-      height: 13px;
-      padding: 0 4px;
-      font-size: 8px;
+      height: 12px;
+      padding: 0 3px;
+      font-size: 7.5px;
       border-radius: 4px;
       display: inline-flex !important;
     }
-    html.layout-phone .map-draw-tools {
-      gap: var(--mbb-gap) !important;
-      flex: 0 0 auto;
-      flex-wrap: nowrap !important;
-      align-items: center !important;
-      height: var(--mbb-h) !important;
-      max-height: var(--mbb-h) !important;
-      min-width: 0;
-      overflow: visible;
-    }
-    /* Equal square controls — same inter-button gap as before */
+    /* Equal square controls — never shrink, never auto width */
     html.layout-phone .map-bottom-bar .mdt-btn.mdt-icon-btn,
     html.layout-phone .map-bottom-bar .map-layers-toggle-btn,
     html.layout-phone .map-bottom-bar .map-radar-toggle,
     html.layout-phone .map-bottom-bar .map-settings-btn,
     html.layout-phone .map-bottom-bar .mbb-icon-btn,
     html.layout-phone .map-bottom-bar .mbb-compass-btn,
+    html.layout-phone .map-bottom-bar .mbb-compass-btn.mode-wind,
     html.layout-phone .map-bottom-bar .mbb-ctrl {
       width: var(--mbb-icon) !important;
       min-width: var(--mbb-icon) !important;
@@ -4015,19 +3966,8 @@
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35) !important;
       box-sizing: border-box !important;
     }
-    html.layout-phone .map-bottom-bar .mbb-compass-btn,
-    html.layout-phone .map-bottom-bar .mbb-compass-btn.mode-wind {
-      width: var(--mbb-icon) !important;
-      min-width: var(--mbb-icon) !important;
-      max-width: var(--mbb-icon) !important;
-    }
     html.layout-phone .map-bottom-bar .mdt-btn.mdt-track-stop {
-      width: auto !important;
-      min-width: 40px !important;
-      max-width: 48px !important;
-      flex: 0 0 auto !important;
-      padding: 0 6px !important;
-      font-size: 9px !important;
+      display: none !important;
     }
     html.layout-phone .map-draw-tools .mdt-btn {
       height: var(--mbb-h);
@@ -4062,70 +4002,70 @@
     }
     html.layout-phone .map-layers-menu,
     html.layout-phone .map-radar-control {
-      flex: 0 0 auto !important;
+      flex: 0 0 var(--mbb-icon) !important;
       flex-shrink: 0 !important;
       width: var(--mbb-icon) !important;
       min-width: var(--mbb-icon) !important;
       max-width: var(--mbb-icon) !important;
       height: var(--mbb-h) !important;
       max-height: var(--mbb-h) !important;
-      overflow: visible;
-      position: relative;
+      overflow: visible !important;
+      position: relative !important;
     }
     html.layout-phone .map-layers-toggle-btn .ml-caret {
       display: none;
     }
-    /* Common phones — same 5% bar ratio; keep date slot readable */
+    /* Narrow phones — shrink squares + gap together so nothing overlaps */
     @media (max-width: 390px) {
       html.layout-phone .map-bottom-bar,
       html.layout-phone .map-wrapper.fullscreen .map-bottom-bar {
-        --mbb-h: 32px;
-        --mbb-icon: 32px;
-        --mbb-gap: 2px;
+        --mbb-h: 30px;
+        --mbb-icon: 30px;
+        --mbb-gap: 3px;
         --mbb-bar-h: calc(var(--mbb-h) * 1.05);
-        padding: 0 3px;
-        column-gap: 3px !important;
+        padding: 0 4px;
+        gap: var(--mbb-gap) !important;
+        column-gap: var(--mbb-gap) !important;
       }
       html.layout-phone .mbb-context {
-        min-width: 64px;
-        max-width: min(40vw, 128px);
-        flex: 0 1 auto;
+        max-width: 4.2rem;
+        flex: 0 0 auto !important;
       }
-      html.layout-phone .mbb-date { font-size: 9px; }
-      html.layout-phone .mbb-weapon { height: 12px; font-size: 7.5px; padding: 0 3px; }
-      html.layout-phone .mbb-left .map-draw-tools { padding-left: 4px; }
+      html.layout-phone .mbb-date { font-size: 8.5px; }
+      html.layout-phone .mbb-weapon { height: 11px; font-size: 7px; padding: 0 2px; }
+      html.layout-phone .mbb-left .map-draw-tools { padding-left: 0 !important; margin-left: 0 !important; }
       html.layout-phone .mbb-icon-btn svg,
       html.layout-phone .mbb-compass-btn svg,
       html.layout-phone .map-radar-toggle svg {
-        width: 16px !important;
-        height: 16px !important;
+        width: 15px !important;
+        height: 15px !important;
       }
       html.layout-phone .map-draw-tools .mdt-icon-img,
       html.layout-phone .map-layers-toggle-btn .mdt-icon-img {
-        width: 16px !important;
-        height: 16px !important;
+        width: 15px !important;
+        height: 15px !important;
       }
-      html.layout-phone .map-settings-btn { font-size: 15px !important; }
+      html.layout-phone .map-settings-btn { font-size: 14px !important; }
     }
-    /* Very narrow phones — still reserve date/weapon; tools stay mid-clustered */
+    /* Very narrow phones — still equal squares + equal gaps */
     @media (max-width: 340px) {
       html.layout-phone .map-bottom-bar,
       html.layout-phone .map-wrapper.fullscreen .map-bottom-bar {
         --mbb-h: 28px;
         --mbb-icon: 28px;
-        --mbb-gap: 1px;
+        --mbb-gap: 2px;
         --mbb-bar-h: calc(var(--mbb-h) * 1.05);
-        padding: 0 2px;
-        column-gap: 2px !important;
+        padding: 0 3px;
+        gap: var(--mbb-gap) !important;
+        column-gap: var(--mbb-gap) !important;
       }
       html.layout-phone .mbb-context {
-        min-width: 56px;
-        max-width: min(38vw, 110px);
-        flex: 0 1 auto;
+        max-width: 3.6rem;
+        flex: 0 0 auto !important;
       }
       html.layout-phone .mbb-date { font-size: 8px; }
       html.layout-phone .mbb-weapon { height: 11px; font-size: 7px; padding: 0 2px; }
-      html.layout-phone .mbb-left .map-draw-tools { padding-left: 3px; }
+      html.layout-phone .mbb-left .map-draw-tools { padding-left: 0 !important; margin-left: 0 !important; }
       html.layout-phone .mbb-icon-btn svg,
       html.layout-phone .mbb-compass-btn svg,
       html.layout-phone .map-radar-toggle svg {
@@ -4139,10 +4079,7 @@
       }
       html.layout-phone .map-settings-btn { font-size: 13px !important; }
       html.layout-phone .map-bottom-bar .mdt-btn.mdt-track-stop {
-        min-width: 34px !important;
-        max-width: 40px !important;
-        font-size: 8px !important;
-        padding: 0 4px !important;
+        display: none !important;
       }
     }
     /* Settings modal — must sit above true-fullscreen map (z 2147483000) */
@@ -5445,7 +5382,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 5.7 Beta">V5.7 Beta</span>
+      <span class="brand-version" aria-label="Version 5.8 Beta">V5.8 Beta</span>
     </div>
   </header>
 
@@ -6365,7 +6302,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '5.7-beta';
+    const APP_VERSION = '5.8-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -14942,8 +14879,7 @@
     function positionTrackLiveHud() {
       var hud = document.getElementById('map-track-live-hud');
       var trackBtn = document.getElementById('mdt-track');
-      var tools = document.getElementById('map-draw-tools');
-      if (!hud || !trackBtn || !tools) return;
+      if (!hud || !trackBtn) return;
       if (!gpsTrackActive) {
         hud.hidden = true;
         hud.style.display = 'none';
@@ -14951,13 +14887,15 @@
       }
       hud.hidden = false;
       hud.style.display = 'block';
+      // Fixed above the Track button (draw-tools uses display:contents on the bar)
       try {
         var tr = trackBtn.getBoundingClientRect();
-        var toolsR = tools.getBoundingClientRect();
-        var cx = tr.left + tr.width / 2 - toolsR.left;
-        hud.style.left = cx + 'px';
+        hud.style.position = 'fixed';
+        hud.style.left = (tr.left + tr.width / 2) + 'px';
+        hud.style.top = 'auto';
+        hud.style.bottom = Math.max(8, window.innerHeight - tr.top + 8) + 'px';
         hud.style.transform = 'translateX(-50%)';
-        hud.style.bottom = 'calc(100% + 8px)';
+        hud.style.zIndex = '2147483005';
       } catch (ePos) {}
     }
 
