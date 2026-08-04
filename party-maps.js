@@ -37,16 +37,39 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
   function getSb() {
-    return C._sb || (window.supabase && C.getClient && C.getClient());
+    // Prefer live client from auth-sync (same session). Fallbacks for load order races.
+    try {
+      if (C && typeof C.getClient === 'function' && C.getClient()) return C.getClient();
+    } catch (e0) {}
+    try {
+      if (C && C._sb) return C._sb;
+    } catch (e1) {}
+    return window.__rsSb || null;
+  }
+  function getUser() {
+    if (window.__rsUser) return window.__rsUser;
+    return null;
+  }
+  /** Leaflet map — index.html uses `let map` and also sets window.map after init. */
+  function getMap() {
+    if (window.map) return window.map;
+    try {
+      if (typeof map !== 'undefined' && map) return map;
+    } catch (e) {}
+    return null;
   }
 
   // Expose helpers the original module doesn't
   // Patch: we reach into original by re-wrapping public API after boot
   function ensurePartyLayer() {
-    if (!window.map || typeof L === 'undefined') return null;
+    var m = getMap();
+    if (!m || typeof L === 'undefined') return null;
     if (!partyLayer) {
-      partyLayer = L.layerGroup().addTo(window.map);
+      partyLayer = L.layerGroup().addTo(m);
+    } else if (!m.hasLayer(partyLayer)) {
+      try { partyLayer.addTo(m); } catch (eA) {}
     }
+    try { partyLayer.bringToFront(); } catch (eF) {}
     return partyLayer;
   }
 
@@ -141,42 +164,61 @@
 
   async function pullPresence() {
     var vs = C.getViewState && C.getViewState();
-    var sb = window.__rsSb;
-    var user = window.__rsUser;
-    if (!vs || vs.mode !== 'shared' || !vs.sharedMapId || !sb || !window.map) {
-      clearPartyMarkers();
+    var sb = getSb();
+    var user = getUser();
+    var m = getMap();
+    // Keep window.map in sync when the main app only has a local `map` binding
+    if (m && !window.map) {
+      try { window.map = m; } catch (eWm) {}
+    }
+    if (!vs || vs.mode !== 'shared' || !vs.sharedMapId || !sb || !m) {
+      // Don't wipe markers just because map isn't ready yet — only when not on shared
+      if (!vs || vs.mode !== 'shared' || !vs.sharedMapId) clearPartyMarkers();
       return;
     }
     var layer = ensurePartyLayer();
     if (!layer) return;
     try {
-      var { data } = await sb.from('party_presence')
+      // Refresh member labels occasionally
+      try {
+        if (!window.__rsPartyMembers || !window.__rsPartyMembers.length) {
+          await listMembers();
+        }
+      } catch (eMem) {}
+
+      var res = await sb.from('party_presence')
         .select('user_id, is_sharing, lat, lng, heading, updated_at, started_at')
         .eq('map_id', vs.sharedMapId)
         .eq('is_sharing', true);
+      if (res.error) {
+        console.warn('presence pull error', res.error);
+        return;
+      }
+      var data = res.data || [];
       var members = window.__rsPartyMembers || [];
       var byId = {};
-      members.forEach(function (m) { byId[m.user_id] = m; });
+      members.forEach(function (mm) { byId[mm.user_id] = mm; });
       var seen = {};
-      (data || []).forEach(function (row) {
+      data.forEach(function (row) {
         if (!row.is_sharing || row.lat == null || row.lng == null) return;
         // Hide self from party layer (own GPS marker is separate)
         if (user && row.user_id === user.id) return;
         // Stale > 20 min hide
         var age = Date.now() - new Date(row.updated_at).getTime();
-        if (age > 20 * 60 * 1000) return;
+        if (isNaN(age) || age > 20 * 60 * 1000) return;
         seen[row.user_id] = true;
-        var m = byId[row.user_id] || { user_id: row.user_id, username: 'Hunter', display_name: 'Hunter' };
-        var label = memberLabel(m);
-        var color = memberColor(m);
+        var mem = byId[row.user_id] || { user_id: row.user_id, username: 'Hunter', display_name: 'Hunter' };
+        var label = memberLabel(mem);
+        var color = memberColor(mem);
         var icon = buildPartyArrowIcon(color, label, row.heading);
-        var popup = '<strong>' + esc(label) + '</strong><br>Last updated: ' + esc(formatAgo(row.updated_at));
+        var popup = '<strong>' + esc(label) + '</strong><br>Sharing live location<br>Last updated: ' +
+          esc(formatAgo(row.updated_at));
         if (partyMarkers[row.user_id]) {
           partyMarkers[row.user_id].setLatLng([row.lat, row.lng]);
           try { partyMarkers[row.user_id].setIcon(icon); } catch (eI) {}
-          partyMarkers[row.user_id].setPopupContent(popup);
+          try { partyMarkers[row.user_id].setPopupContent(popup); } catch (eP) {}
         } else {
-          var mk = L.marker([row.lat, row.lng], { icon: icon, zIndexOffset: 800 }).addTo(layer);
+          var mk = L.marker([row.lat, row.lng], { icon: icon, zIndexOffset: 900 }).addTo(layer);
           mk.bindPopup(popup);
           partyMarkers[row.user_id] = mk;
         }
@@ -187,6 +229,7 @@
           delete partyMarkers[uid];
         }
       });
+      try { layer.bringToFront(); } catch (eBf) {}
     } catch (e) {
       console.warn('presence pull', e);
     }
@@ -201,12 +244,12 @@
 
   async function pushPresence(lat, lng, heading, force) {
     var vs = C.getViewState && C.getViewState();
-    var sb = window.__rsSb;
-    var user = window.__rsUser;
-    if (!sharing || !vs || vs.mode !== 'shared' || !vs.sharedMapId || !sb || !user) return;
+    var sb = getSb();
+    var user = getUser();
+    if (!sharing || !vs || vs.mode !== 'shared' || !vs.sharedMapId || !sb || !user) return false;
     if (Date.now() - shareStartedAt > MAX_SHARE_MS) {
       stopSharing('auto');
-      return;
+      return false;
     }
     var now = Date.now();
     var moved = true;
@@ -214,54 +257,74 @@
       var d = haversineM(lastSent.lat, lastSent.lng, lat, lng);
       moved = d >= MOVE_M;
     }
-    var interval = moved ? MOVE_MS : STILL_MS;
-    if (!force && lastSent.at && (now - lastSent.at) < interval) return;
+    // Heartbeat at least every 20s even when still, so others don't go stale
+    var HEARTBEAT_MS = 20000;
+    var interval = moved ? MOVE_MS : Math.min(STILL_MS, HEARTBEAT_MS);
+    if (!force && lastSent.at && (now - lastSent.at) < interval) return true;
 
+    var payload = {
+      map_id: vs.sharedMapId,
+      user_id: user.id,
+      is_sharing: true,
+      lat: lat,
+      lng: lng,
+      heading: (heading != null && !isNaN(heading)) ? heading : null,
+      started_at: new Date(shareStartedAt).toISOString(),
+      last_moved_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
     try {
-      await sb.from('party_presence').upsert({
-        map_id: vs.sharedMapId,
-        user_id: user.id,
-        is_sharing: true,
-        lat: lat,
-        lng: lng,
-        heading: heading != null ? heading : null,
-        started_at: new Date(shareStartedAt).toISOString(),
-        last_moved_at: moved || !lastSent.at ? new Date().toISOString() : undefined,
-        updated_at: new Date().toISOString()
-      });
-      // fix last_moved_at optional overwrite
-      await sb.from('party_presence').upsert({
-        map_id: vs.sharedMapId,
-        user_id: user.id,
-        is_sharing: true,
-        lat: lat,
-        lng: lng,
-        heading: heading != null ? heading : null,
-        started_at: new Date(shareStartedAt).toISOString(),
-        last_moved_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
+      var res = await sb.from('party_presence').upsert(payload, { onConflict: 'map_id,user_id' });
+      if (res.error) {
+        console.warn('presence push failed', res.error);
+        try {
+          if (window.showAppCopyToast) {
+            showAppCopyToast('<span class="act">Share location failed</span><br>' +
+              esc(res.error.message || 'Could not update party location'));
+          }
+        } catch (eT) {}
+        return false;
+      }
       lastSent = { lat: lat, lng: lng, at: now };
+      return true;
     } catch (e) {
       console.warn('presence push', e);
+      return false;
     }
   }
 
   function startSharing() {
     var vs = C.getViewState && C.getViewState();
-    if (!vs || vs.mode !== 'shared') {
-      alert('Share location only works on a shared map. Open a shared map first.');
+    if (!vs || vs.mode !== 'shared' || !vs.sharedMapId) {
+      alert('Share location only works on a shared map. Open a shared map first (Settings → My Maps → View).');
       return;
     }
     if (!navigator.geolocation) {
       alert('Geolocation not available on this device.');
       return;
     }
+    if (!getSb() || !getUser()) {
+      alert('Sign in required to share location with your party.');
+      return;
+    }
+    // Ensure map reference for peers who pull while we share
+    var m = getMap();
+    if (m) {
+      try { window.map = m; } catch (eM) {}
+    }
+
     sharing = true;
     shareStartedAt = Date.now();
     lastSent = { lat: null, lng: null, at: 0 };
-    try { localStorage.setItem(PRESENCE_KEY, JSON.stringify({ on: true, started: shareStartedAt, mapId: vs.sharedMapId })); } catch (e) {}
+    try {
+      localStorage.setItem(PRESENCE_KEY, JSON.stringify({
+        on: true,
+        started: shareStartedAt,
+        mapId: vs.sharedMapId
+      }));
+    } catch (e) {}
     updateShareLocBtn();
+
     if (presenceWatch != null) {
       try { navigator.geolocation.clearWatch(presenceWatch); } catch (e2) {}
     }
@@ -273,9 +336,15 @@
       }
       pushPresence(lat, lng, heading, false);
     }, function (err) {
-      console.warn(err);
-    }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
+      console.warn('share location GPS error', err);
+      try {
+        if (window.showAppCopyToast) {
+          showAppCopyToast('<span class="act">Location error</span><br>Allow location access to share with party.');
+        }
+      } catch (e3) {}
+    }, { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 });
 
+    // Heartbeat + peer pull while WE are sharing
     if (presenceTimer) clearInterval(presenceTimer);
     presenceTimer = setInterval(function () {
       if (!sharing) return;
@@ -284,16 +353,24 @@
         return;
       }
       pullPresence();
-      // still heartbeat if we have last coords
       if (lastSent.lat != null) {
-        pushPresence(lastSent.lat, lastSent.lng, null, false);
+        pushPresence(lastSent.lat, lastSent.lng, null, true);
       }
-    }, 10000);
+    }, 5000);
 
-    // immediate fix
+    // Immediate force push
     navigator.geolocation.getCurrentPosition(function (pos) {
-      pushPresence(pos.coords.latitude, pos.coords.longitude, pos.coords.heading, true);
-    }, function () {}, { enableHighAccuracy: true, timeout: 10000 });
+      pushPresence(pos.coords.latitude, pos.coords.longitude, pos.coords.heading, true).then(function (ok) {
+        if (ok !== false && window.showAppCopyToast) {
+          showAppCopyToast('<span class="act">Sharing location</span><br>Party can see you on this shared map.');
+        }
+      });
+    }, function (err) {
+      console.warn(err);
+      alert('Could not get your location. Check location permission and try again.');
+      stopSharing();
+    }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
+
     pullPresence();
   }
 
@@ -307,20 +384,27 @@
     if (presenceTimer) { clearInterval(presenceTimer); presenceTimer = null; }
     updateShareLocBtn();
     var vs = C.getViewState && C.getViewState();
-    var sb = window.__rsSb;
-    var user = window.__rsUser;
+    var sb = getSb();
+    var user = getUser();
     if (sb && user && vs && vs.sharedMapId) {
       try {
-        await sb.from('party_presence').upsert({
+        var res = await sb.from('party_presence').upsert({
           map_id: vs.sharedMapId,
           user_id: user.id,
           is_sharing: false,
           updated_at: new Date().toISOString()
-        });
+        }, { onConflict: 'map_id,user_id' });
+        if (res.error) console.warn('stop share presence', res.error);
       } catch (e3) {}
     }
     if (reason === 'auto') {
-      try { showAppCopyToast && showAppCopyToast('<span class="act">Location sharing ended</span><br>Auto-off after 1 hour.'); } catch (e4) {}
+      try {
+        showAppCopyToast && showAppCopyToast('<span class="act">Location sharing ended</span><br>Auto-off after 1 hour.');
+      } catch (e4) {}
+    } else {
+      try {
+        showAppCopyToast && showAppCopyToast('<span class="act">Stopped sharing location</span>');
+      } catch (e5) {}
     }
   }
 
@@ -1269,10 +1353,13 @@
 
   // Capture sb + user from auth client used by main module
   function bindClientRefs() {
-    // Create our own client with same keys if needed
+    // Prefer auth-sync's single shared client (same session / JWT)
+    try {
+      var c = getSb();
+      if (c) window.__rsSb = c;
+    } catch (e0) {}
     if (!window.__rsSb && window.supabase && window.supabase.createClient) {
       try {
-        // reuse session from existing
         var url = 'https://grvhmktqzrivbqbczkii.supabase.co';
         var key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdydmhta3RxenJpdmJxYmN6a2lpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3MDQ0MTIsImV4cCI6MjEwMTI4MDQxMn0.fFfrS-7w45IzxwOvvyYDB5ngLnyTz-Ru7XVL5LZXm4o';
         window.__rsSb = window.supabase.createClient(url, key, {
@@ -1280,10 +1367,12 @@
         });
       } catch (e) {}
     }
-    if (window.__rsSb) {
-      window.__rsSb.auth.getSession().then(function (res) {
+    var sb = getSb();
+    if (sb) {
+      window.__rsSb = sb;
+      sb.auth.getSession().then(function (res) {
         if (res.data && res.data.session) window.__rsUser = res.data.session.user;
-      });
+      }).catch(function () {});
     }
   }
 
@@ -1293,6 +1382,23 @@
   });
 
   // After auth
+  var partyPullInterval = null;
+  function ensurePartyPullLoop() {
+    if (partyPullInterval) return;
+    // Always pull when viewing a shared map — even if we are not sharing ourselves
+    partyPullInterval = setInterval(function () {
+      var vs = C.getViewState && C.getViewState();
+      if (vs && vs.mode === 'shared' && vs.sharedMapId && document.visibilityState === 'visible') {
+        // Sync map ref if app map mounted late
+        var m = getMap();
+        if (m && !window.map) {
+          try { window.map = m; } catch (e) {}
+        }
+        pullPresence();
+      }
+    }, 4000);
+  }
+
   function onReady() {
     bindClientRefs();
     wireExtraSettings();
@@ -1302,15 +1408,42 @@
     sharing = false;
     try { localStorage.removeItem(PRESENCE_KEY); } catch (e) {}
     updateShareLocBtn();
+    ensurePartyPullLoop();
     setTimeout(function () {
+      // Capture map if already created
+      try {
+        var m0 = getMap();
+        if (m0) window.map = m0;
+      } catch (e0) {}
       refreshMapsUi();
       pullPresence();
-      // presence poll when on shared (others' locations only; does not turn our share on)
-      setInterval(function () {
-        var vs = C.getViewState && C.getViewState();
-        if (vs && vs.mode === 'shared' && document.visibilityState === 'visible') pullPresence();
-      }, 12000);
-    }, 800);
+    }, 500);
+    // Retry after map typically mounts
+    [1200, 2500, 5000].forEach(function (ms) {
+      setTimeout(function () {
+        try {
+          var m = getMap();
+          if (m) window.map = m;
+        } catch (e1) {}
+        pullPresence();
+      }, ms);
+    });
+  }
+
+  // When main app finishes ensureMap, re-pull party markers
+  var _origEnsureMap = window.ensureMap;
+  if (typeof _origEnsureMap === 'function' && !_origEnsureMap._rsPartyHook) {
+    window.ensureMap = function () {
+      return _origEnsureMap.apply(this, arguments).then(function (m) {
+        try {
+          if (m) window.map = m;
+          else if (getMap()) window.map = getMap();
+        } catch (e) {}
+        setTimeout(function () { pullPresence(); }, 50);
+        return m;
+      });
+    };
+    window.ensureMap._rsPartyHook = true;
   }
 
   if (C.authReady && C.authReady.then) {
