@@ -3264,13 +3264,41 @@
       border: 1px solid transparent;
     }
     
-    /* Phone: sit high on the map (just under notch/safe-area) */
-    html.layout-phone .map-compass-radar {
-      top: max(2px, env(safe-area-inset-top, 0px)) !important;
+    /*
+     * Mobile MIN mode: compass at the very top of the map card.
+     * Do NOT use safe-area-inset here — the map is mid-page, not under the notch.
+     * Inline drag positions are overridden so a dragged/fullscreen position
+     * cannot leave the dial mid-map after returning to Min.
+     */
+    html.layout-phone .map-wrapper:not(.fullscreen) .map-compass-radar,
+    html.layout-phone .map-wrapper:not(.fullscreen) .map-compass-radar.is-positioned {
+      top: 0 !important;
+      left: 50% !important;
+      right: auto !important;
+      bottom: auto !important;
+      transform: translateX(-50%) !important;
     }
-    html.layout-desktop .map-compass-radar {
-      top: 4px !important;
+    /* Mobile MAX / true fullscreen: respect notch */
+    html.layout-phone .map-wrapper.fullscreen .map-compass-radar {
+      top: max(0px, env(safe-area-inset-top, 0px)) !important;
     }
+    html.layout-desktop .map-wrapper:not(.fullscreen) .map-compass-radar {
+      top: 2px !important;
+    }
+    html.layout-desktop .map-wrapper.fullscreen .map-compass-radar {
+      top: max(4px, env(safe-area-inset-top, 0px)) !important;
+    }
+    /* Always keep dial stack paintable when not intentionally hidden */
+    .map-compass-radar:not(.dial-hud-hidden) {
+      visibility: visible !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+    }
+    .map-compass-radar:not(.dial-hud-hidden) .map-wind-hud.active {
+      display: flex !important;
+      visibility: visible !important;
+    }
+    
     html.layout-phone .leaflet-control-zoom {
       margin-top: 6px !important;
     }
@@ -6025,7 +6053,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.4.3 Beta">V6.4.3 Beta</span>
+      <span class="brand-version" aria-label="Version 6.4.4 Beta">V6.4.4 Beta</span>
     </div>
   </header>
 
@@ -7026,7 +7054,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.4.3-beta';
+    const APP_VERSION = '6.4.4-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -13573,7 +13601,9 @@
           if (typeof setHeadingMode === 'function') setHeadingMode('compass', { fromUser: true });
         } catch (eH) {}
         dialHudVisible = true;
-        try { applyDialHudVisibility(); } catch (eV) {}
+        try { ensureDialHudShown({ quiet: true }); } catch (eV) {
+          try { applyDialHudVisibility(); } catch (eV2) {}
+        }
         collapseCompassDialUi();
         if (stack) stack.classList.add('compass-mode-active');
         // Restore last probe distance (user-specific)
@@ -20547,9 +20577,15 @@
         renderWeatherAlerts(null);
         renderHighWindBox(null);
       } catch (eResetWx) {}
-      var windHud = document.getElementById('map-wind-hud');
-      // Keep HUD visible in compass mode; only hide wind-driven shell if pure wind mode with no data
-      if (windHud && headingHudMode !== 'compass') windHud.classList.remove('active');
+      // Never strip the compass/wind dial here — toolbar + applyDialHudVisibility own that.
+      // (Old code removed .active whenever headingHudMode !== 'compass', which made the dial
+      // vanish randomly after list/dashboard resets and the toolbar thought it was still on.)
+      try {
+        if (typeof dialHudVisible !== 'undefined' && dialHudVisible &&
+            typeof ensureDialHudShown === 'function') {
+          ensureDialHudShown({ quiet: true });
+        }
+      } catch (eDialKeep) {}
       var stack = document.getElementById('map-compass-radar');
       if (stack) {
         stack.classList.remove('has-wind');
@@ -20719,8 +20755,15 @@
     function ensureTopHudVisible() {
       var hud = document.getElementById('map-wind-hud');
       var stack = document.getElementById('map-compass-radar');
-      if (hud) hud.classList.add('active');
+      if (hud) {
+        hud.classList.add('active');
+        // Guard against accidental inline hides
+        if (hud.style.display === 'none') hud.style.display = '';
+      }
       if (stack) {
+        if (typeof dialHudVisible === 'undefined' || dialHudVisible) {
+          stack.classList.remove('dial-hud-hidden');
+        }
         if (headingHudMode === 'compass') {
           stack.classList.add('has-heading');
           stack.classList.remove('has-wind');
@@ -20738,6 +20781,21 @@
      */
     /** Quick show/hide of compass/wind dial from bottom toolbar (settings still master-off). */
     var dialHudVisible = true;
+
+    // Recover if something strips .active / hides the stack while flag says "on"
+    (function wireDialHudWatchdog() {
+      var last = 0;
+      setInterval(function() {
+        if (!dialHudVisible) return;
+        if (document.documentElement.classList.contains('settings-hide-compass')) return;
+        if (typeof isDialHudActuallyVisible === 'function' && !isDialHudActuallyVisible()) {
+          var now = Date.now();
+          if (now - last < 800) return;
+          last = now;
+          try { ensureDialHudShown({ quiet: true }); } catch (e) {}
+        }
+      }, 1200);
+    })();
 
     function updateCompassToolbarBtn() {
       var btn = document.getElementById('mbb-compass-btn');
@@ -20766,43 +20824,134 @@
       }
     }
 
-    function applyDialHudVisibility() {
-      var stack = document.getElementById('map-compass-radar');
-      if (stack) {
-        stack.classList.toggle('dial-hud-hidden', !dialHudVisible);
+    function isDialHudActuallyVisible() {
+      try {
+        if (document.documentElement.classList.contains('settings-hide-compass')) return false;
+        if (!dialHudVisible) return false;
+        var stack = document.getElementById('map-compass-radar');
+        var hud = document.getElementById('map-wind-hud');
+        if (!stack || !hud) return false;
+        if (stack.classList.contains('dial-hud-hidden')) return false;
+        if (!hud.classList.contains('active')) return false;
+        // Off-screen / zero-size = not really visible
+        var r = stack.getBoundingClientRect();
+        if (!r || r.width < 4 || r.height < 4) return false;
+        if (r.bottom < 8 || r.top > (window.innerHeight - 8)) return false;
+        if (r.right < 8 || r.left > (window.innerWidth - 8)) return false;
+        // display:none parent
+        var st = window.getComputedStyle(stack);
+        var ht = window.getComputedStyle(hud);
+        if (st.display === 'none' || st.visibility === 'hidden' || st.opacity === '0') return false;
+        if (ht.display === 'none' || ht.visibility === 'hidden') return false;
+        return true;
+      } catch (e) {
+        return false;
       }
+    }
+
+    /** Force dial onto top of map (mobile min mode) and clear bad drag offsets. */
+    function pinCompassToMapTop(opts) {
+      opts = opts || {};
+      var stack = document.getElementById('map-compass-radar');
+      var wrap = document.getElementById('map-wrapper');
+      if (!stack) return;
+      var phone = document.documentElement.classList.contains('layout-phone');
+      var fs = wrap && wrap.classList.contains('fullscreen');
+      // In mobile min mode always pin to top-center (ignore saved drag pos)
+      if (phone && !fs) {
+        stack.classList.remove('is-positioned');
+        stack.style.left = '';
+        stack.style.top = '';
+        stack.style.right = '';
+        stack.style.bottom = '';
+        stack.style.transform = '';
+      } else if (opts.clamp && stack.classList.contains('is-positioned')) {
+        try {
+          var l = parseFloat(stack.style.left);
+          var t = parseFloat(stack.style.top);
+          if (!isNaN(l) && !isNaN(t) && typeof applyDialStackPosition === 'function') {
+            applyDialStackPosition(l, t);
+          }
+        } catch (eC) {}
+      }
+    }
+
+    /**
+     * Show dial for real: stack + .active HUD + z-index + top pin.
+     * Toolbar and recovery paths must call this — not just flip a flag.
+     */
+    function ensureDialHudShown(opts) {
+      opts = opts || {};
+      dialHudVisible = true;
+      var stack = document.getElementById('map-compass-radar');
+      var hud = document.getElementById('map-wind-hud');
+      if (stack) {
+        stack.classList.remove('dial-hud-hidden');
+        stack.style.display = '';
+        stack.style.visibility = '';
+        stack.style.opacity = '';
+        // Stay above map tiles in min mode
+        if (!stack.style.zIndex || parseInt(stack.style.zIndex, 10) < 12) {
+          stack.style.zIndex = '12';
+        }
+      }
+      if (hud) {
+        hud.classList.add('active');
+        hud.style.display = '';
+        hud.style.visibility = '';
+      }
+      try { ensureTopHudVisible(); } catch (eE) {}
+      try { pinCompassToMapTop({ clamp: true }); } catch (eP) {}
+      if (!opts.quiet) updateCompassToolbarBtn();
+    }
+
+    function ensureDialHudHidden() {
+      dialHudVisible = false;
+      var stack = document.getElementById('map-compass-radar');
+      if (stack) stack.classList.add('dial-hud-hidden');
+      updateCompassToolbarBtn();
+    }
+
+    function applyDialHudVisibility() {
+      if (dialHudVisible) ensureDialHudShown({ quiet: true });
+      else ensureDialHudHidden();
       updateCompassToolbarBtn();
     }
 
     function toggleDialHudFromToolbar() {
-      // Toolbar: show dial + compass mode, or turn mode/dial off
-      if (compassModeEnabled && dialHudVisible) {
-        setCompassModeEnabled(false);
-        return;
-      }
-      if (!dialHudVisible) {
-        dialHudVisible = true;
-        applyDialHudVisibility();
+      // If dial is supposed to be on but is missing on screen, ALWAYS restore first
+      if (!isDialHudActuallyVisible()) {
+        ensureDialHudShown();
         try {
-          if (typeof setHeadingMode === 'function') setHeadingMode('compass', { fromUser: true });
+          if (typeof setHeadingMode === 'function') {
+            setHeadingMode(
+              (typeof isPhoneLayout === 'function' && isPhoneLayout()) ? 'compass' : (headingHudMode || 'compass'),
+              { fromUser: true }
+            );
+          }
         } catch (eH) {}
-        try { ensureTopHudVisible(); } catch (eE) {}
         try { if (typeof collapseCompassDialUi === 'function') collapseCompassDialUi(); } catch (eC) {}
-        setCompassModeEnabled(true);
+        // Do not force compass-mode line on; just show the dial
         return;
       }
-      // Visible dial but mode off → turn mode on (collapse buttons)
-      if (dialHudVisible && !compassModeEnabled) {
-        try { if (typeof collapseCompassDialUi === 'function') collapseCompassDialUi(); } catch (eC2) {}
-        setCompassModeEnabled(true);
+      // Dial is visible: if compass mode on → turn mode off (keep dial)
+      if (typeof compassModeEnabled !== 'undefined' && compassModeEnabled) {
+        try { setCompassModeEnabled(false); } catch (eM) {}
+        ensureDialHudShown();
         return;
       }
-      dialHudVisible = false;
-      if (compassModeEnabled) setCompassModeEnabled(false);
-      applyDialHudVisibility();
+      // Dial visible, mode off → hide dial
+      if (typeof compassModeEnabled !== 'undefined' && compassModeEnabled) {
+        try { setCompassModeEnabled(false); } catch (eM2) {}
+      }
+      ensureDialHudHidden();
     }
     window.toggleDialHudFromToolbar = toggleDialHudFromToolbar;
     window.updateCompassToolbarBtn = updateCompassToolbarBtn;
+    window.ensureDialHudShown = ensureDialHudShown;
+    window.isDialHudActuallyVisible = isDialHudActuallyVisible;
+    window.pinCompassToMapTop = pinCompassToMapTop;
+    window.applyDialHudVisibility = applyDialHudVisibility;
 
     function setHeadingMode(mode, opts) {
       opts = opts || {};
@@ -22436,6 +22585,12 @@
       document.documentElement.classList.add('map-is-fullscreen');
       document.body.classList.add('map-is-fullscreen');
       try { document.body.style.overflow = 'hidden'; } catch (e0) {}
+      try {
+        if (typeof dialHudVisible !== 'undefined' && dialHudVisible &&
+            typeof ensureDialHudShown === 'function') {
+          setTimeout(function() { ensureDialHudShown({ quiet: true }); }, 50);
+        }
+      } catch (eFs) {}
     }
 
     function exitMapTrueFullscreen(w) {
@@ -22477,6 +22632,14 @@
         if (typeof fitDesktopMapHeight === 'function') fitDesktopMapHeight();
         if (typeof scheduleDesktopMapFit === 'function') scheduleDesktopMapFit();
       } catch (eFit) {}
+      // Mobile min: pin compass to very top of map; restore dial if it was on
+      try {
+        if (typeof pinCompassToMapTop === 'function') pinCompassToMapTop();
+        if (typeof dialHudVisible !== 'undefined' && dialHudVisible &&
+            typeof ensureDialHudShown === 'function') {
+          ensureDialHudShown({ quiet: true });
+        }
+      } catch (ePin) {}
     }
 
     function toggleMapFullscreen() {

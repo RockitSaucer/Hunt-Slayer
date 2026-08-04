@@ -1,0 +1,6 @@
+﻿V6.4.4 — Compass min-mode top + no random vanish
+- Mobile min mode: dial at top:0 of map (no safe-area mid-page); clears bad drag offset
+- Toolbar always restores dial if missing on screen
+- resetDashboard no longer strips .active from dial
+- ensureDialHudShown / visibility watchdog
+- Shell v32
