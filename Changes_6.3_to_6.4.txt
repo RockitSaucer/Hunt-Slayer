@@ -1,0 +1,35 @@
+REG SLAYER — Changes 6.3 Beta → 6.4 Beta
+Date: 2026-08-04
+GitHub open issues batch: #16, #17, #18, #19, #21, #22, #24, #25, #26, #27, #28, #29, #30
+
+Implemented
+-----------
+#16 Desktop 50/50 planner|map; steps fit; whole-page scroll only if window tiny
+#17 Smaller red tool cursors with black outline (canvas-built CSS vars)
+#18 Pin sheet narrower; notes as Add note; hunt/stand in Advanced; hide pin;
+    size slider; list opt-in; hide-all; popup Hide/Edit/trash; share chooser;
+    hidden dots; zoom scale; creator/date meta; outside-click auto-save
+#19 LiDAR terrain under + hillshade (never blank without topo); overzoom-safe
+#21 Ultra-compact footer on mobile; tiny desktop strip
+#22 Snap uses last fix immediately; keeps current zoom; faster GPS options
+#24 Compass mode: pulse dial, line under arrow, glued on zoom, 2× hitbox,
+    HUD label under dial, elev me-vs-point, live settings preview, overlay
+    settings modal, probe distance remembered, line extends with probe
+#25 Custom pins off Available Hunts unless hunt + “Add to huntable areas list”;
+    list uses Hide not Delete for those rows
+#26 Measure label fixed size (no collapse); Draw opens Line|Shape chooser;
+    Line saves solid path (not hunt area)
+#27 Toolbar buttons never removed while measuring/drawing; active glow
+#28 Roads/topo on high z-index panes; opacity sliders under each overlay
+#29 Satellite basemap strip-all-then-add (stops flaky half-states)
+#30 Removed title / field directives / stands block; current-data banner only
+    above weather when truly current
+
+Shell: reg-slayer-shell-v28
+Tag: v6.4-beta
+
+Undo
+----
+index.html.bak-6.3-before-6.4
+git tag v6.3-beta / revert commit
+See V6.4_CHANGELOG_AND_UNDO.md
