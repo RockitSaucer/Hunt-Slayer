@@ -1,0 +1,22 @@
+V6.4.8
+
+After dragging the compass-mode probe (distance “slider” on the heading line),
+pins / orange dots / other markers could no longer be clicked — only pan map or
+place new dots that also could not be opened.
+
+Root cause
+- Compass mode panes (cmProbePane / cmLinePane) used pointer-events:auto (CSS + JS).
+- Leaflet puts a full-map-size SVG in those panes. The empty pane then sat above the
+  marker pane (z~600) and stole every pointer hit.
+- Map “click” still fired via bubbling → free dots could still be created.
+- Marker icons never received the event → dots/pins unclickable.
+
+Fix
+- Pane pointer-events: none; only probe hit icon + line stroke re-enable events.
+- ensureCompassModePanes always re-applies pointerEvents:none (even if panes exist).
+- restoreMapPointerInteractions re-asserts pane pointer-events.
+- Stop rebuilding probe hit icon every heading tick; re-wire after setIcon.
+- Shell reg-slayer-shell-v36
+
+Undo
+- Revert to tag v6.4.7-beta if needed.

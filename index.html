@@ -3247,13 +3247,29 @@
       padding: 2px 6px;
     }
     
-    /* Probe hit target needs real pointer events */
+    /*
+     * Compass mode panes: NEVER put pointer-events:auto on the pane itself.
+     * Leaflet puts a full-map SVG in the pane; with pane pointer-events:auto the
+     * empty SVG box steals every click → map click still fires (dots place) but
+     * pins / orange dots / markers under the pane never receive clicks.
+     * Pane = none; only the probe hit icon + line stroke re-enable events.
+     */
     .leaflet-pane.cm-probe-pane {
-      z-index: 700 !important;
+      z-index: 650 !important;
+      pointer-events: none !important;
+    }
+    .leaflet-pane.cm-probe-pane .leaflet-marker-icon,
+    .leaflet-pane.cm-probe-pane .leaflet-interactive,
+    .leaflet-pane.cm-probe-pane .cm-probe-hit-icon {
       pointer-events: auto !important;
     }
     .leaflet-pane.cm-line-pane {
       z-index: 450 !important;
+      pointer-events: none !important;
+    }
+    .leaflet-pane.cm-line-pane path.leaflet-interactive,
+    .leaflet-pane.cm-line-pane .leaflet-interactive {
+      pointer-events: stroke !important;
     }
     .cm-probe-hit-icon {
       background: transparent !important;
@@ -3269,6 +3285,7 @@
       background: rgba(250, 204, 21, 0.01);
       /* nearly invisible but still hittable */
       border: 1px solid transparent;
+      pointer-events: auto;
     }
     
     /*
@@ -3316,12 +3333,7 @@
     #compass-mode-settings-modal.active {
       display: flex !important;
     }
-    .leaflet-pane.cm-line-pane {
-      z-index: 450 !important; /* under marker pane (~600) so line runs under GPS arrow */
-    }
-    .leaflet-pane.cm-probe-pane {
-      z-index: 650 !important;
-    }
+    /* (cm-line-pane / cm-probe-pane rules above — keep pointer-events:none on panes) */
     
     /* Pin editor (#18 / 6.4.6): wide enough — no horizontal scrollbar */
     #pin-editor-sheet {
@@ -6121,7 +6133,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.4.7 Beta">V6.4.7 Beta</span>
+      <span class="brand-version" aria-label="Version 6.4.8 Beta">V6.4.8 Beta</span>
     </div>
   </header>
 
@@ -7122,7 +7134,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.4.7-beta';
+    const APP_VERSION = '6.4.8-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -13646,20 +13658,28 @@
     }
 
     function ensureCompassModePanes() {
-      if (!map || map._cmPanesReady) return;
-      map._cmPanesReady = true;
+      if (!map) return;
       try {
         if (!map.getPane('cmLinePane')) {
           map.createPane('cmLinePane');
-          map.getPane('cmLinePane').style.zIndex = 450;
           map.getPane('cmLinePane').classList.add('cm-line-pane');
-          map.getPane('cmLinePane').style.pointerEvents = 'auto';
+        }
+        var linePane = map.getPane('cmLinePane');
+        if (linePane) {
+          linePane.style.zIndex = 450;
+          // none on pane: full-map SVG must not steal pin/dot clicks (stroke still clickable)
+          linePane.style.pointerEvents = 'none';
         }
         if (!map.getPane('cmProbePane')) {
           map.createPane('cmProbePane');
-          map.getPane('cmProbePane').style.zIndex = 650;
           map.getPane('cmProbePane').classList.add('cm-probe-pane');
         }
+        var probePane = map.getPane('cmProbePane');
+        if (probePane) {
+          probePane.style.zIndex = 650;
+          probePane.style.pointerEvents = 'none';
+        }
+        map._cmPanesReady = true;
       } catch (e) {}
     }
 
@@ -13978,6 +13998,14 @@
               }
             }
           } catch (eC) {}
+          // Re-assert compass panes never steal pin/dot clicks (full-map SVG)
+          try {
+            if (typeof ensureCompassModePanes === 'function') ensureCompassModePanes();
+            ['cmProbePane', 'cmLinePane'].forEach(function(pn) {
+              var p = map.getPane && map.getPane(pn);
+              if (p) p.style.pointerEvents = 'none';
+            });
+          } catch (ePane) {}
         }
       } catch (eM) {}
       // Leaflet leaves this on <body> if a pan/drag is interrupted mid-gesture
@@ -14132,14 +14160,14 @@
     }
 
     function wireProbeHitElement(hitMarker) {
-      if (!hitMarker || hitMarker._cmHitWired) return;
-      hitMarker._cmHitWired = true;
+      if (!hitMarker) return;
       function bindEl() {
         var el = hitMarker.getElement && hitMarker.getElement();
         if (!el || el._cmTouchWired) return;
         el._cmTouchWired = true;
         el.style.touchAction = 'none';
         el.style.cursor = 'grab';
+        el.style.pointerEvents = 'auto';
         el.style.webkitUserSelect = 'none';
         el.style.userSelect = 'none';
         // Direct DOM listeners (mobile Safari needs passive:false on the element)
@@ -14149,8 +14177,11 @@
           }, { passive: false });
         });
       }
-      hitMarker.on('add', function() { setTimeout(bindEl, 0); });
-      // if already on map
+      // Re-bind after setIcon (new DOM node); only attach 'add' once
+      if (!hitMarker._cmHitWired) {
+        hitMarker._cmHitWired = true;
+        hitMarker.on('add', function() { setTimeout(bindEl, 0); });
+      }
       setTimeout(bindEl, 0);
     }
 
@@ -14238,8 +14269,10 @@
           });
           if (compassModeProbe.hitMarker) {
             compassModeProbe.hitMarker.setLatLng([pt.lat, pt.lng]);
-            // Don't rebuild icon while dragging (breaks touch on mobile)
-            if (!window._cmDragging) {
+            // Don't rebuild icon while dragging (breaks touch on mobile).
+            // Only rebuild when hit size changes — every heading tick used to
+            // setIcon() and leave the new node unwired / thrash the DOM.
+            if (!window._cmDragging && compassModeProbe._hitPx !== hitPx) {
               var hitIcon = L.divIcon({
                 className: 'cm-probe-hit-icon',
                 html: '<div class="cm-probe-hit-disk"></div>',
@@ -14247,6 +14280,7 @@
                 iconAnchor: [hitPx / 2, hitPx / 2]
               });
               compassModeProbe.hitMarker.setIcon(hitIcon);
+              compassModeProbe._hitPx = hitPx;
               wireProbeHitElement(compassModeProbe.hitMarker);
             }
           }
@@ -14293,7 +14327,8 @@
           hit: hitMarker,
           visual: visual,
           marker: hitMarker,
-          distMi: probeMi
+          distMi: probeMi,
+          _hitPx: hitPx
         };
         ensureCompassProbeDrag();
       }
