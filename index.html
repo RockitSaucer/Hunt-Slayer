@@ -3204,50 +3204,42 @@
       background: transparent !important;
       border: none !important;
     }
-    /* Compact elev/dist chip — sits at base (back) of GPS triangle */
-    .gps-cm-hud {
-      position: absolute;
-      left: 50%;
-      /* Base of the triangle (trailing edge / "back") */
-      top: calc(100% - 2px);
-      transform: translateX(-50%);
-      pointer-events: none;
-      z-index: 2;
-      background: rgba(12, 16, 10, 0.95);
-      border: 1px solid rgba(56, 189, 248, 0.6);
-      border-radius: 6px;
-      padding: 2px 6px;
-      font-size: 10px;
-      font-weight: 800;
-      color: #fff;
-      line-height: 1.2;
-      white-space: nowrap;
-      width: max-content;
-      max-width: none;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-      text-align: center;
-    }
-    .gps-cm-hud .cm-elev { color: #7dd3fc; }
+    /* Hide legacy in-triangle chip (measurement is a separate map marker below arrow) */
+    .gps-cm-hud { display: none !important; }
     .gps-heading-tri-wrap {
       position: relative;
       overflow: visible !important;
     }
+    /* Compact measurement under GPS arrow — fit content, no side padding waste */
+    .cm-hud-icon {
+      background: transparent !important;
+      border: none !important;
+      overflow: visible !important;
+    }
     .compass-mode-hud-label {
       pointer-events: none;
+      display: inline-block;
       background: rgba(12, 16, 10, 0.95);
-      border: 1px solid rgba(56, 189, 248, 0.55);
+      border: 1px solid rgba(56, 189, 248, 0.6);
       border-radius: 6px;
-      padding: 2px 6px;
-      font-size: 10px;
+      padding: 3px 7px;
+      font-size: 11px;
       font-weight: 800;
       color: #fff;
       white-space: nowrap;
       width: max-content;
+      max-width: none;
       line-height: 1.2;
       text-align: center;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.45);
-      display: inline-block;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      box-sizing: border-box;
     }
+    .compass-mode-hud-label .cm-elev { color: #7dd3fc; }
+    html.layout-phone .compass-mode-hud-label {
+      font-size: 10px;
+      padding: 2px 6px;
+    }
+    
     /* Probe hit target needs real pointer events */
     .leaflet-pane.cm-probe-pane {
       z-index: 700 !important;
@@ -6033,7 +6025,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.4.2 Beta">V6.4.2 Beta</span>
+      <span class="brand-version" aria-label="Version 6.4.3 Beta">V6.4.3 Beta</span>
     </div>
   </header>
 
@@ -7034,7 +7026,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.4.2-beta';
+    const APP_VERSION = '6.4.3-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -13666,69 +13658,70 @@
     }
 
     function updateCompassModeHudLabel(distMi, elevTxt) {
-      // Prefer chip on GPS triangle base; fallback map marker if no GPS marker DOM
+      if (!map || userLat == null || userLng == null) return;
+      if (!compassModeEnabled) {
+        try {
+          if (window._cmHudMarker) map.removeLayer(window._cmHudMarker);
+        } catch (e) {}
+        window._cmHudMarker = null;
+        // hide any leftover triangle chips
+        try {
+          if (gpsMarker && gpsMarker.getElement) {
+            var el0 = gpsMarker.getElement();
+            var old = el0 && el0.querySelector && el0.querySelector('.gps-cm-hud');
+            if (old) old.style.display = 'none';
+          }
+        } catch (e2) {}
+        return;
+      }
       var yards = distMi * 1760;
       var distLabel = yards < 900 ? (Math.round(yards) + ' yd') : formatMiles(distMi);
       var elev = (elevTxt != null && elevTxt !== '') ? elevTxt : (window._cmLastElevTxt || '…');
-      if (elevTxt != null && elevTxt !== '…') window._cmLastElevTxt = elev;
+      if (elevTxt != null && elevTxt !== '' && elevTxt !== '…') window._cmLastElevTxt = elev;
       var htmlInner = distLabel + '<br><span class="cm-elev">Elev Δ ' + elev + '</span>';
 
-      // Attach to GPS marker (rotates with triangle → stays at back / base)
-      try {
-        if (gpsMarker && typeof gpsMarker.getElement === 'function') {
-          var el = gpsMarker.getElement();
-          if (el) {
-            var wrap = el.querySelector('.gps-heading-tri-wrap');
-            if (wrap) {
-              var chip = wrap.querySelector('.gps-cm-hud');
-              if (!chip) {
-                chip = document.createElement('div');
-                chip.className = 'gps-cm-hud';
-                wrap.appendChild(chip);
-              }
-              chip.innerHTML = htmlInner;
-              chip.style.display = compassModeEnabled ? 'block' : 'none';
-              // Counter-rotate so text stays upright relative to screen
-              var hdg = getCompassHeadingDeg();
-              chip.style.transform = 'translateX(-50%) rotate(' + (-hdg).toFixed(1) + 'deg)';
-              // Remove separate map HUD marker if present
-              if (window._cmHudMarker && map) {
-                try { map.removeLayer(window._cmHudMarker); } catch (eR) {}
-                window._cmHudMarker = null;
-              }
-              return;
-            }
-          }
-        }
-      } catch (eDom) {}
+      // Measure natural size so icon is only as wide as text (no wasted side space)
+      var probe = document.createElement('div');
+      probe.className = 'compass-mode-hud-label';
+      probe.style.position = 'absolute';
+      probe.style.left = '-9999px';
+      probe.style.top = '0';
+      probe.style.visibility = 'hidden';
+      probe.innerHTML = htmlInner;
+      document.body.appendChild(probe);
+      var bw = Math.ceil(probe.offsetWidth) || 72;
+      var bh = Math.ceil(probe.offsetHeight) || 32;
+      document.body.removeChild(probe);
 
-      // Fallback: compact marker at user location, offset toward back of heading
-      if (!map || userLat == null || userLng == null || !compassModeEnabled) {
-        try {
-          if (window._cmHudMarker && map) map.removeLayer(window._cmHudMarker);
-        } catch (e) {}
-        window._cmHudMarker = null;
-        return;
-      }
-      var html = '<div class="compass-mode-hud-label">' + htmlInner + '</div>';
+      // Place just BELOW the GPS arrow on screen (not rotated with heading)
+      // iconAnchor y negative → icon draws below the latlng in Leaflet
+      var gapBelowArrow = 16;
+      try {
+        if (typeof getGpsMarkerScale === 'function') {
+          gapBelowArrow = Math.round(12 + 10 * getGpsMarkerScale());
+        }
+      } catch (eG) {}
       var icon = L.divIcon({
         className: 'cm-hud-icon',
-        html: html,
-        iconSize: [1, 1],
-        iconAnchor: [0, 0]
+        html: '<div class="compass-mode-hud-label">' + htmlInner + '</div>',
+        iconSize: [bw, bh],
+        iconAnchor: [Math.round(bw / 2), -gapBelowArrow]
       });
-      // Place slightly behind GPS along reverse heading so it's at the "back"
-      var back = compassModeDestPoint(userLat, userLng, getCompassHeadingDeg() + 180, 0.008);
-      if (window._cmHudMarker) {
+
+      if (window._cmHudMarker && map.hasLayer(window._cmHudMarker)) {
         try {
-          window._cmHudMarker.setLatLng([back.lat, back.lng]);
+          window._cmHudMarker.setLatLng([userLat, userLng]);
           window._cmHudMarker.setIcon(icon);
-        } catch (eU) {}
-      } else {
-        window._cmHudMarker = L.marker([back.lat, back.lng], {
+        } catch (eU) {
+          try { map.removeLayer(window._cmHudMarker); } catch (eR) {}
+          window._cmHudMarker = null;
+        }
+      }
+      if (!window._cmHudMarker) {
+        window._cmHudMarker = L.marker([userLat, userLng], {
           interactive: false,
           keyboard: false,
-          zIndexOffset: 1500,
+          zIndexOffset: 1600,
           icon: icon
         }).addTo(map);
       }
@@ -13813,9 +13806,10 @@
 
       function clientToLatLng(ev) {
         if (!map) return null;
-        var src = (ev.touches && ev.touches[0]) ? ev.touches[0]
-          : (ev.changedTouches && ev.changedTouches[0]) ? ev.changedTouches[0]
-          : ev;
+        var src = null;
+        if (ev.touches && ev.touches[0]) src = ev.touches[0];
+        else if (ev.changedTouches && ev.changedTouches[0]) src = ev.changedTouches[0];
+        else src = ev;
         if (!src || src.clientX == null) return null;
         try {
           var rect = map.getContainer().getBoundingClientRect();
@@ -13826,44 +13820,89 @@
 
       function onMove(ev) {
         if (!window._cmDragging || !compassModeEnabled) return;
-        if (ev.cancelable) try { ev.preventDefault(); } catch (eP) {}
+        if (ev.cancelable) {
+          try { ev.preventDefault(); } catch (eP) {}
+        }
         var ll = clientToLatLng(ev);
         if (!ll) return;
         var d = projectDistOnHeading(ll);
         window._cmProbeDistMi = d;
         try { localStorage.setItem(cmStorageKey('reg_slayer_cm_probe_mi'), String(d)); } catch (eS) {}
-        updateCompassModeGraphics({ soft: true, skipElev: true, skipHudElevFetch: true });
+        // Only move probe + line (cheap)
+        updateCompassModeGraphics({ soft: true, skipElev: true, skipHudElevFetch: true, skipStyle: true });
       }
-      function onUp(ev) {
+      function onUp() {
         if (!window._cmDragging) return;
         window._cmDragging = false;
         try { map.dragging.enable(); } catch (eE) {}
         try { if (map.touchZoom) map.touchZoom.enable(); } catch (eT) {}
-        try { if (map.doubleClickZoom) map.doubleClickZoom.disable(); } catch (eD) {}
+        try { if (map.scrollWheelZoom) map.scrollWheelZoom.enable(); } catch (eS) {}
+        try {
+          var c = map.getContainer();
+          if (c) c.style.touchAction = '';
+        } catch (eC) {}
         updateCompassModeGraphics({ soft: true, skipElev: false });
       }
-      document.addEventListener('mousemove', onMove, { passive: false });
-      document.addEventListener('touchmove', onMove, { passive: false });
-      document.addEventListener('mouseup', onUp);
-      document.addEventListener('touchend', onUp);
-      document.addEventListener('touchcancel', onUp);
+      // Capture phase so we win over map handlers on mobile
+      document.addEventListener('mousemove', onMove, { passive: false, capture: true });
+      document.addEventListener('touchmove', onMove, { passive: false, capture: true });
+      document.addEventListener('pointermove', onMove, { passive: false, capture: true });
+      document.addEventListener('mouseup', onUp, true);
+      document.addEventListener('touchend', onUp, true);
+      document.addEventListener('touchcancel', onUp, true);
+      document.addEventListener('pointerup', onUp, true);
+      document.addEventListener('pointercancel', onUp, true);
     }
 
     function startCompassProbeDrag(e) {
       if (!compassModeEnabled) return;
       window._cmDragging = true;
       try {
+        var oe = e && (e.originalEvent || e);
         if (e && e.originalEvent) {
           L.DomEvent.stop(e);
-          L.DomEvent.preventDefault(e.originalEvent);
+          try { L.DomEvent.preventDefault(e.originalEvent); } catch (e1) {}
         } else if (e) {
-          L.DomEvent.stop(e);
+          try { L.DomEvent.stop(e); } catch (e2) {}
+          try { if (e.preventDefault) e.preventDefault(); } catch (e3) {}
+        }
+        if (oe && oe.pointerId != null && oe.target && oe.target.setPointerCapture) {
+          try { oe.target.setPointerCapture(oe.pointerId); } catch (e4) {}
         }
       } catch (eS) {}
       try { map.dragging.disable(); } catch (eD) {}
       try { if (map.touchZoom) map.touchZoom.disable(); } catch (eT) {}
+      try { if (map.scrollWheelZoom) map.scrollWheelZoom.disable(); } catch (eW) {}
+      try {
+        var c = map.getContainer();
+        if (c) c.style.touchAction = 'none';
+      } catch (eC) {}
       ensureCompassProbeDrag();
     }
+
+    function wireProbeHitElement(hitMarker) {
+      if (!hitMarker || hitMarker._cmHitWired) return;
+      hitMarker._cmHitWired = true;
+      function bindEl() {
+        var el = hitMarker.getElement && hitMarker.getElement();
+        if (!el || el._cmTouchWired) return;
+        el._cmTouchWired = true;
+        el.style.touchAction = 'none';
+        el.style.cursor = 'grab';
+        el.style.webkitUserSelect = 'none';
+        el.style.userSelect = 'none';
+        // Direct DOM listeners (mobile Safari needs passive:false on the element)
+        ['pointerdown', 'touchstart', 'mousedown'].forEach(function(type) {
+          el.addEventListener(type, function(ev) {
+            startCompassProbeDrag(ev);
+          }, { passive: false });
+        });
+      }
+      hitMarker.on('add', function() { setTimeout(bindEl, 0); });
+      // if already on map
+      setTimeout(bindEl, 0);
+    }
+
 
     function updateCompassModeGraphics(opts) {
       opts = opts || {};
@@ -13927,7 +13966,12 @@
       }
 
       var visualR = Math.max(4, (compassModeStyle.dotSize || 8) / 2);
-      var hitPx = Math.max(28, Math.round(visualR * 4)); // large touch target in screen px
+      // Mobile needs a big finger target; desktop can be a bit smaller
+      var phone = (typeof isPhoneLayout === 'function' && isPhoneLayout()) ||
+        (document.documentElement && document.documentElement.classList.contains('layout-phone'));
+      var hitPx = phone
+        ? Math.max(48, Math.round(visualR * 6))
+        : Math.max(28, Math.round(visualR * 4));
 
       // Prefer DivIcon hit marker (reliable on mobile) + circle visual
       if (compassModeProbe && compassModeProbe.visual && map.hasLayer(compassModeProbe.visual)) {
@@ -13943,13 +13987,17 @@
           });
           if (compassModeProbe.hitMarker) {
             compassModeProbe.hitMarker.setLatLng([pt.lat, pt.lng]);
-            var hitIcon = L.divIcon({
-              className: 'cm-probe-hit-icon',
-              html: '<div class="cm-probe-hit-disk"></div>',
-              iconSize: [hitPx, hitPx],
-              iconAnchor: [hitPx / 2, hitPx / 2]
-            });
-            compassModeProbe.hitMarker.setIcon(hitIcon);
+            // Don't rebuild icon while dragging (breaks touch on mobile)
+            if (!window._cmDragging) {
+              var hitIcon = L.divIcon({
+                className: 'cm-probe-hit-icon',
+                html: '<div class="cm-probe-hit-disk"></div>',
+                iconSize: [hitPx, hitPx],
+                iconAnchor: [hitPx / 2, hitPx / 2]
+              });
+              compassModeProbe.hitMarker.setIcon(hitIcon);
+              wireProbeHitElement(compassModeProbe.hitMarker);
+            }
           }
         } catch (eP) {}
       } else {
@@ -13985,8 +14033,10 @@
         }).addTo(map);
         hitMarker.on('mousedown', startCompassProbeDrag);
         hitMarker.on('touchstart', startCompassProbeDrag);
-        // Also allow drag start on the visual via the hit layer
+        hitMarker.on('pointerdown', startCompassProbeDrag);
         hitMarker.on('click', function(e) { L.DomEvent.stop(e); });
+        try { L.DomEvent.disableClickPropagation(hitMarker); } catch (eDc) {}
+        wireProbeHitElement(hitMarker);
         compassModeProbe = {
           hitMarker: hitMarker,
           hit: hitMarker,
@@ -18357,15 +18407,7 @@
       // ~15% smaller than previous 20×28 base; red fill + thin black outline
       var w = Math.round(17 * scale);
       var h = Math.round(24 * scale);
-      var hudChip = '';
-      if (typeof compassModeEnabled !== 'undefined' && compassModeEnabled) {
-        var dMi = window._cmProbeDistMi != null ? window._cmProbeDistMi : 1;
-        var yards = dMi * 1760;
-        var distLabel = yards < 900 ? (Math.round(yards) + ' yd') : (typeof formatMiles === 'function' ? formatMiles(dMi) : dMi.toFixed(2) + ' mi');
-        var elev = window._cmLastElevTxt || '…';
-        hudChip = '<div class="gps-cm-hud" style="transform:translateX(-50%) rotate(' + (-rot).toFixed(1) +
-          'deg)">' + distLabel + '<br><span class="cm-elev">Elev Δ ' + elev + '</span></div>';
-      }
+      // Measurement chip is a separate map marker below the arrow (not inside the rotated triangle)
       var html =
         '<div class="gps-heading-tri-wrap" style="width:' + w + 'px;height:' + h + 'px;position:relative;overflow:visible;' +
           'transform:rotate(' + rot.toFixed(1) + 'deg);transform-origin:center center;">' +
@@ -18375,17 +18417,12 @@
             '<path d="M12 6.5 L17.2 24.5 L12 20.5 L6.8 24.5 Z" fill="#ff4d4d" opacity="0.35"/>' +
           '</svg>' +
           '<div class="gps-heading-tri" aria-hidden="true"></div>' +
-          hudChip +
         '</div>';
-      var boxW = Math.max(w, 88);
-      var boxH = h + ((typeof compassModeEnabled !== 'undefined' && compassModeEnabled) ? 42 : 0);
-      html = '<div style="width:' + boxW + 'px;height:' + boxH + 'px;position:relative;overflow:visible;">' +
-        '<div style="position:absolute;left:50%;top:0;margin-left:-' + (w / 2) + 'px;">' + html + '</div></div>';
       return L.divIcon({
         className: 'gps-heading-icon',
         html: html,
-        iconSize: [boxW, boxH],
-        iconAnchor: [boxW / 2, h / 2]
+        iconSize: [w, h],
+        iconAnchor: [w / 2, h / 2]
       });
     }
 
@@ -18616,12 +18653,6 @@
         var wrap = el.querySelector('.gps-heading-tri-wrap');
         if (wrap) {
           wrap.style.transform = 'rotate(' + rot.toFixed(1) + 'deg)';
-          // Keep dist/elev chip upright at the base of the triangle
-          var chip = wrap.querySelector('.gps-cm-hud');
-          if (chip) {
-            chip.style.transform = 'translateX(-50%) rotate(' + (-rot).toFixed(1) + 'deg)';
-            chip.style.display = (typeof compassModeEnabled !== 'undefined' && compassModeEnabled) ? 'block' : 'none';
-          }
         } else {
           if (userLat != null && userLng != null) setGpsMarker(userLat, userLng, headingDeg);
         }

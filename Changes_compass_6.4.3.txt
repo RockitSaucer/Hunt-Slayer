@@ -1,0 +1,5 @@
+﻿V6.4.3 — Compass measurement position + mobile drag
+- Desktop: dist/elev chip is a separate marker just below GPS arrow on screen (not rotated with triangle)
+- Compact chip width (measured to content)
+- Mobile: larger hit target, pointer/touch capture, document capture-phase drag, no icon rebuild while dragging
+- Shell v31
