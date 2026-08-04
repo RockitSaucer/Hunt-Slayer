@@ -1,0 +1,17 @@
+V6.4.9
+
+Distance from me / From location: yards until 1 mile, then miles
+
+- formatDistanceFromMe(mi): under 1.0 mi → whole yards (e.g. 440 yd);
+  at/above 1.0 mi → miles (e.g. 1.25 mi)
+- Applied to:
+  · Compass mode probe HUD (already used helper; threshold now < 1 mi)
+  · Map-dot hunt status “from your From location”
+  · Selected area distance (planner + weather dashboard)
+  · Available hunts list distance suffix
+- Path/measure lengths still use formatMiles (ft under 0.1 mi) — those are path
+  length, not “from me”
+
+Shell: reg-slayer-shell-v37
+
+Undo: tag v6.4.8-beta
