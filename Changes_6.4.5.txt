@@ -1,0 +1,7 @@
+﻿V6.4.5
+- Date banner: past / future date / current wording
+- Compass stays above map when popups open (z-index 28)
+- Toolbar cycle restored: show dial → compass mode on → off+hide
+- Compass style auto-persists as default on change
+- Distance from me: yards until >1 mi, then miles
+- Shell v33

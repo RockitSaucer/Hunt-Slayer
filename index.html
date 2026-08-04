@@ -1868,9 +1868,16 @@
     .map-wrapper.map-popup-open .leaflet-container {
       z-index: 20;
     }
+    /* Keep compass ABOVE the map when a popup is open (was 5 → buried under tiles z=20) */
     .map-wrapper.map-popup-open .map-compass-radar {
-      z-index: 5 !important;
+      z-index: 28 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
     }
+    .map-wrapper.map-popup-open .map-compass-radar:not(.dial-hud-hidden) .map-wind-hud.active {
+      display: flex !important;
+    }
+    
     .map-wrapper.fullscreen .leaflet-popup-pane {
       z-index: 700 !important;
     }
@@ -6053,7 +6060,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.4.4 Beta">V6.4.4 Beta</span>
+      <span class="brand-version" aria-label="Version 6.4.5 Beta">V6.4.5 Beta</span>
     </div>
   </header>
 
@@ -7054,7 +7061,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.4.4-beta';
+    const APP_VERSION = '6.4.5-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -13532,9 +13539,11 @@
       compassModeStyle.dotColor = (dc && dc.value) || '#facc15';
       compassModeStyle.lineWeight = parseInt((lw && lw.value) || 3, 10) || 3;
       compassModeStyle.dotSize = parseInt((ds && ds.value) || 8, 10) || 8;
-      try {
-        localStorage.setItem(cmStorageKey(COMPASS_MODE_KEY), JSON.stringify(compassModeStyle));
-      } catch (e) {}
+      try { persistCompassModeStyle(); } catch (e) {
+        try {
+          localStorage.setItem(cmStorageKey(COMPASS_MODE_KEY), JSON.stringify(compassModeStyle));
+        } catch (e2) {}
+      }
       window._cmStyleBackup = null;
       var modal = document.getElementById('compass-mode-settings-modal');
       if (modal) {
@@ -13617,15 +13626,29 @@
         }
         ensureCompassModePanes();
         wireCompassModeMapHooks();
-        // Full refresh + elev fetch
-        updateCompassModeGraphics({ soft: false, skipElev: false });
-        // Rebuild GPS icon so HUD chip can mount on triangle
-        try {
-          if (userLat != null && userLng != null) setGpsMarker(userLat, userLng, deviceHeadingDeg);
-        } catch (eG) {}
+        function runCmGraphics() {
+          try { updateCompassModeGraphics({ soft: false, skipElev: false }); } catch (eG0) {
+            console.warn('compass mode graphics', eG0);
+          }
+          try {
+            if (userLat != null && userLng != null) setGpsMarker(userLat, userLng, deviceHeadingDeg);
+          } catch (eG) {}
+        }
+        // Map may not exist yet — retry briefly
+        if (map) {
+          runCmGraphics();
+        } else if (typeof ensureMap === 'function') {
+          ensureMap().then(function() {
+            ensureCompassModePanes();
+            wireCompassModeMapHooks();
+            runCmGraphics();
+          }).catch(function() { runCmGraphics(); });
+        } else {
+          runCmGraphics();
+        }
         setTimeout(function() {
           try { updateCompassModeGraphics({ soft: true, skipElev: false }); } catch (e2) {}
-        }, 80);
+        }, 120);
       } else {
         clearCompassModeGraphics();
         if (stack) stack.classList.remove('compass-mode-active');
@@ -13704,8 +13727,9 @@
         } catch (e2) {}
         return;
       }
-      var yards = distMi * 1760;
-      var distLabel = yards < 900 ? (Math.round(yards) + ' yd') : formatMiles(distMi);
+      var distLabel = (typeof formatDistanceFromMe === 'function')
+        ? formatDistanceFromMe(distMi)
+        : formatMiles(distMi);
       var elev = (elevTxt != null && elevTxt !== '') ? elevTxt : (window._cmLastElevTxt || '…');
       if (elevTxt != null && elevTxt !== '' && elevTxt !== '…') window._cmLastElevTxt = elev;
       var htmlInner = distLabel + '<br><span class="cm-elev">Elev Δ ' + elev + '</span>';
@@ -14164,7 +14188,7 @@
         menu.className = 'dial-expand-menu';
         menu.innerHTML =
           '<button type="button" id="dial-menu-wind" onclick="event.stopPropagation();setHeadingMode(\'wind\',{fromUser:true});if(typeof setCompassModeEnabled===\'function\')setCompassModeEnabled(false);updateDialExpandMenuUi();var m=document.getElementById(\'dial-expand-menu\');if(m)m.classList.remove(\'open\');">Wind</button>' +
-          '<button type="button" id="dial-menu-cmode" onclick="event.stopPropagation();if(typeof collapseCompassDialUi===\'function\')collapseCompassDialUi();setCompassModeEnabled(true);var m=document.getElementById(\'dial-expand-menu\');if(m)m.classList.remove(\'open\');">Compass Mode</button>';
+          '<button type="button" id="dial-menu-cmode" onclick="event.stopPropagation();if(typeof collapseCompassDialUi===\'function\')collapseCompassDialUi();if(typeof setCompassModeEnabled===\'function\')setCompassModeEnabled(!compassModeEnabled);var m=document.getElementById(\'dial-expand-menu\');if(m)m.classList.remove(\'open\');">Compass Mode</button>';
         stack.style.position = stack.style.position || 'absolute';
         stack.appendChild(menu);
       }
@@ -14305,29 +14329,37 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', buildToolCursors);
     else buildToolCursors();
 
+    function persistCompassModeStyle() {
+      try {
+        localStorage.setItem(cmStorageKey(COMPASS_MODE_KEY), JSON.stringify(compassModeStyle));
+        localStorage.setItem(COMPASS_MODE_KEY, JSON.stringify(compassModeStyle));
+      } catch (e) {}
+    }
+    window.persistCompassModeStyle = persistCompassModeStyle;
+
     function liveCompassModePreviewFromUi() {
       var lc = document.getElementById('cm-line-color');
       var dc = document.getElementById('cm-dot-color');
       var lw = document.getElementById('cm-line-weight');
       var ds = document.getElementById('cm-dot-size');
-      // Prefer live values from color pickers if bound
+      if (lc && lc.value) compassModeStyle.lineColor = lc.value;
+      if (dc && dc.value) compassModeStyle.dotColor = dc.value;
+      if (lw) compassModeStyle.lineWeight = parseInt(lw.value, 10) || 3;
+      if (ds) compassModeStyle.dotSize = parseInt(ds.value, 10) || 8;
       try {
         if (typeof updateCompassModePreview === 'function') updateCompassModePreview();
       } catch (e) {}
-      // Also apply temporarily to live line if compass mode on
+      // Last chosen style is the new default until changed again
+      persistCompassModeStyle();
+      window._cmStyleBackup = Object.assign({}, compassModeStyle);
       if (typeof compassModeEnabled !== 'undefined' && compassModeEnabled) {
-        var tmp = {
-          lineColor: (lc && lc.value) || compassModeStyle.lineColor,
-          dotColor: (dc && dc.value) || compassModeStyle.dotColor,
-          lineWeight: parseInt((lw && lw.value) || compassModeStyle.lineWeight, 10) || 3,
-          dotSize: parseInt((ds && ds.value) || compassModeStyle.dotSize, 10) || 8
-        };
-        var bak = Object.assign({}, compassModeStyle);
-        Object.assign(compassModeStyle, tmp);
-        try { refreshCompassModeLine(); } catch (e2) {}
-        // Don't persist until Save — restore style object base but keep visual? Keep tmp for session until save/cancel
-        // Actually keep live preview in compassModeStyle until cancel restores
-        window._cmStyleBackup = window._cmStyleBackup || bak;
+        try {
+          if (typeof updateCompassModeGraphics === 'function') {
+            updateCompassModeGraphics({ soft: true, skipElev: true });
+          } else if (typeof refreshCompassModeLine === 'function') {
+            refreshCompassModeLine();
+          }
+        } catch (e2) {}
       }
     }
     window.liveCompassModePreviewFromUi = liveCompassModePreviewFromUi;
@@ -14901,6 +14933,13 @@
         var w = document.getElementById('map-wrapper') || document.querySelector('.map-wrapper');
         if (w) w.classList.toggle('map-popup-open', !!on);
       } catch (ePo) {}
+      // Never let popups leave the compass buried / gone
+      try {
+        if (typeof dialHudVisible !== 'undefined' && dialHudVisible &&
+            typeof ensureDialHudShown === 'function') {
+          ensureDialHudShown({ quiet: true });
+        }
+      } catch (eDial) {}
     }
 
     /**
@@ -15517,6 +15556,18 @@
       if (mi < 10) return mi.toFixed(2) + ' mi';
       return mi.toFixed(1) + ' mi';
     }
+    /** Distance from user: yards until over 1 mile, then miles. */
+    function formatDistanceFromMe(mi) {
+      if (mi == null || isNaN(mi)) return '—';
+      if (mi <= 1) {
+        var yd = Math.round(mi * 1760);
+        if (yd < 1) yd = 1;
+        return yd + ' yd';
+      }
+      if (mi < 10) return mi.toFixed(2) + ' mi';
+      return mi.toFixed(1) + ' mi';
+    }
+    window.formatDistanceFromMe = formatDistanceFromMe;
 
     function ringCentroid(ring) {
       if (!ring || !ring.length) return null;
@@ -20816,15 +20867,18 @@
         '<circle cx="12" cy="12" r="1.4" fill="#161a12"/>' +
         '</svg>';
       if (typeof compassModeEnabled !== 'undefined' && compassModeEnabled) {
-        btn.title = 'Compass mode on — tap to turn off';
+        btn.title = 'Compass mode on — tap to turn off & hide';
       } else if (on) {
-        btn.title = 'Compass on — tap to hide';
+        btn.title = 'Compass on — tap for compass mode line';
       } else {
         btn.title = 'Compass hidden — tap to show';
       }
     }
 
     function isDialHudActuallyVisible() {
+      // Flag-based + CSS class check only.
+      // Do NOT use getBoundingClientRect — popups / offscreen map made this return false
+      // and broke toolbar cycling (every tap only "restored" and never advanced state).
       try {
         if (document.documentElement.classList.contains('settings-hide-compass')) return false;
         if (!dialHudVisible) return false;
@@ -20833,16 +20887,6 @@
         if (!stack || !hud) return false;
         if (stack.classList.contains('dial-hud-hidden')) return false;
         if (!hud.classList.contains('active')) return false;
-        // Off-screen / zero-size = not really visible
-        var r = stack.getBoundingClientRect();
-        if (!r || r.width < 4 || r.height < 4) return false;
-        if (r.bottom < 8 || r.top > (window.innerHeight - 8)) return false;
-        if (r.right < 8 || r.left > (window.innerWidth - 8)) return false;
-        // display:none parent
-        var st = window.getComputedStyle(stack);
-        var ht = window.getComputedStyle(hud);
-        if (st.display === 'none' || st.visibility === 'hidden' || st.opacity === '0') return false;
-        if (ht.display === 'none' || ht.visibility === 'hidden') return false;
         return true;
       } catch (e) {
         return false;
@@ -20890,10 +20934,8 @@
         stack.style.display = '';
         stack.style.visibility = '';
         stack.style.opacity = '';
-        // Stay above map tiles in min mode
-        if (!stack.style.zIndex || parseInt(stack.style.zIndex, 10) < 12) {
-          stack.style.zIndex = '12';
-        }
+        // Above map tiles + above map-popup-open leaflet (z~20); below toolbar (~80)
+        stack.style.zIndex = '28';
       }
       if (hud) {
         hud.classList.add('active');
@@ -20918,32 +20960,51 @@
       updateCompassToolbarBtn();
     }
 
+    /**
+     * Toolbar compass cycle (flags only — reliable with popups):
+     *   1) hidden  → show dial (compass heading)
+     *   2) dial on → enable compass MODE (line + probe)
+     *   3) mode on → turn mode off + hide dial
+     */
     function toggleDialHudFromToolbar() {
-      // If dial is supposed to be on but is missing on screen, ALWAYS restore first
-      if (!isDialHudActuallyVisible()) {
+      try {
+        // Always re-assert dial above map (popup stacking must not bury it)
+        var stack0 = document.getElementById('map-compass-radar');
+        if (stack0 && dialHudVisible) {
+          stack0.style.zIndex = '28';
+        }
+      } catch (eZ) {}
+
+      // 1) Show dial
+      if (!dialHudVisible) {
         ensureDialHudShown();
         try {
           if (typeof setHeadingMode === 'function') {
-            setHeadingMode(
-              (typeof isPhoneLayout === 'function' && isPhoneLayout()) ? 'compass' : (headingHudMode || 'compass'),
-              { fromUser: true }
-            );
+            setHeadingMode('compass', { fromUser: true });
           }
         } catch (eH) {}
         try { if (typeof collapseCompassDialUi === 'function') collapseCompassDialUi(); } catch (eC) {}
-        // Do not force compass-mode line on; just show the dial
+        try { updateCompassToolbarBtn(); } catch (eB) {}
         return;
       }
-      // Dial is visible: if compass mode on → turn mode off (keep dial)
-      if (typeof compassModeEnabled !== 'undefined' && compassModeEnabled) {
-        try { setCompassModeEnabled(false); } catch (eM) {}
-        ensureDialHudShown();
+
+      // Dial flagged on — make sure it's really painted
+      ensureDialHudShown();
+
+      // 2) Enable compass mode
+      if (!compassModeEnabled) {
+        try { if (typeof collapseCompassDialUi === 'function') collapseCompassDialUi(); } catch (eC2) {}
+        try {
+          if (typeof setCompassModeEnabled === 'function') setCompassModeEnabled(true);
+        } catch (eM) {
+          console.warn('setCompassModeEnabled failed', eM);
+        }
+        try { updateCompassToolbarBtn(); } catch (eB2) {}
         return;
       }
-      // Dial visible, mode off → hide dial
-      if (typeof compassModeEnabled !== 'undefined' && compassModeEnabled) {
-        try { setCompassModeEnabled(false); } catch (eM2) {}
-      }
+
+      // 3) Mode on → turn off + hide dial
+      try { setCompassModeEnabled(false); } catch (eM2) {}
       ensureDialHudHidden();
     }
     window.toggleDialHudFromToolbar = toggleDialHudFromToolbar;
@@ -22124,11 +22185,39 @@
 
       const banner = document.getElementById('current-data-banner');
       if (banner) {
-        // #30: only show for true current weather (not historical)
-        if (!isHistorical && isShowingCurrentData) {
-          banner.innerText = 'Data displayed is for current time and location.';
-          banner.style.display = 'block';
-        } else {
+        try {
+          var dayOff = (typeof getDaysFromToday === 'function' && selectedDate)
+            ? getDaysFromToday(selectedDate)
+            : 0;
+          var dateLabel = '';
+          try {
+            var dRef = dateUsed ? new Date(dateUsed + 'T12:00:00') : selectedDate;
+            if (dRef && !isNaN(dRef.getTime())) {
+              dateLabel = dRef.toLocaleDateString(undefined, {
+                weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
+              });
+            }
+          } catch (eDl) {}
+          if (dayOff < 0) {
+            banner.innerText = dateLabel
+              ? ('Data displayed is for the past (' + dateLabel + ').')
+              : 'Data displayed is for the past.';
+            banner.style.display = 'block';
+          } else if (dayOff > 0) {
+            banner.innerText = dateLabel
+              ? ('Data displayed is for ' + dateLabel + '.')
+              : 'Data displayed is for a future date.';
+            banner.style.display = 'block';
+          } else if (isShowingCurrentData) {
+            banner.innerText = 'Data displayed is for current time and location.';
+            banner.style.display = 'block';
+          } else if (dateLabel) {
+            banner.innerText = 'Data displayed is for ' + dateLabel + '.';
+            banner.style.display = 'block';
+          } else {
+            banner.style.display = 'none';
+          }
+        } catch (eBan) {
           banner.style.display = 'none';
         }
       }
