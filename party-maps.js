@@ -332,7 +332,13 @@
   function updateShareLocBtn() {
     var btn = $('share-loc-btn');
     if (!btn) return;
-    btn.classList.toggle('is-sharing', !!sharing);
+    // Restart pulse animation cleanly when turning on
+    btn.classList.remove('is-sharing');
+    if (sharing) {
+      // force reflow so animation restarts
+      void btn.offsetWidth;
+      btn.classList.add('is-sharing');
+    }
     btn.setAttribute('aria-pressed', sharing ? 'true' : 'false');
     btn.title = sharing ? 'Sharing location with party (tap to stop)' : 'Share current location with party';
   }

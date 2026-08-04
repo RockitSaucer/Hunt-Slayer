@@ -2121,22 +2121,30 @@
       border-color: var(--accent) !important;
       background: rgba(32, 38, 26, 0.98) !important;
     }
-    .map-draw-tools .mdt-btn.mdt-icon-btn.active,
-    .map-draw-tools.tracking #mdt-track,
-    .map-draw-tools #mdt-track.active {
+    .map-draw-tools .mdt-btn.mdt-icon-btn.active {
       border-color: var(--accent) !important;
       background: rgba(229, 154, 24, 0.14) !important;
       box-shadow: 0 2px 8px rgba(0,0,0,0.35) !important;
       animation: none;
       outline: none !important;
     }
-    .map-draw-tools.tracking #mdt-track {
+    /* Track active: stay visible + pulse (do not hide idle track for a bar Stop) */
+    .map-draw-tools.tracking #mdt-track,
+    .map-draw-tools #mdt-track.active {
       border-color: #f87171 !important;
-      background: rgba(220, 38, 38, 0.16) !important;
+      background: rgba(220, 38, 38, 0.22) !important;
+      box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.65) !important;
+      animation: trackBtnPulse 1.15s ease-out infinite !important;
+      outline: none !important;
     }
     .map-draw-tools.tracking #mdt-track .mdt-icon-img,
     .map-draw-tools #mdt-track.active .mdt-icon-img {
       animation: trackIconPulse 1.1s ease-in-out infinite;
+    }
+    @keyframes trackBtnPulse {
+      0% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(248, 113, 113, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0); }
     }
     @keyframes trackIconPulse {
       0%, 100% {
@@ -2145,9 +2153,9 @@
         transform: scale(1);
       }
       50% {
-        filter: brightness(0) saturate(100%) invert(30%) sepia(95%) saturate(5000%) hue-rotate(348deg) brightness(1.25);
+        filter: brightness(0) saturate(100%) invert(30%) sepia(95%) saturate(5000%) hue-rotate(348deg) brightness(1.35);
         opacity: 1;
-        transform: scale(1.06);
+        transform: scale(1.1);
       }
     }
     .map-layers-toggle-btn.mdt-icon-btn {
@@ -2190,12 +2198,10 @@
       box-shadow: none;
       z-index: 2147483002;
     }
-    .map-draw-tools.tool-active .mdt-tools-panel,
-    .map-draw-tools.tracking .mdt-tools-panel {
+    .map-draw-tools.tool-active .mdt-tools-panel {
       display: flex;
     }
-    .map-wrapper.fullscreen .map-draw-tools.tool-active .mdt-tools-panel,
-    .map-wrapper.fullscreen .map-draw-tools.tracking .mdt-tools-panel {
+    .map-wrapper.fullscreen .map-draw-tools.tool-active .mdt-tools-panel {
       top: max(100px, calc(env(safe-area-inset-top, 0px) + 88px));
       left: max(10px, env(safe-area-inset-left, 0px));
       z-index: 2147483002;
@@ -2219,10 +2225,10 @@
     }
     .map-draw-tools .mdt-tool-only { display: none; }
     .map-draw-tools.tool-active .mdt-tool-only { display: block; }
-    /* While measuring/drawing: keep bar tools, hide track row noise */
+    /* While measuring/drawing: keep bar tools, hide track HUD */
     .map-draw-tools.tool-active .mdt-track-idle,
     .map-draw-tools.tool-active .mdt-track-stop,
-    .map-draw-tools.tool-active .map-track-live-stats {
+    .map-draw-tools.tool-active .map-track-live-hud {
       display: none !important;
     }
     .map-draw-tools.tool-active #mdt-finish:not(:disabled) {
@@ -2886,41 +2892,77 @@
       pointer-events: none;
     }
 
-    /* Live GPS track — big red Stop when active */
-    .map-draw-tools .mdt-btn.mdt-track-stop {
-      display: block;
-      background: #b91c1c;
-      border-color: #f87171;
-      color: #fff;
-      font-size: 10px;
-      padding: 9px 8px;
-      box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.35), 0 4px 14px rgba(0,0,0,0.5);
-      animation: trackPulse 1.6s ease-in-out infinite;
-    }
-    .map-draw-tools .mdt-btn.mdt-track-stop:hover {
-      background: #dc2626;
-      border-color: #fecaca;
-      color: #fff;
-    }
-    @keyframes trackPulse {
-      0%, 100% { box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.35), 0 4px 14px rgba(0,0,0,0.5); }
-      50% { box-shadow: 0 0 0 4px rgba(185, 28, 28, 0.55), 0 4px 16px rgba(0,0,0,0.55); }
-    }
-    /* While tracking: show Stop; keep Track idle hidden; other tools stay available */
-    .map-draw-tools.tracking .mdt-track-idle { display: none; }
-    .map-draw-tools:not(.tracking) .mdt-track-stop { display: none !important; }
-    .map-track-live-stats {
+    /* Legacy bar Stop — hidden; stop lives in the live track HUD above the track icon */
+    .map-draw-tools .mdt-btn.mdt-track-stop { display: none !important; }
+    /* Live track HUD — sits above the Track button while recording */
+    .map-track-live-hud {
       display: none;
-      background: rgba(127, 29, 29, 0.94);
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 0;
+      z-index: 120;
+      min-width: 148px;
+      max-width: min(200px, 70vw);
+      padding: 8px 10px 9px;
+      background: rgba(40, 12, 12, 0.96);
       border: 1px solid #f87171;
-      border-radius: 6px;
-      padding: 6px 8px;
-      font-size: 9px;
+      border-radius: 10px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.5);
       color: #fff;
+      font-size: 11px;
       font-weight: 700;
       line-height: 1.35;
+      pointer-events: auto;
+      transform: translateX(-50%);
+      white-space: nowrap;
     }
-    .map-draw-tools.tracking .map-track-live-stats { display: block; }
+    .map-track-live-hud::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -6px;
+      border: 6px solid transparent;
+      border-top-color: #f87171;
+    }
+    .map-draw-tools.tracking .map-track-live-hud {
+      display: block;
+    }
+    .map-track-live-hud .mtl-title {
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #fca5a5;
+      margin-bottom: 4px;
+    }
+    .map-track-live-hud .mtl-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 2px;
+      font-size: 11px;
+    }
+    .map-track-live-hud .mtl-row .mtl-k { color: #fecaca; font-weight: 600; }
+    .map-track-live-hud .mtl-row .mtl-v { color: #fff; font-weight: 800; }
+    .map-track-live-hud .mtl-stop {
+      display: block;
+      width: 100%;
+      margin-top: 8px;
+      padding: 7px 8px;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      background: #b91c1c;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      animation: trackBtnPulse 1.15s ease-out infinite;
+    }
+    .map-track-live-hud .mtl-stop:hover {
+      background: #dc2626;
+    }
     .map-draw-hint {
       display: none;
       background: rgba(15, 18, 14, 0.94);
@@ -3028,6 +3070,7 @@
     /* Save custom shape / edit path modals — never visible until .active is set by user action */
     #shape-save-modal,
     #path-edit-modal,
+    #track-finish-modal,
     .app-prompt-modal {
       display: none !important;
       position: fixed;
@@ -3040,6 +3083,7 @@
     }
     #shape-save-modal.active,
     #path-edit-modal.active,
+    #track-finish-modal.active,
     .app-prompt-modal.active {
       display: flex !important;
     }
@@ -3466,20 +3510,29 @@
     .map-bottom-bar .mbb-icon-btn.mbb-share-loc {
       color: #ef4444 !important;
       border-color: rgba(239, 68, 68, 0.45) !important;
+      overflow: visible !important;
     }
     .map-bottom-bar .mbb-icon-btn.mbb-share-loc.is-sharing {
       color: #ff4d4d !important;
       border-color: #f87171 !important;
-      background: rgba(220, 38, 38, 0.22) !important;
+      background: rgba(220, 38, 38, 0.28) !important;
+      box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.75) !important;
+      animation: shareLocPulse 1.15s ease-out infinite !important;
+    }
+    .map-bottom-bar .mbb-icon-btn.mbb-share-loc.is-sharing svg {
+      animation: shareLocSvgPulse 1.15s ease-in-out infinite !important;
     }
     .map-bottom-bar .map-draw-tools.tracking #mdt-track {
       border-color: #f87171 !important;
-      background: rgba(220, 38, 38, 0.16) !important;
+      background: rgba(220, 38, 38, 0.22) !important;
+      animation: trackBtnPulse 1.15s ease-out infinite !important;
     }
     .map-bottom-bar .mdt-btn.mdt-track-stop {
-      background: #8b2e2e !important;
-      border: 1px solid #a33 !important;
-      color: #fff !important;
+      display: none !important;
+    }
+    .map-bottom-bar .mbb-center {
+      overflow: visible !important;
+      max-height: none !important;
     }
     .map-bottom-bar .mbb-icon-btn,
     .map-bottom-bar .map-settings-btn,
@@ -3574,6 +3627,7 @@
       position: relative;
       flex-shrink: 0;
       line-height: 0;
+      overflow: visible !important;
     }
     /* Radar extras + layers panel: out of flow so they never push the bar taller or wrap tools */
     .map-bottom-bar .map-radar-hud,
@@ -4068,6 +4122,7 @@
     }
     #shape-save-modal,
     #path-edit-modal,
+    #track-finish-modal,
     #sort-hunts-modal,
     #dist-address-modal,
     .app-prompt-modal {
@@ -4285,7 +4340,7 @@
     .map-draw-tools.tool-off-draw #mdt-draw { display: none !important; }
     .map-draw-tools.tool-off-track #mdt-track,
     .map-draw-tools.tool-off-track #mdt-track-stop,
-    .map-draw-tools.tool-off-track .map-track-live-stats { display: none !important; }
+    .map-draw-tools.tool-off-track .map-track-live-hud { display: none !important; }
     /* Weather overlay — always above bottom toolbar (z 80); default lower-right */
     .map-weather-overlay {
       position: absolute;
@@ -5129,22 +5184,30 @@
     .mbb-icon-btn.mbb-share-loc {
       color: #ef4444;
       border-color: rgba(239, 68, 68, 0.45);
+      overflow: visible;
     }
     .mbb-icon-btn.mbb-share-loc:hover {
       color: #f87171;
       border-color: #f87171;
     }
     .mbb-icon-btn.mbb-share-loc.is-sharing {
-      color: #ff4d4d;
-      border-color: #f87171;
-      background: rgba(220, 38, 38, 0.22);
-      box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.7);
-      animation: shareLocPulse 1.2s ease-out infinite;
+      color: #ff4d4d !important;
+      border-color: #f87171 !important;
+      background: rgba(220, 38, 38, 0.28) !important;
+      box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.75);
+      animation: shareLocPulse 1.15s ease-out infinite !important;
+    }
+    .mbb-icon-btn.mbb-share-loc.is-sharing svg {
+      animation: shareLocSvgPulse 1.15s ease-in-out infinite;
     }
     @keyframes shareLocPulse {
-      0% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.7); color: #ff4d4d; }
-      70% { box-shadow: 0 0 0 12px rgba(248, 113, 113, 0); color: #fca5a5; }
-      100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0); color: #ff4d4d; }
+      0% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.85); color: #ff4d4d; transform: scale(1); }
+      50% { box-shadow: 0 0 0 8px rgba(248, 113, 113, 0.15); color: #fecaca; transform: scale(1.06); }
+      100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0); color: #ff4d4d; transform: scale(1); }
+    }
+    @keyframes shareLocSvgPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.75; transform: scale(1.12); }
     }
     .mbb-icon-btn.mbb-share-loc svg { width: 22px; height: 22px; }
 
@@ -5225,7 +5288,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 5.3 Beta">V5.3 Beta</span>
+      <span class="brand-version" aria-label="Version 5.4 Beta">V5.4 Beta</span>
     </div>
   </header>
 
@@ -5595,12 +5658,19 @@
                 <button type="button" class="mdt-btn mdt-icon-btn" id="mdt-draw" onclick="startMapDrawShape()" title="Draw" aria-label="Draw">
                   <img class="mdt-icon-img" src="icons/tools/draw.png?v=tool3" alt="" width="24" height="24" draggable="false">
                 </button>
-                <button type="button" class="mdt-btn mdt-icon-btn mdt-track-idle" id="mdt-track" onclick="toggleGpsTrack()" title="Track" aria-label="Track">
+                <button type="button" class="mdt-btn mdt-icon-btn mdt-track-idle" id="mdt-track" onclick="toggleGpsTrack()" title="Track" aria-label="Track" aria-pressed="false">
                   <img class="mdt-icon-img" src="icons/tools/track.png?v=tool3" alt="" width="24" height="24" draggable="false">
                 </button>
-                <button type="button" class="mdt-btn mdt-track-stop" id="mdt-track-stop" onclick="toggleGpsTrack()" title="Stop" aria-label="Stop GPS tracking">Stop</button>
+                <button type="button" class="mdt-btn mdt-track-stop" id="mdt-track-stop" onclick="stopGpsTrack()" title="Stop" aria-label="Stop GPS tracking" tabindex="-1">Stop</button>
+                <!-- Live track stats + stop — anchored above the Track icon while recording -->
+                <div class="map-track-live-hud" id="map-track-live-hud" role="status" aria-live="polite" hidden>
+                  <div class="mtl-title">Tracking</div>
+                  <div class="mtl-row"><span class="mtl-k">Distance</span><span class="mtl-v" id="mtl-dist">0 mi</span></div>
+                  <div class="mtl-row"><span class="mtl-k">Time</span><span class="mtl-v" id="mtl-time">0:00</span></div>
+                  <div class="mtl-row"><span class="mtl-k">Elev Δ</span><span class="mtl-v" id="mtl-elev">—</span></div>
+                  <button type="button" class="mtl-stop" id="mtl-stop-btn" onclick="event.preventDefault();event.stopPropagation();stopGpsTrack();return false;">Stop</button>
+                </div>
                 <div class="mdt-tools-panel" id="mdt-tools-panel" role="group" aria-label="Active tool controls">
-                  <div class="map-track-live-stats" id="map-track-live-stats"></div>
                   <button type="button" class="mdt-btn mdt-tool-only" id="mdt-undo" onclick="undoMapDrawVertex()" disabled title="Remove last point">Undo point</button>
                   <button type="button" class="mdt-btn mdt-tool-only" id="mdt-finish" onclick="finishMapDraw()" disabled title="Finish">Finish</button>
                   <button type="button" class="mdt-btn mdt-tool-only" id="mdt-cancel" onclick="cancelMapDraw()" disabled title="Cancel">Cancel</button>
@@ -6003,6 +6073,23 @@
     </div>
   </div>
 
+  <!-- Finish GPS track — name (optional), color, save or delete -->
+  <div id="track-finish-modal" class="app-prompt-modal" hidden style="display:none;" onclick="if(event.target===this)/* keep open */null">
+    <div class="shape-save-card" role="dialog" aria-modal="true" aria-labelledby="track-finish-title">
+      <h3 id="track-finish-title">Save GPS track</h3>
+      <div class="ss-meta" id="track-finish-meta">Name is optional. Save keeps the track on your map; Delete discards it.</div>
+      <label for="track-finish-name">Name <span style="font-weight:500;color:var(--muted);font-style:normal;">(optional)</span></label>
+      <input type="text" id="track-finish-name" placeholder="e.g. Morning walk to stand" maxlength="80" />
+      <label>Track line color</label>
+      <div class="color-picker" id="cp-track-finish" data-input-id="track-finish-color" data-initial="#d94136"></div>
+      <input type="hidden" id="track-finish-color" value="#d94136" />
+      <div class="shape-save-actions">
+        <button type="button" class="ss-save" onclick="confirmTrackFinishSave()">Save track</button>
+        <button type="button" class="ss-cancel" style="border-color:var(--danger);color:var(--danger);" onclick="confirmTrackFinishDelete()">Delete track</button>
+      </div>
+    </div>
+  </div>
+
   <!-- App settings (gear near Layers) -->
   <div id="settings-modal" onclick="if(event.target===this)closeSettingsModal()">
     <div class="settings-card" role="dialog" aria-modal="true" aria-labelledby="settings-title">
@@ -6113,7 +6200,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '5.3-beta';
+    const APP_VERSION = '5.4-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -6229,10 +6316,14 @@
     // Live GPS track (battery-friendly)
     let gpsTrackActive = false;
     let gpsTrackWatchId = null;
-    let gpsTrackPoints = []; // {lat,lng,t}
+    let gpsTrackPoints = []; // {lat,lng,t,elevM?}
     let gpsTrackStartedAt = null;
     let gpsTrackLastAcceptedAt = 0;
     let gpsTrackPreviewLine = null;
+    let gpsTrackLiveTimer = null; // rAF/interval for live HUD clock
+    let gpsTrackPreviewColor = '#d94136';
+    /** After stop: draft track awaiting Save/Delete modal */
+    let gpsTrackPending = null; // { points, distanceMi, durationMs, avgSpeedMph, notes, color }
     let pathEditId = null; // measured path / track being edited
     const GPS_TRACK_MAX_SPEED_MPH = 30;
     const GPS_TRACK_MIN_MOVE_MI = 0.008; // ~42 ft — ignore GPS jitter
@@ -14612,48 +14703,123 @@
     }
 
     // ========== LIVE GPS TRACK (battery-friendly) ==========
+    function gpsTrackElevDeltaFt(pts) {
+      if (!pts || pts.length < 2) return null;
+      var first = null, last = null;
+      for (var i = 0; i < pts.length; i++) {
+        if (pts[i].elevM != null && !isNaN(pts[i].elevM)) {
+          if (first == null) first = pts[i].elevM;
+          last = pts[i].elevM;
+        }
+      }
+      if (first == null || last == null) return null;
+      return (last - first) * 3.28084;
+    }
+
+    function formatElevDeltaFt(ft) {
+      if (ft == null || isNaN(ft)) return '—';
+      var sign = ft > 0.5 ? '+' : (ft < -0.5 ? '−' : '');
+      var abs = Math.abs(ft);
+      if (abs < 1) return '0 ft';
+      return sign + Math.round(abs) + ' ft';
+    }
+
+    function positionTrackLiveHud() {
+      var hud = document.getElementById('map-track-live-hud');
+      var trackBtn = document.getElementById('mdt-track');
+      var tools = document.getElementById('map-draw-tools');
+      if (!hud || !trackBtn || !tools) return;
+      if (!gpsTrackActive) {
+        hud.hidden = true;
+        hud.style.display = 'none';
+        return;
+      }
+      hud.hidden = false;
+      hud.style.display = 'block';
+      try {
+        var tr = trackBtn.getBoundingClientRect();
+        var toolsR = tools.getBoundingClientRect();
+        var cx = tr.left + tr.width / 2 - toolsR.left;
+        hud.style.left = cx + 'px';
+        hud.style.transform = 'translateX(-50%)';
+        hud.style.bottom = 'calc(100% + 8px)';
+      } catch (ePos) {}
+    }
+
+    function stopGpsTrackLiveTimer() {
+      if (gpsTrackLiveTimer) {
+        try { clearInterval(gpsTrackLiveTimer); } catch (eT) {}
+        gpsTrackLiveTimer = null;
+      }
+    }
+
+    function startGpsTrackLiveTimer() {
+      stopGpsTrackLiveTimer();
+      gpsTrackLiveTimer = setInterval(function() {
+        if (!gpsTrackActive) {
+          stopGpsTrackLiveTimer();
+          return;
+        }
+        updateTrackButtonUi();
+      }, 1000);
+    }
+
     function updateTrackButtonUi() {
       var tools = document.getElementById('map-draw-tools');
       if (tools) tools.classList.toggle('tracking', !!gpsTrackActive);
-      // Keep Tools drawer open so Stop track stays visible
-      if (gpsTrackActive && typeof setMapToolsMenuOpen === 'function') setMapToolsMenuOpen(true);
-      var live = document.getElementById('map-track-live-stats');
-      if (!live) return;
+      var trackBtn = document.getElementById('mdt-track');
+      if (trackBtn) {
+        trackBtn.classList.toggle('active', !!gpsTrackActive);
+        trackBtn.setAttribute('aria-pressed', gpsTrackActive ? 'true' : 'false');
+        trackBtn.title = gpsTrackActive ? 'Tracking — tap to stop' : 'Track';
+      }
+      var hud = document.getElementById('map-track-live-hud');
       if (!gpsTrackActive) {
-        live.innerHTML = '';
+        if (hud) {
+          hud.hidden = true;
+          hud.style.display = 'none';
+        }
+        stopGpsTrackLiveTimer();
         return;
       }
+      positionTrackLiveHud();
       var dist = pathDistanceMiles(gpsTrackPoints);
       var elapsed = gpsTrackStartedAt ? (Date.now() - gpsTrackStartedAt) : 0;
-      var hrs = elapsed / 3600000;
-      var avg = hrs > 0.0001 ? (dist / hrs) : 0;
-      live.innerHTML =
-        '<div>Tracking… ' + gpsTrackPoints.length + ' pts</div>' +
-        '<div>' + formatMiles(dist) + ' · ' + formatDurationMs(elapsed) +
-        (avg > 0.05 ? ' · ~' + avg.toFixed(1) + ' mph' : '') + '</div>';
+      var elevFt = gpsTrackElevDeltaFt(gpsTrackPoints);
+      var elDist = document.getElementById('mtl-dist');
+      var elTime = document.getElementById('mtl-time');
+      var elElev = document.getElementById('mtl-elev');
+      if (elDist) elDist.textContent = formatMiles(dist);
+      if (elTime) elTime.textContent = formatDurationMs(elapsed);
+      if (elElev) elElev.textContent = formatElevDeltaFt(elevFt);
     }
 
     function refreshGpsTrackPreview() {
       if (!map || !mapDrawPreviewLayer) return;
-      // Clear only our track preview if mixed with draw preview — when tracking, draw mode is off
-      if (gpsTrackActive) {
+      var pts = gpsTrackActive
+        ? gpsTrackPoints
+        : (gpsTrackPending && gpsTrackPending.points ? gpsTrackPending.points : null);
+      var color = gpsTrackActive
+        ? gpsTrackPreviewColor
+        : ((gpsTrackPending && gpsTrackPending.color) || gpsTrackPreviewColor || '#d94136');
+      if (pts && pts.length) {
         clearMapDrawPreview();
-        if (gpsTrackPoints.length >= 2) {
-          var latlngs = gpsTrackPoints.map(function(p) { return [p.lat, p.lng]; });
+        if (pts.length >= 2) {
+          var latlngs = pts.map(function(p) { return [p.lat, p.lng]; });
           L.polyline(latlngs, {
-            color: '#d94136',
+            color: color,
             weight: 4,
             opacity: 0.95,
             interactive: false
           }).addTo(mapDrawPreviewLayer);
-          var last = gpsTrackPoints[gpsTrackPoints.length - 1];
+          var last = pts[pts.length - 1];
           L.circleMarker([last.lat, last.lng], {
-            radius: 6, color: '#fff', weight: 2, fillColor: '#d94136', fillOpacity: 1, interactive: false
+            radius: 6, color: '#fff', weight: 2, fillColor: color, fillOpacity: 1, interactive: false
           }).addTo(mapDrawPreviewLayer);
-        } else if (gpsTrackPoints.length === 1) {
-          var p0 = gpsTrackPoints[0];
+        } else if (pts.length === 1) {
+          var p0 = pts[0];
           L.circleMarker([p0.lat, p0.lng], {
-            radius: 6, color: '#fff', weight: 2, fillColor: '#d94136', fillOpacity: 1, interactive: false
+            radius: 6, color: '#fff', weight: 2, fillColor: color, fillOpacity: 1, interactive: false
           }).addTo(mapDrawPreviewLayer);
         }
       }
@@ -14667,6 +14833,8 @@
       if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) return;
       var now = Date.now();
       var accuracy = pos.coords.accuracy; // meters
+      var elevM = pos.coords.altitude;
+      if (elevM != null && isNaN(elevM)) elevM = null;
       // Reject very poor fixes to save junk points (and battery from thrashing)
       if (accuracy != null && accuracy > 80) return;
 
@@ -14675,7 +14843,7 @@
       if (map && gpsMarker) setGpsMarker(lat, lng);
 
       if (!gpsTrackPoints.length) {
-        gpsTrackPoints.push({ lat: lat, lng: lng, t: now });
+        gpsTrackPoints.push({ lat: lat, lng: lng, t: now, elevM: elevM });
         gpsTrackLastAcceptedAt = now;
         refreshGpsTrackPreview();
         if (map) map.setView([lat, lng], Math.max(map.getZoom(), 15));
@@ -14693,7 +14861,7 @@
         if (speed > GPS_TRACK_MAX_SPEED_MPH) {
           showAppCopyToast(
             '<span class="act">Track stopped</span><br>Speed over ' + GPS_TRACK_MAX_SPEED_MPH +
-            ' mph detected (~' + speed.toFixed(0) + ' mph). Path saved in red.'
+            ' mph detected (~' + speed.toFixed(0) + ' mph).'
           );
           stopGpsTrack({ auto: true, reason: 'speed' });
           return;
@@ -14707,7 +14875,7 @@
       // If only time passed but we barely moved, skip (jitter)
       if (!moveOk && dMi < GPS_TRACK_MIN_MOVE_MI * 0.4) return;
 
-      gpsTrackPoints.push({ lat: lat, lng: lng, t: now });
+      gpsTrackPoints.push({ lat: lat, lng: lng, t: now, elevM: elevM });
       gpsTrackLastAcceptedAt = now;
       refreshGpsTrackPreview();
 
@@ -14722,12 +14890,10 @@
     function onGpsTrackError(err) {
       console.warn('GPS track error', err);
       if (!gpsTrackActive) return;
-      var msg = (err && err.message) ? err.message : 'Location error';
       if (err && err.code === 1) {
         showAppCopyToast('<span class="act">Location blocked</span><br>Allow location access to use Track.');
         stopGpsTrack({ auto: true, reason: 'denied', discard: gpsTrackPoints.length < 2 });
       } else {
-        // Keep watching; brief notice only
         updateTrackButtonUi();
       }
     }
@@ -14735,6 +14901,12 @@
     function startGpsTrack() {
       if (!navigator.geolocation) {
         alert('Geolocation is not supported on this device/browser.');
+        return;
+      }
+      // Finish any pending unsaved track first
+      if (gpsTrackPending) {
+        showAppCopyToast('<span class="act">Finish previous track</span><br>Save or delete the last track before starting a new one.');
+        openTrackFinishModal();
         return;
       }
       // Stop measure/draw if running
@@ -14749,17 +14921,17 @@
         gpsTrackPoints = [];
         gpsTrackStartedAt = Date.now();
         gpsTrackLastAcceptedAt = 0;
+        gpsTrackPreviewColor = '#d94136';
         if (map) map.closePopup();
         clearMapDot();
 
-        // Battery-friendly watch: low power, throttle via our min interval/distance
         try {
           gpsTrackWatchId = navigator.geolocation.watchPosition(
             onGpsTrackPosition,
             onGpsTrackError,
             {
-              enableHighAccuracy: false, // lower battery
-              maximumAge: 8000,          // reuse recent fix
+              enableHighAccuracy: true, // better altitude + accuracy for elev Δ
+              maximumAge: 4000,
               timeout: 20000
             }
           );
@@ -14769,17 +14941,90 @@
           return;
         }
 
-        // Seed with last known location if fresh
         if (userLat != null && userLng != null) {
           onGpsTrackPosition({
-            coords: { latitude: userLat, longitude: userLng, accuracy: 30 },
+            coords: { latitude: userLat, longitude: userLng, accuracy: 30, altitude: null },
             timestamp: Date.now()
           });
         }
+        startGpsTrackLiveTimer();
         updateTrackButtonUi();
-        showAppCopyToast('<span class="act">Tracking started</span><br>Low-power GPS on. Tap <strong>Stop track</strong> when done.');
+        showAppCopyToast('<span class="act">Tracking started</span><br>Stats appear above the Track button. Tap <strong>Stop</strong> when done.');
       });
     }
+
+    function openTrackFinishModal() {
+      if (!gpsTrackPending) return;
+      var meta = document.getElementById('track-finish-meta');
+      var p = gpsTrackPending;
+      if (meta) {
+        meta.innerHTML =
+          formatMiles(p.distanceMi) + ' · ' + formatDurationMs(p.durationMs) +
+          (p.avgSpeedMph > 0.05 ? ' · ~' + p.avgSpeedMph.toFixed(1) + ' mph avg' : '') +
+          (p.elevDeltaFt != null ? ' · Elev Δ ' + formatElevDeltaFt(p.elevDeltaFt) : '') +
+          '<br>Name is optional. Save keeps the track; Delete discards it.';
+      }
+      var n = document.getElementById('track-finish-name');
+      var c = document.getElementById('track-finish-color');
+      if (n) n.value = p.defaultName || '';
+      var col = p.color || '#d94136';
+      if (c) c.value = col;
+      if (typeof initAllColorPickers === 'function') initAllColorPickers();
+      var cp = document.getElementById('cp-track-finish');
+      if (cp && typeof setColorPickerValue === 'function') setColorPickerValue(cp, col);
+      // Live-update preview color when picker changes
+      if (c && !c._trackFinishWired) {
+        c._trackFinishWired = true;
+        c.addEventListener('change', function() {
+          if (!gpsTrackPending) return;
+          gpsTrackPending.color = c.value || '#d94136';
+          refreshGpsTrackPreview();
+        });
+        c.addEventListener('input', function() {
+          if (!gpsTrackPending) return;
+          gpsTrackPending.color = c.value || '#d94136';
+          refreshGpsTrackPreview();
+        });
+      }
+      showAppPromptModal('track-finish-modal');
+    }
+
+    function confirmTrackFinishSave() {
+      if (!gpsTrackPending) {
+        hideAppPromptModal('track-finish-modal');
+        return;
+      }
+      var nEl = document.getElementById('track-finish-name');
+      var cEl = document.getElementById('track-finish-color');
+      var name = (nEl && nEl.value) ? String(nEl.value).trim() : '';
+      if (!name) name = gpsTrackPending.defaultName || 'GPS track';
+      var color = (cEl && cEl.value) ? cEl.value : (gpsTrackPending.color || '#d94136');
+      var p = gpsTrackPending;
+      gpsTrackPending = null;
+      clearMapDrawPreview();
+      hideAppPromptModal('track-finish-modal');
+      saveMeasuredPath(p.points, p.distanceMi, {
+        kind: 'track',
+        name: name,
+        color: color,
+        durationMs: p.durationMs,
+        avgSpeedMph: p.avgSpeedMph,
+        notes: p.notes || ''
+      });
+      showAppCopyToast(
+        '<span class="act">Track saved</span><br>' +
+        escHtml(name) + ' · ' + formatMiles(p.distanceMi) + ' · ' + formatDurationMs(p.durationMs)
+      );
+    }
+
+    function confirmTrackFinishDelete() {
+      gpsTrackPending = null;
+      clearMapDrawPreview();
+      hideAppPromptModal('track-finish-modal');
+      showAppCopyToast('<span class="act">Track deleted</span><br>Recording discarded.');
+    }
+    window.confirmTrackFinishSave = confirmTrackFinishSave;
+    window.confirmTrackFinishDelete = confirmTrackFinishDelete;
 
     function stopGpsTrack(opts) {
       opts = opts || {};
@@ -14788,6 +15033,7 @@
         return;
       }
       gpsTrackActive = false;
+      stopGpsTrackLiveTimer();
       if (gpsTrackWatchId != null && navigator.geolocation) {
         try { navigator.geolocation.clearWatch(gpsTrackWatchId); } catch (e) {}
       }
@@ -14795,10 +15041,10 @@
 
       var pts = gpsTrackPoints.slice();
       gpsTrackPoints = [];
-      clearMapDrawPreview();
       updateTrackButtonUi();
 
       if (opts.discard || pts.length < 2) {
+        clearMapDrawPreview();
         if (!opts.discard) {
           showAppCopyToast('<span class="act">Track too short</span><br>Need at least two GPS points to save a path.');
         }
@@ -14811,28 +15057,24 @@
       var durationMs = gpsTrackStartedAt ? (endedAt - gpsTrackStartedAt) : 0;
       var hrs = durationMs / 3600000;
       var avg = hrs > 0.00005 ? (dist / hrs) : 0;
+      var elevDeltaFt = gpsTrackElevDeltaFt(pts);
       var when = new Date();
-      var name = 'Track ' + when.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+      var defaultName = 'Track ' + when.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
         ' ' + when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 
-      saveMeasuredPath(pts, dist, {
-        kind: 'track',
-        name: name,
-        color: '#d94136',
+      gpsTrackPending = {
+        points: pts,
+        distanceMi: dist,
         durationMs: durationMs,
         avgSpeedMph: avg,
+        elevDeltaFt: elevDeltaFt,
+        color: gpsTrackPreviewColor || '#d94136',
+        defaultName: defaultName,
         notes: opts.reason === 'speed' ? 'Auto-stopped: speed exceeded 30 mph.' : ''
-      });
-
+      };
       gpsTrackStartedAt = null;
-      if (!opts.auto) {
-        showAppCopyToast(
-          '<span class="act">Track saved</span><br>' +
-          formatMiles(dist) + ' · ' + formatDurationMs(durationMs) +
-          (avg > 0.05 ? ' · ~' + avg.toFixed(1) + ' mph avg' : '') +
-          '<br>Hover the red line for details. Click it to rename or edit.'
-        );
-      }
+      refreshGpsTrackPreview();
+      openTrackFinishModal();
     }
 
     function toggleGpsTrack() {

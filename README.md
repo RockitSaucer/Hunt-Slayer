@@ -1,6 +1,6 @@
 # REG SLAYER — Hunt Slayer
 
-**Current release:** **V5.3 Beta**
+**Current release:** **V5.4 Beta**
 
 Alabama deer planner with map tools, offline map packs, account login, personal/shared maps, and parties.
 
@@ -23,6 +23,13 @@ Alabama deer planner with map tools, offline map packs, account login, personal/
 | `icons/pins/` · `icons/tools/` | Custom map pins and toolbar icons |
 | `peak-rut-antlers.png` | Peak-rut list skull badge |
 | `manifest.webmanifest` | PWA / Add to Home Screen |
+
+## V5.4 notes
+
+- Share location button pulses again when active
+- Track button stays visible and pulses while recording
+- Live track HUD above Track: distance, time, elevation change, Stop
+- On stop: save modal with optional name, line color, Delete track
 
 ## V5.3 notes
 
