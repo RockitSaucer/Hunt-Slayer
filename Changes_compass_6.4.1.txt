@@ -1,0 +1,13 @@
+﻿V6.4.1 — Compass polish (2026-08-04)
+
+- Compass dial ~60% higher on map (phone + desktop)
+- Compass mode ON: Wind/Compass Mode buttons hide; dial shrinks to normal; red pulse
+- Compass mode settings modal always on top of Settings (no need to exit)
+- Heading line starts at GPS center, drawn under arrow (lower pane)
+- Line updates during zoom/move so it never detaches from arrow
+- Probe: 2x hitbox, easy drag along ray; line grows past probe
+- Dist/elev HUD sits just below GPS arrow (not on the probe)
+- Elev = point elev − my elev (GPS altitude preferred, else Open-Meteo)
+- Live line/dot color & size preview in settings (including color chips)
+- Probe distance + style stored per user when signed in (shared map safe)
+- Shell cache v29

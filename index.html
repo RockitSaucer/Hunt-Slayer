@@ -2369,7 +2369,8 @@
     .map-compass-radar {
       pointer-events: auto;
       position: absolute;
-      top: 10px;
+      /* Default high on map — ~60% higher than prior low phone offset */
+      top: 6px;
       left: 50%;
       transform: translateX(-50%);
       /* Above map tiles (z=1); drops under map when .map-popup-open; always under toolbar */
@@ -2390,7 +2391,7 @@
     }
     .map-wrapper.fullscreen .map-compass-radar {
       z-index: 12;
-      top: max(10px, env(safe-area-inset-top, 0px));
+      top: max(6px, env(safe-area-inset-top, 0px));
     }
     /* User-dragged position (absolute within map-wrapper) */
     .map-compass-radar.is-positioned {
@@ -3176,52 +3177,65 @@
       min-width: 0;
       accent-color: var(--accent);
     }
-    /* Compass mode pulse (#24) */
+    /* Compass mode: pulse red + hide Wind/Compass Mode buttons */
     .map-compass-radar.compass-mode-active .compass-dial,
-    .map-compass-radar.compass-mode-active #device-compass-dial,
+    .map-compass-radar.compass-mode-active #heading-compass-dial,
     .map-compass-radar.compass-mode-active #wind-compass-dial {
-      animation: cmPulseRed 1.1s ease-in-out infinite;
+      animation: cmPulseRed 1.05s ease-in-out infinite;
+      border-color: #ef4444 !important;
+    }
+    .map-compass-radar.compass-mode-active .mwh-swap-btn,
+    .map-compass-radar.compass-mode-active #dial-expand-menu {
+      display: none !important;
     }
     @keyframes cmPulseRed {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55); }
-      50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0.15), 0 0 18px rgba(239, 68, 68, 0.55); }
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.65), 0 4px 14px rgba(0,0,0,0.55), inset 0 0 12px rgba(0,0,0,0.65);
+      }
+      50% {
+        box-shadow: 0 0 0 10px rgba(239, 68, 68, 0.18), 0 0 22px rgba(239, 68, 68, 0.7), inset 0 0 12px rgba(0,0,0,0.65);
+      }
+    }
+    /* Dist/elev label under GPS arrow (map marker), not dial */
+    .cm-hud-icon {
+      background: transparent !important;
+      border: none !important;
     }
     .compass-mode-hud-label {
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
-      bottom: -2px;
-      z-index: 10015;
       pointer-events: none;
       background: rgba(12, 16, 10, 0.94);
-      border: 1px solid rgba(56, 189, 248, 0.5);
+      border: 1px solid rgba(56, 189, 248, 0.55);
       border-radius: 8px;
       padding: 4px 8px;
       font-size: 11px;
       font-weight: 800;
       color: #fff;
       white-space: nowrap;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      line-height: 1.25;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.45);
     }
-    /* Mobile: lower top chrome under notch/camera (#24) */
+    /* Phone: ~60% higher than prior low offset (was ~52–88px) */
     html.layout-phone .map-compass-radar {
-      top: max(52px, calc(env(safe-area-inset-top, 0px) + 44px)) !important;
-    }
-    html.layout-phone .map-zoom-controls,
-    html.layout-phone .leaflet-top.leaflet-left,
-    html.layout-phone .map-fs-btn,
-    html.layout-phone #map-max-btn,
-    html.layout-phone .map-maxmin-btn {
-      /* nudge down if present */
+      top: max(12px, calc(env(safe-area-inset-top, 0px) * 0.4 + 10px)) !important;
     }
     html.layout-phone .leaflet-control-zoom {
-      margin-top: 8px !important;
+      margin-top: 6px !important;
     }
-    html.layout-phone .map-wrapper .map-fs-toggle,
-    html.layout-phone .map-wrapper #btn-map-max,
-    html.layout-phone .map-wrapper .maxmin-btn {
-      top: max(48px, calc(env(safe-area-inset-top, 0px) + 40px)) !important;
+    /* Compass settings always above main Settings */
+    #compass-mode-settings-modal {
+      z-index: 2147483646 !important;
     }
+    #compass-mode-settings-modal.active {
+      display: flex !important;
+    }
+    .leaflet-pane.cm-line-pane {
+      z-index: 450 !important; /* under marker pane (~600) so line runs under GPS arrow */
+    }
+    .leaflet-pane.cm-probe-pane {
+      z-index: 650 !important;
+    }
+    
     /* Pin editor compact (#18) */
     #pin-editor-sheet {
       left: 50% !important;
@@ -5959,7 +5973,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.4 Beta">V6.4 Beta</span>
+      <span class="brand-version" aria-label="Version 6.4.1 Beta">V6.4.1 Beta</span>
     </div>
   </header>
 
@@ -6960,7 +6974,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.4-beta';
+    const APP_VERSION = '6.4.1-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -10636,6 +10650,7 @@
       navigator.geolocation.getCurrentPosition(function(pos) {
         userLat = pos.coords.latitude;
         userLng = pos.coords.longitude;
+        if (pos.coords.altitude != null && !isNaN(pos.coords.altitude)) window._lastGpsAltitudeM = pos.coords.altitude;
         if (distOriginMode === 'gps') {
           distOriginLat = userLat;
           distOriginLng = userLng;
@@ -13061,7 +13076,14 @@
     var COMPASS_MODE_KEY = 'reg_slayer_compass_mode_v1';
     var compassModeStyle = (function() {
       try {
-        var o = JSON.parse(localStorage.getItem(COMPASS_MODE_KEY) || '{}');
+        var key = COMPASS_MODE_KEY;
+        try {
+          if (window.RegSlayerCloud && typeof window.RegSlayerCloud.getProfile === 'function') {
+            var p0 = window.RegSlayerCloud.getProfile();
+            if (p0 && (p0.id || p0.user_id)) key = COMPASS_MODE_KEY + '_' + (p0.id || p0.user_id);
+          }
+        } catch (eK) {}
+        var o = JSON.parse(localStorage.getItem(key) || localStorage.getItem(COMPASS_MODE_KEY) || '{}');
         return Object.assign({ lineColor: '#38bdf8', dotColor: '#facc15', lineWeight: 3, dotSize: 8 }, o || {});
       } catch (e) {
         return { lineColor: '#38bdf8', dotColor: '#facc15', lineWeight: 3, dotSize: 8 };
@@ -13325,7 +13347,17 @@
       });
     })();
 
-    // Compass mode
+    // Compass mode (V6.4.1 — glued line, probe drag, elev, live preview)
+    function cmStorageKey(base) {
+      var uid = '';
+      try {
+        if (window.RegSlayerCloud && typeof window.RegSlayerCloud.getProfile === 'function') {
+          var p = window.RegSlayerCloud.getProfile();
+          if (p && (p.id || p.user_id)) uid = String(p.id || p.user_id);
+        }
+      } catch (e) {}
+      return uid ? (base + '_' + uid) : base;
+    }
     function loadCompassModeStyleToUi() {
       var lc = document.getElementById('cm-line-color');
       var dc = document.getElementById('cm-dot-color');
@@ -13333,8 +13365,16 @@
       var ds = document.getElementById('cm-dot-size');
       if (lc) lc.value = compassModeStyle.lineColor;
       if (dc) dc.value = compassModeStyle.dotColor;
-      if (lw) { lw.value = compassModeStyle.lineWeight; var lwv = document.getElementById('cm-line-weight-val'); if (lwv) lwv.textContent = String(compassModeStyle.lineWeight); }
-      if (ds) { ds.value = compassModeStyle.dotSize; var dsv = document.getElementById('cm-dot-size-val'); if (dsv) dsv.textContent = String(compassModeStyle.dotSize); }
+      if (lw) {
+        lw.value = compassModeStyle.lineWeight;
+        var lwv = document.getElementById('cm-line-weight-val');
+        if (lwv) lwv.textContent = String(compassModeStyle.lineWeight);
+      }
+      if (ds) {
+        ds.value = compassModeStyle.dotSize;
+        var dsv = document.getElementById('cm-dot-size-val');
+        if (dsv) dsv.textContent = String(compassModeStyle.dotSize);
+      }
       if (typeof initAllColorPickers === 'function') initAllColorPickers();
       var cpL = document.getElementById('cp-cm-line');
       var cpD = document.getElementById('cp-cm-dot');
@@ -13349,53 +13389,59 @@
       var dc = document.getElementById('cm-dot-color');
       var lw = document.getElementById('cm-line-weight');
       var ds = document.getElementById('cm-dot-size');
+      var lineC = (lc && lc.value) || compassModeStyle.lineColor;
+      var dotC = (dc && dc.value) || compassModeStyle.dotColor;
+      var w = parseInt((lw && lw.value) || compassModeStyle.lineWeight, 10) || 3;
+      var sz = parseInt((ds && ds.value) || compassModeStyle.dotSize, 10) || 8;
       if (line) {
-        line.style.borderTopColor = (lc && lc.value) || compassModeStyle.lineColor;
-        line.style.borderTopWidth = ((lw && lw.value) || compassModeStyle.lineWeight) + 'px';
+        line.style.borderTopColor = lineC;
+        line.style.borderTopWidth = w + 'px';
+        line.style.borderTopStyle = 'solid';
       }
       if (dot) {
-        var sz = parseInt((ds && ds.value) || compassModeStyle.dotSize, 10) || 8;
         dot.style.width = sz + 'px';
         dot.style.height = sz + 'px';
-        dot.style.background = (dc && dc.value) || compassModeStyle.dotColor;
+        dot.style.background = dotC;
+        dot.style.borderRadius = '50%';
+        dot.style.border = '2px solid #fff';
+        dot.style.boxShadow = '0 1px 4px rgba(0,0,0,0.45)';
       }
     }
+
     function openCompassModeSettings() {
       loadCompassModeStyleToUi();
       window._cmStyleBackup = Object.assign({}, compassModeStyle);
-      // Overlay on top of settings — do not close settings (#24)
       var modal = document.getElementById('compass-mode-settings-modal');
       if (modal) {
         try {
           if (modal.parentNode !== document.body) document.body.appendChild(modal);
         } catch (e) {}
+        // Stay above Settings (do not close Settings)
         modal.hidden = false;
-        modal.style.display = 'flex';
         modal.classList.add('active');
+        modal.style.display = 'flex';
         modal.style.zIndex = '2147483646';
-      } else {
-        showAppPromptModal('compass-mode-settings-modal');
       }
-      // Wire color pickers to live-update
       setTimeout(function() {
         try { if (typeof initAllColorPickers === 'function') initAllColorPickers(); } catch (eI) {}
         liveCompassModePreviewFromUi();
-      }, 50);
+        // Hook swatches after build
+        try { wireCompassColorPickerLive(); } catch (eW) {}
+      }, 40);
     }
     function closeCompassModeSettings() {
       if (window._cmStyleBackup) {
         compassModeStyle = Object.assign({}, window._cmStyleBackup);
         window._cmStyleBackup = null;
-        if (compassModeEnabled) try { refreshCompassModeLine(); } catch (e) {}
+        if (compassModeEnabled) try { updateCompassModeGraphics({ soft: true }); } catch (e) {}
       }
       var modal = document.getElementById('compass-mode-settings-modal');
       if (modal) {
         modal.classList.remove('active');
         modal.style.display = 'none';
         modal.hidden = true;
-      } else {
-        hideAppPromptModal('compass-mode-settings-modal');
       }
+      updateCompassModePreview();
     }
     function saveCompassModeSettings() {
       var lc = document.getElementById('cm-line-color');
@@ -13406,23 +13452,66 @@
       compassModeStyle.dotColor = (dc && dc.value) || '#facc15';
       compassModeStyle.lineWeight = parseInt((lw && lw.value) || 3, 10) || 3;
       compassModeStyle.dotSize = parseInt((ds && ds.value) || 8, 10) || 8;
-      try { localStorage.setItem(COMPASS_MODE_KEY, JSON.stringify(compassModeStyle)); } catch (e) {}
+      try {
+        localStorage.setItem(cmStorageKey(COMPASS_MODE_KEY), JSON.stringify(compassModeStyle));
+      } catch (e) {}
       window._cmStyleBackup = null;
       var modal = document.getElementById('compass-mode-settings-modal');
       if (modal) {
         modal.classList.remove('active');
         modal.style.display = 'none';
         modal.hidden = true;
-      } else {
-        hideAppPromptModal('compass-mode-settings-modal');
       }
-      if (compassModeEnabled) refreshCompassModeLine();
-      showAppCopyToast('<span class="act">Compass mode style saved</span>');
+      if (compassModeEnabled) updateCompassModeGraphics({ soft: true });
+      if (typeof showAppCopyToast === 'function') {
+        showAppCopyToast('<span class="act">Compass mode style saved</span>');
+      }
     }
     window.openCompassModeSettings = openCompassModeSettings;
     window.closeCompassModeSettings = closeCompassModeSettings;
     window.saveCompassModeSettings = saveCompassModeSettings;
     window.updateCompassModePreview = updateCompassModePreview;
+
+    function wireCompassColorPickerLive() {
+      ['cp-cm-line', 'cp-cm-dot'].forEach(function(id) {
+        var root = document.getElementById(id);
+        if (!root || root._cmLive) return;
+        root._cmLive = true;
+        root.addEventListener('click', function() {
+          setTimeout(liveCompassModePreviewFromUi, 0);
+        });
+      });
+    }
+
+    function collapseCompassDialUi() {
+      var hud = document.getElementById('map-wind-hud');
+      if (hud) hud.classList.remove('dial-expanded');
+      try {
+        document.querySelectorAll('.compass-dial.is-large, .wind-dial.is-large, .dial-enlarged').forEach(function(el) {
+          el.classList.remove('is-large', 'dial-enlarged', 'enlarged');
+        });
+      } catch (e) {}
+      var menu = document.getElementById('dial-expand-menu');
+      if (menu) menu.classList.remove('open');
+    }
+
+    function ensureCompassModePanes() {
+      if (!map || map._cmPanesReady) return;
+      map._cmPanesReady = true;
+      try {
+        if (!map.getPane('cmLinePane')) {
+          map.createPane('cmLinePane');
+          map.getPane('cmLinePane').style.zIndex = 450;
+          map.getPane('cmLinePane').classList.add('cm-line-pane');
+          map.getPane('cmLinePane').style.pointerEvents = 'auto';
+        }
+        if (!map.getPane('cmProbePane')) {
+          map.createPane('cmProbePane');
+          map.getPane('cmProbePane').style.zIndex = 650;
+          map.getPane('cmProbePane').classList.add('cm-probe-pane');
+        }
+      } catch (e) {}
+    }
 
     function setCompassModeEnabled(on) {
       compassModeEnabled = !!on;
@@ -13433,26 +13522,20 @@
         } catch (eH) {}
         dialHudVisible = true;
         try { applyDialHudVisibility(); } catch (eV) {}
-        // #24: collapse enlarge menu, pulse dial, restore last probe distance
-        try {
-          var menu = document.getElementById('dial-expand-menu');
-          if (menu) menu.classList.remove('open');
-        } catch (eM0) {}
-        try {
-          // shrink dials if enlarged
-          document.querySelectorAll('.compass-dial.is-large, .wind-dial.is-large, .dial-enlarged').forEach(function(el) {
-            el.classList.remove('is-large', 'dial-enlarged', 'enlarged');
-          });
-        } catch (eSz) {}
+        collapseCompassDialUi();
         if (stack) stack.classList.add('compass-mode-active');
-        if (window._cmProbeDistMi == null) {
+        // Restore last probe distance (user-specific)
+        if (window._cmProbeDistMi == null || !(window._cmProbeDistMi > 0)) {
           try {
-            var saved = parseFloat(localStorage.getItem('reg_slayer_cm_probe_mi') || '1');
-            if (!isNaN(saved) && saved > 0) window._cmProbeDistMi = saved;
-            else window._cmProbeDistMi = 1;
-          } catch (eS) { window._cmProbeDistMi = 1; }
+            var saved = parseFloat(localStorage.getItem(cmStorageKey('reg_slayer_cm_probe_mi')) || '1');
+            window._cmProbeDistMi = (!isNaN(saved) && saved > 0) ? saved : 1;
+          } catch (eS) {
+            window._cmProbeDistMi = 1;
+          }
         }
-        refreshCompassModeLine();
+        ensureCompassModePanes();
+        updateCompassModeGraphics({ soft: false });
+        wireCompassModeMapHooks();
       } else {
         clearCompassModeGraphics();
         if (stack) stack.classList.remove('compass-mode-active');
@@ -13460,6 +13543,8 @@
       try { updateCompassToolbarBtn(); } catch (eB) {}
       try { updateDialExpandMenuUi(); } catch (eM) {}
     }
+    window.setCompassModeEnabled = setCompassModeEnabled;
+
     function clearCompassModeGraphics() {
       try {
         if (compassModeLineLayer && map) map.removeLayer(compassModeLineLayer);
@@ -13467,38 +13552,121 @@
       compassModeLineLayer = null;
       try {
         if (compassModeProbe) {
-          if (compassModeProbe.marker && map) map.removeLayer(compassModeProbe.marker);
+          if (compassModeProbe.hit && map) map.removeLayer(compassModeProbe.hit);
           if (compassModeProbe.visual && map) map.removeLayer(compassModeProbe.visual);
-          if (compassModeProbe.label && map) map.removeLayer(compassModeProbe.label);
+          if (compassModeProbe.marker && map) map.removeLayer(compassModeProbe.marker);
         }
       } catch (e2) {}
       compassModeProbe = null;
-      var hud = document.getElementById('cm-hud-label');
-      if (hud) hud.style.display = 'none';
+      try {
+        if (window._cmHudMarker && map) map.removeLayer(window._cmHudMarker);
+      } catch (e3) {}
+      window._cmHudMarker = null;
     }
+
     function compassModeDestPoint(lat, lng, bearingDeg, distMi) {
-      // Haversine destination
-      var R = 3958.7613; // miles
+      var R = 3958.7613;
       var br = bearingDeg * Math.PI / 180;
       var lat1 = lat * Math.PI / 180;
       var lng1 = lng * Math.PI / 180;
       var ang = distMi / R;
       var lat2 = Math.asin(Math.sin(lat1) * Math.cos(ang) + Math.cos(lat1) * Math.sin(ang) * Math.cos(br));
-      var lng2 = lng1 + Math.atan2(Math.sin(br) * Math.sin(ang) * Math.cos(lat1), Math.cos(ang) - Math.sin(lat1) * Math.sin(lat2));
+      var lng2 = lng1 + Math.atan2(
+        Math.sin(br) * Math.sin(ang) * Math.cos(lat1),
+        Math.cos(ang) - Math.sin(lat1) * Math.sin(lat2)
+      );
       return { lat: lat2 * 180 / Math.PI, lng: lng2 * 180 / Math.PI };
     }
-    function refreshCompassModeLine() {
+
+    function getCompassHeadingDeg() {
+      if (typeof deviceHeadingDeg === 'number' && !isNaN(deviceHeadingDeg)) return deviceHeadingDeg;
+      return 0;
+    }
+
+    function updateCompassModeHudLabel(distMi, elevTxt) {
+      if (!map || userLat == null || userLng == null) return;
+      if (!compassModeEnabled) {
+        try {
+          if (window._cmHudMarker) map.removeLayer(window._cmHudMarker);
+        } catch (e) {}
+        window._cmHudMarker = null;
+        return;
+      }
+      var yards = distMi * 1760;
+      var distLabel = yards < 900 ? (Math.round(yards) + ' yd') : formatMiles(distMi);
+      var elev = elevTxt || '—';
+      var html = '<div class="compass-mode-hud-label">' + distLabel + '<br>Elev Δ ' + elev + '</div>';
+      var icon = L.divIcon({
+        className: 'cm-hud-icon',
+        html: html,
+        iconSize: [130, 44],
+        // Sit just below the GPS arrow on screen
+        iconAnchor: [65, -10]
+      });
+      if (window._cmHudMarker) {
+        try {
+          window._cmHudMarker.setLatLng([userLat, userLng]);
+          window._cmHudMarker.setIcon(icon);
+        } catch (eU) {}
+      } else {
+        window._cmHudMarker = L.marker([userLat, userLng], {
+          interactive: false,
+          keyboard: false,
+          zIndexOffset: 1400,
+          icon: icon
+        }).addTo(map);
+      }
+    }
+
+    function fetchCompassElevDelta(pt, distMi) {
+      var reqId = (window._cmElevReq = (window._cmElevReq || 0) + 1);
+      // Prefer device altitude for "me" when available
+      var myAlt = (typeof window._lastGpsAltitudeM === 'number' && !isNaN(window._lastGpsAltitudeM))
+        ? window._lastGpsAltitudeM
+        : null;
+      var url = 'https://api.open-meteo.com/v1/elevation?latitude=' +
+        encodeURIComponent(String(userLat) + ',' + String(pt.lat)) +
+        '&longitude=' + encodeURIComponent(String(userLng) + ',' + String(pt.lng));
+      fetch(url)
+        .then(function(r) { return r.ok ? r.json() : Promise.reject(r.status); })
+        .then(function(data) {
+          if (reqId !== window._cmElevReq) return;
+          if (!data || !data.elevation || data.elevation.length < 2) {
+            updateCompassModeHudLabel(distMi, '—');
+            return;
+          }
+          var meM = myAlt != null ? myAlt : data.elevation[0];
+          var thereM = data.elevation[1];
+          if (meM == null || thereM == null || isNaN(meM) || isNaN(thereM)) {
+            updateCompassModeHudLabel(distMi, '—');
+            return;
+          }
+          var dFt = (thereM - meM) * 3.28084;
+          updateCompassModeHudLabel(distMi, formatElevDeltaFt(dFt));
+        })
+        .catch(function() {
+          if (reqId === window._cmElevReq) updateCompassModeHudLabel(distMi, '—');
+        });
+    }
+
+    function updateCompassModeGraphics(opts) {
+      opts = opts || {};
       if (!compassModeEnabled || !map) return;
       if (userLat == null || userLng == null) return;
-      var heading = (typeof deviceHeadingDeg === 'number' && !isNaN(deviceHeadingDeg)) ? deviceHeadingDeg : 0;
-      // Line grows with probe distance; minimum 1 mi, extends as probe slides (#24)
+      ensureCompassModePanes();
+      var heading = getCompassHeadingDeg();
       var probeMi = window._cmProbeDistMi != null ? window._cmProbeDistMi : 1;
-      var farMi = Math.max(1.05, probeMi * 1.15 + 0.15);
-      // Start AT user location so line runs under the arrow (arrow drawn above)
+      probeMi = Math.max(0.02, Math.min(20, probeMi));
+      window._cmProbeDistMi = probeMi;
+      // Line always longer than probe so you can slide further
+      var farMi = Math.max(probeMi + 0.15, probeMi * 1.12);
+      // Start AT user center — GPS arrow draws above (higher pane) so line begins inside arrow
       var tip = { lat: userLat, lng: userLng };
       var end = compassModeDestPoint(userLat, userLng, heading, farMi);
-      // Update in place when possible (no detach while zooming)
-      if (compassModeLineLayer && map.hasLayer(compassModeLineLayer) && compassModeLineLayer.setLatLngs) {
+      var pt = compassModeDestPoint(userLat, userLng, heading, probeMi);
+
+      // --- Line (create once, only setLatLngs after) ---
+      if (compassModeLineLayer && map.hasLayer(compassModeLineLayer)) {
         try {
           compassModeLineLayer.setLatLngs([[tip.lat, tip.lng], [end.lat, end.lng]]);
           compassModeLineLayer.setStyle({
@@ -13506,12 +13674,11 @@
             weight: compassModeStyle.lineWeight,
             opacity: 0.95
           });
-        } catch (eU) {
-          try { map.removeLayer(compassModeLineLayer); } catch (eR) {}
-          compassModeLineLayer = null;
-        }
-      }
-      if (!compassModeLineLayer) {
+        } catch (eL) {}
+      } else {
+        try {
+          if (compassModeLineLayer && map) map.removeLayer(compassModeLineLayer);
+        } catch (eR) {}
         compassModeLineLayer = L.polyline([[tip.lat, tip.lng], [end.lat, end.lng]], {
           color: compassModeStyle.lineColor,
           weight: compassModeStyle.lineWeight,
@@ -13519,85 +13686,60 @@
           className: 'compass-mode-line',
           interactive: true,
           bubblingMouseEvents: false,
-          pane: 'overlayPane'
+          pane: 'cmLinePane',
+          smoothFactor: 0
         }).addTo(map);
-        // Keep under markers
-        try { if (compassModeLineLayer.bringToBack) compassModeLineLayer.bringToBack(); } catch (eB) {}
         compassModeLineLayer.on('click', function(e) {
           L.DomEvent.stop(e);
-          placeCompassModeProbe(e.latlng);
+          if (!e.latlng) return;
+          var d = haversineMiles(userLat, userLng, e.latlng.lat, e.latlng.lng);
+          window._cmProbeDistMi = d;
+          try { localStorage.setItem(cmStorageKey('reg_slayer_cm_probe_mi'), String(d)); } catch (eS) {}
+          updateCompassModeGraphics({ soft: true });
         });
       }
-      if (window._cmProbeDistMi != null) {
-        placeCompassModeProbeAtDistance(window._cmProbeDistMi, { soft: true });
-      }
-      // Zoom: keep line glued
-      if (map && !map._cmZoomHook) {
-        map._cmZoomHook = true;
-        map.on('zoom zoomend move', function() {
-          if (compassModeEnabled) {
-            try { refreshCompassModeLine(); } catch (eZ) {}
-          }
-        });
-      }
-    }
-    function placeCompassModeProbe(latlng) {
-      if (userLat == null || userLng == null || !latlng) return;
-      var dMi = haversineMiles(userLat, userLng, latlng.lat, latlng.lng);
-      window._cmProbeDistMi = dMi;
-      placeCompassModeProbeAtDistance(dMi);
-    }
-    function updateCompassModeHudLabel(distMi, elevTxt) {
-      var stack = document.getElementById('map-compass-radar') || document.getElementById('map-wind-hud');
-      if (!stack) return;
-      var hud = document.getElementById('cm-hud-label');
-      if (!hud) {
-        hud = document.createElement('div');
-        hud.id = 'cm-hud-label';
-        hud.className = 'compass-mode-hud-label';
-        stack.style.position = stack.style.position || 'absolute';
-        stack.appendChild(hud);
-      }
-      var yards = distMi * 1760;
-      var distLabel = yards < 900 ? (Math.round(yards) + ' yd') : formatMiles(distMi);
-      hud.textContent = distLabel + ' · Elev Δ ' + (elevTxt || '—');
-      hud.style.display = compassModeEnabled ? 'block' : 'none';
-    }
-    function placeCompassModeProbeAtDistance(distMi, opts) {
-      opts = opts || {};
-      if (!map || userLat == null || userLng == null) return;
-      var heading = (typeof deviceHeadingDeg === 'number' && !isNaN(deviceHeadingDeg)) ? deviceHeadingDeg : 0;
-      distMi = Math.max(0.01, Math.min(12, distMi || 0.1));
-      window._cmProbeDistMi = distMi;
-      try { localStorage.setItem('reg_slayer_cm_probe_mi', String(distMi)); } catch (eLs) {}
-      var pt = compassModeDestPoint(userLat, userLng, heading, distMi);
-      var visualR = Math.max(4, (compassModeStyle.dotSize || 8) / 2);
-      var hitR = visualR * 2; // 2× hit box (#24)
-      if (compassModeProbe && compassModeProbe.marker && opts.soft) {
+
+      var visualR = Math.max(3, (compassModeStyle.dotSize || 8) / 2);
+      var hitR = visualR * 2; // 2× hit box
+
+      if (compassModeProbe && compassModeProbe.visual && map.hasLayer(compassModeProbe.visual)) {
         try {
-          compassModeProbe.marker.setLatLng([pt.lat, pt.lng]);
-          compassModeProbe.marker.setStyle({
-            radius: hitR,
+          compassModeProbe.visual.setLatLng([pt.lat, pt.lng]);
+          compassModeProbe.visual.setStyle({
+            radius: visualR,
             fillColor: compassModeStyle.dotColor,
             color: '#fff',
             weight: 2,
             fillOpacity: 1,
-            opacity: 0.01 // nearly invisible hit ring
+            opacity: 1
           });
-          if (compassModeProbe.visual) {
-            compassModeProbe.visual.setLatLng([pt.lat, pt.lng]);
-            compassModeProbe.visual.setStyle({ radius: visualR, fillColor: compassModeStyle.dotColor });
+          if (compassModeProbe.hit) {
+            compassModeProbe.hit.setLatLng([pt.lat, pt.lng]);
+            compassModeProbe.hit.setStyle({
+              radius: hitR,
+              fillColor: compassModeStyle.dotColor,
+              fillOpacity: 0.001,
+              opacity: 0,
+              weight: 0
+            });
           }
-        } catch (eS) {}
+        } catch (eP) {}
       } else {
         try {
           if (compassModeProbe) {
-            if (compassModeProbe.marker) map.removeLayer(compassModeProbe.marker);
-            if (compassModeProbe.visual) map.removeLayer(compassModeProbe.visual);
-            if (compassModeProbe.label) map.removeLayer(compassModeProbe.label);
+            if (compassModeProbe.hit && map) map.removeLayer(compassModeProbe.hit);
+            if (compassModeProbe.visual && map) map.removeLayer(compassModeProbe.visual);
           }
-        } catch (e) {}
-        // Invisible large hit target + visible smaller dot
+        } catch (eC) {}
+        var visual = L.circleMarker([pt.lat, pt.lng], {
+          radius: visualR,
+          color: '#fff',
+          weight: 2,
+          fillColor: compassModeStyle.dotColor,
+          fillOpacity: 1,
+          interactive: false,
+          pane: 'cmProbePane'
+        }).addTo(map);
         var hit = L.circleMarker([pt.lat, pt.lng], {
           radius: hitR,
           color: '#fff',
@@ -13605,74 +13747,102 @@
           fillColor: compassModeStyle.dotColor,
           fillOpacity: 0.001,
           opacity: 0,
-          interactive: true
+          interactive: true,
+          bubblingMouseEvents: false,
+          pane: 'cmProbePane'
         }).addTo(map);
-        var visual = L.circleMarker([pt.lat, pt.lng], {
-          radius: visualR,
-          color: '#fff',
-          weight: 2,
-          fillColor: compassModeStyle.dotColor,
-          fillOpacity: 1,
-          interactive: false
-        }).addTo(map);
-        compassModeProbe = { marker: hit, visual: visual, distMi: distMi };
-        var dragging = false;
+        compassModeProbe = { hit: hit, visual: visual, marker: hit, distMi: probeMi, _dragging: false };
+
+        function projectDist(latlng) {
+          // Project click onto heading ray (forward only)
+          var d = haversineMiles(userLat, userLng, latlng.lat, latlng.lng);
+          // If click is behind user heading, clamp to small min
+          var brToClick = Math.atan2(
+            Math.sin((latlng.lng - userLng) * Math.PI / 180) * Math.cos(latlng.lat * Math.PI / 180),
+            Math.cos(userLat * Math.PI / 180) * Math.sin(latlng.lat * Math.PI / 180) -
+              Math.sin(userLat * Math.PI / 180) * Math.cos(latlng.lat * Math.PI / 180) *
+              Math.cos((latlng.lng - userLng) * Math.PI / 180)
+          ) * 180 / Math.PI;
+          brToClick = (brToClick + 360) % 360;
+          var h = getCompassHeadingDeg();
+          var ad = Math.abs(brToClick - h);
+          if (ad > 180) ad = 360 - ad;
+          if (ad > 100) d = 0.05;
+          return Math.max(0.02, Math.min(20, d));
+        }
         function onDown(e) {
-          dragging = true;
+          compassModeProbe._dragging = true;
           L.DomEvent.stop(e);
           try { map.dragging.disable(); } catch (eD) {}
         }
         function onMove(e) {
-          if (!dragging || !e.latlng) return;
-          var d = haversineMiles(userLat, userLng, e.latlng.lat, e.latlng.lng);
-          placeCompassModeProbeAtDistance(d, { soft: true });
-          // extend line
-          try { refreshCompassModeLine(); } catch (eR) {}
+          if (!compassModeProbe || !compassModeProbe._dragging || !e.latlng) return;
+          var d = projectDist(e.latlng);
+          window._cmProbeDistMi = d;
+          try { localStorage.setItem(cmStorageKey('reg_slayer_cm_probe_mi'), String(d)); } catch (eS) {}
+          updateCompassModeGraphics({ soft: true, skipElev: true });
         }
         function onUp() {
-          if (!dragging) return;
-          dragging = false;
-          try { map.dragging.enable(); } catch (e2) {}
+          if (!compassModeProbe || !compassModeProbe._dragging) return;
+          compassModeProbe._dragging = false;
+          try { map.dragging.enable(); } catch (eE) {}
+          updateCompassModeGraphics({ soft: true, skipElev: false });
         }
         hit.on('mousedown', onDown);
-        hit.on('touchstart', onDown);
-        if (!map._cmProbeMoveHook) {
-          map._cmProbeMoveHook = true;
-          map.on('mousemove', function(e) {
-            if (compassModeProbe && compassModeProbe._dragging) onMove(e);
+        hit.on('touchstart', onDown, { passive: false });
+        if (!map._cmProbeDragWired) {
+          map._cmProbeDragWired = true;
+          map.on('mousemove', onMove);
+          map.on('touchmove', function(e) {
+            if (e.latlng) onMove(e);
           });
-          map.on('mouseup', function() {
-            if (compassModeProbe) compassModeProbe._dragging = false;
-            onUp();
-          });
+          map.on('mouseup', onUp);
+          map.on('touchend', onUp);
         }
-        hit.on('mousedown', function() { compassModeProbe._dragging = true; });
-        hit.on('click', function(e) { L.DomEvent.stop(e); });
       }
-      updateCompassModeHudLabel(distMi, '…');
-      // Elev: my elevation vs point under dot
-      var reqId = (window._cmElevReq = (window._cmElevReq || 0) + 1);
-      try {
-        fetch('https://api.open-meteo.com/v1/elevation?latitude=' + encodeURIComponent(userLat + ',' + pt.lat) +
-          '&longitude=' + encodeURIComponent(userLng + ',' + pt.lng))
-          .then(function(r) { return r.json(); })
-          .then(function(data) {
-            if (reqId !== window._cmElevReq) return;
-            if (!data || !data.elevation || data.elevation.length < 2) {
-              updateCompassModeHudLabel(distMi, '—');
-              return;
-            }
-            var dFt = (data.elevation[1] - data.elevation[0]) * 3.28084;
-            updateCompassModeHudLabel(distMi, formatElevDeltaFt(dFt));
-          }).catch(function() {
-            if (reqId === window._cmElevReq) updateCompassModeHudLabel(distMi, '—');
-          });
-      } catch (eF) {
-        updateCompassModeHudLabel(distMi, '—');
+
+      // HUD under GPS arrow
+      var lastElev = window._cmLastElevTxt || '…';
+      updateCompassModeHudLabel(probeMi, opts.skipElev ? lastElev : '…');
+      if (!opts.skipElev) {
+        fetchCompassElevDelta(pt, probeMi);
       }
     }
-    // Refresh line when heading updates
-    var _prevApplyHeading = null;
+
+    // Back-compat aliases
+    function refreshCompassModeLine() {
+      updateCompassModeGraphics({ soft: true, skipElev: true });
+    }
+    function placeCompassModeProbe(latlng) {
+      if (userLat == null || userLng == null || !latlng) return;
+      var d = haversineMiles(userLat, userLng, latlng.lat, latlng.lng);
+      window._cmProbeDistMi = Math.max(0.02, d);
+      try { localStorage.setItem(cmStorageKey('reg_slayer_cm_probe_mi'), String(window._cmProbeDistMi)); } catch (e) {}
+      updateCompassModeGraphics({ soft: true });
+    }
+    function placeCompassModeProbeAtDistance(distMi, opts) {
+      window._cmProbeDistMi = distMi;
+      updateCompassModeGraphics(Object.assign({ soft: true }, opts || {}));
+    }
+
+    function wireCompassModeMapHooks() {
+      if (!map || map._cmHooksWired) return;
+      map._cmHooksWired = true;
+      // Update during zoom (not only after) so line never detaches from arrow
+      function softTick() {
+        if (!compassModeEnabled) return;
+        try { updateCompassModeGraphics({ soft: true, skipElev: true }); } catch (e) {}
+      }
+      map.on('zoom', softTick);
+      map.on('zoomanim', softTick);
+      map.on('zoomend', function() {
+        if (compassModeEnabled) updateCompassModeGraphics({ soft: true, skipElev: false });
+      });
+      map.on('move', softTick);
+      map.on('moveend', softTick);
+    }
+
+    // Heading updates → refresh line
     (function hookHeadingForCompassMode() {
       var tries = 0;
       function hook() {
@@ -13681,7 +13851,7 @@
           applyHeadingToUi = function(deg) {
             orig.apply(this, arguments);
             if (compassModeEnabled) {
-              try { refreshCompassModeLine(); } catch (e) {}
+              try { updateCompassModeGraphics({ soft: true, skipElev: true }); } catch (e) {}
             }
           };
           applyHeadingToUi._cmHooked = true;
@@ -13690,6 +13860,19 @@
         if (tries++ < 40) setTimeout(hook, 250);
       }
       hook();
+    })();
+
+    // Reload user-specific style on load
+    (function loadUserCmStyle() {
+      try {
+        var raw = localStorage.getItem(cmStorageKey(COMPASS_MODE_KEY));
+        if (raw) {
+          var o = JSON.parse(raw);
+          if (o && typeof o === 'object') {
+            compassModeStyle = Object.assign(compassModeStyle, o);
+          }
+        }
+      } catch (e) {}
     })();
 
     function ensureDialExpandMenu() {
@@ -13701,8 +13884,8 @@
         menu.id = 'dial-expand-menu';
         menu.className = 'dial-expand-menu';
         menu.innerHTML =
-          '<button type="button" id="dial-menu-wind" onclick="event.stopPropagation();setHeadingMode(\'wind\',{fromUser:true});updateDialExpandMenuUi();">Wind</button>' +
-          '<button type="button" id="dial-menu-cmode" onclick="event.stopPropagation();setCompassModeEnabled(!compassModeEnabled);">Compass Mode</button>';
+          '<button type="button" id="dial-menu-wind" onclick="event.stopPropagation();setHeadingMode(\'wind\',{fromUser:true});if(typeof setCompassModeEnabled===\'function\')setCompassModeEnabled(false);updateDialExpandMenuUi();var m=document.getElementById(\'dial-expand-menu\');if(m)m.classList.remove(\'open\');">Wind</button>' +
+          '<button type="button" id="dial-menu-cmode" onclick="event.stopPropagation();if(typeof collapseCompassDialUi===\'function\')collapseCompassDialUi();setCompassModeEnabled(true);var m=document.getElementById(\'dial-expand-menu\');if(m)m.classList.remove(\'open\');">Compass Mode</button>';
         stack.style.position = stack.style.position || 'absolute';
         stack.appendChild(menu);
       }
@@ -18166,6 +18349,10 @@
           clickLat = lat;
           clickLng = lng;
         }
+        // Keep compass-mode line glued under arrow
+        if (typeof compassModeEnabled !== 'undefined' && compassModeEnabled) {
+          try { updateCompassModeGraphics({ soft: true, skipElev: true }); } catch (eCm) {}
+        }
       } else {
         // Clickable GPS arrow — same action menu as orange map-dot (no auto-open)
         gpsMarker = L.marker([lat, lng], {
@@ -18424,6 +18611,12 @@
         applyPinInnerIconDistinct(bind === 'selectedPinInnerColor' ? 'icon' : 'inner');
       }
       if (typeof opts.onChange === 'function') opts.onChange(hex);
+      // Live compass mode preview while settings open
+      if (inputId === 'cm-line-color' || inputId === 'cm-dot-color') {
+        try {
+          if (typeof liveCompassModePreviewFromUi === 'function') liveCompassModePreviewFromUi();
+        } catch (eCm) {}
+      }
     }
 
     function renderColorPicker(root) {
@@ -20320,7 +20513,7 @@
     }
 
     function toggleDialHudFromToolbar() {
-      // If compass mode is active, toolbar toggles compass mode off/on (#24)
+      // Toolbar: show dial + compass mode, or turn mode/dial off
       if (compassModeEnabled && dialHudVisible) {
         setCompassModeEnabled(false);
         return;
@@ -20328,15 +20521,20 @@
       if (!dialHudVisible) {
         dialHudVisible = true;
         applyDialHudVisibility();
-        // Showing compass: default compass mode ON; line appears after this press
         try {
           if (typeof setHeadingMode === 'function') setHeadingMode('compass', { fromUser: true });
         } catch (eH) {}
         try { ensureTopHudVisible(); } catch (eE) {}
+        try { if (typeof collapseCompassDialUi === 'function') collapseCompassDialUi(); } catch (eC) {}
         setCompassModeEnabled(true);
         return;
       }
-      // Hide dial (and clear mode graphics)
+      // Visible dial but mode off → turn mode on (collapse buttons)
+      if (dialHudVisible && !compassModeEnabled) {
+        try { if (typeof collapseCompassDialUi === 'function') collapseCompassDialUi(); } catch (eC2) {}
+        setCompassModeEnabled(true);
+        return;
+      }
       dialHudVisible = false;
       if (compassModeEnabled) setCompassModeEnabled(false);
       applyDialHudVisibility();
@@ -22793,7 +22991,7 @@
       // Does not pan the map — tap Current Location still snaps the view.
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function(pos) {
-          userLat = pos.coords.latitude; userLng = pos.coords.longitude;
+          userLat = pos.coords.latitude; userLng = pos.coords.longitude; if (pos.coords.altitude != null && !isNaN(pos.coords.altitude)) window._lastGpsAltitudeM = pos.coords.altitude;
           distOriginLat = userLat;
           distOriginLng = userLng;
           distOriginLabel = 'My Location';
