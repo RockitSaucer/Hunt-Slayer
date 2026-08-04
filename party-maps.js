@@ -533,146 +533,278 @@
     }
   }
 
+  /** Expanded map card in Settings → My Maps (selection ≠ active view until View). */
+  var mapsUiSelected = { kind: null, id: null };
+
+  function shareMapInviteText(mapRow) {
+    var code = mapRow && mapRow.code ? String(mapRow.code) : '';
+    var name = mapRow && mapRow.name ? String(mapRow.name) : 'Hunt map';
+    return 'Join my HuntSlayer map!\nMap: ' + name + '\nCode: ' + code +
+      '\nhttps://regslayer.com/?join=' + code;
+  }
+
+  function copyMapInvite(mapRow) {
+    var text = shareMapInviteText(mapRow);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        try {
+          if (window.showAppCopyToast) showAppCopyToast('<span class="act">Invite copied</span><br>Code ' + esc(mapRow.code || ''));
+          else alert('Copied:\n' + text);
+        } catch (e) { alert('Copied:\n' + text); }
+      }).catch(function () { window.prompt('Copy:', text); });
+    } else window.prompt('Copy:', text);
+  }
+
+  function buildPartyMembersHtml(members, vs, user) {
+    if (!members || !members.length) {
+      return '<p class="settings-hint">Only you on this map so far.</p>';
+    }
+    return members.map(function (m) {
+      var pref = partyPrefs[m.user_id] || {};
+      var nick = pref.nickname || '';
+      var col = pref.arrow_color || m.arrow_color || '#2563eb';
+      var show = pref.show_content !== false && !hiddenContentOwners[m.user_id];
+      var self = user && m.user_id === user.id;
+      return '<div class="party-member-row" data-uid="' + m.user_id + '">' +
+        '<div class="party-member-head">' +
+          '<span class="party-dot" style="background:' + esc(col) + '"></span>' +
+          '<strong>' + esc(memberLabel(m)) + '</strong>' +
+          (self ? ' <span class="settings-hint">(you)</span>' : '') +
+          (m.is_host ? ' · host' : '') +
+        '</div>' +
+        (!self ? (
+          '<label class="settings-row"><input type="checkbox" class="party-show-content" ' + (show ? 'checked' : '') + '>' +
+          '<span class="sr-text">Show their pins/areas on map</span></label>' +
+          '<div class="settings-inline-row"><input type="text" class="party-nick" placeholder="Nickname" value="' + esc(nick) + '">' +
+          '<input type="color" class="party-color" value="' + esc(col) + '" title="Arrow color" style="width:44px;height:36px;padding:0;border:none;">' +
+          '<button type="button" class="party-save">Save</button></div>'
+        ) : '') +
+      '</div>';
+    }).join('');
+  }
+
+  function wirePartyMemberRows(container, vs) {
+    if (!container || !vs) return;
+    container.querySelectorAll('.party-member-row').forEach(function (row) {
+      var uid = row.getAttribute('data-uid');
+      var save = row.querySelector('.party-save');
+      if (save) save.onclick = function () {
+        var nick = (row.querySelector('.party-nick') || {}).value || '';
+        var col = (row.querySelector('.party-color') || {}).value || '#2563eb';
+        savePartyPref(uid, { nickname: nick.trim() || null, arrow_color: col }).then(function () {
+          pullPresence();
+          refreshMapsUi();
+        });
+      };
+      var chk = row.querySelector('.party-show-content');
+      if (chk) chk.onchange = function () {
+        if (!chk.checked) hiddenContentOwners[uid] = true;
+        else delete hiddenContentOwners[uid];
+        try {
+          localStorage.setItem(HIDDEN_MEMBERS_KEY + ':' + vs.sharedMapId, JSON.stringify(hiddenContentOwners));
+        } catch (e) {}
+        savePartyPref(uid, { show_content: !!chk.checked });
+        applyContentOwnerFilter();
+      };
+    });
+  }
+
   async function refreshMapsUi() {
     updateBrandName();
     updateShareLocBtn();
+    var allBox = $('set-all-maps-list');
     var privBox = $('set-private-maps-list');
     var sharedBox = $('set-shared-maps-list');
-    var partyBox = $('set-party-members');
-    var partySec = $('set-party-section');
     var modeLabel = $('set-map-mode-label');
     var vs = C.getViewState && C.getViewState();
     if (modeLabel && vs) {
       if (vs.mode === 'shared') {
-        modeLabel.textContent = 'Viewing: ' + (vs.sharedMapName || 'Shared') + ' (' + (vs.sharedMapCode || '') + ')';
+        modeLabel.textContent = 'Viewing: ' + (vs.sharedMapName || 'Shared');
       } else {
         modeLabel.textContent = 'Viewing: ' + (vs.privateMapName || 'My Map') + ' (private)';
       }
     }
 
-    if (privBox) {
-      try {
-        var pmaps = await listPrivateMaps();
-        if (!pmaps.length) privBox.innerHTML = '<p class="settings-hint">No private maps yet.</p>';
-        else {
-          privBox.innerHTML = pmaps.map(function (m) {
-            var active = vs && (vs.mode === 'private' || vs.mode === 'personal') && vs.privateMapId === m.id;
-            return '<div class="settings-map-row' + (active ? ' is-active' : '') + '">' +
-              '<button type="button" class="settings-subbtn settings-map-open" data-pid="' + m.id + '">' +
-              esc(m.name) + (m.is_default ? ' · default' : '') + '</button></div>';
-          }).join('');
-          privBox.querySelectorAll('[data-pid]').forEach(function (btn) {
-            btn.onclick = function () {
-              var id = btn.getAttribute('data-pid');
-              var row = pmaps.find(function (x) { return x.id === id; });
-              openPrivateMapActions(row || { id: id, name: btn.textContent });
-            };
-          });
+    var pmaps = [];
+    var smaps = [];
+    try { pmaps = await listPrivateMaps(); } catch (eP) { pmaps = []; }
+    try {
+      if (C.listMySharedMaps) smaps = await C.listMySharedMaps();
+      if (!smaps || !smaps.length) {
+        var sb0 = window.__rsSb;
+        if (sb0) {
+          var r0 = await sb0.rpc('list_my_shared_maps');
+          smaps = r0.data || [];
         }
-      } catch (e) {
-        privBox.innerHTML = '<p class="settings-hint">Could not load private maps.</p>';
+      }
+    } catch (eS) { smaps = []; }
+
+    // Unified list: currently viewing first, then other private, then other shared
+    var cards = [];
+    pmaps.forEach(function (m) {
+      cards.push({
+        kind: 'private',
+        id: m.id,
+        name: m.name || 'Private map',
+        is_default: !!m.is_default,
+        active: !!(vs && (vs.mode === 'private' || vs.mode === 'personal') && vs.privateMapId === m.id),
+        raw: m
+      });
+    });
+    (smaps || []).forEach(function (m) {
+      cards.push({
+        kind: 'shared',
+        id: m.id,
+        name: m.name || 'Shared map',
+        code: m.code || '',
+        active: !!(vs && vs.mode === 'shared' && vs.sharedMapId === m.id),
+        raw: m
+      });
+    });
+    cards.sort(function (a, b) {
+      if (a.active !== b.active) return a.active ? -1 : 1;
+      if (a.kind !== b.kind) return a.kind === 'private' ? -1 : 1;
+      return String(a.name).localeCompare(String(b.name));
+    });
+
+    // Keep expansion on the active map if selection is empty
+    if (!mapsUiSelected.id && vs) {
+      if (vs.mode === 'shared' && vs.sharedMapId) {
+        mapsUiSelected = { kind: 'shared', id: vs.sharedMapId };
+      } else if (vs.privateMapId) {
+        mapsUiSelected = { kind: 'private', id: vs.privateMapId };
       }
     }
 
-    if (sharedBox && C.listMySharedMaps) {
-      try {
-        var maps = await (C.listMySharedMaps ? C.listMySharedMaps() : []);
-        // Prefer RPC via original — if not exposed, call rpc
-        if (!maps || !maps.length) {
-          var sb = window.__rsSb;
-          if (sb) {
-            var r = await sb.rpc('list_my_shared_maps');
-            maps = r.data || [];
-          }
-        }
-        if (!maps.length) sharedBox.innerHTML = '<p class="settings-hint">No shared maps yet.</p>';
-        else {
-          sharedBox.innerHTML = maps.map(function (m) {
-            var active = vs && vs.mode === 'shared' && vs.sharedMapId === m.id;
-            return '<div class="settings-map-row' + (active ? ' is-active' : '') + '">' +
-              '<button type="button" class="settings-subbtn settings-map-open" data-sid="' + m.id + '">' +
-              esc(m.name) + ' <span class="settings-map-code">' + esc(m.code) + '</span></button></div>';
-          }).join('');
-          sharedBox.querySelectorAll('[data-sid]').forEach(function (btn) {
-            btn.onclick = function () {
-              var id = btn.getAttribute('data-sid');
-              var row = maps.find(function (x) { return x.id === id; });
-              openSharedMapActions(row || { id: id, name: 'Map', code: '' });
-            };
-          });
-        }
-      } catch (e2) {
-        sharedBox.innerHTML = '<p class="settings-hint">Could not load shared maps.</p>';
+    async function partyDetailsHtml(card) {
+      if (card.kind !== 'shared') {
+        return '<p class="settings-hint">Private map — only you. Use Rename current map below if this is active.</p>' +
+          '<button type="button" class="settings-subbtn smc-rename" data-pid="' + card.id + '">Rename</button>';
       }
-    }
-
-    if (partySec && partyBox) {
-      if (vs && vs.mode === 'shared' && vs.sharedMapId) {
-        partySec.style.display = '';
+      var html = '<p class="smc-code">Invite code: <span>' + esc(card.code || '—') + '</span></p>';
+      // Party members only when this is the map currently open (prefs/presence are for active shared map)
+      if (vs && vs.mode === 'shared' && vs.sharedMapId === card.id) {
         await loadPartyPrefs(vs.sharedMapId);
         try {
           var members = await listMembers();
-          var user = window.__rsUser;
-          if (!members.length) partyBox.innerHTML = '<p class="settings-hint">Only you on this map so far.</p>';
-          else {
-            partyBox.innerHTML = members.map(function (m) {
-              var pref = partyPrefs[m.user_id] || {};
-              var nick = pref.nickname || '';
-              var col = pref.arrow_color || m.arrow_color || '#2563eb';
-              var show = pref.show_content !== false && !hiddenContentOwners[m.user_id];
-              var self = user && m.user_id === user.id;
-              return '<div class="party-member-row" data-uid="' + m.user_id + '">' +
-                '<div class="party-member-head">' +
-                  '<span class="party-dot" style="background:' + esc(col) + '"></span>' +
-                  '<strong>' + esc(memberLabel(m)) + '</strong>' +
-                  (self ? ' <span class="settings-hint">(you)</span>' : '') +
-                  (m.is_host ? ' · host' : '') +
-                '</div>' +
-                (!self ? (
-                  '<label class="settings-row"><input type="checkbox" class="party-show-content" ' + (show ? 'checked' : '') + '>' +
-                  '<span class="sr-text">Show their pins/areas on map</span></label>' +
-                  '<div class="settings-inline-row"><input type="text" class="party-nick" placeholder="Nickname" value="' + esc(nick) + '">' +
-                  '<input type="color" class="party-color" value="' + esc(col) + '" title="Arrow color" style="width:44px;height:36px;padding:0;border:none;">' +
-                  '<button type="button" class="party-save">Save</button></div>'
-                ) : '') +
-              '</div>';
-            }).join('');
-            partyBox.querySelectorAll('.party-member-row').forEach(function (row) {
-              var uid = row.getAttribute('data-uid');
-              var save = row.querySelector('.party-save');
-              if (save) save.onclick = function () {
-                var nick = (row.querySelector('.party-nick') || {}).value || '';
-                var col = (row.querySelector('.party-color') || {}).value || '#2563eb';
-                savePartyPref(uid, { nickname: nick.trim() || null, arrow_color: col }).then(function () {
-                  pullPresence();
-                  refreshMapsUi();
-                });
-              };
-              var chk = row.querySelector('.party-show-content');
-              if (chk) chk.onchange = function () {
-                if (!chk.checked) hiddenContentOwners[uid] = true;
-                else delete hiddenContentOwners[uid];
-                try {
-                  localStorage.setItem(HIDDEN_MEMBERS_KEY + ':' + vs.sharedMapId, JSON.stringify(hiddenContentOwners));
-                } catch (e) {}
-                savePartyPref(uid, { show_content: !!chk.checked });
-                applyContentOwnerFilter();
-              };
-            });
-          }
-        } catch (e3) {
-          partyBox.innerHTML = '<p class="settings-hint">Could not load party.</p>';
+          html += '<div class="settings-section-title" style="margin-top:8px;">Party</div>';
+          html += '<p class="settings-hint">Members on this shared map. Nicknames and colors are only for you.</p>';
+          html += '<div class="smc-party">' + buildPartyMembersHtml(members, vs, window.__rsUser) + '</div>';
+        } catch (eMem) {
+          html += '<p class="settings-hint">Could not load party.</p>';
         }
-        // presence pull when settings open
-        pullPresence();
       } else {
-        partySec.style.display = 'none';
-        partyBox.innerHTML = '';
-        clearPartyMarkers();
+        html += '<p class="settings-hint">Tap <strong>View</strong> to open this map and manage party members.</p>';
+      }
+      return html;
+    }
+
+    if (allBox) {
+      if (!cards.length) {
+        allBox.innerHTML = '<p class="settings-hint">No maps yet. Create a private or shared map below.</p>';
+      } else {
+        // Build shells first (async party html filled after)
+        allBox.innerHTML = cards.map(function (card) {
+          var expanded = mapsUiSelected.kind === card.kind && mapsUiSelected.id === card.id;
+          var badge = card.active ? 'Active' : (card.kind === 'shared' ? 'Shared' : (card.is_default ? 'Default' : 'Private'));
+          return '<div class="settings-map-card' +
+            (card.active ? ' is-active' : '') +
+            (expanded ? ' is-expanded' : '') +
+            '" data-kind="' + card.kind + '" data-id="' + card.id + '">' +
+            '<div class="settings-map-card-main">' +
+              '<button type="button" class="smc-name" data-kind="' + card.kind + '" data-id="' + card.id + '">' +
+                esc(card.name) +
+              '</button>' +
+              '<span class="smc-badge">' + esc(badge) + '</span>' +
+              '<div class="settings-map-card-actions">' +
+                '<button type="button" class="primary smc-view" data-kind="' + card.kind + '" data-id="' + card.id + '">View</button>' +
+                (card.kind === 'shared'
+                  ? '<button type="button" class="smc-share" data-id="' + card.id + '">Share</button>'
+                  : '') +
+              '</div>' +
+            '</div>' +
+            '<div class="settings-map-card-details" data-details-for="' + card.kind + ':' + card.id + '"></div>' +
+          '</div>';
+        }).join('');
+
+        // Fill details for expanded card(s)
+        for (var i = 0; i < cards.length; i++) {
+          var c = cards[i];
+          if (!(mapsUiSelected.kind === c.kind && mapsUiSelected.id === c.id)) continue;
+          var det = allBox.querySelector('[data-details-for="' + c.kind + ':' + c.id + '"]');
+          if (!det) continue;
+          det.innerHTML = await partyDetailsHtml(c);
+          wirePartyMemberRows(det, vs);
+          var ren = det.querySelector('.smc-rename');
+          if (ren) {
+            ren.onclick = function (ev) {
+              ev.stopPropagation();
+              var id = ren.getAttribute('data-pid');
+              var row = pmaps.find(function (x) { return x.id === id; }) || { id: id, name: '' };
+              var n = prompt('New name:', row.name || '');
+              if (!n || !n.trim()) return;
+              renamePrivate(id, n.trim()).then(refreshMapsUi).catch(function (e) { alert(e.message || e); });
+            };
+          }
+        }
+
+        allBox.querySelectorAll('.settings-map-card-main .smc-name, .settings-map-card-main').forEach(function (el) {
+          // Only wire name button for selection; avoid double-fire from main
+        });
+        allBox.querySelectorAll('.smc-name').forEach(function (btn) {
+          btn.onclick = function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            var kind = btn.getAttribute('data-kind');
+            var id = btn.getAttribute('data-id');
+            if (mapsUiSelected.kind === kind && mapsUiSelected.id === id) {
+              mapsUiSelected = { kind: null, id: null };
+            } else {
+              mapsUiSelected = { kind: kind, id: id };
+            }
+            refreshMapsUi();
+          };
+        });
+        allBox.querySelectorAll('.smc-view').forEach(function (btn) {
+          btn.onclick = function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            var kind = btn.getAttribute('data-kind');
+            var id = btn.getAttribute('data-id');
+            mapsUiSelected = { kind: kind, id: id };
+            if (kind === 'private') {
+              switchToPrivate(id).catch(function (e) { alert(e.message || e); });
+            } else if (C.switchToShared) {
+              C.switchToShared(id).then(function () {
+                refreshMapsUi();
+                pullPresence();
+              }).catch(function (e) { alert(e.message || e); });
+            }
+          };
+        });
+        allBox.querySelectorAll('.smc-share').forEach(function (btn) {
+          btn.onclick = function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            var id = btn.getAttribute('data-id');
+            var row = (smaps || []).find(function (x) { return x.id === id; });
+            if (row) copyMapInvite(row);
+          };
+        });
       }
     }
 
-    // overlay party section
+    // Legacy containers left empty (unified list above)
+    if (privBox) privBox.innerHTML = '';
+    if (sharedBox) sharedBox.innerHTML = '';
+
+    // Presence markers only while on a shared map
+    if (vs && vs.mode === 'shared' && vs.sharedMapId) {
+      pullPresence();
+    } else {
+      clearPartyMarkers();
+    }
+
     renderOverlayParty();
   }
 

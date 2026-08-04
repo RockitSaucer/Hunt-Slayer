@@ -5272,14 +5272,130 @@
       flex: 0 0 auto; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--accent);
       background: var(--accent); color: #111; font-weight: 700; font-size: 12px; cursor: pointer;
     }
-    #set-private-maps-list, #set-shared-maps-list, #set-party-members { margin-bottom: 10px; }
+    #set-private-maps-list, #set-shared-maps-list, #set-party-members, #set-all-maps-list { margin-bottom: 10px; }
     .map-row-btn, .party-member-row {
       display: block; width: 100%; text-align: left; margin: 4px 0; padding: 8px 10px;
       border-radius: 8px; border: 1px solid var(--border); background: var(--panel);
       color: var(--ink); cursor: pointer; font-size: 12px;
     }
     .map-row-btn.is-active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .settings-map-card {
+      margin: 6px 0;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+      overflow: hidden;
+    }
+    .settings-map-card.is-active {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(229, 154, 24, 0.45);
+    }
+    .settings-map-card.is-expanded {
+      border-color: rgba(229, 154, 24, 0.65);
+    }
+    .settings-map-card-main {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+    .settings-map-card-main .smc-name {
+      flex: 1 1 auto;
+      min-width: 0;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+      text-align: left;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+    }
+    .settings-map-card-main .smc-badge {
+      flex: 0 0 auto;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      background: rgba(255,255,255,0.06);
+      border-radius: 4px;
+      padding: 2px 6px;
+    }
+    .settings-map-card.is-active .smc-badge {
+      color: #111;
+      background: var(--accent);
+    }
+    .settings-map-card-actions {
+      display: none;
+      gap: 6px;
+      flex: 0 0 auto;
+      width: 100%;
+      margin-top: 2px;
+    }
+    .settings-map-card.is-expanded .settings-map-card-actions {
+      display: flex;
+    }
+    .settings-map-card-actions button {
+      flex: 1 1 0;
+      padding: 7px 8px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .settings-map-card-actions button.primary {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #111;
+    }
+    .settings-map-card-details {
+      display: none;
+      padding: 8px 10px 10px;
+      border-top: 1px solid var(--border);
+      background: rgba(0,0,0,0.18);
+    }
+    .settings-map-card.is-expanded .settings-map-card-details {
+      display: block;
+    }
+    .settings-map-card-details .smc-code {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink);
+      margin: 0 0 8px;
+      letter-spacing: 0.06em;
+    }
+    .settings-map-card-details .smc-code span {
+      color: var(--accent);
+      font-family: ui-monospace, monospace;
+    }
+    .party-member-row {
+      margin: 6px 0 0;
+    }
     .party-presence-icon { background: transparent !important; border: none !important; }
+    .pl-opacity-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin: 0 0 10px;
+      padding: 6px 2px 8px;
+    }
+    .pl-opacity-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.03em;
+    }
+    .pl-opacity-row input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -5288,7 +5404,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 5.5 Beta">V5.5 Beta</span>
+      <span class="brand-version" aria-label="Version 5.6 Beta">V5.6 Beta</span>
     </div>
   </header>
 
@@ -5771,19 +5887,38 @@
                           </label>
           
                           <div class="ml-section">Overlays</div>
-                          <label class="ml-option">
-                            <input type="checkbox" id="toggle-parcels-chk" onchange="togglePropertyLines(this.checked)">
-                            <span class="ml-opt-text">Property lines</span>
-                          </label>
-                          <label class="ml-option">
-                            <input type="checkbox" id="toggle-roads-overlay-chk" onchange="toggleRoadsOverlay(this.checked)">
-                            <span class="ml-opt-text">Roads &amp; waterways</span>
-                          </label>
-                          <label class="ml-option">
-                            <input type="checkbox" id="toggle-topo-overlay-chk" onchange="toggleTopoOverlay(this.checked)">
-                            <span class="ml-opt-text">Topo lines</span>
-                          </label>
 
+                          <!-- 1) Public lands -->
+                          <button type="button" class="ml-fold-btn" id="ml-fold-public-lands" onclick="toggleLayersFold('public-lands')" aria-expanded="false">
+                            Public lands<span class="ml-fold-caret" aria-hidden="true">▸</span>
+                          </button>
+                          <div class="ml-fold-body" id="ml-fold-body-public-lands" hidden>
+                            <label class="pl-opacity-row" for="pl-opacity-slider">
+                              <span class="pl-opacity-label">Opacity <span id="pl-opacity-val">70%</span></span>
+                              <input type="range" id="pl-opacity-slider" min="15" max="100" value="70" step="5"
+                                oninput="setPublicLandOpacity(this.value)" title="Fill opacity for all public land types">
+                            </label>
+                            <div class="pl-toggles" id="pl-toggles" role="group" aria-label="Toggle public land types">
+                              <button type="button" class="pl-toggle-btn on" id="pl-btn-wma" data-pl="wma" style="background:#e59a18;" onclick="togglePublicLandType('wma')" title="Wildlife Management Areas" aria-pressed="true">WMA<span class="pl-sub">on</span></button>
+                              <button type="button" class="pl-toggle-btn on" id="pl-btn-forestNwr" data-pl="forestNwr" style="background:#2f9e4f;color:#fff;" onclick="togglePublicLandType('forestNwr')" title="National Forests &amp; NWR" aria-pressed="true">Forest/NWR<span class="pl-sub">on</span></button>
+                              <button type="button" class="pl-toggle-btn on" id="pl-btn-tva" data-pl="tva" style="background:#2d8fd9;color:#fff;" onclick="togglePublicLandType('tva')" title="TVA Undeveloped" aria-pressed="true">TVA<span class="pl-sub">on</span></button>
+                              <button type="button" class="pl-toggle-btn on" id="pl-btn-foreverWild" data-pl="foreverWild" style="background:#9b59b6;color:#fff;" onclick="togglePublicLandType('foreverWild')" title="Forever Wild" aria-pressed="true">FW<span class="pl-sub">on</span></button>
+                              <button type="button" class="pl-toggle-btn on" id="pl-btn-soa" data-pl="soa" style="background:#c026d3;color:#fff;" onclick="togglePublicLandType('soa')" title="Special Opportunity Areas" aria-pressed="true">SOA<span class="pl-sub">on</span></button>
+                              <button type="button" class="pl-toggle-btn on" id="pl-btn-pdha" data-pl="pdha" style="background:#14b8a6;color:#fff;" onclick="togglePublicLandType('pdha')" title="Disabled Hunt Areas (PDHA)" aria-pressed="true">PDHA<span class="pl-sub">on</span></button>
+                              <button type="button" class="pl-toggle-btn on" id="pl-btn-usace" data-pl="usace" style="background:#6b7c3a;color:#fff;" onclick="togglePublicLandType('usace')" title="U.S. Army Corps of Engineers open recreation / hunting project lands" aria-pressed="true">USACE<span class="pl-sub">on</span></button>
+                              <button type="button" class="pl-toggle-btn on" id="pl-btn-listPins" data-pl="listPins" style="background:#486a2f;color:#fff;" onclick="togglePublicLandType('listPins')" title="Green ✓ pins for Available Hunts list" aria-pressed="true">✓ List<span class="pl-sub">on</span></button>
+                              <button type="button" class="pl-toggle-btn on" id="pl-btn-custom" data-pl="custom" style="background:#c47a0f;color:#fff;" onclick="togglePublicLandType('custom')" title="Custom areas drawn with the Draw tool" aria-pressed="true">Custom<span class="pl-sub">on</span></button>
+                            </div>
+                            <div class="zone-toggle-actions">
+                              <button type="button" onclick="setAllPublicLandTypes(true)">All on</button>
+                              <button type="button" onclick="setAllPublicLandTypes(false)">All off</button>
+                            </div>
+                            <div id="adcnr-cache-status" style="font-size:9px;margin-top:6px;color:var(--muted);"></div>
+                            <input type="checkbox" id="toggle-adcnr-lands-chk" checked style="display:none;" aria-hidden="true">
+                            <span id="toggle-adcnr-label" style="display:none;" aria-hidden="true"></span>
+                          </div>
+
+                          <!-- 2) Pins -->
                           <button type="button" class="ml-fold-btn" id="ml-fold-pins" onclick="toggleLayersFold('pins')" aria-expanded="false">
                             Pins<span class="ml-fold-caret" aria-hidden="true">▸</span>
                           </button>
@@ -5793,53 +5928,43 @@
                               <button type="button" onclick="setAllPinTypesVisible(true)">All on</button>
                               <button type="button" onclick="setAllPinTypesVisible(false)">All off</button>
                             </div>
-                            <!-- Legacy master for past hunts (driven by pin-type toggle) -->
                             <input type="checkbox" id="toggle-prev-hunts-chk" checked style="display:none;" aria-hidden="true" onchange="drawHuntsOnMap()">
                           </div>
-          
-                          <button type="button" class="ml-fold-btn" id="ml-fold-public-lands" onclick="toggleLayersFold('public-lands')" aria-expanded="false">
-                            Public lands<span class="ml-fold-caret" aria-hidden="true">▸</span>
-                          </button>
-                          <div class="ml-fold-body" id="ml-fold-body-public-lands" hidden>
-                          <div class="pl-toggles" id="pl-toggles" role="group" aria-label="Toggle public land types">
-                            <button type="button" class="pl-toggle-btn on" id="pl-btn-wma" data-pl="wma" style="background:#e59a18;" onclick="togglePublicLandType('wma')" title="Wildlife Management Areas" aria-pressed="true">WMA<span class="pl-sub">on</span></button>
-                            <button type="button" class="pl-toggle-btn on" id="pl-btn-forestNwr" data-pl="forestNwr" style="background:#2f9e4f;color:#fff;" onclick="togglePublicLandType('forestNwr')" title="National Forests &amp; NWR" aria-pressed="true">Forest/NWR<span class="pl-sub">on</span></button>
-                            <button type="button" class="pl-toggle-btn on" id="pl-btn-tva" data-pl="tva" style="background:#2d8fd9;color:#fff;" onclick="togglePublicLandType('tva')" title="TVA Undeveloped" aria-pressed="true">TVA<span class="pl-sub">on</span></button>
-                            <button type="button" class="pl-toggle-btn on" id="pl-btn-foreverWild" data-pl="foreverWild" style="background:#9b59b6;color:#fff;" onclick="togglePublicLandType('foreverWild')" title="Forever Wild" aria-pressed="true">FW<span class="pl-sub">on</span></button>
-                            <button type="button" class="pl-toggle-btn on" id="pl-btn-soa" data-pl="soa" style="background:#c026d3;color:#fff;" onclick="togglePublicLandType('soa')" title="Special Opportunity Areas" aria-pressed="true">SOA<span class="pl-sub">on</span></button>
-                            <button type="button" class="pl-toggle-btn on" id="pl-btn-pdha" data-pl="pdha" style="background:#14b8a6;color:#fff;" onclick="togglePublicLandType('pdha')" title="Disabled Hunt Areas (PDHA)" aria-pressed="true">PDHA<span class="pl-sub">on</span></button>
-                            <button type="button" class="pl-toggle-btn on" id="pl-btn-usace" data-pl="usace" style="background:#6b7c3a;color:#fff;" onclick="togglePublicLandType('usace')" title="U.S. Army Corps of Engineers open recreation / hunting project lands" aria-pressed="true">USACE<span class="pl-sub">on</span></button>
-                            <button type="button" class="pl-toggle-btn on" id="pl-btn-listPins" data-pl="listPins" style="background:#486a2f;color:#fff;" onclick="togglePublicLandType('listPins')" title="Green ✓ pins for Available Hunts list" aria-pressed="true">✓ List<span class="pl-sub">on</span></button>
-                            <button type="button" class="pl-toggle-btn on" id="pl-btn-custom" data-pl="custom" style="background:#c47a0f;color:#fff;" onclick="togglePublicLandType('custom')" title="Custom areas drawn with the Draw tool" aria-pressed="true">Custom<span class="pl-sub">on</span></button>
-                          </div>
-                          <div class="zone-toggle-actions">
-                            <button type="button" onclick="setAllPublicLandTypes(true)">All on</button>
-                            <button type="button" onclick="setAllPublicLandTypes(false)">All off</button>
-                          </div>
-                          <div id="adcnr-cache-status" style="font-size:9px;margin-top:6px;color:var(--muted);"></div>
-                          <!-- Hidden master for legacy; driven by any public-land type being on -->
-                          <input type="checkbox" id="toggle-adcnr-lands-chk" checked style="display:none;" aria-hidden="true">
-                          <span id="toggle-adcnr-label" style="display:none;" aria-hidden="true"></span>
-                          </div><!-- /ml-fold-body-public-lands -->
 
+                          <!-- 3) Roads & waterways -->
+                          <label class="ml-option">
+                            <input type="checkbox" id="toggle-roads-overlay-chk" onchange="toggleRoadsOverlay(this.checked)">
+                            <span class="ml-opt-text">Roads &amp; waterways</span>
+                          </label>
+                          <!-- 4) Topo lines -->
+                          <label class="ml-option">
+                            <input type="checkbox" id="toggle-topo-overlay-chk" onchange="toggleTopoOverlay(this.checked)">
+                            <span class="ml-opt-text">Topo lines</span>
+                          </label>
+                          <!-- 5) Property lines -->
+                          <label class="ml-option">
+                            <input type="checkbox" id="toggle-parcels-chk" onchange="togglePropertyLines(this.checked)">
+                            <span class="ml-opt-text">Property lines</span>
+                          </label>
+
+                          <!-- 6) Deer season zones -->
                           <button type="button" class="ml-fold-btn" id="ml-fold-deer-zones" onclick="toggleLayersFold('deer-zones')" aria-expanded="false">
                             Deer season zones<span class="ml-fold-caret" aria-hidden="true">▸</span>
                           </button>
                           <div class="ml-fold-body" id="ml-fold-body-deer-zones" hidden>
-                          <div class="zone-toggles" id="zone-toggles" role="group" aria-label="Toggle deer season zones">
-                            <button type="button" class="zone-toggle-btn" id="zone-btn-A" data-zone="A" style="background:#8a8a8a;" onclick="toggleDeerZone('A')" title="Zone A — default statewide" aria-pressed="false">A<span class="zt-sub">off</span></button>
-                            <button type="button" class="zone-toggle-btn" id="zone-btn-B" data-zone="B" style="background:#e6d29a;" onclick="toggleDeerZone('B')" title="Zone B — south of US-80 line" aria-pressed="false">B<span class="zt-sub">off</span></button>
-                            <button type="button" class="zone-toggle-btn" id="zone-btn-C" data-zone="C" style="background:#e0913c;" onclick="toggleDeerZone('C')" title="Zone C — north-central band" aria-pressed="false">C<span class="zt-sub">off</span></button>
-                            <button type="button" class="zone-toggle-btn" id="zone-btn-D" data-zone="D" style="background:#7dcf9a;" onclick="toggleDeerZone('D')" title="Zone D — Bankhead / Winston–Lawrence pocket" aria-pressed="false">D<span class="zt-sub">off</span></button>
-                            <button type="button" class="zone-toggle-btn" id="zone-btn-E" data-zone="E" style="background:#9a8b3a;" onclick="toggleDeerZone('E')" title="Zone E — Calhoun/Cleburne &amp; E. Russell" aria-pressed="false">E<span class="zt-sub">off</span></button>
+                            <div class="zone-toggles" id="zone-toggles" role="group" aria-label="Toggle deer season zones">
+                              <button type="button" class="zone-toggle-btn" id="zone-btn-A" data-zone="A" style="background:#8a8a8a;" onclick="toggleDeerZone('A')" title="Zone A — default statewide" aria-pressed="false">A<span class="zt-sub">off</span></button>
+                              <button type="button" class="zone-toggle-btn" id="zone-btn-B" data-zone="B" style="background:#e6d29a;" onclick="toggleDeerZone('B')" title="Zone B — south of US-80 line" aria-pressed="false">B<span class="zt-sub">off</span></button>
+                              <button type="button" class="zone-toggle-btn" id="zone-btn-C" data-zone="C" style="background:#e0913c;" onclick="toggleDeerZone('C')" title="Zone C — north-central band" aria-pressed="false">C<span class="zt-sub">off</span></button>
+                              <button type="button" class="zone-toggle-btn" id="zone-btn-D" data-zone="D" style="background:#7dcf9a;" onclick="toggleDeerZone('D')" title="Zone D — Bankhead / Winston–Lawrence pocket" aria-pressed="false">D<span class="zt-sub">off</span></button>
+                              <button type="button" class="zone-toggle-btn" id="zone-btn-E" data-zone="E" style="background:#9a8b3a;" onclick="toggleDeerZone('E')" title="Zone E — Calhoun/Cleburne &amp; E. Russell" aria-pressed="false">E<span class="zt-sub">off</span></button>
+                            </div>
+                            <div class="zone-toggle-actions">
+                              <button type="button" onclick="setAllDeerZones(true)">All on</button>
+                              <button type="button" onclick="setAllDeerZones(false)">All off</button>
+                            </div>
+                            <input type="checkbox" id="toggle-state-zones-chk" style="display:none;" aria-hidden="true">
                           </div>
-                          <div class="zone-toggle-actions">
-                            <button type="button" onclick="setAllDeerZones(true)">All on</button>
-                            <button type="button" onclick="setAllDeerZones(false)">All off</button>
-                          </div>
-                          <!-- Hidden master flag; driven by any zone being on -->
-                          <input type="checkbox" id="toggle-state-zones-chk" style="display:none;" aria-hidden="true">
-                          </div><!-- /ml-fold-body-deer-zones -->
               </div>
             </div>
             <button type="button" class="map-settings-btn mbb-ctrl" id="map-settings-btn" onclick="openSettingsModal()" title="Settings">⚙</button>
@@ -6115,6 +6240,13 @@
           <label class="settings-row"><input type="checkbox" id="set-show-compass" onchange="onSettingsToolsChange()"><span class="sr-text">Wind / compass<span class="sr-sub">Top dial — hides both wind indicator and compass</span></span></label>
           <label class="settings-row"><input type="checkbox" id="set-show-radar" onchange="onSettingsToolsChange()"><span class="sr-text">Radar<span class="sr-sub">Radar dish on the bottom bar</span></span></label>
           <p class="settings-hint">Wind and compass share one setting. Radar is separate on the slim bottom bar.</p>
+          <div class="settings-section-title">Account</div>
+          <p class="settings-hint" id="auth-user-chip">Not signed in</p>
+          <button type="button" class="settings-subbtn" id="set-signout-btn">Sign out on this device</button>
+          <div class="settings-section-title" style="margin-top:16px;">Cloud &amp; offline</div>
+          <div id="set-sync-status">Cloud sync ready</div>
+          <label class="settings-row"><input type="checkbox" id="set-offline-mode"><span class="sr-text">Offline mode<span class="sr-sub">Save on this device only — pause cloud upload</span></span></label>
+          <p class="settings-hint">Edits save on this device first, then upload when online (and not in Offline mode).</p>
         </div>
         <div class="settings-pane" id="settings-pane-defaults">
           <button type="button" class="settings-subbtn" onclick="toggleSettingsSubpanel('set-def-overlays')">Overlays ▾</button>
@@ -6138,30 +6270,25 @@
         </div>
         <div class="settings-pane" id="settings-pane-maps">
           <div id="set-map-mode-label">Viewing: My Map (personal)</div>
-          <div id="set-sync-status">Cloud sync ready</div>
-          <label class="settings-row"><input type="checkbox" id="set-offline-mode"><span class="sr-text">Offline mode<span class="sr-sub">Save on this device only — pause cloud upload</span></span></label>
-          <p class="settings-hint">Edits save on this device first, then upload when online (and not in Offline mode). Live location needs a shared map + two signed-in users.</p>
-
-          <div class="settings-section-title">Account</div>
-          <p class="settings-hint" id="auth-user-chip">Not signed in</p>
-          <button type="button" class="settings-subbtn" id="set-signout-btn">Sign out on this device</button>
+          <p class="settings-hint">Maps you are in appear first. Tap a map to expand View / Share and its settings.</p>
 
           <div class="settings-section-title">My Maps</div>
-          <button type="button" class="settings-subbtn" id="set-use-personal-btn">Use default private map</button>
+          <div id="set-all-maps-list"></div>
+          <!-- Kept for script compatibility; filled only if needed -->
+          <div id="set-private-maps-list" hidden aria-hidden="true"></div>
+          <div id="set-shared-maps-list" hidden aria-hidden="true"></div>
+          <div id="set-party-section" hidden aria-hidden="true" style="display:none;">
+            <div id="set-party-members"></div>
+          </div>
+
+          <button type="button" class="settings-subbtn" id="set-use-personal-btn" style="margin-top:8px;">Use default private map</button>
           <button type="button" class="settings-subbtn" id="set-rename-current-btn">Rename current map</button>
-          <p class="settings-hint">Your private maps (tap to view — only one active at a time):</p>
-          <div id="set-private-maps-list"></div>
+          <button type="button" class="settings-subbtn" id="set-share-code-btn">Copy invite for current shared map</button>
+
+          <div class="settings-section-title">New private map</div>
           <div class="settings-inline-row">
             <input type="text" id="set-create-private-name" maxlength="60" placeholder="New private map name">
             <button type="button" id="set-create-private-btn">Create</button>
-          </div>
-          <p class="settings-hint">Shared maps (tap to view / share):</p>
-          <div id="set-shared-maps-list"></div>
-
-          <div id="set-party-section" style="display:none;">
-            <div class="settings-section-title">Party on this map</div>
-            <p class="settings-hint">Members who can see this shared map. Nicknames and colors are only for you.</p>
-            <div id="set-party-members"></div>
           </div>
 
           <div class="settings-section-title">Create shared map</div>
@@ -6176,10 +6303,7 @@
             <input type="text" id="set-join-map-code" maxlength="12" inputmode="numeric" placeholder="6-digit code">
             <button type="button" id="set-join-map-btn">Join</button>
           </div>
-
-          <div class="settings-section-title">Share</div>
-          <button type="button" class="settings-subbtn" id="set-share-code-btn">Copy invite (Join my map!)</button>
-          <p class="settings-hint">Copies the current shared map code + link. Only works while viewing a shared map.</p>
+          <p class="settings-hint">Live location needs a shared map and two signed-in users.</p>
         </div>
 
         <div class="settings-pane" id="settings-pane-display">
@@ -6200,7 +6324,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '5.5-beta';
+    const APP_VERSION = '5.6-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -6381,6 +6505,57 @@
     };
     function publicLandDrawStyle(layerKey) {
       return PUBLIC_LAND_COLORS[layerKey] || { color: '#94a3b8', fillOpacity: 0.25, weight: 1.15 };
+    }
+
+    /** Global public-lands fill opacity multiplier (0.15–1.0). Affects all types at once. */
+    var PUBLIC_LAND_OPACITY_KEY = 'reg_slayer_pl_opacity_v1';
+    var publicLandOpacityMul = 0.7;
+    try {
+      var _plOpRaw = localStorage.getItem(PUBLIC_LAND_OPACITY_KEY);
+      if (_plOpRaw != null) {
+        var _plOpN = parseFloat(_plOpRaw);
+        if (!isNaN(_plOpN) && _plOpN >= 0.15 && _plOpN <= 1) publicLandOpacityMul = _plOpN;
+      }
+    } catch (ePlOp) {}
+
+    function applyPublicLandOpacityMul(baseFill, isOpen) {
+      var base = baseFill != null ? baseFill : 0.28;
+      var openBoost = isOpen ? Math.min(0.16, base * 0.45) : 0;
+      var raw = Math.min(0.72, base + openBoost);
+      var mul = publicLandOpacityMul;
+      if (mul == null || isNaN(mul)) mul = 0.7;
+      mul = Math.max(0.15, Math.min(1, mul));
+      // Scale relative to default 0.7 so 70% ≈ previous look
+      var scaled = raw * (mul / 0.7);
+      return Math.max(0.04, Math.min(0.85, scaled));
+    }
+
+    function setPublicLandOpacity(pctOrMul) {
+      var n = parseFloat(pctOrMul);
+      if (isNaN(n)) return;
+      // Accept 15–100 (slider %) or 0.15–1
+      if (n > 1) n = n / 100;
+      n = Math.max(0.15, Math.min(1, n));
+      publicLandOpacityMul = n;
+      try { localStorage.setItem(PUBLIC_LAND_OPACITY_KEY, String(n)); } catch (eS) {}
+      var lab = document.getElementById('pl-opacity-val');
+      if (lab) lab.textContent = Math.round(n * 100) + '%';
+      var sl = document.getElementById('pl-opacity-slider');
+      if (sl && Math.abs(parseFloat(sl.value) - n * 100) > 0.5) sl.value = String(Math.round(n * 100));
+      try {
+        if (typeof drawAdcnrLandsOverlay === 'function' && adcnrLandsData) drawAdcnrLandsOverlay();
+        if (typeof drawCustomAreasOnMap === 'function') drawCustomAreasOnMap();
+      } catch (eD) {}
+    }
+    window.setPublicLandOpacity = setPublicLandOpacity;
+
+    function syncPublicLandOpacityUi() {
+      var n = publicLandOpacityMul;
+      if (n == null || isNaN(n)) n = 0.7;
+      var lab = document.getElementById('pl-opacity-val');
+      if (lab) lab.textContent = Math.round(n * 100) + '%';
+      var sl = document.getElementById('pl-opacity-slider');
+      if (sl) sl.value = String(Math.round(n * 100));
     }
 
     /**
@@ -10512,16 +10687,18 @@
           var base = publicLandDrawStyle(layer.key);
           var stroke = base.color;
           var fill = base.color;
-          var fillOp = isOpen
-            ? Math.min(0.52, (base.fillOpacity || 0.3) + 0.16)
-            : Math.max(0.18, (base.fillOpacity || 0.28));
+          var fillOp = (typeof applyPublicLandOpacityMul === 'function')
+            ? applyPublicLandOpacityMul(base.fillOpacity || 0.28, isOpen)
+            : (isOpen
+              ? Math.min(0.52, (base.fillOpacity || 0.3) + 0.16)
+              : Math.max(0.18, (base.fillOpacity || 0.28)));
           var wt = isOpen ? (base.weight || 2) + 1.1 : (base.weight || 2);
           var interactive = layer.interactive !== false;
 
           var poly = L.polygon(latlngs, {
             color: stroke,
             weight: wt,
-            opacity: 1,
+            opacity: Math.max(0.35, Math.min(1, fillOp + 0.35)),
             fillColor: fill,
             fillOpacity: fillOp,
             interactive: interactive,
@@ -19598,6 +19775,7 @@
         }
       } catch (eRe) {}
       syncSettingsUiFromState();
+      try { if (typeof syncPublicLandOpacityUi === 'function') syncPublicLandOpacityUi(); } catch (eOp) {}
       if (tab) switchSettingsTab(tab);
       modal.classList.add('active');
       modal.style.zIndex = '2147483640';
@@ -20283,12 +20461,16 @@
                 : (vs.privateMapName || 'My Map');
               if (lab && vs) {
                 if (vs.mode === 'shared') {
-                  lab.textContent = 'Viewing: ' + mapNm +
-                    (vs.sharedMapCode ? ' · code ' + vs.sharedMapCode : '');
+                  lab.textContent = 'Viewing: ' + mapNm;
                 } else {
                   lab.textContent = 'Viewing: ' + mapNm + ' (private)';
                 }
               }
+              try {
+                if (window.RegSlayerParty && window.RegSlayerParty.refreshMapsUi) {
+                  window.RegSlayerParty.refreshMapsUi();
+                }
+              } catch (eMaps) {}
               var bn = document.getElementById('brand-map-name');
               var mn = document.getElementById('map-title-mobile');
               if (bn) bn.textContent = mapNm;
