@@ -3810,13 +3810,15 @@
       color: #fff;
     }
 
-    /* Satellite imagery acquisition date (bottom-right, above bottom bar) */
+    /* Satellite imagery date — on the map only, never over the bottom toolbar */
     .map-imagery-date {
       position: absolute;
       left: 8px;
       right: auto;
-      bottom: 50px;
-      z-index: 850;
+      /* Sit just above the bottom bar strip (+ home-indicator inset) */
+      bottom: calc(var(--mbb-bar-h, 45px) + env(safe-area-inset-bottom, 0px) + 10px);
+      /* Below toolbar (z 80) so it can never cover buttons */
+      z-index: 70;
       pointer-events: none;
       font-size: 10px;
       font-weight: 700;
@@ -3835,13 +3837,19 @@
       text-overflow: ellipsis;
     }
     .map-imagery-date.visible { display: block; }
-    .map-wrapper.fullscreen .map-imagery-date { bottom: 52px; left: 8px; right: auto; }
+    .map-wrapper.fullscreen .map-imagery-date {
+      bottom: calc(var(--mbb-bar-h, 45px) + env(safe-area-inset-bottom, 0px) + 10px);
+      left: 8px;
+      right: auto;
+      z-index: 70;
+    }
     html.layout-phone .map-imagery-date {
       font-size: 9px;
       left: 6px;
       right: auto;
-      bottom: 46px;
+      bottom: calc(var(--mbb-bar-h, 36px) + env(safe-area-inset-bottom, 0px) + 8px);
       padding: 2px 6px;
+      z-index: 70;
     }
     .map-layers-menu {
       position: relative;
@@ -5382,7 +5390,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.1 Beta">V6.1 Beta</span>
+      <span class="brand-version" aria-label="Version 6.2 Beta">V6.2 Beta</span>
     </div>
   </header>
 
@@ -6302,7 +6310,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.1-beta';
+    const APP_VERSION = '6.2-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */

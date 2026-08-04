@@ -181,6 +181,151 @@
     return Math.floor(s / 3600) + 'h ago';
   }
 
+  function escJs(s) {
+    return String(s == null ? '' : s)
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, ' ');
+  }
+
+  /**
+   * Party member popup: last update, Edit friend, Save pin — no facing degrees.
+   */
+  function buildPartyMemberPopupHtml(row, mem) {
+    var uid = String(row.user_id);
+    var label = memberLabel(mem);
+    var lat = Number(row.lat);
+    var lng = Number(row.lng);
+    return (
+      '<div class="map-dot-menu party-member-popup" onclick="event.stopPropagation();">' +
+        '<div class="mdm-title">' + esc(label) + '</div>' +
+        '<div class="mdm-sub" style="margin:4px 0 10px;">Last update: <strong>' +
+          esc(formatAgo(row.updated_at)) + '</strong></div>' +
+        '<button type="button" class="mdm-btn pin" ' +
+          'onclick="event.preventDefault();event.stopPropagation();' +
+          'window.rsEditPartyFriend&&window.rsEditPartyFriend(\'' + escJs(uid) + '\');return false;">' +
+          'Edit friend</button>' +
+        '<button type="button" class="mdm-btn" ' +
+          'onclick="event.preventDefault();event.stopPropagation();' +
+          'window.rsSavePartyPin&&window.rsSavePartyPin(\'' + escJs(uid) + '\',' +
+          lat + ',' + lng + ',\'' + escJs(label) + '\');return false;">' +
+          'Save pin</button>' +
+      '</div>'
+    );
+  }
+
+  function findPartyMember(uid) {
+    var members = window.__rsPartyMembers || [];
+    uid = String(uid);
+    for (var i = 0; i < members.length; i++) {
+      if (String(members[i].user_id) === uid) return members[i];
+    }
+    return { user_id: uid, username: 'Hunter', display_name: 'Hunter' };
+  }
+
+  window.rsEditPartyFriend = function (uid) {
+    uid = String(uid || '');
+    if (!uid) return;
+    var mem = findPartyMember(uid);
+    var pref = partyPrefs[uid] || partyPrefs[mem.user_id] || {};
+    var nick = pref.nickname || '';
+    var col = pref.arrow_color || mem.arrow_color || memberColor(mem) || '#2563eb';
+    var body =
+      '<p class="settings-hint" style="margin:0 0 8px;">Nickname and arrow color are only for you.</p>' +
+      '<label style="display:block;font-size:11px;font-weight:700;margin:6px 0 4px;">Nickname</label>' +
+      '<input type="text" id="rs-friend-nick" maxlength="32" value="' + esc(nick) + '" ' +
+        'style="width:100%;box-sizing:border-box;padding:8px;border-radius:6px;border:1px solid #444;background:#1a1a1a;color:#fff;">' +
+      '<label style="display:block;font-size:11px;font-weight:700;margin:10px 0 4px;">Arrow color</label>' +
+      '<input type="color" id="rs-friend-color" value="' + esc(col) + '" ' +
+        'style="width:100%;height:40px;padding:0;border:none;background:transparent;cursor:pointer;">';
+    showSimpleModal('Edit friend — ' + (mem.display_name || mem.username || 'Hunter'), body, [
+      {
+        label: 'Save',
+        primary: true,
+        onClick: function () {
+          var nEl = document.getElementById('rs-friend-nick');
+          var cEl = document.getElementById('rs-friend-color');
+          var n = nEl ? String(nEl.value || '').trim() : '';
+          var c = cEl ? (cEl.value || col) : col;
+          savePartyPref(uid, {
+            nickname: n || null,
+            arrow_color: c
+          }).then(function () {
+            pullPresence();
+            try {
+              if (window.showAppCopyToast) {
+                showAppCopyToast('<span class="act">Friend updated</span><br>' + esc(n || mem.username || 'Hunter'));
+              }
+            } catch (eT) {}
+          }).catch(function (e) {
+            alert((e && e.message) || String(e));
+          });
+        }
+      },
+      { label: 'Cancel' }
+    ]);
+    // Close leaflet popup so it does not sit under the modal
+    try {
+      var m = getMap();
+      if (m) m.closePopup();
+    } catch (eC) {}
+  };
+
+  window.rsSavePartyPin = function (uid, lat, lng, label) {
+    lat = Number(lat);
+    lng = Number(lng);
+    if (isNaN(lat) || isNaN(lng)) {
+      alert('Location not available.');
+      return;
+    }
+    var mem = findPartyMember(uid);
+    var name = (label || memberLabel(mem) || 'Party member') + ' location';
+    var color = memberColor(mem) || '#2563eb';
+    var pin = {
+      id: 'pin_party_' + Date.now() + '_' + Math.floor(Math.random() * 999),
+      name: name,
+      lat: lat,
+      lng: lng,
+      isPin: true,
+      color: color,
+      notes: 'Saved from party live location',
+      createdAt: new Date().toISOString()
+    };
+    stampOwner(pin);
+    try {
+      if (typeof locations !== 'undefined' && Array.isArray(locations)) {
+        locations.push(pin);
+      }
+    } catch (eL) {}
+    try {
+      var pins = JSON.parse(localStorage.getItem('alabama_hunt_custom_pins') || '[]');
+      if (!Array.isArray(pins)) pins = [];
+      pins.push(pin);
+      localStorage.setItem('alabama_hunt_custom_pins', JSON.stringify(pins));
+    } catch (eS) {
+      alert('Could not save pin on this device.');
+      return;
+    }
+    try {
+      if (typeof drawPinsOnMap === 'function') drawPinsOnMap();
+    } catch (eD) {}
+    try {
+      if (typeof window.regSlayerMapDataChanged === 'function') window.regSlayerMapDataChanged();
+    } catch (eM) {}
+    try {
+      var m = getMap();
+      if (m) m.closePopup();
+    } catch (eC) {}
+    try {
+      if (window.showAppCopyToast) {
+        showAppCopyToast('<span class="act">Pin saved</span><br>' + esc(name));
+      } else {
+        alert('Pin saved: ' + name);
+      }
+    } catch (eT) {}
+  };
+
   async function loadPartyPrefs(mapId) {
     partyPrefs = {};
     var sb = window.__rsSb;
@@ -281,13 +426,13 @@
         var label = memberLabel(mem);
         var color = memberColor(mem);
         var hdg = normalizeHeading(row.heading);
-        var popup = '<strong>' + esc(label) + '</strong><br>Sharing live location' +
-          (hdg != null ? '<br>Facing ~' + Math.round(hdg) + '°' : '') +
-          '<br>Last updated: ' + esc(formatAgo(row.updated_at));
+        var popup = buildPartyMemberPopupHtml(row, mem);
         if (partyMarkers[uid]) {
           partyMarkers[uid].setLatLng([row.lat, row.lng]);
-          try { partyMarkers[uid].setPopupContent(popup); } catch (eP) {}
-          // Update facing direction smoothly
+          try {
+            partyMarkers[uid].setPopupContent(popup);
+          } catch (eP) {}
+          // Keep arrow facing direction on the icon only (not in the popup text)
           if (hdg != null) {
             if (partyMarkers[uid]._rsHeading == null ||
                 headingDelta(partyMarkers[uid]._rsHeading, hdg) >= 2) {
@@ -297,8 +442,15 @@
         } else {
           var icon = buildPartyArrowIcon(color, label, hdg);
           var mk = L.marker([row.lat, row.lng], { icon: icon, zIndexOffset: 900 }).addTo(layer);
-          mk.bindPopup(popup);
+          mk.bindPopup(popup, {
+            className: 'map-dot-popup party-member-leaflet-popup',
+            closeButton: true,
+            autoPan: false,
+            maxWidth: 260,
+            closeOnClick: false
+          });
           mk._rsHeading = hdg;
+          mk._rsUserId = uid;
           partyMarkers[uid] = mk;
         }
       });
