@@ -1,0 +1,7 @@
+﻿V6.4.2 — Compass hard fixes
+- Mobile dial at top of map (safe-area only)
+- Probe: large DivIcon hit target + document-level drag (touch/mouse)
+- Elev: USGS EPQS (feet) me vs probe, Open-Meteo fallback
+- Dist/elev chip on base (back) of GPS triangle, fit-content width
+- No setLatLngs during zoom (stops line detach); settle on zoomend
+- Shell v30
