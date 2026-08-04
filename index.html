@@ -317,24 +317,70 @@
       z-index: 0;
     }
     /*
-     * Desktop only: map fills remaining viewport so bottom toolbar is visible
-     * without scrolling. Mobile keeps the shorter phone map heights below.
-     * JS fitDesktopMapHeight() refines this after layout / sticky / resize.
+     * Desktop min-mode: lock shell to the viewport so the map column always
+     * shows top chrome (compass/wind) AND bottom toolbar without page scroll.
+     * Left planner scrolls inside its card. Phone layout is unchanged.
+     * JS fitDesktopMapHeight() measures remaining height on resize.
      */
-    html.layout-desktop .card-map {
-      /* header ~104px + shell pad ~14px + small bottom gap */
-      height: calc(100vh - 130px);
-      height: calc(100dvh - 130px);
-      max-height: calc(100vh - 130px);
-      max-height: calc(100dvh - 130px);
+    html.layout-desktop,
+    html.layout-desktop body {
+      height: 100%;
+      max-height: 100dvh;
+      overflow: hidden;
+    }
+    html.layout-desktop body {
+      display: flex;
+      flex-direction: column;
       min-height: 0;
-      top: 12px;
+    }
+    html.layout-desktop .app-shell {
+      flex: 1 1 auto;
+      min-height: 0;
+      max-height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 10px 14px 8px;
       box-sizing: border-box;
+    }
+    html.layout-desktop .container {
+      flex: 1 1 auto;
+      min-height: 0;
+      height: 100%;
+      align-items: stretch;
+      /* Horizontal scroll only if planner min-width needs it; never grow page height */
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    html.layout-desktop .card-planner {
+      min-height: 0;
+      max-height: 100%;
+      height: 100%;
+      overflow-x: auto;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+    html.layout-desktop .card-map {
+      position: relative !important;
+      top: auto !important;
+      align-self: stretch;
+      height: 100% !important;
+      max-height: 100% !important;
+      min-height: 0 !important;
+      box-sizing: border-box;
+      padding: 6px 10px 8px;
+    }
+    html.layout-desktop .card-map .map-section-block {
+      flex: 1 1 auto;
+      min-height: 0 !important;
+      height: 100% !important;
     }
     html.layout-desktop .card-map .map-wrapper {
       flex: 1 1 auto;
       min-height: 0 !important;
-      height: 100%;
+      height: 100% !important;
+      margin-top: 0;
     }
     html.layout-desktop #leaflet-map {
       height: 100% !important;
@@ -361,8 +407,8 @@
       html.layout-desktop .brand-logo { height: 168px; width: auto; object-fit: contain; }
       html.layout-desktop #dashboard-container { position: static; max-height: none; }
       html.layout-desktop .card-map {
-        height: calc(100dvh - 128px);
-        max-height: calc(100dvh - 128px);
+        height: 100% !important;
+        max-height: 100% !important;
       }
       html.layout-desktop #leaflet-map { height: 100% !important; min-height: 0 !important; }
     }
@@ -1131,15 +1177,10 @@
       background: #fffef8;
     }
     .pin-icon-grid button svg { width: 16px; height: 16px; }
-    /* Desktop: scale planner chrome with viewport width */
-    /* Desktop: keep planner readable — scroll horizontally instead of squashing */
-    html.layout-desktop .app-shell,
-    html.layout-desktop .container {
-      overflow-x: auto;
-    }
+    /* Desktop: keep planner readable — horizontal scroll on planner card if needed */
     html.layout-desktop .card-planner {
       font-size: 14px;
-      min-width: 720px;
+      min-width: min(720px, 100%);
     }
     html.layout-desktop .planner-row {
       gap: 14px;
@@ -5404,7 +5445,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 5.6 Beta">V5.6 Beta</span>
+      <span class="brand-version" aria-label="Version 5.7 Beta">V5.7 Beta</span>
     </div>
   </header>
 
@@ -6324,7 +6365,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '5.6-beta';
+    const APP_VERSION = '5.7-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -17374,13 +17415,18 @@
       window.__REG_SLAYER_IS_PHONE__ = phone;
       // Leaflet often keeps a wrong tile width after layout mode changes
       fitPhoneMapSize();
+      if (typeof fitDesktopMapHeight === 'function') {
+        try { fitDesktopMapHeight(); } catch (eDh) {}
+      }
       if (map) {
         setTimeout(function() {
           fitPhoneMapSize();
+          if (typeof fitDesktopMapHeight === 'function') fitDesktopMapHeight();
           try { map.invalidateSize(true); } catch (e) {}
         }, 80);
         setTimeout(function() {
           fitPhoneMapSize();
+          if (typeof fitDesktopMapHeight === 'function') fitDesktopMapHeight();
           try { map.invalidateSize(true); } catch (e2) {}
         }, 350);
       }
@@ -17393,10 +17439,9 @@
     window.isPhoneLayout = isPhoneLayout;
 
     /**
-     * Desktop only: size the map column so its bottom (toolbar) sits in the
-     * visible viewport — no need to scroll just to reach map chrome.
-     * Uses current card top (works with sticky) so height tracks the screen.
-     * Phone layout is left completely alone.
+     * Desktop only: size the map column so BOTH the top (compass/wind) and
+     * bottom toolbar stay in the visible viewport at any window size.
+     * Phone layout is left completely alone. Fullscreen Max owns its own size.
      */
     function fitDesktopMapHeight() {
       if (typeof isPhoneLayout === 'function' && isPhoneLayout()) return;
@@ -17404,35 +17449,120 @@
         if (!document.documentElement.classList.contains('layout-desktop')) return;
       } catch (eCls) {}
       var wrap = document.getElementById('map-wrapper') || document.querySelector('.map-wrapper');
-      // Fullscreen Max mode owns its own sizing
-      if (wrap && wrap.classList.contains('fullscreen')) return;
+      if (wrap && wrap.classList.contains('fullscreen')) {
+        // Clear min-mode inline heights while Max is on
+        try {
+          var cFs = document.querySelector('.card-map');
+          if (cFs) {
+            cFs.style.height = '';
+            cFs.style.maxHeight = '';
+          }
+        } catch (eFs) {}
+        return;
+      }
       var card = document.querySelector('.card-map');
       var mapEl = document.getElementById('leaflet-map');
+      var shell = document.querySelector('.app-shell');
+      var container = document.querySelector('.container');
       if (!card || !mapEl) return;
-      var vh = window.innerHeight || document.documentElement.clientHeight || 0;
+
+      var vv = window.visualViewport;
+      var vh = (vv && vv.height) ? vv.height : (window.innerHeight || document.documentElement.clientHeight || 0);
       if (vh < 200) return;
-      var rect = card.getBoundingClientRect();
-      var top = rect.top;
-      // If card is off-screen above, use sticky offset
-      if (top < 0) top = 12;
-      var bottomGap = 10;
-      var avail = Math.floor(vh - top - bottomGap);
-      if (avail < 280) avail = Math.max(280, Math.floor(vh - 24));
+
+      // Prefer filling the grid cell (shell locks to viewport); fall back to remaining viewport
+      var avail = 0;
+      if (container) {
+        var cr = container.getBoundingClientRect();
+        avail = Math.floor(cr.height);
+      }
+      if (avail < 200) {
+        var rect = card.getBoundingClientRect();
+        var top = rect.top;
+        if (top < 0) top = 0;
+        // visualViewport offset when mobile browser chrome shifts
+        var vvTop = (vv && typeof vv.offsetTop === 'number') ? vv.offsetTop : 0;
+        avail = Math.floor(vh - (top - vvTop) - 6);
+      }
+      if (avail < 220) avail = Math.max(220, Math.floor(vh * 0.45));
+
+      if (shell) {
+        shell.style.minHeight = '0';
+        shell.style.flex = '1 1 auto';
+      }
+      if (container) {
+        container.style.minHeight = '0';
+        container.style.height = '100%';
+      }
       card.style.height = avail + 'px';
       card.style.maxHeight = avail + 'px';
       card.style.minHeight = '0';
+      card.style.top = 'auto';
+      card.style.position = 'relative';
+
+      var section = card.querySelector('.map-section-block');
+      if (section) {
+        section.style.flex = '1 1 auto';
+        section.style.minHeight = '0';
+        section.style.height = '100%';
+      }
       if (wrap) {
         wrap.style.flex = '1 1 auto';
         wrap.style.minHeight = '0';
         wrap.style.height = '100%';
+        wrap.style.maxHeight = '100%';
       }
       mapEl.style.height = '100%';
       mapEl.style.minHeight = '0';
+      mapEl.style.maxHeight = '100%';
+
       if (typeof map !== 'undefined' && map) {
         try { map.invalidateSize(false); } catch (eInv) {}
       }
     }
     window.fitDesktopMapHeight = fitDesktopMapHeight;
+
+    /** Debounced desktop map reflow on window / visualViewport resize */
+    var _deskMapFitTimer = null;
+    function scheduleDesktopMapFit() {
+      if (_deskMapFitTimer) clearTimeout(_deskMapFitTimer);
+      _deskMapFitTimer = setTimeout(function() {
+        _deskMapFitTimer = null;
+        try {
+          if (typeof applyDeviceLayout === 'function') applyDeviceLayout(false);
+        } catch (eL) {}
+        try {
+          if (typeof fitDesktopMapHeight === 'function') fitDesktopMapHeight();
+        } catch (eF) {}
+        if (typeof map !== 'undefined' && map) {
+          try { map.invalidateSize(false); } catch (eI) {}
+        }
+      }, 60);
+    }
+    window.scheduleDesktopMapFit = scheduleDesktopMapFit;
+    if (!window._regSlayerDeskMapFitWired) {
+      window._regSlayerDeskMapFitWired = true;
+      window.addEventListener('resize', scheduleDesktopMapFit);
+      window.addEventListener('orientationchange', scheduleDesktopMapFit);
+      try {
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener('resize', scheduleDesktopMapFit);
+          window.visualViewport.addEventListener('scroll', scheduleDesktopMapFit);
+        }
+      } catch (eVv) {}
+      // After fonts/layout settle
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+          scheduleDesktopMapFit();
+          setTimeout(scheduleDesktopMapFit, 120);
+          setTimeout(scheduleDesktopMapFit, 400);
+        });
+      } else {
+        scheduleDesktopMapFit();
+        setTimeout(scheduleDesktopMapFit, 120);
+        setTimeout(scheduleDesktopMapFit, 400);
+      }
+    }
 
     /** Force map container to match phone width and tell Leaflet to reflow tiles. */
     function fitPhoneMapSize() {
@@ -19672,6 +19802,11 @@
         mapEl.style.width = '';
         mapEl.style.height = '';
       }
+      // Restore desktop min-mode viewport fit (compass + toolbar always in view)
+      try {
+        if (typeof fitDesktopMapHeight === 'function') fitDesktopMapHeight();
+        if (typeof scheduleDesktopMapFit === 'function') scheduleDesktopMapFit();
+      } catch (eFit) {}
     }
 
     function toggleMapFullscreen() {
@@ -19688,9 +19823,11 @@
         document.getElementById('map-minimize-btn').style.display = full ? 'block' : 'none';
         if (!full) {
           fitPhoneMapSize();
+          if (typeof fitDesktopMapHeight === 'function') fitDesktopMapHeight();
           [50, 150, 400].forEach(function(ms) {
             setTimeout(function() {
               fitPhoneMapSize();
+              if (typeof fitDesktopMapHeight === 'function') fitDesktopMapHeight();
               if (map) { try { map.invalidateSize(true); } catch (e) {} }
             }, ms);
           });
