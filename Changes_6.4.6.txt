@@ -1,0 +1,6 @@
+﻿V6.4.6
+- Blank pin = full pin shape with empty disc (no icon)
+- Recent + grid pins shown as full pin thumbs with last color scheme per icon
+- Add-pin sheet wider, no horizontal scroll; dark scrollbars without arrows
+- Compass mode reloads last line/dot style + probe distance every time it turns on
+- Shell v34

@@ -3323,40 +3323,101 @@
       z-index: 650 !important;
     }
     
-    /* Pin editor compact (#18) */
+    /* Pin editor (#18 / 6.4.6): wide enough — no horizontal scrollbar */
     #pin-editor-sheet {
       left: 50% !important;
       right: auto !important;
       transform: translateX(-50%);
-      width: min(220px, 20vw) !important;
-      max-width: 20% !important;
-      min-width: 168px !important;
-      max-height: min(70vh, 520px);
-      padding: 8px !important;
+      width: min(340px, calc(100vw - 20px)) !important;
+      max-width: min(340px, calc(100vw - 20px)) !important;
+      min-width: 260px !important;
+      max-height: min(72vh, 540px);
+      padding: 10px !important;
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+      box-sizing: border-box !important;
     }
     html.layout-phone #pin-editor-sheet {
-      width: min(200px, 42vw) !important;
-      max-width: 42% !important;
+      width: min(320px, calc(100vw - 16px)) !important;
+      max-width: min(320px, calc(100vw - 16px)) !important;
+      min-width: 0 !important;
     }
-    #pin-editor-sheet .pin-icon-grid {
+    #pin-editor-sheet .pin-icon-grid,
+    #pin-editor-sheet #pin-icon-recent .pin-icon-grid {
       display: flex;
       flex-wrap: wrap;
-      gap: 2px;
-      max-height: 140px;
-      overflow: auto;
-      padding: 4px;
+      gap: 4px;
+      max-height: 168px;
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+      padding: 6px;
       border: 1px solid var(--border);
       border-radius: 8px;
       background: var(--panel-light);
+      box-sizing: border-box;
+      justify-content: flex-start;
+      align-content: flex-start;
     }
-    #pin-editor-sheet .pin-icon-grid button {
-      width: 32px !important;
-      height: 32px !important;
-      min-width: 32px !important;
-      border-radius: 50% !important;
+    #pin-editor-sheet .pin-icon-grid button,
+    #pin-editor-sheet #pin-icon-recent .pin-icon-grid button {
+      width: 44px !important;
+      height: 52px !important;
+      min-width: 44px !important;
+      max-width: 44px !important;
+      border-radius: 8px !important;
       padding: 2px !important;
       margin: 0 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      overflow: hidden !important;
+      background: rgba(0,0,0,0.2) !important;
+      border: 1px solid var(--border) !important;
+      flex: 0 0 auto !important;
     }
+    #pin-editor-sheet .pin-icon-grid button.selected,
+    #pin-editor-sheet #pin-icon-recent .pin-icon-grid button.selected {
+      border-color: var(--accent) !important;
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+    #pin-editor-sheet .pin-picker-thumb {
+      pointer-events: none;
+      line-height: 0;
+    }
+    /* Dark scrollbars, no end arrows */
+    #pin-editor-sheet,
+    #pin-editor-sheet .pin-icon-grid,
+    #pin-editor-sheet #pin-icon-recent .pin-icon-grid {
+      scrollbar-width: thin;
+      scrollbar-color: #3a4234 rgba(0,0,0,0.25);
+    }
+    #pin-editor-sheet::-webkit-scrollbar,
+    #pin-editor-sheet .pin-icon-grid::-webkit-scrollbar,
+    #pin-editor-sheet #pin-icon-recent .pin-icon-grid::-webkit-scrollbar {
+      width: 8px;
+      height: 0;
+    }
+    #pin-editor-sheet::-webkit-scrollbar-button,
+    #pin-editor-sheet .pin-icon-grid::-webkit-scrollbar-button,
+    #pin-editor-sheet #pin-icon-recent .pin-icon-grid::-webkit-scrollbar-button {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+    }
+    #pin-editor-sheet::-webkit-scrollbar-thumb,
+    #pin-editor-sheet .pin-icon-grid::-webkit-scrollbar-thumb,
+    #pin-editor-sheet #pin-icon-recent .pin-icon-grid::-webkit-scrollbar-thumb {
+      background: #3a4234;
+      border-radius: 6px;
+      border: 1px solid #1a1f16;
+    }
+    #pin-editor-sheet::-webkit-scrollbar-track,
+    #pin-editor-sheet .pin-icon-grid::-webkit-scrollbar-track,
+    #pin-editor-sheet #pin-icon-recent .pin-icon-grid::-webkit-scrollbar-track {
+      background: rgba(0,0,0,0.28);
+      border-radius: 6px;
+    }
+    
     #pin-editor-sheet .pes-actions button {
       padding: 6px 6px !important;
       font-size: 11px !important;
@@ -3537,18 +3598,21 @@
     #pin-editor-sheet {
       display: none;
       position: absolute;
-      left: 8px;
-      right: 8px;
+      left: 50%;
+      right: auto;
+      transform: translateX(-50%);
       bottom: calc(var(--mbb-bar-h, 45px) + env(safe-area-inset-bottom, 0px) + 6px);
       z-index: 95;
-      max-height: min(58vh, 420px);
-      overflow: auto;
+      max-height: min(72vh, 540px);
+      overflow-x: hidden;
+      overflow-y: auto;
       background: rgba(15, 18, 14, 0.98);
       border: 1px solid var(--border);
       border-radius: 14px 14px 10px 10px;
       box-shadow: 0 -6px 28px rgba(0,0,0,0.55);
       padding: 10px 12px 12px;
       pointer-events: auto;
+      box-sizing: border-box;
     }
     #pin-editor-sheet.open { display: block; }
     #pin-editor-sheet .pes-head {
@@ -3573,12 +3637,9 @@
       line-height: 1;
       padding: 0 4px;
     }
+    /* size/shape set in V6.4.6 pin-picker thumb rules above */
     #pin-editor-sheet .pin-icon-grid button {
-      border-radius: 50% !important;
-      width: 42px !important;
-      height: 42px !important;
-      min-width: 42px !important;
-      padding: 4px !important;
+      /* keep selectable chrome */
     }
     #pin-editor-sheet .pin-icon-search {
       width: 100%;
@@ -6060,7 +6121,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.4.5 Beta">V6.4.5 Beta</span>
+      <span class="brand-version" aria-label="Version 6.4.6 Beta">V6.4.6 Beta</span>
     </div>
   </header>
 
@@ -7061,7 +7122,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.4.5-beta';
+    const APP_VERSION = '6.4.6-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -13615,14 +13676,29 @@
         }
         collapseCompassDialUi();
         if (stack) stack.classList.add('compass-mode-active');
-        // Restore last probe distance (user-specific)
-        if (window._cmProbeDistMi == null || !(window._cmProbeDistMi > 0)) {
-          try {
-            var saved = parseFloat(localStorage.getItem(cmStorageKey('reg_slayer_cm_probe_mi')) || '1');
-            window._cmProbeDistMi = (!isNaN(saved) && saved > 0) ? saved : 1;
-          } catch (eS) {
-            window._cmProbeDistMi = 1;
+        // Always reload last saved style + probe distance as defaults
+        try {
+          var sk = (typeof cmStorageKey === 'function') ? cmStorageKey(COMPASS_MODE_KEY) : COMPASS_MODE_KEY;
+          var rawStyle = localStorage.getItem(sk) || localStorage.getItem(COMPASS_MODE_KEY);
+          if (rawStyle) {
+            var oStyle = JSON.parse(rawStyle);
+            if (oStyle && typeof oStyle === 'object') {
+              compassModeStyle = Object.assign({
+                lineColor: '#38bdf8',
+                dotColor: '#facc15',
+                lineWeight: 3,
+                dotSize: 8
+              }, oStyle);
+            }
           }
+        } catch (eSt) {}
+        try {
+          var pk = (typeof cmStorageKey === 'function') ? cmStorageKey('reg_slayer_cm_probe_mi') : 'reg_slayer_cm_probe_mi';
+          var saved = parseFloat(localStorage.getItem(pk) || localStorage.getItem('reg_slayer_cm_probe_mi') || '1');
+          if (!isNaN(saved) && saved > 0) window._cmProbeDistMi = saved;
+          else if (!(window._cmProbeDistMi > 0)) window._cmProbeDistMi = 1;
+        } catch (eS) {
+          if (!(window._cmProbeDistMi > 0)) window._cmProbeDistMi = 1;
         }
         ensureCompassModePanes();
         wireCompassModeMapHooks();
@@ -13650,6 +13726,14 @@
           try { updateCompassModeGraphics({ soft: true, skipElev: false }); } catch (e2) {}
         }, 120);
       } else {
+        try {
+          if (typeof persistCompassModeStyle === 'function') persistCompassModeStyle();
+          if (window._cmProbeDistMi != null && window._cmProbeDistMi > 0) {
+            var pk2 = (typeof cmStorageKey === 'function') ? cmStorageKey('reg_slayer_cm_probe_mi') : 'reg_slayer_cm_probe_mi';
+            localStorage.setItem(pk2, String(window._cmProbeDistMi));
+            localStorage.setItem('reg_slayer_cm_probe_mi', String(window._cmProbeDistMi));
+          }
+        } catch (eSave) {}
         clearCompassModeGraphics();
         if (stack) stack.classList.remove('compass-mode-active');
       }
@@ -19212,7 +19296,45 @@
         '</div>'
       );
     }
-    function togglePinIconPicker() {
+    
+    /** Mini map-style pin for the add-pin picker (plain + icon schemes). */
+    function buildPinPickerThumbHtml(opts) {
+      opts = opts || {};
+      var loc = {
+        iconId: opts.iconId || null,
+        color: opts.color || opts.outer || '#e59a18',
+        innerColor: opts.innerColor || opts.inner || '#ffffff',
+        iconColor: (opts.iconColor != null ? opts.iconColor : (opts.glyph != null ? opts.glyph : 'natural'))
+      };
+      var full = (typeof buildCustomPinMarkerHtml === 'function')
+        ? buildCustomPinMarkerHtml(loc)
+        : '';
+      var scale = opts.scale != null ? opts.scale : 0.58;
+      return (
+        '<div class="pin-picker-thumb" style="width:43px;height:53px;transform:scale(' + scale +
+        ');transform-origin:center center;pointer-events:none;">' + full + '</div>'
+      );
+    }
+    function pinSchemeForPicker(iconId) {
+      var schemes = (typeof loadPinIconSchemes === 'function') ? loadPinIconSchemes() : {};
+      if (!iconId) {
+        var plain = schemes['__plain__'] || schemes.plain || {};
+        return {
+          outer: plain.outer || selectedPinColor || '#e59a18',
+          inner: plain.inner || selectedPinInnerColor || '#ffffff',
+          glyph: 'natural'
+        };
+      }
+      var sch = schemes[iconId] || {};
+      var defOuter = (typeof pinIconDefaultColor === 'function') ? pinIconDefaultColor(iconId) : '#1a1a1a';
+      return {
+        outer: sch.outer || defOuter,
+        inner: sch.inner || '#ffffff',
+        glyph: (sch.icon != null && sch.icon !== '') ? sch.icon : 'natural'
+      };
+    }
+
+function togglePinIconPicker() {
       var el = document.getElementById('pin-icon-picker');
       if (!el) return;
       el.style.display = 'block';
@@ -19220,6 +19342,21 @@
     }
     function clearSelectedPinIcon() {
       selectedPinIconId = null;
+      try {
+        var sch = (typeof pinSchemeForPicker === 'function') ? pinSchemeForPicker(null) : null;
+        if (sch) {
+          selectedPinColor = sch.outer || '#e59a18';
+          selectedPinInnerColor = sch.inner || '#ffffff';
+          selectedPinGlyphColor = 'natural';
+          if (typeof selectPinColor === 'function') selectPinColor(selectedPinColor);
+          var inn = document.getElementById('pin-inner-color');
+          if (inn) inn.value = selectedPinInnerColor;
+          var pcv = document.getElementById('pin-color-value');
+          if (pcv) pcv.value = selectedPinColor;
+          var outer = document.getElementById('pin-outer-color');
+          if (outer) outer.value = selectedPinColor;
+        }
+      } catch (eS) {}
       renderPinIconGrid();
       try { if (typeof updatePinEditorPreview === 'function') updatePinEditorPreview(); } catch (e) {}
     }
@@ -19305,37 +19442,47 @@
           return a.name.localeCompare(b.name);
         });
       }
-      var plainSel = !selectedPinIconId ? ' selected' : '';
-      var plainBtn = '<button type="button" class="' + plainSel + '" data-name="Pin" title="Plain pin" aria-label="Plain pin" onclick="clearSelectedPinIcon()">' +
-        '<div style="width:100%;height:100%;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:' +
-        (selectedPinColor || '#e59a18') + ';border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.35);"></div></button>';
+      function pinBtn(iconId, name, onclick, selected) {
+        var sch = pinSchemeForPicker(iconId);
+        var thumb = buildPinPickerThumbHtml({
+          iconId: iconId,
+          outer: sch.outer,
+          inner: sch.inner,
+          glyph: sch.glyph,
+          scale: 0.56
+        });
+        var safeName = String(name || 'Pin').replace(/"/g, '&quot;');
+        return (
+          '<button type="button" class="' + (selected ? ' selected' : '') +
+          '" data-name="' + safeName + '" title="' + safeName +
+          '" aria-label="' + safeName + '" onclick="' + onclick + '">' +
+          thumb + '</button>'
+        );
+      }
+      // Plain pin = same teardrop pin, empty white disc (no glyph)
+      var plainSel = !selectedPinIconId;
+      var plainBtn = pinBtn(null, 'Pin', 'clearSelectedPinIcon()', plainSel);
       grid.innerHTML = plainBtn + list.map(function(ic) {
-        var sel = selectedPinIconId === ic.id ? ' selected' : '';
-        var safeName = String(ic.name || ic.id).replace(/"/g, '&quot;');
-        return '<button type="button" class="' + sel + '" data-name="' + safeName + '" title="' + safeName +
-          '" aria-label="' + safeName + '" onclick="selectPinIcon(\'' + ic.id + '\')">' +
-          pinIconMarkup(ic.id, 'natural', 36) +
-          '</button>';
+        return pinBtn(ic.id, ic.name || ic.id, "selectPinIcon('" + ic.id + "')", selectedPinIconId === ic.id);
       }).join('');
       if (recentEl) {
         var recent = loadPinIconRecent().map(getPinIconById).filter(Boolean);
         if (recent.length) {
           recentEl.style.display = 'block';
-          recentEl.innerHTML = '<div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Recent</div><div class="pin-icon-grid">' +
+          recentEl.innerHTML =
+            '<div style="font-size:10px;color:var(--muted);margin-bottom:4px;">Recent</div>' +
+            '<div class="pin-icon-grid">' +
             recent.map(function(ic) {
-              var sel = selectedPinIconId === ic.id ? ' selected' : '';
-              var safeName = String(ic.name || ic.id).replace(/"/g, '&quot;');
-              return '<button type="button" class="' + sel + '" data-name="' + safeName + '" title="' + safeName +
-                '" aria-label="' + safeName + '" onclick="selectPinIcon(\'' + ic.id + '\')">' +
-                pinIconMarkup(ic.id, 'natural', 36) +
-                '</button>';
-            }).join('') + '</div>';
+              return pinBtn(ic.id, ic.name || ic.id, "selectPinIcon('" + ic.id + "')", selectedPinIconId === ic.id);
+            }).join('') +
+            '</div>';
         } else {
           recentEl.style.display = 'none';
           recentEl.innerHTML = '';
         }
       }
     }
+
     function setHuntStandType(type) {
       selectedHuntStandType = type === 'bow_stand' ? 'bow_stand' : 'rifle_stand';
       var r = document.getElementById('hunt-stand-rifle');
@@ -19463,6 +19610,13 @@
           outer: selectedPinColor,
           inner: selectedPinInnerColor,
           icon: selectedPinGlyphColor
+        });
+      } else {
+        // Remember blank pin colors for next plain pin
+        savePinIconScheme('__plain__', {
+          outer: selectedPinColor || '#e59a18',
+          inner: selectedPinInnerColor || '#ffffff',
+          icon: 'natural'
         });
       }
       if (isEdit) {
