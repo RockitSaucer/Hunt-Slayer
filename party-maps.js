@@ -165,6 +165,15 @@
     if (!ic) return '';
     return ic.src + (DIR_ICON_BUST ? ('?v=' + DIR_ICON_BUST) : '');
   }
+  function prefKey(uid) {
+    return String(uid == null ? '' : uid);
+  }
+
+  function getPartyPref(uid) {
+    var k = prefKey(uid);
+    return partyPrefs[k] || partyPrefs[uid] || {};
+  }
+
   /**
    * Which direction icon to draw for a member on THIS device:
    * 1) If I set a custom icon for them (party prefs) → use that (only I see it)
@@ -173,13 +182,18 @@
    */
   function memberDirIconId(m) {
     if (!m) return null;
-    var pref = partyPrefs[m.user_id] || {};
+    var uid = m.user_id != null ? m.user_id : m.id;
+    var pref = getPartyPref(uid);
     if (Object.prototype.hasOwnProperty.call(pref, 'direction_icon_id')) {
       var override = pref.direction_icon_id;
       // Non-empty override wins for me only. Empty/null = fall back to their profile default.
       if (override) return override;
     }
     return m.direction_icon_id || null;
+  }
+
+  function memberIconSignature(m) {
+    return String(memberDirIconId(m) || '') + '|' + String(memberColor(m) || '');
   }
 
   function myDefaultDirIconLabel() {
@@ -621,6 +635,16 @@
             arrow_color: c,
             direction_icon_id: d
           }).then(function () {
+            // Update cached member list + force icon rebuild (pull alone skips setIcon)
+            try {
+              var list = window.__rsPartyMembers || [];
+              list.forEach(function (mm) {
+                if (prefKey(mm.user_id) === prefKey(uid) && d) {
+                  // keep profile default on mem; override lives in partyPrefs
+                }
+              });
+            } catch (eM) {}
+            rebuildPartyMemberIcon(uid);
             pullPresence();
             try {
               if (window.showAppCopyToast) {
@@ -725,38 +749,105 @@
 
   async function loadPartyPrefs(mapId) {
     partyPrefs = {};
-    var sb = window.__rsSb;
-    var user = window.__rsUser;
+    var sb = getSb() || window.__rsSb;
+    var user = getUser() || window.__rsUser;
     if (!sb || !user || !mapId) return;
     try {
-      var { data } = await sb.from('party_member_prefs')
+      // Prefer full select; fall back if direction_icon_id column not migrated yet
+      var res = await sb.from('party_member_prefs')
         .select('member_user_id, nickname, arrow_color, show_content, direction_icon_id')
         .eq('map_id', mapId)
         .eq('owner_user_id', user.id);
-      (data || []).forEach(function (r) {
+      if (res.error) {
+        res = await sb.from('party_member_prefs')
+          .select('member_user_id, nickname, arrow_color, show_content')
+          .eq('map_id', mapId)
+          .eq('owner_user_id', user.id);
+      }
+      (res.data || []).forEach(function (r) {
+        var k = prefKey(r.member_user_id);
+        partyPrefs[k] = r;
         partyPrefs[r.member_user_id] = r;
       });
-    } catch (e) {}
+    } catch (e) {
+      console.warn('loadPartyPrefs', e);
+    }
     try {
       hiddenContentOwners = JSON.parse(localStorage.getItem(HIDDEN_MEMBERS_KEY + ':' + mapId) || '{}');
     } catch (e2) { hiddenContentOwners = {}; }
   }
 
   async function savePartyPref(memberId, fields, mapIdOpt) {
-    var sb = window.__rsSb || getSb();
-    var user = window.__rsUser || getUser();
+    var sb = getSb() || window.__rsSb;
+    var user = getUser() || window.__rsUser;
     var vs = C.getViewState && C.getViewState();
     var mapId = mapIdOpt || (vs && vs.mode === 'shared' ? vs.sharedMapId : null) ||
       (mapsUiSelected && mapsUiSelected.kind === 'shared' ? mapsUiSelected.id : null);
-    if (!sb || !user || !mapId) return;
+    if (!sb || !user || !mapId) {
+      throw new Error('Not on a shared map — open the map first, then edit this hunter.');
+    }
+    var mid = prefKey(memberId);
     var row = Object.assign({
       map_id: mapId,
       owner_user_id: user.id,
-      member_user_id: memberId,
+      member_user_id: mid,
       updated_at: new Date().toISOString()
     }, fields);
-    await sb.from('party_member_prefs').upsert(row);
-    partyPrefs[memberId] = Object.assign({}, partyPrefs[memberId] || {}, fields);
+    // Always update local cache first so map redraws even if cloud column is missing
+    partyPrefs[mid] = Object.assign({}, getPartyPref(mid), fields);
+    partyPrefs[memberId] = partyPrefs[mid];
+
+    var res = await sb.from('party_member_prefs').upsert(row, {
+      onConflict: 'map_id,owner_user_id,member_user_id'
+    });
+    if (res.error) {
+      // Retry without direction_icon_id if column not migrated
+      if (Object.prototype.hasOwnProperty.call(fields, 'direction_icon_id')) {
+        var row2 = Object.assign({}, row);
+        delete row2.direction_icon_id;
+        var res2 = await sb.from('party_member_prefs').upsert(row2, {
+          onConflict: 'map_id,owner_user_id,member_user_id'
+        });
+        if (res2.error) throw res2.error;
+        console.warn('direction_icon_id not saved to cloud (run migration). Local override still applied.', res.error);
+      } else {
+        throw res.error;
+      }
+    }
+    return partyPrefs[mid];
+  }
+
+  async function enrichMembersWithProfiles(members) {
+    var sb = getSb() || window.__rsSb;
+    if (!sb || !members || !members.length) return members || [];
+    var need = [];
+    members.forEach(function (m) {
+      if (!m) return;
+      // Always refresh profile direction_icon_id / arrow_color when possible
+      if (m.user_id) need.push(m.user_id);
+    });
+    if (!need.length) return members;
+    try {
+      var res = await sb.from('profiles')
+        .select('id, arrow_color, direction_icon_id, username, display_name')
+        .in('id', need);
+      if (res.error || !res.data) return members;
+      var byId = {};
+      res.data.forEach(function (p) {
+        byId[prefKey(p.id)] = p;
+      });
+      members.forEach(function (m) {
+        var p = byId[prefKey(m.user_id)];
+        if (!p) return;
+        if (p.direction_icon_id != null) m.direction_icon_id = p.direction_icon_id;
+        if (p.arrow_color) m.arrow_color = p.arrow_color;
+        if (p.username && !m.username) m.username = p.username;
+        if (p.display_name && !m.display_name) m.display_name = p.display_name;
+      });
+    } catch (e) {
+      console.warn('enrichMembersWithProfiles', e);
+    }
+    return members;
   }
 
   async function listMembersForMap(mapId) {
@@ -764,19 +855,39 @@
     if (!mapId || !sb) return [];
     var { data, error } = await sb.rpc('list_shared_map_members', { p_map_id: mapId });
     if (error) throw error;
-    return data || [];
+    var members = data || [];
+    await enrichMembersWithProfiles(members);
+    return members;
   }
 
   function memberLabel(m) {
-    var pref = partyPrefs[m.user_id];
+    if (!m) return 'Hunter';
+    var pref = getPartyPref(m.user_id);
     if (pref && pref.nickname) return pref.nickname;
     return m.display_name || m.username || 'Hunter';
   }
 
   function memberColor(m) {
-    var pref = partyPrefs[m.user_id];
+    if (!m) return '#2563eb';
+    var pref = getPartyPref(m.user_id);
     if (pref && pref.arrow_color) return pref.arrow_color;
     return m.arrow_color || '#2563eb';
+  }
+
+  /** Force rebuild of one party marker’s icon (after edit). */
+  function rebuildPartyMemberIcon(uid) {
+    uid = prefKey(uid);
+    var mk = partyMarkers[uid];
+    if (!mk) return;
+    var mem = findPartyMember(uid);
+    var hdg = mk._rsHeading != null ? mk._rsHeading : 0;
+    try {
+      var icon = buildPartyArrowIcon(memberColor(mem), memberLabel(mem), hdg, memberDirIconId(mem));
+      mk.setIcon(icon);
+      mk._rsIconSig = memberIconSignature(mem);
+    } catch (e) {
+      console.warn('rebuildPartyMemberIcon', e);
+    }
   }
 
   async function pullPresence() {
@@ -797,11 +908,12 @@
     if (!layer) return;
     try {
       // Refresh member labels occasionally
+      // Refresh member profiles + my overrides so direction icons stay current
       try {
-        if (!window.__rsPartyMembers || !window.__rsPartyMembers.length) {
-          await listMembers();
-        }
-      } catch (eMem) {}
+        await listMembers();
+      } catch (eMem) {
+        console.warn('listMembers', eMem);
+      }
 
       var res = await sb.from('party_presence')
         .select('user_id, is_sharing, lat, lng, heading, updated_at, started_at')
@@ -832,22 +944,33 @@
           { user_id: row.user_id, username: 'Hunter', display_name: 'Hunter' };
         var label = memberLabel(mem);
         var color = memberColor(mem);
+        var dirId = memberDirIconId(mem);
         var hdg = normalizeHeading(row.heading);
         var popup = buildPartyMemberPopupHtml(row, mem);
+        var sig = memberIconSignature(mem);
         if (partyMarkers[uid]) {
           partyMarkers[uid].setLatLng([row.lat, row.lng]);
           try {
             partyMarkers[uid].setPopupContent(popup);
           } catch (eP) {}
-          // Keep arrow facing direction on the icon only (not in the popup text)
-          if (hdg != null) {
+          // Rebuild icon when color/custom glyph changed (heading-only path skips setIcon)
+          if (partyMarkers[uid]._rsIconSig !== sig) {
+            try {
+              var iconUp = buildPartyArrowIcon(color, label, hdg != null ? hdg : partyMarkers[uid]._rsHeading, dirId);
+              partyMarkers[uid].setIcon(iconUp);
+              partyMarkers[uid]._rsIconSig = sig;
+            } catch (eIc) {
+              console.warn('party icon update', eIc);
+            }
+          } else if (hdg != null) {
             if (partyMarkers[uid]._rsHeading == null ||
                 headingDelta(partyMarkers[uid]._rsHeading, hdg) >= 2) {
               updatePartyMarkerHeading(uid, hdg);
             }
           }
+          if (hdg != null) partyMarkers[uid]._rsHeading = hdg;
         } else {
-          var icon = buildPartyArrowIcon(color, label, hdg, memberDirIconId(mem));
+          var icon = buildPartyArrowIcon(color, label, hdg, dirId);
           var mk = L.marker([row.lat, row.lng], { icon: icon, zIndexOffset: 900 }).addTo(layer);
           mk.bindPopup(popup, {
             className: 'map-dot-popup party-member-leaflet-popup',
@@ -858,6 +981,7 @@
           });
           mk._rsHeading = hdg;
           mk._rsUserId = uid;
+          mk._rsIconSig = sig;
           partyMarkers[uid] = mk;
         }
       });
@@ -1187,14 +1311,18 @@
 
   async function listMembers() {
     var vs = C.getViewState && C.getViewState();
-    var sb = window.__rsSb;
+    var sb = getSb() || window.__rsSb;
     if (!vs || vs.mode !== 'shared' || !vs.sharedMapId || !sb) {
       window.__rsPartyMembers = [];
       return [];
     }
     var { data, error } = await sb.rpc('list_shared_map_members', { p_map_id: vs.sharedMapId });
     if (error) throw error;
-    window.__rsPartyMembers = data || [];
+    var members = data || [];
+    // Always merge profile direction_icon_id / arrow_color so others see each user's default
+    await enrichMembersWithProfiles(members);
+    await loadPartyPrefs(vs.sharedMapId);
+    window.__rsPartyMembers = members;
     return window.__rsPartyMembers;
   }
 
@@ -1741,6 +1869,8 @@
                   setGpsMarker(userLat, userLng);
                 }
               } catch (eG) {}
+            } else {
+              rebuildPartyMemberIcon(member.user_id);
             }
             applyContentOwnerFilter();
             pullPresence();

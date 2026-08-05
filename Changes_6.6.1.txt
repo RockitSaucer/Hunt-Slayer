@@ -1,0 +1,33 @@
+REG SLAYER — Changes 6.6 → 6.6.1 Beta
+========================================
+Date: 2026-08-05
+Label: V6.6.1 Beta
+Shell cache: reg-slayer-shell-v43
+Git tag: v6.6.1-beta
+
+FIX: Custom direction icons for map members
+------------------------------------------
+Problems in 6.6:
+1) Changing another hunter’s icon (Edit friend / Customize) did not update their
+   map marker — presence pull only rotated the existing icon, never rebuilt it.
+2) savePartyPref ignored Supabase errors (upsert failed silently if migration
+   missing or conflict keys wrong), so cloud prefs never stuck.
+3) Other members’ profile defaults (direction_icon_id on profiles) were not
+   always loaded onto party markers after list_shared_map_members.
+
+Fixes:
+- Rebuild party marker setIcon when icon id or color signature changes.
+- rebuildPartyMemberIcon() after saving friend/member customize.
+- savePartyPref: onConflict map_id,owner_user_id,member_user_id; throw errors;
+  keep local prefs so UI works even if cloud column missing (with console warn).
+- listMembers always loadPartyPrefs + enrichMembersWithProfiles (profiles
+  direction_icon_id / arrow_color) so Scott’s rocket shows for everyone.
+- pullPresence always refreshes member list before drawing markers.
+- Normalize party pref keys as strings (UUID key mismatches).
+
+UNDO
+----
+- Git tag v6.6-beta
+- Ensure Supabase migrations applied for full cloud sync:
+  20260805230000_direction_icon.sql
+  20260805220000_map_host_leave_delete.sql
