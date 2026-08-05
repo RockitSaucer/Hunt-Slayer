@@ -8825,7 +8825,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.6.5 Beta">V6.6.5 Beta</span>
+      <span class="brand-version" aria-label="Version 6.6.6 Beta">V6.6.6 Beta</span>
     </div>
   </header>
 
@@ -10075,7 +10075,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.6.5-beta';
+    const APP_VERSION = '6.6.6-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -22542,7 +22542,12 @@
       }
     }
 
-    /** Lightweight GPS marker rotation without rebuilding the whole icon (smooth heading). */
+    /**
+     * Lightweight GPS marker rotation without rebuilding the whole icon (smooth heading).
+     * Default triangle + custom dir icons share one rule:
+     *   outer .gps-heading-tri-wrap rotates by device heading (same value as compass-mode line).
+     * Custom glyphs stay nose-up inside the wrap (frontDeg offset only); never double-rotate.
+     */
     function updateGpsMarkerHeading(headingDeg) {
       if (!gpsMarker) return;
       if (headingDeg == null || isNaN(headingDeg)) return;
@@ -22553,10 +22558,22 @@
         var wrap = el.querySelector('.gps-heading-tri-wrap');
         if (wrap) {
           wrap.style.transform = 'rotate(' + rot.toFixed(1) + 'deg)';
+          wrap.style.transformOrigin = 'center center';
+          // Custom dir icon: lock inner glyph to nose-up (data-front = PNG nose angle).
+          // Live heading lives ONLY on the outer wrap so the icon stays glued to the compass line.
+          var dirRot = wrap.querySelector('.party-arrow-rot, .rs-dir-icon-rot');
+          if (dirRot) {
+            var front = parseFloat(dirRot.getAttribute('data-front') || '0');
+            if (isNaN(front)) front = 0;
+            var upright = ((-front) % 360 + 360) % 360;
+            dirRot.style.transform = 'rotate(' + upright.toFixed(1) + 'deg)';
+            dirRot.style.transformOrigin = 'center center';
+          }
+          try { gpsMarker._rsHeading = rot; } catch (eH) {}
         } else {
           if (userLat != null && userLng != null) setGpsMarker(userLat, userLng, headingDeg);
         }
-        // Glued line follows heading (skip during zoom / drag)
+        // Glued line follows the same heading (skip during zoom / drag)
         if (typeof compassModeEnabled !== 'undefined' && compassModeEnabled &&
             !window._cmZooming && !window._cmDragging) {
           try {

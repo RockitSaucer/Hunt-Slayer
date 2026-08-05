@@ -1,0 +1,13 @@
+V6.6.6 Beta — changes since V6.6.5
+
+Custom GPS / direction icons + compass mode
+- Custom direction icons on your location marker now use the same rotation model as the default arrow
+- Outer wrap rotates by device heading (identical to compass-mode line bearing)
+- Glyph stays nose-up inside the wrap (frontDeg offset only) — no double-rotation
+- Heading updates no longer drift the icon off the compass line
+- Line continues to come from the front of the marker in the phone facing direction
+
+Files
+- index.html (updateGpsMarkerHeading)
+- party-maps.js (buildGpsMarkerIcon custom path)
+- sw.js (shell v48)

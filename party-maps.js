@@ -3638,10 +3638,19 @@
           if (headingDeg != null && !isNaN(headingDeg)) {
             rot = ((Number(headingDeg) % 360) + 360) % 360;
           }
-          var body = buildDirBodyHtml(myArrowColor, rot, myDirIconId, s);
+          /*
+           * Same rotation model as the default triangle:
+           *  - Outer .gps-heading-tri-wrap rotates by device heading (compass line uses same heading)
+           *  - Inner glyph is nose-UP in wrap space (heading=0 → cssRot = −frontDeg)
+           * Never put live heading on BOTH layers — that double-rotated and drifted off the line.
+           */
+          var body = buildDirBodyHtml(myArrowColor, 0, myDirIconId, s);
           var html =
-            '<div class="gps-heading-tri-wrap rs-dir-gps-wrap" style="width:' + s +
-              'px;height:' + s + 'px;position:relative;overflow:visible;">' + body + '</div>';
+            '<div class="gps-heading-tri-wrap rs-dir-gps-wrap" data-rs-gps-rot="1" style="width:' + s +
+              'px;height:' + s + 'px;position:relative;overflow:visible;' +
+              'transform:rotate(' + rot.toFixed(1) + 'deg);transform-origin:center center;will-change:transform;">' +
+              body +
+            '</div>';
           return L.divIcon({
             className: 'gps-heading-icon',
             html: html,
