@@ -2914,11 +2914,36 @@
       letter-spacing: 0.01em;
       line-height: 1.2;
       color: #ffffff;
+      /* Default dark so bare buttons (e.g. Save pin) stay readable */
+      background: #1e2419;
       box-shadow: 0 2px 0 rgba(0,0,0,0.25);
     }
     .map-dot-menu .mdm-btn:hover { filter: brightness(1.08); }
     .map-dot-menu .mdm-btn:active { transform: translateY(1px); }
     .map-dot-menu .mdm-btn.weather { background: #3f6b2a; }
+    /* Party popup: Save pin — high-contrast dark chip */
+    .map-dot-menu .mdm-btn.save-pin,
+    .map-dot-popup .mdm-btn.save-pin {
+      background: linear-gradient(180deg, #2a3226 0%, #12160f 55%, #0a0c09 100%);
+      color: #f2f5ee;
+      border: 1px solid #3a4234;
+      font-weight: 800;
+      text-shadow: 0 1px 1px rgba(0, 0, 0, 0.55);
+    }
+    .map-dot-menu .mdm-btn.save-pin:hover,
+    .map-dot-popup .mdm-btn.save-pin:hover {
+      filter: brightness(1.12);
+      border-color: #4a5544;
+    }
+    .map-dot-menu .mdm-btn.hide-friend {
+      background: #3a4234;
+      color: #e8efe4;
+      border: 1px solid #4a5544;
+    }
+    .map-dot-menu .mdm-btn.hide-friend.is-hidden {
+      background: #1a4a5c;
+      border-color: #2a6a7c;
+    }
     /* Hunt status strip at top of map-dot popup */
     .map-dot-menu .mdm-hunt-status {
       border-radius: 7px;
@@ -4391,17 +4416,20 @@
       display: block;
       overflow: visible;
     }
-    /* Map-anchored delete confirmation (replaces window.confirm at popup) */
+    /* Centered delete confirmation — above pin popup / editor */
     .map-item-confirm {
       position: fixed;
-      z-index: 100050;
-      min-width: 200px;
-      max-width: min(280px, calc(100vw - 24px));
-      padding: 12px 12px 10px;
-      border-radius: 10px;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2147483645;
+      min-width: 220px;
+      max-width: min(300px, calc(100vw - 24px));
+      padding: 14px 14px 12px;
+      border-radius: 12px;
       border: 1px solid var(--border);
       background: rgba(15, 18, 14, 0.98);
-      box-shadow: 0 8px 28px rgba(0,0,0,0.55);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.65);
       color: var(--ink);
       box-sizing: border-box;
     }
@@ -8001,7 +8029,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.6.2 Beta">V6.6.2 Beta</span>
+      <span class="brand-version" aria-label="Version 6.6.3 Beta">V6.6.3 Beta</span>
     </div>
   </header>
 
@@ -9193,7 +9221,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.6.2-beta';
+    const APP_VERSION = '6.6.3-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -16840,11 +16868,15 @@
       var sheet = document.getElementById('pin-editor-sheet');
       if (!sheet || !sheet.classList.contains('open')) return;
       if (sheet.contains(ev.target)) return;
+      // Note modal, delete confirm, and other overlays live outside the sheet —
+      // do not treat those clicks as "outside" (that was auto-saving / closing the pin editor).
       if (ev.target && ev.target.closest && (
+        ev.target.closest('#pin-note-modal') ||
         ev.target.closest('.map-dot-menu') ||
         ev.target.closest('.color-picker') ||
         ev.target.closest('.app-prompt-modal') ||
-        ev.target.closest('.map-item-confirm')
+        ev.target.closest('.map-item-confirm') ||
+        ev.target.closest('#map-item-confirm')
       )) return;
       try {
         // Selected pin or any customize → drop; empty sheet click-away → do nothing (close)
@@ -22904,7 +22936,8 @@ function togglePinIconPicker() {
       });
     }
     /**
-     * Confirmation panel at the map popup (or last click) instead of browser confirm().
+     * Centered confirmation dialog (above pin popup / map chrome) instead of browser confirm().
+     * Does not close the underlying pin popup — sits on top until answered.
      */
     function showMapItemConfirm(message, onYes, onNo) {
       try {
@@ -22923,41 +22956,8 @@ function togglePinIconPicker() {
           '<button type="button" class="mic-no">Cancel</button>' +
         '</div>';
       el.querySelector('.mic-msg').textContent = message || 'Delete this item?';
+      // Always append to body so fixed centering is relative to the viewport
       document.body.appendChild(el);
-
-      // Position over the open Leaflet popup when possible
-      var left = 0, top = 0, placed = false;
-      try {
-        var pop = document.querySelector('.leaflet-popup');
-        if (pop) {
-          var r = pop.getBoundingClientRect();
-          left = r.left + (r.width / 2) - 110;
-          top = r.top + 8;
-          placed = true;
-          // Hide popup content under confirm but keep position
-          try { if (map) map.closePopup(); } catch (eC) {}
-        }
-      } catch (eP) {}
-      if (!placed) {
-        try {
-          if (map && clickLat != null && clickLng != null) {
-            var pt = map.latLngToContainerPoint([clickLat, clickLng]);
-            var mapEl = document.getElementById('leaflet-map');
-            var mr = mapEl ? mapEl.getBoundingClientRect() : { left: 0, top: 0 };
-            left = mr.left + pt.x - 110;
-            top = mr.top + pt.y - 40;
-            placed = true;
-          }
-        } catch (eM) {}
-      }
-      if (!placed) {
-        left = (window.innerWidth / 2) - 110;
-        top = (window.innerHeight / 2) - 40;
-      }
-      left = Math.max(8, Math.min(left, window.innerWidth - 220));
-      top = Math.max(8, Math.min(top, window.innerHeight - 120));
-      el.style.left = left + 'px';
-      el.style.top = top + 'px';
 
       function cleanup() {
         try {
@@ -22984,7 +22984,7 @@ function togglePinIconPicker() {
         cleanup();
         if (typeof onNo === 'function') onNo();
       });
-      // Click outside cancels
+      // Click outside cancels (pin editor outside-handler already ignores .map-item-confirm)
       setTimeout(function() {
         document.addEventListener('click', function outside(ev) {
           if (el && el.contains(ev.target)) return;

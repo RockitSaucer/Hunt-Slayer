@@ -1,0 +1,33 @@
+REG SLAYER — Changes 6.6.2 → 6.6.3 Beta
+========================================
+Date: 2026-08-05
+Tag: v6.6.3-beta
+Shell cache: reg-slayer-shell-v45 (was v44)
+Files: index.html, party-maps.js, sw.js
+
+WHAT / WHY
+----------
+1) Pin note no longer closes / auto-saves the pin editor
+   - Clicking inside #pin-note-modal was treated as "outside" the pin
+     editor sheet, which ran tryCommitPinEditorOnDismiss (auto place pin).
+   - Outside-click handler now ignores #pin-note-modal and map-item-confirm.
+
+2) "Delete this pin?" confirm centered and on top
+   - map-item-confirm is fixed center of the viewport (not top of leaflet popup).
+   - Higher z-index; no longer closes the underlying pin popup when opening.
+
+3) Party member direction icons — size, hide, Save pin contrast
+   - Edit friend: Icon size slider 40%–160% (local pref icon_scale).
+   - Edit friend + member popup: Hide / Unhide.
+   - Hidden: small white+colored ring dot (like hidden pins); still tracks GPS.
+   - Unhide restores full direction icon / custom override.
+   - Save pin button: dark high-contrast chip (mdm-btn.save-pin).
+   - icon_scale + marker_hidden are local-only (not sent as unknown cloud columns).
+
+UNDO
+----
+git checkout v6.6.2-beta -- index.html party-maps.js sw.js
+Or redeploy tag v6.6.2-beta.
+Local friend size/hide prefs live in localStorage key
+  reg_slayer_party_prefs_local_v1:<mapId>:<userId>
+and can be cleared by wiping that key if needed.

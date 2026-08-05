@@ -52,7 +52,9 @@
   var partyMarkers = {};
   var myArrowColor = '#e11d1d';
   var myDirIconId = null; // custom directional icon for self (null = default triangle)
-  var partyPrefs = {}; // memberId -> { nickname, arrow_color, show_content, direction_icon_id }
+  // memberId -> { nickname, arrow_color, show_content, direction_icon_id,
+  //   icon_scale (0.4–1.6), marker_hidden (bool) — scale/hidden are local-only }
+  var partyPrefs = {};
   var hiddenContentOwners = {}; // userId -> true means HIDE their content
   /** Selected map row in Settings → My Maps (for members list; View Map sets active view). */
   var mapsUiSelected = { kind: null, id: null };
@@ -193,8 +195,28 @@
     return m.direction_icon_id || null;
   }
 
+  function memberIconScale(m) {
+    if (!m) return 1;
+    var pref = getPartyPref(m.user_id != null ? m.user_id : m.id);
+    var s = pref && pref.icon_scale != null ? Number(pref.icon_scale) : 1;
+    if (isNaN(s) || s <= 0) s = 1;
+    return Math.max(0.4, Math.min(1.6, s));
+  }
+
+  function memberMarkerHidden(m) {
+    if (!m) return false;
+    var pref = getPartyPref(m.user_id != null ? m.user_id : m.id);
+    return !!(pref && pref.marker_hidden);
+  }
+
+  function memberIconSizePx(m) {
+    // Base custom icon ~30px; scale 100% = 30
+    return Math.round(30 * memberIconScale(m));
+  }
+
   function memberIconSignature(m) {
-    return String(memberDirIconId(m) || '') + '|' + String(memberColor(m) || '');
+    return String(memberDirIconId(m) || '') + '|' + String(memberColor(m) || '') +
+      '|' + String(memberIconScale(m)) + '|' + (memberMarkerHidden(m) ? '1' : '0');
   }
 
   function myDefaultDirIconLabel() {
@@ -342,20 +364,57 @@
     );
   }
 
-  function buildPartyArrowIcon(color, label, heading, iconId) {
+  /**
+   * Party member marker. sizePx scales the directional icon; hidden draws a small
+   * colored ring-dot (same idea as a hidden map pin) that still tracks location.
+   */
+  function buildPartyArrowIcon(color, label, heading, iconId, sizePx, hidden) {
     var name = esc((label || '').slice(0, 16));
-    var body = buildDirBodyHtml(color, heading, iconId, 30);
-    var html =
+    var c = normalizeDirHex(color || '#2563eb');
+    var html;
+    if (hidden) {
+      // Match hidden-pin style: white core + colored ring
+      html =
+        '<div class="party-arrow-wrap party-member-hidden-dot" style="display:flex;flex-direction:column;align-items:center;pointer-events:auto;">' +
+          '<div style="font-size:9px;font-weight:800;color:#fff;text-shadow:0 0 3px #000,0 1px 2px #000;background:rgba(0,0,0,.5);padding:0 4px;border-radius:3px;margin-bottom:2px;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + name + '</div>' +
+          '<div style="width:14px;height:14px;border-radius:50%;background:#ffffff;border:3px solid ' + c +
+            ';box-shadow:0 1px 4px rgba(0,0,0,0.45);"></div>' +
+        '</div>';
+      return L.divIcon({
+        className: 'party-presence-icon party-presence-hidden',
+        html: html,
+        iconSize: [80, 36],
+        iconAnchor: [40, 30]
+      });
+    }
+    var s = sizePx != null && !isNaN(sizePx) ? Math.round(sizePx) : 30;
+    s = Math.max(14, Math.min(56, s));
+    var body = buildDirBodyHtml(c, heading, iconId, s);
+    html =
       '<div class="party-arrow-wrap" style="display:flex;flex-direction:column;align-items:center;pointer-events:auto;">' +
         '<div style="font-size:10px;font-weight:800;color:#fff;text-shadow:0 0 3px #000,0 1px 2px #000;background:rgba(0,0,0,.55);padding:1px 5px;border-radius:4px;margin-bottom:2px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + name + '</div>' +
         body +
       '</div>';
+    // Scale icon hit box with glyph size so larger icons stay clickable/centered
+    var boxW = Math.max(100, s + 70);
+    var boxH = Math.max(60, s + 36);
     return L.divIcon({
       className: 'party-presence-icon',
       html: html,
-      iconSize: [100, 60],
-      iconAnchor: [50, 48]
+      iconSize: [boxW, boxH],
+      iconAnchor: [boxW / 2, boxH - 12]
     });
+  }
+
+  function partyIconForMember(mem, heading) {
+    return buildPartyArrowIcon(
+      memberColor(mem),
+      memberLabel(mem),
+      heading,
+      memberDirIconId(mem),
+      memberIconSizePx(mem),
+      memberMarkerHidden(mem)
+    );
   }
 
   /**
@@ -531,13 +590,21 @@
         }
       }
     } catch (e) {}
+    // Hidden dots have no rotator — skip rebuild on heading-only ticks
+    try {
+      if (mk._rsHidden) {
+        mk._rsHeading = heading;
+        return;
+      }
+    } catch (eH) {}
     // Fallback: rebuild icon
     try {
       var mem = (window.__rsPartyMembers || []).find(function (x) { return String(x.user_id) === String(uid); }) ||
         { user_id: uid, username: 'Hunter' };
-      var icon = buildPartyArrowIcon(memberColor(mem), memberLabel(mem), heading, memberDirIconId(mem));
+      var icon = partyIconForMember(mem, heading);
       mk.setIcon(icon);
       mk._rsHeading = heading;
+      mk._rsHidden = memberMarkerHidden(mem);
     } catch (e2) {}
   }
 
@@ -560,23 +627,28 @@
   }
 
   /**
-   * Party member popup: last update, Edit friend, Save pin — no facing degrees.
+   * Party member popup: last update, Hide/Unhide, Edit friend, Save pin — no facing degrees.
    */
   function buildPartyMemberPopupHtml(row, mem) {
     var uid = String(row.user_id);
     var label = memberLabel(mem);
     var lat = Number(row.lat);
     var lng = Number(row.lng);
+    var isHidden = memberMarkerHidden(mem);
     return (
       '<div class="map-dot-menu party-member-popup" onclick="event.stopPropagation();">' +
-        '<div class="mdm-title">' + esc(label) + '</div>' +
+        '<div class="mdm-title">' + esc(label) + (isHidden ? ' <span style="opacity:.75;font-weight:600;">(hidden)</span>' : '') + '</div>' +
         '<div class="mdm-sub" style="margin:4px 0 10px;">Last update: <strong>' +
           esc(formatAgo(row.updated_at)) + '</strong></div>' +
+        '<button type="button" class="mdm-btn hide-friend' + (isHidden ? ' is-hidden' : '') + '" ' +
+          'onclick="event.preventDefault();event.stopPropagation();' +
+          'window.rsTogglePartyFriendHidden&&window.rsTogglePartyFriendHidden(\'' + escJs(uid) + '\');return false;">' +
+          (isHidden ? 'Unhide' : 'Hide') + '</button>' +
         '<button type="button" class="mdm-btn pin" ' +
           'onclick="event.preventDefault();event.stopPropagation();' +
           'window.rsEditPartyFriend&&window.rsEditPartyFriend(\'' + escJs(uid) + '\');return false;">' +
           'Edit friend</button>' +
-        '<button type="button" class="mdm-btn" ' +
+        '<button type="button" class="mdm-btn save-pin" ' +
           'onclick="event.preventDefault();event.stopPropagation();' +
           'window.rsSavePartyPin&&window.rsSavePartyPin(\'' + escJs(uid) + '\',' +
           lat + ',' + lng + ',\'' + escJs(label) + '\');return false;">' +
@@ -594,11 +666,46 @@
     return { user_id: uid, username: 'Hunter', display_name: 'Hunter' };
   }
 
+  window.rsTogglePartyFriendHidden = function (uid) {
+    uid = String(uid || '');
+    if (!uid) return Promise.resolve();
+    var pref = getPartyPref(uid);
+    var next = !pref.marker_hidden;
+    return savePartyPref(uid, { marker_hidden: next }).then(function () {
+      rebuildPartyMemberIcon(uid);
+      try {
+        var mk = partyMarkers[uid] || partyMarkers[prefKey(uid)];
+        if (mk && mk.getPopup) {
+          var mem = findPartyMember(uid);
+          var ll = mk.getLatLng && mk.getLatLng();
+          var row = {
+            user_id: uid,
+            lat: ll ? ll.lat : null,
+            lng: ll ? ll.lng : null,
+            updated_at: mk._rsUpdatedAt || new Date().toISOString()
+          };
+          mk.setPopupContent(buildPartyMemberPopupHtml(row, mem));
+          // Keep popup open after hide/unhide so user can confirm state
+          try { if (!mk.isPopupOpen || !mk.isPopupOpen()) mk.openPopup(); } catch (eO) {}
+        }
+      } catch (eP) {}
+      try {
+        if (window.showAppCopyToast) {
+          showAppCopyToast(next
+            ? '<span class="act">Hidden</span><br>Shows as a color dot on your map'
+            : '<span class="act">Unhidden</span><br>Full direction icon restored');
+        }
+      } catch (eT) {}
+    }).catch(function (err) {
+      console.warn('rsTogglePartyFriendHidden', err);
+    });
+  };
+
   window.rsEditPartyFriend = function (uid) {
     uid = String(uid || '');
     if (!uid) return;
     var mem = findPartyMember(uid);
-    var pref = partyPrefs[uid] || partyPrefs[mem.user_id] || {};
+    var pref = partyPrefs[uid] || partyPrefs[mem.user_id] || getPartyPref(uid) || {};
     var nick = pref.nickname || '';
     var col = pref.arrow_color || mem.arrow_color || memberColor(mem) || '#2563eb';
     // Local override only — empty means “show their profile default”
@@ -608,8 +715,10 @@
     var dirName = dirId
       ? ((getDirIconById(dirId) || {}).name || dirId)
       : 'Use their default';
+    var scalePct = Math.round(memberIconScale(mem) * 100);
+    var isHidden = !!pref.marker_hidden;
     var body =
-      '<p class="settings-hint" style="margin:0 0 8px;">Nickname, color, and direction icon are only for you. Their default icon still shows for everyone else.</p>' +
+      '<p class="settings-hint" style="margin:0 0 8px;">Nickname, color, size, hide, and direction icon are only for you. Their default icon still shows for everyone else.</p>' +
       '<label style="display:block;font-size:11px;font-weight:700;margin:6px 0 4px;">Nickname</label>' +
       '<input type="text" id="rs-friend-nick" maxlength="32" value="' + esc(nick) + '" ' +
         'style="width:100%;box-sizing:border-box;padding:8px;border-radius:6px;border:1px solid #444;background:#1a1a1a;color:#fff;">' +
@@ -619,7 +728,16 @@
       '<label style="display:block;font-size:11px;font-weight:700;margin:10px 0 4px;">Direction icon (your screen only)</label>' +
       '<button type="button" class="settings-subbtn" id="rs-friend-dir-btn" style="width:100%;margin:0;">' +
         esc(dirName) + '</button>' +
-      '<input type="hidden" id="rs-friend-dir" value="' + esc(dirId || '') + '">';
+      '<input type="hidden" id="rs-friend-dir" value="' + esc(dirId || '') + '">' +
+      '<label style="display:block;font-size:11px;font-weight:700;margin:12px 0 4px;">Icon size <span id="rs-friend-size-val">' +
+        scalePct + '</span>%</label>' +
+      '<input type="range" id="rs-friend-size" min="40" max="160" step="5" value="' + scalePct + '" ' +
+        'style="width:100%;margin:0 0 10px;" ' +
+        'oninput="var v=document.getElementById(\'rs-friend-size-val\');if(v)v.textContent=this.value;">' +
+      '<button type="button" class="settings-subbtn" id="rs-friend-hide-btn" style="width:100%;margin:4px 0 0;' +
+        (isHidden ? 'background:#1a4a5c;border-color:#2a6a7c;' : '') + '">' +
+        (isHidden ? 'Unhide icon' : 'Hide') + '</button>' +
+      '<p class="settings-hint" style="margin:6px 0 0;font-size:10px;">Hide turns their marker into a small color dot that still moves with them. Click the dot to open this menu again.</p>';
     showSimpleModal('Edit friend — ' + (mem.display_name || mem.username || 'Hunter'), body, [
       {
         label: 'Save',
@@ -628,13 +746,18 @@
           var nEl = document.getElementById('rs-friend-nick');
           var cEl = document.getElementById('rs-friend-color');
           var dEl = document.getElementById('rs-friend-dir');
+          var sEl = document.getElementById('rs-friend-size');
           var n = nEl ? String(nEl.value || '').trim() : '';
           var c = cEl ? (cEl.value || col) : col;
           var d = dEl && dEl.value ? dEl.value : null;
+          var pct = sEl ? (parseInt(sEl.value, 10) || 100) : 100;
+          pct = Math.max(40, Math.min(160, pct));
+          var scale = pct / 100;
           return savePartyPref(uid, {
             nickname: n || null,
             arrow_color: c,
-            direction_icon_id: d
+            direction_icon_id: d,
+            icon_scale: scale
           }).then(function () {
             rebuildPartyMemberIcon(uid);
             // Delay presence refresh so local prefs aren't racing a cloud reload
@@ -647,7 +770,7 @@
                 : 'their default';
               if (window.showAppCopyToast) {
                 showAppCopyToast('<span class="act">Friend updated</span><br>' +
-                  esc(n || mem.username || 'Hunter') + ' · ' + esc(tip));
+                  esc(n || mem.username || 'Hunter') + ' · ' + esc(tip) + ' · ' + pct + '%');
               }
             } catch (eT) {}
           });
@@ -679,6 +802,45 @@
               }
               if (cEl && color) cEl.value = color;
             }
+          });
+        };
+      }
+      var hideBtn = document.getElementById('rs-friend-hide-btn');
+      if (hideBtn) {
+        hideBtn.onclick = function (ev) {
+          if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+          var next = !getPartyPref(uid).marker_hidden;
+          // Persist nickname/color/size currently in the form so Hide doesn't drop unsaved edits
+          var nEl = document.getElementById('rs-friend-nick');
+          var cEl = document.getElementById('rs-friend-color');
+          var dEl = document.getElementById('rs-friend-dir');
+          var sEl = document.getElementById('rs-friend-size');
+          var n = nEl ? String(nEl.value || '').trim() : '';
+          var c = cEl ? (cEl.value || col) : col;
+          var d = dEl && dEl.value ? dEl.value : null;
+          var pct = sEl ? (parseInt(sEl.value, 10) || 100) : 100;
+          pct = Math.max(40, Math.min(160, pct));
+          savePartyPref(uid, {
+            nickname: n || null,
+            arrow_color: c,
+            direction_icon_id: d,
+            icon_scale: pct / 100,
+            marker_hidden: next
+          }).then(function () {
+            rebuildPartyMemberIcon(uid);
+            try {
+              var modal = document.getElementById('rs-simple-modal');
+              if (modal && modal.parentNode) modal.remove();
+            } catch (eClose) {}
+            try {
+              if (window.showAppCopyToast) {
+                showAppCopyToast(next
+                  ? '<span class="act">Hidden</span><br>Shows as a color dot on your map'
+                  : '<span class="act">Unhidden</span><br>Full direction icon restored');
+              }
+            } catch (eT) {}
+          }).catch(function (err) {
+            console.warn('edit friend hide', err);
           });
         };
       }
@@ -814,6 +976,14 @@
     } catch (e2) { hiddenContentOwners = {}; }
   }
 
+  /** Columns that exist on party_member_prefs; icon_scale / marker_hidden stay local-only. */
+  var PARTY_PREF_CLOUD_KEYS = {
+    nickname: true,
+    arrow_color: true,
+    show_content: true,
+    direction_icon_id: true
+  };
+
   async function savePartyPref(memberId, fields, mapIdOpt) {
     var sb = getSb() || window.__rsSb;
     var user = getUser() || window.__rsUser;
@@ -831,19 +1001,26 @@
 
     if (!sb || !user) return partyPrefs[mid];
 
+    var cloudFields = {};
+    Object.keys(fields || {}).forEach(function (k) {
+      if (PARTY_PREF_CLOUD_KEYS[k]) cloudFields[k] = fields[k];
+    });
+    // Nothing cloud-worthy (e.g. only icon_scale / marker_hidden) — local is enough
+    if (!Object.keys(cloudFields).length) return partyPrefs[mid];
+
     var row = Object.assign({
       map_id: mapId,
       owner_user_id: user.id,
       member_user_id: mid,
       updated_at: new Date().toISOString()
-    }, fields);
+    }, cloudFields);
 
     var res = await sb.from('party_member_prefs').upsert(row, {
       onConflict: 'map_id,owner_user_id,member_user_id'
     });
     if (res.error) {
       // Retry without direction_icon_id if column not migrated
-      if (Object.prototype.hasOwnProperty.call(fields, 'direction_icon_id')) {
+      if (Object.prototype.hasOwnProperty.call(cloudFields, 'direction_icon_id')) {
         var row2 = Object.assign({}, row);
         delete row2.direction_icon_id;
         var res2 = await sb.from('party_member_prefs').upsert(row2, {
@@ -934,13 +1111,12 @@
     }
     var mem = findPartyMember(uid);
     var hdg = mk._rsHeading != null ? mk._rsHeading : 0;
-    var dirId = memberDirIconId(mem);
-    var col = memberColor(mem);
     try {
-      var icon = buildPartyArrowIcon(col, memberLabel(mem), hdg, dirId);
+      var icon = partyIconForMember(mem, hdg);
       mk.setIcon(icon);
       mk._rsIconSig = memberIconSignature(mem);
       mk._rsHeading = hdg;
+      mk._rsHidden = memberMarkerHidden(mem);
       // Ensure keyed under string id
       partyMarkers[uid] = mk;
     } catch (e) {
@@ -1001,26 +1177,27 @@
         var mem = byId[row.user_id] || byId[uid] ||
           { user_id: row.user_id, username: 'Hunter', display_name: 'Hunter' };
         var label = memberLabel(mem);
-        var color = memberColor(mem);
-        var dirId = memberDirIconId(mem);
         var hdg = normalizeHeading(row.heading);
         var popup = buildPartyMemberPopupHtml(row, mem);
         var sig = memberIconSignature(mem);
+        var isHidden = memberMarkerHidden(mem);
         if (partyMarkers[uid]) {
           partyMarkers[uid].setLatLng([row.lat, row.lng]);
+          partyMarkers[uid]._rsUpdatedAt = row.updated_at;
           try {
             partyMarkers[uid].setPopupContent(popup);
           } catch (eP) {}
-          // Rebuild icon when color/custom glyph changed (heading-only path skips setIcon)
+          // Rebuild icon when color/custom glyph/size/hide changed (heading-only path skips setIcon)
           if (partyMarkers[uid]._rsIconSig !== sig) {
             try {
-              var iconUp = buildPartyArrowIcon(color, label, hdg != null ? hdg : partyMarkers[uid]._rsHeading, dirId);
+              var iconUp = partyIconForMember(mem, hdg != null ? hdg : partyMarkers[uid]._rsHeading);
               partyMarkers[uid].setIcon(iconUp);
               partyMarkers[uid]._rsIconSig = sig;
+              partyMarkers[uid]._rsHidden = isHidden;
             } catch (eIc) {
               console.warn('party icon update', eIc);
             }
-          } else if (hdg != null) {
+          } else if (hdg != null && !isHidden) {
             if (partyMarkers[uid]._rsHeading == null ||
                 headingDelta(partyMarkers[uid]._rsHeading, hdg) >= 2) {
               updatePartyMarkerHeading(uid, hdg);
@@ -1028,7 +1205,7 @@
           }
           if (hdg != null) partyMarkers[uid]._rsHeading = hdg;
         } else {
-          var icon = buildPartyArrowIcon(color, label, hdg, dirId);
+          var icon = partyIconForMember(mem, hdg);
           var mk = L.marker([row.lat, row.lng], { icon: icon, zIndexOffset: 900 }).addTo(layer);
           mk.bindPopup(popup, {
             className: 'map-dot-popup party-member-leaflet-popup',
@@ -1040,6 +1217,8 @@
           mk._rsHeading = hdg;
           mk._rsUserId = uid;
           mk._rsIconSig = sig;
+          mk._rsHidden = isHidden;
+          mk._rsUpdatedAt = row.updated_at;
           partyMarkers[uid] = mk;
         }
       });
@@ -1875,6 +2054,8 @@
       : (self ? 'Default triangle' : 'Use their default');
     var show = pref.show_content !== false && !hiddenContentOwners[member.user_id];
     var label = memberLabel(member) || 'Hunter';
+    var scalePct = Math.round(memberIconScale(member) * 100);
+    var isHidden = !!pref.marker_hidden;
     var body =
       '<p class="settings-status" style="margin:0 0 8px;">' + esc(label) +
         (self ? ' (you)' : '') + (member.is_host ? ' · host' : '') + '</p>' +
@@ -1889,8 +2070,18 @@
         esc(dirName) + '</button>' +
       '<input type="hidden" id="rs-mem-dir" value="' + esc(dirId || '') + '">' +
       (!self
-        ? ('<label class="settings-row" style="border:none;padding:4px 0;"><input type="checkbox" id="rs-mem-show" ' +
-            (show ? 'checked' : '') + '><span class="sr-text">Show their pins/areas on map</span></label>')
+        ? (
+          '<label class="settings-status" style="display:block;margin:8px 0 4px;">Icon size <span id="rs-mem-size-val">' +
+            scalePct + '</span>%</label>' +
+          '<input type="range" id="rs-mem-size" min="40" max="160" step="5" value="' + scalePct + '" ' +
+            'style="width:100%;margin:0 0 8px;" ' +
+            'oninput="var v=document.getElementById(\'rs-mem-size-val\');if(v)v.textContent=this.value;">' +
+          '<button type="button" class="settings-subbtn" id="rs-mem-hide-btn" style="width:100%;margin:0 0 8px;' +
+            (isHidden ? 'background:#1a4a5c;border-color:#2a6a7c;' : '') + '">' +
+            (isHidden ? 'Unhide icon' : 'Hide icon (color dot)') + '</button>' +
+          '<label class="settings-row" style="border:none;padding:4px 0;"><input type="checkbox" id="rs-mem-show" ' +
+            (show ? 'checked' : '') + '><span class="sr-text">Show their pins/areas on map</span></label>'
+        )
         : '<p class="settings-status">Your live location uses this color and icon on the map. Others see your default icon unless they override it.</p>');
     var buttons = [
       {
@@ -1901,6 +2092,7 @@
           var colEl = $('rs-mem-color');
           var showEl = $('rs-mem-show');
           var dirEl = $('rs-mem-dir');
+          var sizeEl = $('rs-mem-size');
           var n = nickEl ? nickEl.value.trim() : '';
           var c = colEl ? colEl.value : col;
           var d = dirEl && dirEl.value ? dirEl.value : null;
@@ -1909,6 +2101,11 @@
             arrow_color: c || '#2563eb',
             direction_icon_id: d
           };
+          if (!self && sizeEl) {
+            var pct = parseInt(sizeEl.value, 10) || 100;
+            pct = Math.max(40, Math.min(160, pct));
+            fields.icon_scale = pct / 100;
+          }
           if (!self && showEl) {
             fields.show_content = !!showEl.checked;
             if (!showEl.checked) hiddenContentOwners[member.user_id] = true;
@@ -1997,6 +2194,45 @@
               }
               if (cEl && color) cEl.value = color;
             }
+          });
+        };
+      }
+      var hideBtn = document.getElementById('rs-mem-hide-btn');
+      if (hideBtn && !self) {
+        hideBtn.onclick = function (ev) {
+          if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+          var next = !getPartyPref(member.user_id).marker_hidden;
+          var nickEl = $('rs-mem-nick');
+          var colEl = $('rs-mem-color');
+          var dirEl = $('rs-mem-dir');
+          var sizeEl = $('rs-mem-size');
+          var n = nickEl ? nickEl.value.trim() : '';
+          var c = colEl ? colEl.value : col;
+          var d = dirEl && dirEl.value ? dirEl.value : null;
+          var pct = sizeEl ? (parseInt(sizeEl.value, 10) || 100) : 100;
+          pct = Math.max(40, Math.min(160, pct));
+          savePartyPref(member.user_id, {
+            nickname: n || null,
+            arrow_color: c || '#2563eb',
+            direction_icon_id: d || null,
+            icon_scale: pct / 100,
+            marker_hidden: next
+          }, mapId).then(function () {
+            rebuildPartyMemberIcon(member.user_id);
+            try {
+              var modal = document.getElementById('rs-simple-modal');
+              if (modal && modal.parentNode) modal.remove();
+            } catch (eClose) {}
+            try {
+              if (window.showAppCopyToast) {
+                showAppCopyToast(next
+                  ? '<span class="act">Hidden</span><br>Shows as a color dot on your map'
+                  : '<span class="act">Unhidden</span><br>Full direction icon restored');
+              }
+            } catch (eT) {}
+            try { refreshMapsUi(); } catch (eR) {}
+          }).catch(function (err) {
+            console.warn('member hide', err);
           });
         };
       }
