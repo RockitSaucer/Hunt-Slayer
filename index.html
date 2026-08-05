@@ -8798,7 +8798,18 @@
     .party-member-row {
       margin: 6px 0 0;
     }
-    .party-presence-icon { background: transparent !important; border: none !important; }
+    /* Transparent shell; no default Leaflet div-icon white box/border that could shift hit point */
+    .party-presence-icon {
+      background: transparent !important;
+      border: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    .party-presence-icon .party-arrow-wrap {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
     .pl-opacity-row {
       display: flex;
       flex-direction: column;
@@ -8825,7 +8836,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.6.8 Beta">V6.6.8 Beta</span>
+      <span class="brand-version" aria-label="Version 6.6.9 Beta">V6.6.9 Beta</span>
     </div>
   </header>
 
@@ -10075,7 +10086,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.6.8-beta';
+    const APP_VERSION = '6.6.9-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */

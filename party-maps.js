@@ -221,7 +221,8 @@
   }
 
   function memberIconSignature(m) {
-    return String(memberDirIconId(m) || '') + '|' + String(memberColor(m) || '') +
+    // "a2" = center-anchor layout (fixes ~100–150 yd offset from bottom-anchored name+icon stack)
+    return 'a2|' + String(memberDirIconId(m) || '') + '|' + String(memberColor(m) || '') +
       '|' + String(memberIconScale(m)) + '|' + (memberMarkerHidden(m) ? '1' : '0');
   }
 
@@ -343,6 +344,7 @@
    * Directional marker body: default triangle or custom icon (slightly larger than default arrow).
    * frontDeg = where the PNG nose points (0=up). CSS rot = heading − frontDeg.
    * color tints the silhouette (triangle fill or PNG recolor).
+   * Rotation always around geometric center so lat/lng = person position (same as GPS arrow).
    */
   function buildDirBodyHtml(color, heading, iconId, sizePx) {
     var rot = heading != null && !isNaN(heading) ? (((Number(heading) % 360) + 360) % 360) : 0;
@@ -366,8 +368,8 @@
     var h = sizePx ? Math.round(sizePx * 1.13) : 34;
     return (
       '<div class="party-arrow-rot" data-front="0" style="width:' + w + 'px;height:' + h +
-        'px;transform:rotate(' + rot.toFixed(1) + 'deg);transform-origin:center 70%;will-change:transform;">' +
-        '<svg viewBox="0 0 24 32" width="' + w + '" height="' + h + '">' +
+        'px;transform:rotate(' + rot.toFixed(1) + 'deg);transform-origin:center center;will-change:transform;">' +
+        '<svg viewBox="0 0 24 32" width="' + w + '" height="' + h + '" style="display:block;">' +
           '<path d="M12 1.5 L22.5 29.5 L12 23.2 L1.5 29.5 Z" fill="' + c +
             '" stroke="#000" stroke-width="1.5" stroke-linejoin="round"/>' +
         '</svg>' +
@@ -378,42 +380,57 @@
   /**
    * Party member marker. sizePx scales the directional icon; hidden draws a small
    * colored ring-dot (same idea as a hidden map pin) that still tracks location.
+   *
+   * CRITICAL — location accuracy:
+   * Leaflet lat/lng must sit on the CENTER of the glyph (person's position).
+   * Name labels float ABOVE with absolute positioning so they never shift the anchor.
+   * Old layout stacked name+icon with iconAnchor at box bottom → ~100–150 yd visual error.
    */
   function buildPartyArrowIcon(color, label, heading, iconId, sizePx, hidden) {
     var name = esc((label || '').slice(0, 16));
     var c = normalizeDirHex(color || '#2563eb');
     var html;
+    var labelCss =
+      'position:absolute;left:50%;bottom:100%;transform:translateX(-50%);margin-bottom:3px;' +
+      'font-size:10px;font-weight:800;color:#fff;text-shadow:0 0 3px #000,0 1px 2px #000;' +
+      'background:rgba(0,0,0,.55);padding:1px 5px;border-radius:4px;max-width:90px;' +
+      'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none;line-height:1.2;';
     if (hidden) {
-      // Match hidden-pin style: white core + colored ring
+      // Dot center = lat/lng; label floats above (does not affect anchor)
+      var dot = 14;
       html =
-        '<div class="party-arrow-wrap party-member-hidden-dot" style="display:flex;flex-direction:column;align-items:center;pointer-events:auto;">' +
-          '<div style="font-size:9px;font-weight:800;color:#fff;text-shadow:0 0 3px #000,0 1px 2px #000;background:rgba(0,0,0,.5);padding:0 4px;border-radius:3px;margin-bottom:2px;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + name + '</div>' +
-          '<div style="width:14px;height:14px;border-radius:50%;background:#ffffff;border:3px solid ' + c +
-            ';box-shadow:0 1px 4px rgba(0,0,0,0.45);"></div>' +
+        '<div class="party-arrow-wrap party-member-hidden-dot" style="position:relative;width:' +
+          dot + 'px;height:' + dot + 'px;pointer-events:auto;">' +
+          '<div style="' + labelCss + 'font-size:9px;max-width:72px;">' + name + '</div>' +
+          '<div style="width:' + dot + 'px;height:' + dot + 'px;border-radius:50%;background:#ffffff;border:3px solid ' +
+            c + ';box-shadow:0 1px 4px rgba(0,0,0,0.45);box-sizing:border-box;"></div>' +
         '</div>';
       return L.divIcon({
         className: 'party-presence-icon party-presence-hidden',
         html: html,
-        iconSize: [80, 36],
-        iconAnchor: [40, 30]
+        iconSize: [dot, dot],
+        iconAnchor: [dot / 2, dot / 2]
       });
     }
     var s = sizePx != null && !isNaN(sizePx) ? Math.round(sizePx) : 30;
     s = Math.max(14, Math.min(56, s));
+    var ic = getDirIconById(iconId);
+    // Glyph box size (custom = square s×s; default triangle slightly taller)
+    var gw = ic ? s : Math.round(s * 0.8);
+    var gh = ic ? s : Math.round(s * 1.13);
     var body = buildDirBodyHtml(c, heading, iconId, s);
     html =
-      '<div class="party-arrow-wrap" style="display:flex;flex-direction:column;align-items:center;pointer-events:auto;">' +
-        '<div style="font-size:10px;font-weight:800;color:#fff;text-shadow:0 0 3px #000,0 1px 2px #000;background:rgba(0,0,0,.55);padding:1px 5px;border-radius:4px;margin-bottom:2px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + name + '</div>' +
+      '<div class="party-arrow-wrap" style="position:relative;width:' + gw + 'px;height:' + gh +
+        'px;pointer-events:auto;overflow:visible;">' +
+        '<div class="party-arrow-label" style="' + labelCss + '">' + name + '</div>' +
         body +
       '</div>';
-    // Scale icon hit box with glyph size so larger icons stay clickable/centered
-    var boxW = Math.max(100, s + 70);
-    var boxH = Math.max(60, s + 36);
     return L.divIcon({
       className: 'party-presence-icon',
       html: html,
-      iconSize: [boxW, boxH],
-      iconAnchor: [boxW / 2, boxH - 12]
+      iconSize: [gw, gh],
+      // Exact GPS point = center of directional glyph (matches own-location arrow)
+      iconAnchor: [gw / 2, gh / 2]
     });
   }
 

@@ -1,0 +1,14 @@
+V6.6.9 Beta — changes since V6.6.8
+
+Party / user GPS icons position accuracy
+- Party member icons were bottom-anchored on a tall name+icon box, so the glyph sat
+  ~100–150 yards off the true lat/lng (worse at mid zoom)
+- Fix: lat/lng is the CENTER of the directional glyph (same model as own GPS arrow)
+- Name label floats absolutely above the icon and no longer shifts the anchor
+- Default triangle rotates around center (not center 70%)
+- Icon signature bump forces live clients to rebuild markers with correct anchors
+
+Files
+- party-maps.js (buildPartyArrowIcon, buildDirBodyHtml, memberIconSignature)
+- index.html (party-presence CSS, version)
+- sw.js shell v51
