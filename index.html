@@ -8825,7 +8825,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.6.7 Beta">V6.6.7 Beta</span>
+      <span class="brand-version" aria-label="Version 6.6.8 Beta">V6.6.8 Beta</span>
     </div>
   </header>
 
@@ -10075,7 +10075,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.6.7-beta';
+    const APP_VERSION = '6.6.8-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -22120,8 +22120,19 @@
 
     function showAppCopyToast(messageHtml) {
       var el = document.getElementById('app-copy-toast');
-      /* Host on map-wrapper so toast sits above calendar, behind the toolbar */
-      var host = document.querySelector('.map-wrapper') || document.body;
+      /*
+       * Default: host on map-wrapper (above calendar, under toolbar).
+       * When Settings (or another full-screen overlay) is open, host on body with
+       * high z-index — otherwise Share invite toast is invisible under the modal.
+       */
+      var settingsOpen = false;
+      try {
+        var sm = document.getElementById('settings-modal');
+        settingsOpen = !!(sm && sm.classList.contains('active'));
+      } catch (eS) {}
+      var host = settingsOpen
+        ? document.body
+        : (document.querySelector('.map-wrapper') || document.body);
       if (!el) {
         el = document.createElement('div');
         el.id = 'app-copy-toast';
@@ -22131,11 +22142,31 @@
       } else if (el.parentNode !== host) {
         try { host.appendChild(el); } catch (eHost) {}
       }
+      if (settingsOpen) {
+        el.classList.add('app-copy-toast-over-modal');
+        el.style.zIndex = '2147483646';
+        el.style.position = 'fixed';
+        el.style.left = '50%';
+        el.style.bottom = 'auto';
+        el.style.top = '50%';
+        el.style.transform = 'translate(-50%, -50%)';
+        el.style.maxWidth = 'min(320px, calc(100vw - 32px))';
+      } else {
+        el.classList.remove('app-copy-toast-over-modal');
+        el.style.zIndex = '';
+        el.style.position = '';
+        el.style.left = '';
+        el.style.bottom = '';
+        el.style.top = '';
+        el.style.transform = '';
+        el.style.maxWidth = '';
+      }
       el.innerHTML = messageHtml;
       el.classList.add('show');
       clearTimeout(showAppCopyToast._t);
       showAppCopyToast._t = setTimeout(function() {
         el.classList.remove('show');
+        el.classList.remove('app-copy-toast-over-modal');
       }, 3200);
     }
 

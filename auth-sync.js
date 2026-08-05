@@ -1170,6 +1170,7 @@
     getClient: function () { return sb; },
     switchToShared: switchToShared,
     inviteJoinUrl: inviteJoinUrl,
+    inviteShareText: inviteShareText,
     currentAppOrigin: currentAppOrigin,
     appPublicOrigins: appPublicOrigins,
     get _sb() { return sb; }

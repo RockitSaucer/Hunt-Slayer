@@ -1,0 +1,11 @@
+V6.6.8 Beta — changes since V6.6.7
+
+Settings → My Maps → Share
+- Share was copying invite silently; toast sat under Settings so it looked broken
+- Share on a shared map now copies map name + 6-digit code + join link and shows an on-top “Invite ready” modal
+- Robust clipboard fallback for mobile Safari
+- If code missing on list row, fetch from shared_maps
+- Share on a private map offers “Create shared & copy invite” (private maps have no join code)
+
+Files
+- party-maps.js, auth-sync.js (export inviteShareText), index.html (toast over settings), sw.js v50

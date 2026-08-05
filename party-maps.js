@@ -2309,8 +2309,15 @@
   window.closeMapSwitcher = closeMapSwitcher;
 
   function shareMapInviteText(mapRow) {
-    var code = mapRow && mapRow.code ? String(mapRow.code) : '';
-    var name = mapRow && mapRow.name ? String(mapRow.name) : 'Hunt map';
+    var code = mapRow && mapRow.code != null ? String(mapRow.code).replace(/\D/g, '').slice(0, 6) : '';
+    var name = displayMapName(
+      'shared',
+      mapRow && mapRow.id,
+      (mapRow && mapRow.name) || 'Hunt map'
+    );
+    if (window.RegSlayerCloud && typeof window.RegSlayerCloud.inviteShareText === 'function') {
+      return window.RegSlayerCloud.inviteShareText(code, name);
+    }
     var link = (window.RegSlayerCloud && typeof window.RegSlayerCloud.inviteJoinUrl === 'function')
       ? window.RegSlayerCloud.inviteJoinUrl(code)
       : (((window.location && window.location.origin) || 'https://regslayer.com') + '/?join=' + code);
@@ -2319,16 +2326,160 @@
       '\n(Works on regslayer.com and huntslayer.com — same account)';
   }
 
-  function copyMapInvite(mapRow) {
-    var text = shareMapInviteText(mapRow);
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function () {
+  /** Clipboard that works on mobile Safari inside Settings (not only HTTPS clipboard API). */
+  function copyTextRobust(text) {
+    return new Promise(function (resolve, reject) {
+      function fallback() {
         try {
-          if (window.showAppCopyToast) showAppCopyToast('<span class="act">Invite copied</span><br>Code ' + esc(mapRow.code || ''));
-          else alert('Copied:\n' + text);
-        } catch (e) { alert('Copied:\n' + text); }
-      }).catch(function () { window.prompt('Copy:', text); });
-    } else window.prompt('Copy:', text);
+          var ta = document.createElement('textarea');
+          ta.value = text;
+          ta.setAttribute('readonly', '');
+          ta.setAttribute('aria-hidden', 'true');
+          ta.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;padding:0;border:0;';
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          ta.setSelectionRange(0, text.length);
+          var ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          if (ok) resolve(true);
+          else reject(new Error('execCommand copy failed'));
+        } catch (e) {
+          reject(e);
+        }
+      }
+      try {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function' &&
+            (window.isSecureContext !== false)) {
+          navigator.clipboard.writeText(text).then(function () {
+            resolve(true);
+          }).catch(function () {
+            fallback();
+          });
+          return;
+        }
+      } catch (eClip) {}
+      fallback();
+    });
+  }
+
+  /**
+   * Copy join invite (map name + 6-digit code + link) and show a Settings-visible modal.
+   * (Toast under the map is hidden behind #settings-modal — users thought Share did nothing.)
+   */
+  function copyMapInvite(mapRow) {
+    if (!mapRow) {
+      alert('Could not find this map.');
+      return;
+    }
+    var code = mapRow.code != null ? String(mapRow.code).replace(/\D/g, '').slice(0, 6) : '';
+    var name = displayMapName('shared', mapRow.id, mapRow.name || 'Hunt map');
+
+    function showInviteUi(copied) {
+      var text = shareMapInviteText(mapRow);
+      var body =
+        '<p class="settings-status" style="margin:0 0 8px;">' +
+          (copied
+            ? '<strong style="color:var(--accent);">Invite copied to clipboard.</strong>'
+            : '<strong style="color:#f87171;">Could not auto-copy</strong> — select the text below or use Copy again.') +
+        '</p>' +
+        '<p style="margin:0 0 6px;font-size:14px;font-weight:800;color:#fff;">Code: ' +
+          '<span style="color:var(--accent);letter-spacing:0.12em;">' + esc(code || '———') + '</span></p>' +
+        '<p class="settings-status" style="margin:0 0 4px;">Map: <strong>' + esc(name) + '</strong></p>' +
+        '<pre style="margin:8px 0 0;padding:10px;border-radius:8px;border:1px solid var(--border);' +
+          'background:rgba(0,0,0,0.35);font-size:11px;line-height:1.4;white-space:pre-wrap;word-break:break-word;' +
+          'color:#e8efe4;user-select:all;-webkit-user-select:all;">' + esc(text) + '</pre>';
+      showSimpleModal(copied ? 'Invite ready' : 'Share map invite', body, [
+        {
+          label: copied ? 'Done' : 'Copy again',
+          primary: true,
+          onClick: function () {
+            if (copied) return;
+            return copyTextRobust(text).then(function () {
+              try {
+                if (window.showAppCopyToast) {
+                  showAppCopyToast('<span class="act">Invite copied</span><br>Code ' + esc(code));
+                }
+              } catch (eT) {}
+              showInviteUi(true);
+            }).catch(function () {
+              window.prompt('Copy this invite:', text);
+            });
+          }
+        },
+        { label: 'Close' }
+      ]);
+      try {
+        if (copied && window.showAppCopyToast) {
+          showAppCopyToast('<span class="act">Invite copied</span><br>Code ' + esc(code));
+        }
+      } catch (eToast) {}
+    }
+
+    if (!code) {
+      // Fetch code if list row was incomplete
+      var sb = getSb() || window.__rsSb;
+      if (sb && mapRow.id) {
+        sb.from('shared_maps').select('id, name, code').eq('id', mapRow.id).maybeSingle()
+          .then(function (res) {
+            if (res && res.data && res.data.code) {
+              mapRow = Object.assign({}, mapRow, res.data);
+              code = String(res.data.code).replace(/\D/g, '').slice(0, 6);
+              var text2 = shareMapInviteText(mapRow);
+              return copyTextRobust(text2).then(function () { showInviteUi(true); })
+                .catch(function () { showInviteUi(false); });
+            }
+            alert('No invite code for this map. You may need to be the host of a shared map.');
+          })
+          .catch(function () {
+            alert('Could not load invite code. Check your connection and try again.');
+          });
+        return;
+      }
+      alert('No invite code for this map.');
+      return;
+    }
+
+    var text = shareMapInviteText(mapRow);
+    copyTextRobust(text).then(function () {
+      showInviteUi(true);
+    }).catch(function () {
+      showInviteUi(false);
+    });
+  }
+
+  /** Private map has no code — create a shared map from current data and copy invite. */
+  function sharePrivateMapAsInvite(privateId, privateName) {
+    if (!C.createSharedMap) {
+      showSimpleModal('Share map',
+        '<p class="settings-status">Sign in to create a shared map and get a 6-digit join code.</p>',
+        [{ label: 'OK', primary: true }]
+      );
+      return;
+    }
+    var name = (privateName && String(privateName).trim()) || 'Hunt map';
+    showSimpleModal('Share map',
+      '<p class="settings-status">Private maps do not have a join code. Create a <strong>shared</strong> copy named <strong>' +
+        esc(name) + '</strong> and copy the invite (map name + 6-digit code) for partners?</p>',
+      [
+        {
+          label: 'Create shared & copy invite',
+          primary: true,
+          onClick: function () {
+            return switchToPrivate(privateId).then(function () {
+              return C.createSharedMap(name);
+            }).then(function (m) {
+              if (!m) throw new Error('Could not create shared map');
+              copyMapInvite(m);
+              try { refreshMapsUi(); } catch (eR) {}
+            }).catch(function (e) {
+              alert((e && e.message) || String(e));
+            });
+          }
+        },
+        { label: 'Cancel' }
+      ]
+    );
   }
 
   function loadMapAliases() {
@@ -3064,13 +3215,19 @@
             var id = btn.getAttribute('data-id');
             if (kind === 'shared') {
               var row = (smaps || []).find(function (x) { return String(x.id) === String(id); });
-              if (row) copyMapInvite(row);
-              else alert('Could not find invite code for this map.');
+              if (row) {
+                copyMapInvite(row);
+              } else {
+                // Fallback: rebuild from card name if list row missing
+                var card = findCard('shared', id);
+                if (card && card.raw) copyMapInvite(card.raw);
+                else if (card) copyMapInvite({ id: card.id, name: card.name, code: card.code || (card.raw && card.raw.code) });
+                else alert('Could not find invite code for this map.');
+              }
             } else {
-              showSimpleModal('Share map',
-                '<p class="settings-status">This map is <strong>not shared</strong> — only you can see it. Create a <strong>shared map</strong> below to invite hunting partners with a 6-digit code.</p>',
-                [{ label: 'OK', primary: true }]
-              );
+              var pcard = findCard('private', id);
+              var pname = (pcard && pcard.name) || 'Hunt map';
+              sharePrivateMapAsInvite(id, pname);
             }
           };
         });
