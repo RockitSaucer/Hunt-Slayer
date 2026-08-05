@@ -1,0 +1,37 @@
+REG SLAYER V6.5.2 Beta
+======================
+Date: 2026-08-04
+Shell cache: reg-slayer-shell-v40 (was v39)
+Prior: V6.5.1 Beta (tag v6.5.1-beta)
+
+WHAT
+----
+Pin icon recolor + picker visibility fix:
+
+1) Solid icon colors (e.g. yellow) now render via SVG feFlood + SourceAlpha
+   on black-alpha PNGs. CSS mask-image used luminance by default and made
+   black silhouettes disappear (empty discs in the pin list + invisible icons
+   on black insides).
+
+2) Icon layer stays above inside fill (body → inside → icon).
+
+3) Natural black silhouettes on a dark/black inside auto-render light so the
+   shape still reads; explicit colors are never overridden — black inside +
+   yellow icon shows yellow.
+
+4) Picker grid forces a readable disc when a saved scheme had a dark center
+   with a natural (black) glyph so icons do not vanish from the list.
+
+WHY
+---
+V6.5.1 CSS-mask recolor broke black-silhouette pins; yellow-on-black was a
+primary customize case.
+
+UNDO
+----
+git checkout v6.5.1-beta
+or APP_VERSION 6.5.1-beta + shell v39
+
+FILES
+-----
+index.html, sw.js, Changes_6.5.2.txt

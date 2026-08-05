@@ -4290,7 +4290,7 @@
     }
     #pin-editor-sheet .pin-picker-disc img,
     #pin-editor-sheet .pin-picker-disc .pin-glyph-img,
-    #pin-editor-sheet .pin-picker-disc .pin-glyph-layer {
+    #pin-editor-sheet .pin-picker-disc .pin-glyph-svg {
       width: 88% !important;
       height: 88% !important;
       max-width: 36px;
@@ -4300,15 +4300,16 @@
       position: relative;
       z-index: 2;
     }
-    /* Map / preview pin layers */
+    /* Map / preview pin layers: body → inside → icon */
     .rs-pin .rs-pin-body { z-index: 0; }
     .rs-pin .rs-pin-inside { z-index: 1; }
     .rs-pin .rs-pin-icon { z-index: 2; }
     .rs-pin .rs-pin-icon .pin-glyph-img,
-    .rs-pin .rs-pin-icon .pin-glyph-layer {
+    .rs-pin .rs-pin-icon .pin-glyph-svg {
       width: 100%;
       height: 100%;
       display: block;
+      overflow: visible;
     }
     /* Map-anchored delete confirmation (replaces window.confirm at popup) */
     .map-item-confirm {
@@ -7265,7 +7266,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.5.1 Beta">V6.5.1 Beta</span>
+      <span class="brand-version" aria-label="Version 6.5.2 Beta">V6.5.2 Beta</span>
     </div>
   </header>
 
@@ -8304,7 +8305,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.5.1-beta';
+    const APP_VERSION = '6.5.2-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -20936,42 +20937,59 @@
       var base = (ic && ic.src) ? ic.src : ('icons/pins/' + iconId + '.png');
       return base + (base.indexOf('?') >= 0 ? '&' : '?') + 'v=naked3';
     }
-    /** Optional CSS recolor for black silhouettes when user picks a custom glyph tint. */
+    /** Optional CSS recolor (legacy). Solid tints now use SVG SourceAlpha flood. */
     function pinIconColorFilter(hex, iconId) {
       if (!hex || hex === 'natural' || hex === 'none' || hex === 'original') return 'none';
-      // Blood asset is already red — keep natural unless user forces a tint
       if (iconId === 'blood') {
         var h = String(hex).toLowerCase();
         if (h === '#e43844' || h === '#dc2626' || h === '#ef4444' || h === '#e43945') return 'none';
       }
-      if (hex === '#000' || hex === '#000000' || hex === '#1a1a1a') {
-        return 'brightness(0)';
+      if (hex === '#000' || hex === '#000000' || hex === '#1a1a1a') return 'brightness(0)';
+      if (hex === '#fff' || hex === '#ffffff') return 'brightness(0) invert(1)';
+      return 'none';
+    }
+    var _pinGlyphFilterSeq = 0;
+    /**
+     * True when glyph should paint as the raw PNG (no solid recolor).
+     */
+    function pinGlyphIsNatural(glyphColor, iconId) {
+      var g = (glyphColor == null || glyphColor === '') ? 'natural' : glyphColor;
+      if (g === 'natural' || g === 'none' || g === 'original') return true;
+      if (iconId === 'blood') {
+        var hb = String(g).toLowerCase();
+        if (hb === '#e43844' || hb === '#dc2626' || hb === '#ef4444' || hb === '#e43945') return true;
       }
-      if (hex === '#fff' || hex === '#ffffff') {
-        return 'brightness(0) invert(1)';
-      }
-      // Legacy filter path (prefer mask recolor in pinIconMarkup)
-      return 'brightness(0) saturate(100%) drop-shadow(0 0 0.6px ' + hex + ') drop-shadow(0 0 0 ' + hex + ')';
+      return false;
     }
     /**
-     * Icon markup. Solid tints use CSS mask + background so the glyph is a true
-     * top layer over the inside disc (black inside no longer swallows colored icons).
+     * If natural black silhouette would sit on a dark disc, force a light solid so it stays visible.
+     * Explicit colors (yellow, etc.) are never overridden.
+     */
+    function pinGlyphVisibleOnInside(glyphColor, iconId, insideHex) {
+      var g = (glyphColor == null || glyphColor === '') ? 'natural' : glyphColor;
+      if (!pinGlyphIsNatural(g, iconId)) return g;
+      if (iconId === 'blood') return 'natural';
+      var inner = (typeof normalizeHexColor === 'function')
+        ? (normalizeHexColor(insideHex) || '#ffffff')
+        : (insideHex || '#ffffff');
+      if (typeof hexLuminance === 'function' && hexLuminance(inner) < 0.42) {
+        return '#f2f2f2';
+      }
+      return 'natural';
+    }
+    /**
+     * Icon markup layered above the inside disc.
+     * Solid tints: SVG feFlood + SourceAlpha (works for black-alpha PNGs; CSS luminance masks do not).
      */
     function pinIconMarkup(iconId, glyphColor, size) {
       var img = pinIconImageSrc(iconId);
       var s = size || 26;
       if (!img) return '';
       var g = (glyphColor == null || glyphColor === '') ? 'natural' : glyphColor;
-      var natural = (g === 'natural' || g === 'none' || g === 'original');
-      // Blood natural red asset
-      if (iconId === 'blood' && !natural) {
-        var hb = String(g).toLowerCase();
-        if (hb === '#e43844' || hb === '#dc2626' || hb === '#ef4444' || hb === '#e43945') natural = true;
-      }
       var layer =
         'position:relative;z-index:2;display:block;width:100%;height:100%;' +
         'box-sizing:border-box;pointer-events:none;flex-shrink:0;';
-      if (natural) {
+      if (pinGlyphIsNatural(g, iconId)) {
         return '<img class="pin-glyph-img" src="' + img + '" width="' + s + '" height="' + s +
           '" alt="" draggable="false" style="' + layer +
           'object-fit:contain;background:transparent;border:none;margin:0;padding:0;filter:none;opacity:1;">';
@@ -20979,28 +20997,48 @@
       var hex = (typeof normalizeHexColor === 'function')
         ? (normalizeHexColor(g) || '#111111')
         : String(g);
-      // Mask paints solid color in icon shape — sits above inside fill
-      return '<span class="pin-glyph-layer" role="img" aria-hidden="true" style="' + layer +
-        'background-color:' + hex + ';' +
-        '-webkit-mask-image:url(\'' + img + '\');mask-image:url(\'' + img + '\');' +
-        '-webkit-mask-size:contain;mask-size:contain;' +
-        '-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;' +
-        '-webkit-mask-position:center;mask-position:center;' +
-        '-webkit-mask-mode:alpha;mask-mode:alpha;"></span>';
+      // Unique filter id (many thumbs on one page)
+      _pinGlyphFilterSeq += 1;
+      var fid = 'pgf' + _pinGlyphFilterSeq + '_' + String(iconId || 'x').replace(/[^a-z0-9_-]/gi, '');
+      // Escape for SVG attribute
+      var src = String(img)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      // SourceAlpha → flood color paints the silhouette in any solid color (yellow on black, etc.)
+      return (
+        '<svg class="pin-glyph-svg" width="' + s + '" height="' + s + '" viewBox="0 0 ' + s + ' ' + s + '" ' +
+          'xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ' +
+          'aria-hidden="true" focusable="false" style="' + layer + 'overflow:visible;">' +
+          '<defs>' +
+            '<filter id="' + fid + '" x="-20%" y="-20%" width="140%" height="140%" ' +
+              'color-interpolation-filters="sRGB">' +
+              '<feFlood flood-color="' + hex + '" flood-opacity="1" result="flood"/>' +
+              '<feComposite in="flood" in2="SourceAlpha" operator="in"/>' +
+            '</filter>' +
+          '</defs>' +
+          '<image width="' + s + '" height="' + s + '" href="' + src + '" xlink:href="' + src + '" ' +
+            'filter="url(#' + fid + ')" preserveAspectRatio="xMidYMid meet"/>' +
+        '</svg>'
+      );
     }
     function buildCustomPinMarkerHtml(loc) {
       var iconId = loc.iconId || null;
       var outer = loc.color || (iconId ? pinIconDefaultColor(iconId) : '#e59a18');
-      // White disc default so black/red glyphs stand out
       var inner = loc.innerColor || '#ffffff';
-      var glyph = (loc.iconColor == null || loc.iconColor === '') ? 'natural' : loc.iconColor;
+      var glyphRaw = (loc.iconColor == null || loc.iconColor === '') ? 'natural' : loc.iconColor;
+      // Keep explicit colors; auto lighten natural black silhouettes on dark discs
+      var glyph = iconId
+        ? pinGlyphVisibleOnInside(glyphRaw, iconId, inner)
+        : glyphRaw;
       var pinW = 43, pinH = 53, disc = 30, body = 38;
       var discLeft = 6, discTop = 4;
       // Three layers: pin body (0) → inside fill (1) → icon glyph (2)
       var iconLayer = iconId
         ? ('<div class="rs-pin-icon" style="position:absolute;left:' + discLeft + 'px;top:' + discTop +
           'px;width:' + disc + 'px;height:' + disc + 'px;z-index:2;display:flex;align-items:center;' +
-          'justify-content:center;overflow:hidden;padding:0;box-sizing:border-box;pointer-events:none;">' +
+          'justify-content:center;overflow:visible;padding:0;box-sizing:border-box;pointer-events:none;">' +
           pinIconMarkup(iconId, glyph, disc) + '</div>')
         : '';
       return (
@@ -21024,13 +21062,23 @@
       opts = opts || {};
       var iconId = opts.iconId || null;
       var inner = opts.innerColor || opts.inner || '#ffffff';
-      var glyph = (opts.iconColor != null ? opts.iconColor : (opts.glyph != null ? opts.glyph : 'natural'));
+      var glyphRaw = (opts.iconColor != null ? opts.iconColor : (opts.glyph != null ? opts.glyph : 'natural'));
+      // Grid must stay readable: light disc if scheme saved a black center with invisible natural icon
+      var discBg = inner;
+      var glyph = glyphRaw;
+      if (iconId) {
+        glyph = pinGlyphVisibleOnInside(glyphRaw, iconId, discBg);
+        // If still natural black on mid-dark scheme, force light disc for browsing
+        if (pinGlyphIsNatural(glyph, iconId) && typeof hexLuminance === 'function' &&
+            hexLuminance(normalizeHexColor(discBg) || '#fff') < 0.55 && iconId !== 'blood') {
+          discBg = '#ffffff';
+        }
+      }
       var iconHtml = iconId
         ? (typeof pinIconMarkup === 'function' ? pinIconMarkup(iconId, glyph, 32) : '')
         : '';
-      // Inside fill under icon layer (icon z-index:2 via pinIconMarkup)
       return (
-        '<div class="pin-picker-disc" style="position:relative;background:' + inner + ';" title="">' +
+        '<div class="pin-picker-disc" style="position:relative;background:' + discBg + ';" title="">' +
           (iconHtml
             ? '<div class="pin-picker-icon-layer" style="position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;pointer-events:none;">' +
               iconHtml + '</div>'
