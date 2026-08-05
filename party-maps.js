@@ -12,6 +12,7 @@
   var DIR_ICON_KEY = 'reg_slayer_my_dir_icon_v1';
   var HIDDEN_MEMBERS_KEY = 'reg_slayer_hidden_party_content_v1';
   var MAP_ALIAS_KEY = 'reg_slayer_map_alias_v1';
+  var PARTY_PREFS_LOCAL_KEY = 'reg_slayer_party_prefs_local_v1';
   /** Directional icons for party/GPS (from icons/dir — location icons pipeline). */
   var DIR_ICON_CATALOG = [
     { id: 'arrow_head', name: 'Arrow head', src: 'icons/dir/arrow_head.png', frontDeg: 0 },
@@ -630,29 +631,25 @@
           var n = nEl ? String(nEl.value || '').trim() : '';
           var c = cEl ? (cEl.value || col) : col;
           var d = dEl && dEl.value ? dEl.value : null;
-          savePartyPref(uid, {
+          return savePartyPref(uid, {
             nickname: n || null,
             arrow_color: c,
             direction_icon_id: d
           }).then(function () {
-            // Update cached member list + force icon rebuild (pull alone skips setIcon)
-            try {
-              var list = window.__rsPartyMembers || [];
-              list.forEach(function (mm) {
-                if (prefKey(mm.user_id) === prefKey(uid) && d) {
-                  // keep profile default on mem; override lives in partyPrefs
-                }
-              });
-            } catch (eM) {}
             rebuildPartyMemberIcon(uid);
-            pullPresence();
+            // Delay presence refresh so local prefs aren't racing a cloud reload
+            setTimeout(function () {
+              try { pullPresence(); } catch (eP) {}
+            }, 50);
             try {
+              var tip = d
+                ? ((getDirIconById(d) || {}).name || d)
+                : 'their default';
               if (window.showAppCopyToast) {
-                showAppCopyToast('<span class="act">Friend updated</span><br>' + esc(n || mem.username || 'Hunter'));
+                showAppCopyToast('<span class="act">Friend updated</span><br>' +
+                  esc(n || mem.username || 'Hunter') + ' · ' + esc(tip));
               }
             } catch (eT) {}
-          }).catch(function (e) {
-            alert((e && e.message) || String(e));
           });
         }
       },
@@ -747,11 +744,44 @@
     } catch (eT) {}
   };
 
+  function partyPrefsLocalStoreKey(mapId) {
+    var user = getUser() || window.__rsUser;
+    var uid = user ? (user.id || user.user_id || '') : '';
+    return PARTY_PREFS_LOCAL_KEY + ':' + String(mapId || '') + ':' + String(uid || '');
+  }
+  function loadPartyPrefsLocal(mapId) {
+    try {
+      var raw = localStorage.getItem(partyPrefsLocalStoreKey(mapId));
+      var o = raw ? JSON.parse(raw) : {};
+      return o && typeof o === 'object' ? o : {};
+    } catch (e) {
+      return {};
+    }
+  }
+  function savePartyPrefsLocal(mapId, allPrefsByMember) {
+    try {
+      localStorage.setItem(partyPrefsLocalStoreKey(mapId), JSON.stringify(allPrefsByMember || {}));
+    } catch (e) {}
+  }
+  function persistPartyPrefLocal(mapId, memberId, fields) {
+    var store = loadPartyPrefsLocal(mapId);
+    var mid = prefKey(memberId);
+    store[mid] = Object.assign({}, store[mid] || {}, fields || {});
+    savePartyPrefsLocal(mapId, store);
+  }
+
   async function loadPartyPrefs(mapId) {
     partyPrefs = {};
     var sb = getSb() || window.__rsSb;
     var user = getUser() || window.__rsUser;
-    if (!sb || !user || !mapId) return;
+    if (!mapId) return;
+    // 1) Local overrides first (survive cloud reload / missing migration)
+    var local = loadPartyPrefsLocal(mapId);
+    Object.keys(local).forEach(function (mid) {
+      partyPrefs[mid] = Object.assign({}, local[mid]);
+      partyPrefs[mid] = partyPrefs[mid];
+    });
+    if (!sb || !user) return;
     try {
       // Prefer full select; fall back if direction_icon_id column not migrated yet
       var res = await sb.from('party_member_prefs')
@@ -766,8 +796,15 @@
       }
       (res.data || []).forEach(function (r) {
         var k = prefKey(r.member_user_id);
-        partyPrefs[k] = r;
-        partyPrefs[r.member_user_id] = r;
+        // Cloud base, then local wins for direction_icon_id / nick / color if set locally later
+        var merged = Object.assign({}, r, local[k] || {});
+        // If cloud has direction_icon_id and local doesn't, keep cloud
+        if (!Object.prototype.hasOwnProperty.call(local[k] || {}, 'direction_icon_id') &&
+            r.direction_icon_id != null) {
+          merged.direction_icon_id = r.direction_icon_id;
+        }
+        partyPrefs[k] = merged;
+        partyPrefs[r.member_user_id] = merged;
       });
     } catch (e) {
       console.warn('loadPartyPrefs', e);
@@ -783,19 +820,23 @@
     var vs = C.getViewState && C.getViewState();
     var mapId = mapIdOpt || (vs && vs.mode === 'shared' ? vs.sharedMapId : null) ||
       (mapsUiSelected && mapsUiSelected.kind === 'shared' ? mapsUiSelected.id : null);
-    if (!sb || !user || !mapId) {
+    if (!mapId) {
       throw new Error('Not on a shared map — open the map first, then edit this hunter.');
     }
     var mid = prefKey(memberId);
+    // Always update memory + localStorage first (map redraw must not depend on cloud)
+    partyPrefs[mid] = Object.assign({}, getPartyPref(mid), fields);
+    partyPrefs[memberId] = partyPrefs[mid];
+    persistPartyPrefLocal(mapId, mid, fields);
+
+    if (!sb || !user) return partyPrefs[mid];
+
     var row = Object.assign({
       map_id: mapId,
       owner_user_id: user.id,
       member_user_id: mid,
       updated_at: new Date().toISOString()
     }, fields);
-    // Always update local cache first so map redraws even if cloud column is missing
-    partyPrefs[mid] = Object.assign({}, getPartyPref(mid), fields);
-    partyPrefs[memberId] = partyPrefs[mid];
 
     var res = await sb.from('party_member_prefs').upsert(row, {
       onConflict: 'map_id,owner_user_id,member_user_id'
@@ -808,10 +849,13 @@
         var res2 = await sb.from('party_member_prefs').upsert(row2, {
           onConflict: 'map_id,owner_user_id,member_user_id'
         });
-        if (res2.error) throw res2.error;
-        console.warn('direction_icon_id not saved to cloud (run migration). Local override still applied.', res.error);
+        if (res2.error) {
+          console.warn('party pref cloud save failed; kept local', res2.error);
+        } else {
+          console.warn('direction_icon_id not on cloud yet (run migration). Local override still applied.');
+        }
       } else {
-        throw res.error;
+        console.warn('party pref cloud save failed; kept local', res.error);
       }
     }
     return partyPrefs[mid];
@@ -877,14 +921,28 @@
   /** Force rebuild of one party marker’s icon (after edit). */
   function rebuildPartyMemberIcon(uid) {
     uid = prefKey(uid);
-    var mk = partyMarkers[uid];
-    if (!mk) return;
+    var mk = partyMarkers[uid] || partyMarkers[String(uid)];
+    if (!mk) {
+      // Marker may use a different key casing — scan
+      Object.keys(partyMarkers).forEach(function (k) {
+        if (prefKey(k) === uid) mk = partyMarkers[k];
+      });
+    }
+    if (!mk) {
+      console.warn('rebuildPartyMemberIcon: no marker for', uid, Object.keys(partyMarkers));
+      return;
+    }
     var mem = findPartyMember(uid);
     var hdg = mk._rsHeading != null ? mk._rsHeading : 0;
+    var dirId = memberDirIconId(mem);
+    var col = memberColor(mem);
     try {
-      var icon = buildPartyArrowIcon(memberColor(mem), memberLabel(mem), hdg, memberDirIconId(mem));
+      var icon = buildPartyArrowIcon(col, memberLabel(mem), hdg, dirId);
       mk.setIcon(icon);
       mk._rsIconSig = memberIconSignature(mem);
+      mk._rsHeading = hdg;
+      // Ensure keyed under string id
+      partyMarkers[uid] = mk;
     } catch (e) {
       console.warn('rebuildPartyMemberIcon', e);
     }
@@ -1346,8 +1404,29 @@
       btn.className = 'settings-subbtn' + (b.primary ? ' rs-btn-primary' : '');
       btn.textContent = b.label;
       btn.onclick = function () {
-        if (b.close !== false) wrap.remove();
-        if (b.onClick) b.onClick();
+        // Run handler BEFORE removing modal so form fields still exist
+        // (Edit friend Save was wiping direction_icon_id by reading after remove).
+        var err = null;
+        if (b.onClick) {
+          try {
+            var ret = b.onClick();
+            // If Save returns a promise, wait then close
+            if (ret && typeof ret.then === 'function') {
+              ret.then(function () {
+                if (b.close !== false && wrap.parentNode) wrap.remove();
+              }).catch(function (e) {
+                err = e;
+                alert((e && e.message) || String(e));
+              });
+              return;
+            }
+          } catch (eClick) {
+            err = eClick;
+            alert((eClick && eClick.message) || String(eClick));
+            return;
+          }
+        }
+        if (!err && b.close !== false) wrap.remove();
       };
       act.appendChild(btn);
     });
@@ -1858,11 +1937,11 @@
             } catch (eProf) {}
             try { syncMyDirIconSettingsBtn(); } catch (eB) {}
           }
-          // Friends: store override only when an icon is chosen; null = use their profile default
+          // Friends: store override (null = use their profile default)
           if (!self) {
             fields.direction_icon_id = d || null;
           }
-          savePartyPref(member.user_id, fields, mapId).then(function () {
+          return savePartyPref(member.user_id, fields, mapId).then(function () {
             if (self) {
               try {
                 if (typeof setGpsMarker === 'function' && typeof userLat !== 'undefined' && userLat != null) {
@@ -1873,9 +1952,11 @@
               rebuildPartyMemberIcon(member.user_id);
             }
             applyContentOwnerFilter();
-            pullPresence();
-            refreshMapsUi();
-          }).catch(function (e) { alert(e.message || e); });
+            setTimeout(function () {
+              try { pullPresence(); } catch (eP) {}
+              try { refreshMapsUi(); } catch (eR) {}
+            }, 50);
+          });
         }
       }
     ];

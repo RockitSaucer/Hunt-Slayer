@@ -1,0 +1,23 @@
+REG SLAYER — Changes 6.6.1 → 6.6.2 Beta
+========================================
+Date: 2026-08-05
+Label: V6.6.2 Beta
+Shell cache: reg-slayer-shell-v44
+Git tag: v6.6.2-beta
+
+FIX: Edit friend direction icon never applied
+---------------------------------------------
+Root cause: showSimpleModal closed (removed) the dialog BEFORE running Save
+onClick. Save then read #rs-friend-dir / color fields that were already gone
+from the DOM → always saved null → default arrow.
+
+Also: loadPartyPrefs wiped local overrides when cloud lacked direction_icon_id
+(or after presence refresh), undoing any brief local apply.
+
+Fixes:
+- Run modal button handlers BEFORE removing the modal (await promises).
+- Persist party prefs (incl. direction_icon_id) to localStorage per map/user
+  and merge after every cloud load so overrides stick.
+- rebuildPartyMemberIcon more resilient; delay pullPresence after save.
+
+UNDO: tag v6.6.1-beta
