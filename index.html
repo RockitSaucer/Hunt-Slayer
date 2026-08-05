@@ -2118,8 +2118,8 @@
     .color-dot-btn.selected { border-color: #fff; transform: scale(1.1); }
     .btn-group { display: flex; gap: 8px; }
     /*
-     * Shared raised button language — depth, same family across the app
-     * (filter chips, tools, minmax, cal nav, secondary actions)
+     * Shared raised 3D button language (Choose Your Weapon / filter chips).
+     * Applies app-wide EXCEPT the map bottom toolbar (.map-bottom-bar).
      */
     .filter-btn,
     .sec-minmax-btn,
@@ -2127,30 +2127,71 @@
     .sort-option-btn,
     .dist-zip-apply,
     .list-toolbar .filter-btn,
-    button.filter-btn {
+    button.filter-btn,
+    .settings-subbtn,
+    .settings-compass-mode-btn,
+    .settings-inline-row > button,
+    .settings-map-card-actions button,
+    .map-dot-menu .mdm-btn,
+    .map-dot-menu .mdm-edit-btn,
+    .map-dot-popup .mdm-btn,
+    #pin-editor-sheet .pes-actions button,
+    #pin-editor-sheet .pes-customize-btn,
+    #pin-editor-sheet .pes-slot-btns button,
+    .shape-save-actions button,
+    .map-item-confirm .mic-actions button,
+    #pin-note-modal .pin-note-actions button,
+    .draw-mode-chooser button,
+    .map-fs-btn,
+    .ss-save,
+    .ss-cancel,
+    #settings-modal .settings-inline-row button {
       border-radius: 8px;
       border: 1px solid var(--border);
       cursor: pointer;
       font-weight: 600;
-      text-align: center;
       box-shadow:
         0 2px 0 rgba(0, 0, 0, 0.32),
         0 3px 7px rgba(0, 0, 0, 0.18),
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
       transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.08s ease;
     }
+    .filter-btn,
+    .settings-subbtn,
+    .settings-compass-mode-btn,
+    .settings-inline-row > button,
+    .settings-map-card-actions button,
+    #settings-modal .settings-inline-row button {
+      background: linear-gradient(180deg, #2a3222 0%, var(--panel-light) 45%, #181e14 100%);
+      color: var(--ink);
+    }
     .filter-btn {
       flex: 1;
       padding: 10px;
-      background: linear-gradient(180deg, #2a3222 0%, var(--panel-light) 45%, #181e14 100%);
-      color: var(--ink);
+      text-align: center;
       font-size: 13px;
     }
-    .filter-btn:hover {
+    .filter-btn:hover,
+    .settings-subbtn:hover,
+    .settings-compass-mode-btn:hover,
+    .settings-inline-row > button:hover,
+    .settings-map-card-actions button:hover,
+    #settings-modal .settings-inline-row button:hover {
       border-color: var(--muted);
       background: linear-gradient(180deg, #323c28 0%, #262e1e 45%, #1c2418 100%);
     }
-    .filter-btn:active {
+    .filter-btn:active,
+    .settings-subbtn:active,
+    .settings-compass-mode-btn:active,
+    .settings-inline-row > button:active,
+    .settings-map-card-actions button:active,
+    .map-dot-menu .mdm-btn:active,
+    .map-dot-menu .mdm-edit-btn:active,
+    #pin-editor-sheet .pes-actions button:active,
+    #pin-editor-sheet .pes-customize-btn:active,
+    .shape-save-actions button:active,
+    .map-fs-btn:active,
+    #settings-modal .settings-inline-row button:active {
       transform: translateY(1px);
       box-shadow:
         0 1px 0 rgba(0, 0, 0, 0.28),
@@ -2167,6 +2208,24 @@
     }
     .filter-btn.active:hover {
       background: linear-gradient(180deg, #6aa048 0%, var(--green-hover) 50%, #456a2c 100%);
+    }
+    /* Colored popup buttons keep their hue, still raised */
+    .map-dot-menu .mdm-btn {
+      box-shadow:
+        0 2px 0 rgba(0, 0, 0, 0.35),
+        0 3px 7px rgba(0, 0, 0, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    }
+    /* Map bottom toolbar stays flat / its own language — not the raised chip look */
+    .map-bottom-bar button,
+    .map-bottom-bar .mdt-btn,
+    .map-bottom-bar .mbb-icon-btn,
+    .map-bottom-bar .mbb-compass-btn,
+    .map-bottom-bar .mbb-ctrl,
+    .map-bottom-bar .map-settings-btn,
+    .map-bottom-bar .map-layers-toggle-btn {
+      transform: none;
+      background-image: none;
     }
     .sec-minmax-btn,
     .planner-minmax-btn {
@@ -4040,15 +4099,18 @@
       min-width: 0;
       accent-color: var(--accent);
     }
-    /* Compass mode: pulse red + hide Wind/Compass Mode buttons */
+    /* Compass mode: pulse red + hide Wind/Compass swap chips */
     .map-compass-radar.compass-mode-active .compass-dial,
     .map-compass-radar.compass-mode-active #heading-compass-dial,
     .map-compass-radar.compass-mode-active #wind-compass-dial {
       animation: cmPulseRed 1.05s ease-in-out infinite;
       border-color: #ef4444 !important;
     }
-    .map-compass-radar.compass-mode-active .mwh-swap-btn,
-    .map-compass-radar.compass-mode-active #dial-expand-menu {
+    .map-compass-radar.compass-mode-active .mwh-swap-btn {
+      display: none !important;
+    }
+    /* Never show swap chips unless dial is enlarged */
+    .map-wind-hud:not(.dial-expanded) .mwh-swap-btn {
       display: none !important;
     }
     @keyframes cmPulseRed {
@@ -4244,7 +4306,7 @@
       background: var(--panel-light);
       color: var(--muted);
     }
-    /* Picker: icon-in-circle only (disc face, not full teardrop) */
+    /* Picker: catalog icons = disc face; blank pin = full teardrop (see .pin-picker-blank-btn) */
     #pin-editor-sheet .pin-icon-grid button,
     #pin-editor-sheet #pin-icon-recent .pin-icon-grid button {
       width: 48px !important;
@@ -4261,11 +4323,29 @@
       aspect-ratio: 1 / 1 !important;
       box-sizing: border-box !important;
     }
+    /* Blank pin tile: show whole map pin (not a white disc that looks like an empty icon) */
+    #pin-editor-sheet .pin-icon-grid button.pin-picker-blank-btn,
+    #pin-editor-sheet #pin-icon-recent .pin-icon-grid button.pin-picker-blank-btn {
+      border-radius: 10px !important;
+      overflow: visible !important;
+      background: #f4f6f1 !important;
+      padding: 2px !important;
+    }
     #pin-editor-sheet .pin-icon-grid button.selected,
     #pin-editor-sheet #pin-icon-recent .pin-icon-grid button.selected {
       border-color: var(--accent) !important;
       box-shadow: 0 0 0 2px rgba(229, 154, 24, 0.45);
       background: #fffef8 !important;
+    }
+    #pin-editor-sheet .pin-picker-fullpin {
+      pointer-events: none;
+      line-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #pin-editor-sheet .pin-picker-fullpin .rs-pin {
+      flex-shrink: 0;
     }
     #pin-editor-sheet .pin-picker-disc {
       width: 100%;
@@ -4455,6 +4535,25 @@
       background: rgba(0,0,0,0.2) !important;
       border: 1px solid var(--border) !important;
       flex: 0 0 auto !important;
+    }
+    /* Must follow general button rules so blank pin isn't clipped/dark-washed */
+    #pin-editor-sheet .pin-icon-grid button.pin-picker-blank-btn,
+    #pin-editor-sheet #pin-icon-recent .pin-icon-grid button.pin-picker-blank-btn {
+      width: 44px !important;
+      height: 52px !important;
+      min-width: 44px !important;
+      max-width: 44px !important;
+      border-radius: 10px !important;
+      overflow: visible !important;
+      background: #f4f6f1 !important;
+      border: 1px solid #c5c9c0 !important;
+      padding: 1px !important;
+    }
+    #pin-editor-sheet .pin-icon-grid button.pin-picker-blank-btn.selected,
+    #pin-editor-sheet #pin-icon-recent .pin-icon-grid button.pin-picker-blank-btn.selected {
+      border-color: var(--accent) !important;
+      box-shadow: 0 0 0 2px rgba(229, 154, 24, 0.45);
+      background: #fffef8 !important;
     }
     #pin-editor-sheet .pin-icon-grid button.selected,
     #pin-editor-sheet #pin-icon-recent .pin-icon-grid button.selected {
@@ -4655,38 +4754,12 @@
       font-weight: 700;
       box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     }
-    .dial-expand-menu {
-      position: absolute;
-      left: 50%;
-      top: calc(100% + 6px);
-      transform: translateX(-50%);
-      display: none;
-      flex-direction: column;
-      gap: 6px;
-      z-index: 10020;
-      min-width: 132px;
-      padding: 8px;
-      background: rgba(15, 18, 14, 0.98);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      box-shadow: 0 8px 22px rgba(0,0,0,0.55);
+    /* Legacy dial expand popup (Compass Mode / Wind) — removed; keep CSS inert if DOM remnant exists */
+    .dial-expand-menu,
+    .dial-expand-menu.open {
+      display: none !important;
     }
-    .dial-expand-menu.open { display: flex; }
-    .dial-expand-menu button {
-      border: 1px solid var(--border);
-      background: var(--panel-light);
-      color: var(--ink);
-      border-radius: 8px;
-      padding: 8px 10px;
-      font-size: 11px;
-      font-weight: 800;
-      cursor: pointer;
-    }
-    .dial-expand-menu button.is-active {
-      border-color: var(--accent);
-      background: rgba(229, 154, 24, 0.18);
-      color: var(--accent);
-    }
+    .dial-expand-menu button { display: none !important; }
     /* Pin editor docked above bottom toolbar (#18) */
     #pin-editor-sheet {
       display: none;
@@ -4855,6 +4928,21 @@
       0%, 100% { filter: drop-shadow(0 0 4px #facc15) drop-shadow(0 0 8px rgba(250, 204, 21, 0.4)); transform: scale(1); }
       50% { filter: drop-shadow(0 0 10px #fde047) drop-shadow(0 0 18px rgba(250, 204, 21, 0.7)); transform: scale(1.06); }
     }
+    /* Emphasize: stronger pulse/glow so a pin is easy to spot on a shared map */
+    .pin-emphasize-pulse {
+      animation: pinEmphasizePulse 1s ease-in-out infinite;
+      will-change: transform, filter;
+    }
+    @keyframes pinEmphasizePulse {
+      0%, 100% {
+        filter: drop-shadow(0 0 6px #facc15) drop-shadow(0 0 14px rgba(250, 204, 21, 0.75)) drop-shadow(0 0 22px rgba(253, 224, 71, 0.45));
+        transform: scale(1);
+      }
+      50% {
+        filter: drop-shadow(0 0 12px #fde047) drop-shadow(0 0 24px rgba(250, 204, 21, 0.95)) drop-shadow(0 0 36px rgba(253, 224, 71, 0.65));
+        transform: scale(1.12);
+      }
+    }
     .mdm-footer-row {
       display: flex;
       align-items: center;
@@ -4873,6 +4961,72 @@
       font-size: 12px;
       cursor: pointer;
     }
+    .mdm-footer-row .mdm-emphasize-btn {
+      width: 40px;
+      height: 36px;
+      flex: 0 0 40px;
+      border-radius: 8px;
+      border: 2px solid #ca8a04;
+      background: #facc15;
+      color: #000;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+    }
+    /* Rounded-bar ! glyph (not a sharp typeface bang) */
+    .mdm-footer-row .mdm-emphasize-btn .mdm-emphasize-bang {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2.5px;
+      width: 10px;
+      height: 18px;
+      animation: mdmEmphasizeBangPulse 1.15s ease-in-out infinite;
+      transform-origin: center center;
+    }
+    .mdm-footer-row .mdm-emphasize-btn .mdm-emphasize-bang::before {
+      content: '';
+      display: block;
+      width: 4.5px;
+      height: 11px;
+      border-radius: 999px;
+      background: #000;
+    }
+    .mdm-footer-row .mdm-emphasize-btn .mdm-emphasize-bang::after {
+      content: '';
+      display: block;
+      width: 4.5px;
+      height: 4.5px;
+      border-radius: 50%;
+      background: #000;
+    }
+    @keyframes mdmEmphasizeBangPulse {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.88;
+        filter: drop-shadow(0 0 0 transparent);
+      }
+      50% {
+        transform: scale(1.14);
+        opacity: 1;
+        filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 6px rgba(250, 204, 21, 0.55));
+      }
+    }
+    .mdm-footer-row .mdm-emphasize-btn:hover {
+      filter: brightness(1.06);
+    }
+    .mdm-footer-row .mdm-emphasize-btn.is-on {
+      background: #fde047;
+      border-color: #000;
+      box-shadow: 0 0 0 2px #facc15, 0 0 10px rgba(250, 204, 21, 0.75);
+    }
+    .mdm-footer-row .mdm-emphasize-btn.is-on .mdm-emphasize-bang {
+      animation-duration: 0.85s;
+    }
     .mdm-footer-row .mdm-trash-btn {
       width: 40px;
       height: 36px;
@@ -4887,18 +5041,7 @@
       padding: 0;
     }
     .mdm-footer-row .mdm-trash-btn svg { width: 18px; height: 18px; }
-    .settings-compass-mode-btn {
-      width: 100%;
-      margin-top: 6px;
-      padding: 9px 10px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: var(--panel-light);
-      color: var(--ink);
-      font-weight: 800;
-      font-size: 12px;
-      cursor: pointer;
-    }
+    /* .settings-compass-mode-btn styled with shared 3D language + compact width above */
     #compass-mode-settings-modal .cm-preview {
       height: 54px;
       margin: 10px 0 4px;
@@ -5979,7 +6122,10 @@
       border: 1px solid var(--border);
       border-radius: 14px;
       width: min(440px, 100%);
+      /* Fixed size on every tab so Tools ↔ Defaults does not resize the window */
+      height: min(88vh, 720px);
       max-height: min(88vh, 720px);
+      min-height: min(88vh, 720px);
       display: flex;
       flex-direction: column;
       box-shadow: 0 16px 48px rgba(0,0,0,0.55);
@@ -6035,67 +6181,291 @@
     .settings-body {
       padding: 12px 14px 16px;
       overflow-y: auto;
-      flex: 1;
+      flex: 1 1 auto;
+      min-height: 0; /* allow body to scroll inside fixed-height card */
+      position: relative;
     }
     .settings-pane { display: none; }
-    .settings-pane.active { display: block; }
-    .settings-row {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      padding: 8px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-      font-size: 13px;
-      color: var(--ink);
-      cursor: pointer;
+    .settings-pane.active { display: block; min-height: 100%; }
+    /*
+     * Settings scrollbars: dark track/thumb, no end arrows
+     * (vertical + horizontal — body, panes, nested lists, color panels, etc.)
+     */
+    #settings-modal .settings-card,
+    #settings-modal .settings-body,
+    #settings-modal .settings-pane,
+    #settings-modal .settings-section,
+    #settings-modal .settings-subpanel,
+    #settings-modal #set-all-maps-list,
+    #settings-modal #set-map-members-panel,
+    #settings-modal .settings-map-card-details,
+    #settings-modal .color-picker,
+    #settings-modal .cp-panel {
+      scrollbar-width: thin;
+      scrollbar-color: #1a1e16 #0a0c09;
     }
-    .settings-row:last-child { border-bottom: none; }
-    .settings-row input[type="checkbox"] { margin-top: 2px; flex-shrink: 0; }
-    .settings-row .sr-text { flex: 1; min-width: 0; }
-    .settings-row .sr-sub { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; font-weight: 500; }
+    #settings-modal .settings-body::-webkit-scrollbar,
+    #settings-modal .settings-pane::-webkit-scrollbar,
+    #settings-modal .settings-section::-webkit-scrollbar,
+    #settings-modal .settings-subpanel::-webkit-scrollbar,
+    #settings-modal #set-all-maps-list::-webkit-scrollbar,
+    #settings-modal #set-map-members-panel::-webkit-scrollbar,
+    #settings-modal .settings-map-card-details::-webkit-scrollbar,
+    #settings-modal .color-picker::-webkit-scrollbar,
+    #settings-modal .cp-panel::-webkit-scrollbar,
+    #settings-modal *::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    #settings-modal *::-webkit-scrollbar-track {
+      background: #0a0c09;
+      border-radius: 4px;
+    }
+    #settings-modal *::-webkit-scrollbar-thumb {
+      background: #1a1e16;
+      border-radius: 4px;
+      border: 1px solid #0a0c09;
+    }
+    #settings-modal *::-webkit-scrollbar-thumb:hover {
+      background: #252b20;
+    }
+    #settings-modal *::-webkit-scrollbar-corner {
+      background: #0a0c09;
+    }
+    /* Hide scrollbar arrow buttons (up/down/left/right) */
+    #settings-modal *::-webkit-scrollbar-button,
+    #settings-modal *::-webkit-scrollbar-button:single-button,
+    #settings-modal *::-webkit-scrollbar-button:double-button,
+    #settings-modal *::-webkit-scrollbar-button:vertical:start:decrement,
+    #settings-modal *::-webkit-scrollbar-button:vertical:end:increment,
+    #settings-modal *::-webkit-scrollbar-button:vertical:start:increment,
+    #settings-modal *::-webkit-scrollbar-button:vertical:end:decrement,
+    #settings-modal *::-webkit-scrollbar-button:horizontal:start:decrement,
+    #settings-modal *::-webkit-scrollbar-button:horizontal:end:increment,
+    #settings-modal *::-webkit-scrollbar-button:horizontal:start:increment,
+    #settings-modal *::-webkit-scrollbar-button:horizontal:end:decrement,
+    #settings-modal *::-webkit-scrollbar-button:start:decrement,
+    #settings-modal *::-webkit-scrollbar-button:end:increment,
+    #settings-modal *::-webkit-scrollbar-button:start:increment,
+    #settings-modal *::-webkit-scrollbar-button:end:decrement {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      background: transparent !important;
+      border: none !important;
+    }
+    /* Cohesive section blocks across all settings tabs */
+    .settings-section {
+      margin: 0 0 12px;
+      padding: 10px 10px 8px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.18);
+    }
+    .settings-section:last-child { margin-bottom: 0; }
+    .settings-section-head {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      flex-wrap: wrap;
+      gap: 5px 6px;
+      margin: 0 0 6px;
+      min-height: 20px;
+    }
     .settings-section-title {
       font-size: 11px;
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: var(--muted);
-      margin: 12px 0 6px;
+      margin: 0;
+      flex: 0 1 auto;
+      min-width: 0;
     }
-    .settings-section-title:first-child { margin-top: 0; }
+    .settings-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      flex-wrap: wrap;
+      gap: 5px 6px;
+      padding: 7px 2px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-size: 13px;
+      color: var(--ink);
+    }
+    .settings-row:last-child { border-bottom: none; }
+    /* Checkbox + label name + info i sit in one tight group (i next to the name) */
+    .settings-row-main {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 1 auto;
+      max-width: 100%;
+      cursor: pointer;
+      margin: 0;
+    }
+    .settings-row input[type="checkbox"] {
+      margin: 0;
+      flex-shrink: 0;
+    }
+    .settings-row .sr-text {
+      flex: 0 1 auto;
+      min-width: 0;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    /* Info sits immediately after the name (DOM order: label then i, or inside label wrap) */
+    .settings-row > .settings-info-btn,
+    .settings-section-head > .settings-info-btn,
+    .settings-action-row > .settings-info-btn,
+    .sr-label-with-info > .settings-info-btn {
+      margin-left: 0;
+    }
+    .sr-label-with-info {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      flex: 0 1 auto;
+      min-width: 0;
+      flex-wrap: wrap;
+    }
+    /* Legacy inline descriptions — replaced by info buttons */
+    .settings-row .sr-sub { display: none !important; }
     .settings-subbtn {
-      width: 100%;
-      text-align: left;
-      padding: 10px 12px;
+      width: auto;
+      max-width: 100%;
+      text-align: center;
+      padding: 9px 12px;
       margin: 6px 0;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: var(--panel-light);
-      color: #fff;
       font-weight: 700;
       font-size: 13px;
-      cursor: pointer;
+      box-sizing: border-box;
+      color: var(--ink);
     }
-    .settings-subbtn:hover { border-color: var(--accent); }
     .settings-subpanel {
       display: none;
-      margin: 4px 0 10px;
-      padding: 8px 10px;
+      margin: 4px 0 0;
+      padding: 4px 6px 2px;
       border-radius: 8px;
-      border: 1px solid var(--border);
-      background: rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(0,0,0,0.15);
     }
     .settings-subpanel.open { display: block; }
-    .settings-hint {
+    /* Status lines only (not option help) — keep quiet */
+    .settings-hint,
+    .settings-status {
       font-size: 11px;
       color: var(--muted);
-      margin: 8px 0 0;
+      margin: 6px 0 0;
       line-height: 1.4;
+    }
+    .settings-status { margin: 4px 0 8px; }
+    /* Info buttons — small orange “i” tight next to the option name */
+    .settings-info-btn {
+      flex: 0 0 14px;
+      width: 14px;
+      height: 14px;
+      min-width: 14px;
+      min-height: 14px;
+      border-radius: 50%;
+      border: none;
+      padding: 0;
+      margin: 0;
+      background: var(--accent, #e59a18);
+      color: #111;
+      font-size: 9px;
+      font-weight: 900;
+      font-style: italic;
+      font-family: Georgia, 'Times New Roman', serif;
+      line-height: 1;
+      text-align: center;
+      cursor: pointer;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.28);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+      vertical-align: middle;
+    }
+    .settings-info-btn:hover {
+      filter: brightness(1.08);
+    }
+    .settings-info-btn:active,
+    .settings-info-btn.is-open {
+      box-shadow: 0 0 0 2px rgba(229, 154, 24, 0.55);
+    }
+    .settings-info-btn:focus-visible {
+      outline: 2px solid #fff;
+      outline-offset: 1px;
+    }
+    /* Popover for info text */
+    .settings-info-pop {
+      display: none;
+      position: absolute;
+      z-index: 50;
+      max-width: min(280px, calc(100% - 20px));
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(229, 154, 24, 0.55);
+      background: rgba(18, 22, 16, 0.98);
+      color: #e8efe4;
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.4;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
+      pointer-events: auto;
+    }
+    .settings-info-pop.open { display: block; }
+    .settings-info-pop .sip-title {
+      display: block;
+      font-weight: 800;
+      font-size: 11px;
+      color: var(--accent);
+      margin-bottom: 3px;
+      letter-spacing: 0.02em;
+    }
+    .settings-action-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 6px 0;
+    }
+    .settings-action-row .settings-subbtn,
+    .settings-action-row .settings-compass-mode-btn {
+      flex: 0 0 auto;
+      width: auto;
+      margin: 0;
+    }
+    /* Compass mode — compact pill, only as wide as the label */
+    .settings-compass-mode-btn {
+      width: auto;
+      max-width: 100%;
+      margin: 0;
+      padding: 8px 12px;
+      font-weight: 700;
+      font-size: 12px;
+      text-align: center;
+      white-space: nowrap;
+      box-sizing: border-box;
+      color: var(--ink);
+    }
+    .settings-cm-line {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      flex-wrap: wrap;
+      gap: 5px 6px;
+      margin: 4px 0 8px;
     }
     .settings-radio-row {
       display: flex;
+      align-items: center;
       gap: 12px;
-      margin: 8px 0;
+      margin: 4px 0 8px;
       font-size: 13px;
+      flex-wrap: wrap;
     }
     .settings-radio-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
     /* Display section visibility (html classes) */
@@ -7141,6 +7511,374 @@
       color: var(--ink); cursor: pointer; font-size: 12px;
     }
     .map-row-btn.is-active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    /* My Maps list: name | Share | View Map */
+    .settings-maps-group {
+      margin: 8px 0 12px;
+    }
+    .settings-maps-group-title {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin: 0 0 6px;
+    }
+    .settings-map-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      margin: 0 0 6px;
+      padding: 6px 6px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.12);
+      position: relative;
+    }
+    .settings-map-row.is-active {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(229, 154, 24, 0.4);
+    }
+    .settings-map-row.is-selected {
+      border-color: rgba(229, 154, 24, 0.75);
+      background: rgba(229, 154, 24, 0.08);
+    }
+    .settings-map-row .smc-gear {
+      flex: 0 0 32px;
+      width: 32px;
+      height: 32px;
+      min-width: 32px;
+      margin: 0;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      line-height: 1;
+      border-radius: 8px;
+    }
+    .settings-map-row .smc-name {
+      flex: 1 1 80px;
+      min-width: 0;
+      margin: 0;
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .settings-map-row .smc-share,
+    .settings-map-row .smc-view {
+      flex: 0 0 auto;
+      margin: 0;
+      padding: 8px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .settings-map-gear-menu {
+      position: absolute;
+      left: 6px;
+      top: calc(100% - 2px);
+      z-index: 30;
+      min-width: 160px;
+      padding: 6px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(18, 22, 16, 0.98);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .settings-map-row.gear-open .settings-map-gear-menu {
+      display: flex;
+    }
+    .settings-map-gear-menu button {
+      width: 100%;
+      margin: 0;
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .settings-map-gear-menu button.danger {
+      color: #fca5a5 !important;
+      border-color: rgba(217, 65, 54, 0.45) !important;
+    }
+    .settings-map-row .smc-view {
+      border-color: var(--accent) !important;
+      background: linear-gradient(180deg, #f0c14a 0%, var(--accent) 50%, #b87a12 100%) !important;
+      color: #111 !important;
+    }
+    .settings-map-members-panel {
+      margin: 10px 0 4px;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.2);
+      min-height: 0;
+    }
+    .settings-map-members-panel:empty { display: none; }
+    .settings-map-members-panel .smm-title {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin: 0 0 6px;
+    }
+    .settings-map-members-panel .smm-member {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      margin: 0 0 6px;
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 700;
+      box-sizing: border-box;
+    }
+    .settings-map-members-panel .smm-member .smm-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex: 0 0 12px;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.35);
+    }
+    .settings-map-members-panel .smm-member .smm-label {
+      flex: 1;
+      min-width: 0;
+    }
+    .settings-map-members-panel .smm-member .smm-meta {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    /* Direction icon picker (pin-grid style, no notes) */
+    #dir-icon-picker-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 2147483647;
+      background: rgba(0, 0, 0, 0.65);
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+    #dir-icon-picker-modal.active { display: flex !important; }
+    .dir-icon-picker-card {
+      width: min(360px, 100%);
+      max-height: min(80vh, 520px);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .dir-icon-picker-card .dip-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .dir-icon-picker-card .dip-head h3 {
+      margin: 0;
+      font-size: 15px;
+      color: #fff;
+    }
+    .dir-icon-picker-card .dip-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 22px;
+      font-weight: 700;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px 8px;
+    }
+    .dir-icon-picker-card .dip-body {
+      padding: 10px 12px 12px;
+      overflow-y: auto;
+      flex: 1;
+      min-height: 0;
+      scrollbar-width: thin;
+      scrollbar-color: #1a1e16 #0a0c09;
+    }
+    /* Dark scrollbars, no end arrows (same as Settings) */
+    #dir-icon-picker-modal,
+    #dir-icon-picker-modal .dir-icon-picker-card,
+    #dir-icon-picker-modal .dip-body,
+    #dir-icon-picker-modal .dir-icon-grid,
+    #dir-icon-picker-modal .color-picker,
+    #dir-icon-picker-modal .cp-panel {
+      scrollbar-width: thin;
+      scrollbar-color: #1a1e16 #0a0c09;
+    }
+    #dir-icon-picker-modal *::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    #dir-icon-picker-modal *::-webkit-scrollbar-track {
+      background: #0a0c09;
+      border-radius: 4px;
+    }
+    #dir-icon-picker-modal *::-webkit-scrollbar-thumb {
+      background: #1a1e16;
+      border-radius: 4px;
+      border: 1px solid #0a0c09;
+    }
+    #dir-icon-picker-modal *::-webkit-scrollbar-thumb:hover {
+      background: #252b20;
+    }
+    #dir-icon-picker-modal *::-webkit-scrollbar-corner {
+      background: #0a0c09;
+    }
+    #dir-icon-picker-modal *::-webkit-scrollbar-button,
+    #dir-icon-picker-modal *::-webkit-scrollbar-button:single-button,
+    #dir-icon-picker-modal *::-webkit-scrollbar-button:double-button,
+    #dir-icon-picker-modal *::-webkit-scrollbar-button:vertical:start:decrement,
+    #dir-icon-picker-modal *::-webkit-scrollbar-button:vertical:end:increment,
+    #dir-icon-picker-modal *::-webkit-scrollbar-button:vertical:start:increment,
+    #dir-icon-picker-modal *::-webkit-scrollbar-button:vertical:end:decrement,
+    #dir-icon-picker-modal *::-webkit-scrollbar-button:horizontal:start:decrement,
+    #dir-icon-picker-modal *::-webkit-scrollbar-button:horizontal:end:increment,
+    #dir-icon-picker-modal *::-webkit-scrollbar-button:horizontal:start:increment,
+    #dir-icon-picker-modal *::-webkit-scrollbar-button:horizontal:end:decrement,
+    #dir-icon-picker-modal *::-webkit-scrollbar-button:start:decrement,
+    #dir-icon-picker-modal *::-webkit-scrollbar-button:end:increment,
+    #dir-icon-picker-modal *::-webkit-scrollbar-button:start:increment,
+    #dir-icon-picker-modal *::-webkit-scrollbar-button:end:decrement {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      background: transparent !important;
+      border: none !important;
+    }
+    .dir-icon-search {
+      width: 100%;
+      box-sizing: border-box;
+      margin: 0 0 10px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-light);
+      color: var(--ink);
+      font-size: 12px;
+    }
+    .dir-icon-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .dir-icon-cell {
+      aspect-ratio: 1;
+      border: 2px solid #c5c9c0;
+      border-radius: 10px;
+      background: #ffffff;
+      padding: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    }
+    .dir-icon-cell:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+    .dir-icon-cell.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(229, 154, 24, 0.5);
+      background: #fffef8;
+    }
+    .dir-icon-cell img {
+      width: 88%;
+      height: 88%;
+      object-fit: contain;
+      display: block;
+      pointer-events: none;
+    }
+    /* Default option uses the same chevron SVG as the map GPS arrow */
+    .dir-icon-cell .dir-default-map-arrow {
+      width: 26px;
+      height: 34px;
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+    }
+    .dir-icon-picker-card .dip-actions {
+      display: flex;
+      gap: 8px;
+      padding: 10px 12px 12px;
+      border-top: 1px solid var(--border);
+    }
+    .dir-icon-picker-card .dip-actions button {
+      flex: 1;
+      margin: 0;
+    }
+    .dip-color-block {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+    .dip-color-label {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin: 0 0 6px;
+    }
+    .dip-preview-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .dip-preview-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+    .dip-live-preview {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .dip-live-preview img,
+    .dip-live-preview svg {
+      max-width: 36px;
+      max-height: 36px;
+      display: block;
+    }
+    .dir-icon-cell .dir-cell-glyph {
+      width: 88%;
+      height: 88%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .dir-icon-cell .dir-cell-glyph img,
+    .dir-icon-cell .dir-cell-glyph svg {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    /* Legacy card styles (kept for any leftover markup) */
     .settings-map-card {
       margin: 6px 0;
       border: 1px solid var(--border);
@@ -7191,14 +7929,11 @@
       background: var(--accent);
     }
     .settings-map-card-actions {
-      display: none;
+      display: flex;
       gap: 6px;
       flex: 0 0 auto;
       width: 100%;
       margin-top: 2px;
-    }
-    .settings-map-card.is-expanded .settings-map-card-actions {
-      display: flex;
     }
     .settings-map-card-actions button {
       flex: 1 1 0;
@@ -7266,7 +8001,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.5.2 Beta">V6.5.2 Beta</span>
+      <span class="brand-version" aria-label="Version 6.6 Beta">V6.6 Beta</span>
     </div>
   </header>
 
@@ -8173,11 +8908,11 @@
       <h3 id="cm-settings-title">Compass mode</h3>
       <div class="ss-meta">Line and probe colors (same default palette as pins). Preview matches the map.</div>
       <label>Line color</label>
-      <div class="color-picker" id="cp-cm-line" data-input-id="cm-line-color" data-initial="#38bdf8"></div>
-      <input type="hidden" id="cm-line-color" value="#38bdf8" />
+      <div class="color-picker" id="cp-cm-line" data-input-id="cm-line-color" data-initial="#000000"></div>
+      <input type="hidden" id="cm-line-color" value="#000000" />
       <label>Dot color</label>
-      <div class="color-picker" id="cp-cm-dot" data-input-id="cm-dot-color" data-initial="#facc15"></div>
-      <input type="hidden" id="cm-dot-color" value="#facc15" />
+      <div class="color-picker" id="cp-cm-dot" data-input-id="cm-dot-color" data-initial="#ef4444"></div>
+      <input type="hidden" id="cm-dot-color" value="#ef4444" />
       <label for="cm-line-weight">Line thickness <span id="cm-line-weight-val">3</span>px</label>
       <input type="range" id="cm-line-weight" min="1" max="10" step="1" value="3" oninput="document.getElementById('cm-line-weight-val').textContent=this.value;liveCompassModePreviewFromUi();" />
       <label for="cm-dot-size">Dot size <span id="cm-dot-size-val">8</span>px</label>
@@ -8189,6 +8924,33 @@
       <div class="shape-save-actions">
         <button type="button" class="ss-save" onclick="saveCompassModeSettings()">Save</button>
         <button type="button" class="ss-cancel" onclick="closeCompassModeSettings()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Direction icon picker (party / GPS) — pin-grid style, no notes -->
+  <div id="dir-icon-picker-modal" hidden aria-hidden="true" onclick="if(event.target===this)closeDirIconPicker()">
+    <div class="dir-icon-picker-card" role="dialog" aria-modal="true" aria-labelledby="dir-icon-picker-title" onclick="event.stopPropagation()">
+      <div class="dip-head">
+        <h3 id="dir-icon-picker-title">Choose direction icon</h3>
+        <button type="button" class="dip-close" onclick="closeDirIconPicker()" title="Close" aria-label="Close">&times;</button>
+      </div>
+      <div class="dip-body">
+        <input type="search" id="dir-icon-search" class="dir-icon-search" placeholder="Search icons…" oninput="renderDirIconPickerGrid()" />
+        <div id="dir-icon-grid" class="dir-icon-grid"></div>
+        <div class="dip-color-block">
+          <div class="dip-color-label">Icon color</div>
+          <div class="color-picker" id="cp-dir-icon" data-input-id="dir-icon-color-value" data-initial="#e11d1d" data-bind-var=""></div>
+          <input type="hidden" id="dir-icon-color-value" value="#e11d1d" />
+          <div class="dip-preview-row" aria-hidden="true">
+            <span class="dip-preview-label">Preview</span>
+            <div id="dir-icon-live-preview" class="dip-live-preview"></div>
+          </div>
+        </div>
+      </div>
+      <div class="dip-actions">
+        <button type="button" class="settings-subbtn" onclick="closeDirIconPicker()">Cancel</button>
+        <button type="button" class="settings-subbtn" style="background:linear-gradient(180deg,#f0c14a 0%,var(--accent) 50%,#b87a12 100%);color:#111;" onclick="confirmDirIconPicker()">Use icon</button>
       </div>
     </div>
   </div>
@@ -8207,97 +8969,223 @@
         <button type="button" class="settings-tab" data-stab="display" onclick="switchSettingsTab('display')">Display</button>
       </div>
       <div class="settings-body">
+        <!-- Info popover (shared by all settings info buttons) -->
+        <div id="settings-info-pop" class="settings-info-pop" role="tooltip" hidden></div>
+
         <div class="settings-pane active" id="settings-pane-tools">
-          <div class="settings-section-title">Map tools</div>
-          <label class="settings-row"><input type="checkbox" id="set-tool-measure" onchange="onSettingsToolsChange()"><span class="sr-text">Measure<span class="sr-sub">Distance path on map</span></span></label>
-          <label class="settings-row"><input type="checkbox" id="set-tool-draw" onchange="onSettingsToolsChange()"><span class="sr-text">Draw shape<span class="sr-sub">Custom hunt areas</span></span></label>
-          <label class="settings-row"><input type="checkbox" id="set-tool-track" onchange="onSettingsToolsChange()"><span class="sr-text">GPS track<span class="sr-sub">Record movement</span></span></label>
-          <label class="settings-row"><input type="checkbox" id="set-tool-gps" onchange="onSettingsToolsChange()"><span class="sr-text">Current Location<span class="sr-sub">Red GPS arrow on map + snap button (on by default)</span></span></label>
-          <p class="settings-hint">Unchecked tools are removed from the bottom bar. Active Measure/Draw still show Undo/Finish/Cancel top-left.</p>
-          <div class="settings-section-title">Map chrome</div>
-          <div class="settings-section-title">Compass</div>
-          <label class="settings-row"><input type="checkbox" id="set-show-compass" onchange="onSettingsToolsChange()"><span class="sr-text">Wind / compass display<span class="sr-sub">Top dial + toolbar button</span></span></label>
-          <button type="button" class="settings-compass-mode-btn" onclick="openCompassModeSettings()">Compass mode…</button>
-          <p class="settings-hint">Compass mode draws a heading line from your location with a distance probe.</p>
-          <label class="settings-row"><input type="checkbox" id="set-show-radar" onchange="onSettingsToolsChange()"><span class="sr-text">Radar<span class="sr-sub">Radar dish on the bottom bar</span></span></label>
-          <p class="settings-hint">Radar is separate on the slim bottom bar.</p>
-          <div class="settings-section-title">Account</div>
-          <p class="settings-hint" id="auth-user-chip">Not signed in</p>
-          <button type="button" class="settings-subbtn" id="set-signout-btn">Sign out on this device</button>
-          <div class="settings-section-title" style="margin-top:16px;">Cloud &amp; offline</div>
-          <div id="set-sync-status">Cloud sync ready</div>
-          <label class="settings-row"><input type="checkbox" id="set-offline-mode"><span class="sr-text">Offline mode<span class="sr-sub">Save on this device only — pause cloud upload</span></span></label>
-          <p class="settings-hint">Edits save on this device first, then upload when online (and not in Offline mode).</p>
-        </div>
-        <div class="settings-pane" id="settings-pane-defaults">
-          <button type="button" class="settings-subbtn" onclick="toggleSettingsSubpanel('set-def-overlays')">Overlays ▾</button>
-          <div class="settings-subpanel" id="set-def-overlays">
-            <p class="settings-hint">Checked overlays turn on automatically at launch.</p>
-            <label class="settings-row"><input type="checkbox" id="set-def-ov-parcels" onchange="saveAppSettingsFromUi()"><span class="sr-text">Property lines</span></label>
-            <label class="settings-row"><input type="checkbox" id="set-def-ov-roads" onchange="saveAppSettingsFromUi()"><span class="sr-text">Roads &amp; waterways</span></label>
-            <label class="settings-row"><input type="checkbox" id="set-def-ov-topo" onchange="saveAppSettingsFromUi()"><span class="sr-text">Topo lines</span></label>
-            <label class="settings-row"><input type="checkbox" id="set-def-ov-hunts" onchange="saveAppSettingsFromUi()"><span class="sr-text">Past hunts</span></label>
-          </div>
-          <button type="button" class="settings-subbtn" onclick="toggleSettingsSubpanel('set-def-weather')">Weather ▾</button>
-          <div class="settings-subpanel" id="set-def-weather">
-            <div class="settings-section-title">Temperature unit</div>
-            <div class="settings-radio-row">
-              <label><input type="radio" name="set-temp-unit" value="F" onchange="saveAppSettingsFromUi()"> °F</label>
-              <label><input type="radio" name="set-temp-unit" value="C" onchange="saveAppSettingsFromUi()"> °C</label>
+          <section class="settings-section">
+            <div class="settings-section-head">
+              <h4 class="settings-section-title">Map tools</h4>
+              <button type="button" class="settings-info-btn" data-title="Map tools" data-info="Turn tools on or off for the bottom bar. Unchecked tools are removed. While Measure or Draw is active, Undo / Finish / Cancel still appear top-left." aria-label="About Map tools" onclick="return showSettingsInfo(this,event)">i</button>
             </div>
-            <label class="settings-row"><input type="checkbox" id="set-weather-enabled" onchange="saveAppSettingsFromUi()"><span class="sr-text">Show weather at all<span class="sr-sub">Dashboard / map weather features</span></span></label>
-            <label class="settings-row"><input type="checkbox" id="set-weather-map-fs" onchange="saveAppSettingsFromUi()"><span class="sr-text">Weather on map when fullscreen<span class="sr-sub">Compact card while map is Max</span></span></label>
-          </div>
+            <div class="settings-row">
+              <label class="settings-row-main" for="set-tool-measure"><input type="checkbox" id="set-tool-measure" onchange="onSettingsToolsChange()"><span class="sr-text">Measure</span></label>
+              <button type="button" class="settings-info-btn" data-title="Measure" data-info="Draw a temporary distance path on the map. Clears when you start a new measure or click elsewhere." aria-label="About Measure" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+            <div class="settings-row">
+              <label class="settings-row-main" for="set-tool-draw"><input type="checkbox" id="set-tool-draw" onchange="onSettingsToolsChange()"><span class="sr-text">Draw shape</span></label>
+              <button type="button" class="settings-info-btn" data-title="Draw shape" data-info="Draw custom hunt areas (polygons) on the map and save them to your map." aria-label="About Draw shape" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+            <div class="settings-row">
+              <label class="settings-row-main" for="set-tool-track"><input type="checkbox" id="set-tool-track" onchange="onSettingsToolsChange()"><span class="sr-text">GPS track</span></label>
+              <button type="button" class="settings-info-btn" data-title="GPS track" data-info="Record your movement as a track while you walk. Battery-friendly GPS logging with live distance and time." aria-label="About GPS track" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+            <div class="settings-row">
+              <label class="settings-row-main" for="set-tool-gps"><input type="checkbox" id="set-tool-gps" onchange="onSettingsToolsChange()"><span class="sr-text">Current Location</span></label>
+              <button type="button" class="settings-info-btn" data-title="Current Location" data-info="Shows the red GPS arrow on the map and the center snap button that jumps the map to where you are. On by default." aria-label="About Current Location" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+          </section>
+
+          <section class="settings-section">
+            <div class="settings-section-head">
+              <h4 class="settings-section-title">Map chrome</h4>
+              <button type="button" class="settings-info-btn" data-title="Map chrome" data-info="Controls for the compass / wind dial and radar on the map and bottom bar." aria-label="About Map chrome" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+            <div class="settings-cm-line">
+              <button type="button" class="settings-compass-mode-btn" id="set-my-dir-icon-btn" onclick="openMyDefaultDirIcon()">Custom default arrow</button>
+              <button type="button" class="settings-info-btn" data-title="Custom default arrow" data-info="Your default direction icon on the map (replaces the red triangle). Other people see this icon for you unless they set a different icon for you on their device." aria-label="About Custom default arrow" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+            <div class="settings-cm-line">
+              <button type="button" class="settings-compass-mode-btn" onclick="openCompassModeSettings()">Compass mode</button>
+              <button type="button" class="settings-info-btn" data-title="Compass mode" data-info="Draws a heading line from your GPS with a draggable distance probe (red button). Customize line color, probe color, and thickness here. Turn the mode on from the toolbar compass button." aria-label="About Compass mode" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+            <div class="settings-row">
+              <label class="settings-row-main" for="set-show-compass"><input type="checkbox" id="set-show-compass" onchange="onSettingsToolsChange()"><span class="sr-text">Wind / compass display</span></label>
+              <button type="button" class="settings-info-btn" data-title="Wind / compass display" data-info="Shows the wind or compass dial on the map and the toolbar compass button. Tap the toolbar button to cycle: show dial → compass mode line → hide." aria-label="About Wind / compass" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+            <div class="settings-row">
+              <label class="settings-row-main" for="set-show-radar"><input type="checkbox" id="set-show-radar" onchange="onSettingsToolsChange()"><span class="sr-text">Radar</span></label>
+              <button type="button" class="settings-info-btn" data-title="Radar" data-info="Shows the radar control on the slim bottom bar so you can open weather radar over the map." aria-label="About Radar" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+          </section>
+
+          <section class="settings-section">
+            <div class="settings-section-head">
+              <h4 class="settings-section-title">Account</h4>
+              <button type="button" class="settings-info-btn" data-title="Account" data-info="Sign-in status for this device. Cloud maps and parties need a signed-in account." aria-label="About Account" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+            <p class="settings-status" id="auth-user-chip">Not signed in</p>
+            <button type="button" class="settings-subbtn" id="set-signout-btn">Sign out on this device</button>
+          </section>
+
+          <section class="settings-section">
+            <div class="settings-section-head">
+              <h4 class="settings-section-title">Cloud &amp; offline</h4>
+              <button type="button" class="settings-info-btn" data-title="Cloud &amp; offline" data-info="Edits save on this device first, then upload when online (unless Offline mode is on)." aria-label="About Cloud &amp; offline" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+            <div class="settings-status" id="set-sync-status">Cloud sync ready</div>
+            <div class="settings-row">
+              <label class="settings-row-main" for="set-offline-mode"><input type="checkbox" id="set-offline-mode"><span class="sr-text">Offline mode</span></label>
+              <button type="button" class="settings-info-btn" data-title="Offline mode" data-info="Save only on this device and pause cloud upload until you turn Offline mode off again." aria-label="About Offline mode" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+          </section>
         </div>
+
+        <div class="settings-pane" id="settings-pane-defaults">
+          <section class="settings-section">
+            <div class="settings-section-head">
+              <h4 class="settings-section-title">Overlays</h4>
+              <button type="button" class="settings-info-btn" data-title="Overlays" data-info="Checked overlays turn on automatically when the app launches. You can still toggle them anytime from Layers." aria-label="About Overlays" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+            <button type="button" class="settings-subbtn" onclick="toggleSettingsSubpanel('set-def-overlays')">Show overlay defaults ▾</button>
+            <div class="settings-subpanel" id="set-def-overlays">
+              <div class="settings-row">
+                <label class="settings-row-main" for="set-def-ov-parcels"><input type="checkbox" id="set-def-ov-parcels" onchange="saveAppSettingsFromUi()"><span class="sr-text">Property lines</span></label>
+                <button type="button" class="settings-info-btn" data-title="Property lines" data-info="Auto-show parcel / property line overlay at launch when available." aria-label="About Property lines" onclick="return showSettingsInfo(this,event)">i</button>
+              </div>
+              <div class="settings-row">
+                <label class="settings-row-main" for="set-def-ov-roads"><input type="checkbox" id="set-def-ov-roads" onchange="saveAppSettingsFromUi()"><span class="sr-text">Roads &amp; waterways</span></label>
+                <button type="button" class="settings-info-btn" data-title="Roads &amp; waterways" data-info="Auto-show roads and waterways overlay on satellite / LiDAR at launch." aria-label="About Roads &amp; waterways" onclick="return showSettingsInfo(this,event)">i</button>
+              </div>
+              <div class="settings-row">
+                <label class="settings-row-main" for="set-def-ov-topo"><input type="checkbox" id="set-def-ov-topo" onchange="saveAppSettingsFromUi()"><span class="sr-text">Topo lines</span></label>
+                <button type="button" class="settings-info-btn" data-title="Topo lines" data-info="Auto-show translucent topographic contour lines at launch." aria-label="About Topo lines" onclick="return showSettingsInfo(this,event)">i</button>
+              </div>
+              <div class="settings-row">
+                <label class="settings-row-main" for="set-def-ov-hunts"><input type="checkbox" id="set-def-ov-hunts" onchange="saveAppSettingsFromUi()"><span class="sr-text">Past hunts</span></label>
+                <button type="button" class="settings-info-btn" data-title="Past hunts" data-info="Auto-show your logged past hunt stand pins on the map at launch." aria-label="About Past hunts" onclick="return showSettingsInfo(this,event)">i</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="settings-section">
+            <div class="settings-section-head">
+              <h4 class="settings-section-title">Weather</h4>
+              <button type="button" class="settings-info-btn" data-title="Weather defaults" data-info="Temperature unit and whether weather features run in the planner and on the map." aria-label="About Weather defaults" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+            <button type="button" class="settings-subbtn" onclick="toggleSettingsSubpanel('set-def-weather')">Show weather defaults ▾</button>
+            <div class="settings-subpanel" id="set-def-weather">
+              <div class="settings-row">
+                <span class="sr-text" style="padding-left:2px;">Temperature unit</span>
+                <button type="button" class="settings-info-btn" data-title="Temperature unit" data-info="Choose Fahrenheit or Celsius for weather displays across the app." aria-label="About Temperature unit" onclick="return showSettingsInfo(this,event)">i</button>
+              </div>
+              <div class="settings-radio-row">
+                <label><input type="radio" name="set-temp-unit" value="F" onchange="saveAppSettingsFromUi()"> °F</label>
+                <label><input type="radio" name="set-temp-unit" value="C" onchange="saveAppSettingsFromUi()"> °C</label>
+              </div>
+              <div class="settings-row">
+                <label class="settings-row-main" for="set-weather-enabled"><input type="checkbox" id="set-weather-enabled" onchange="saveAppSettingsFromUi()"><span class="sr-text">Show weather</span></label>
+                <button type="button" class="settings-info-btn" data-title="Show weather" data-info="Master switch for weather: dashboard, map spot weather, and related fetches." aria-label="About Show weather" onclick="return showSettingsInfo(this,event)">i</button>
+              </div>
+              <div class="settings-row">
+                <label class="settings-row-main" for="set-weather-map-fs"><input type="checkbox" id="set-weather-map-fs" onchange="saveAppSettingsFromUi()"><span class="sr-text">Weather on map when fullscreen</span></label>
+                <button type="button" class="settings-info-btn" data-title="Weather on map when fullscreen" data-info="Show a compact weather card while the map is maximized (Max)." aria-label="About weather on map" onclick="return showSettingsInfo(this,event)">i</button>
+              </div>
+            </div>
+          </section>
+        </div>
+
         <div class="settings-pane" id="settings-pane-maps">
-          <div id="set-map-mode-label">Viewing: My Map (personal)</div>
-          <p class="settings-hint">Maps you are in appear first. Tap a map to expand View / Share and its settings.</p>
+          <section class="settings-section">
+            <div class="settings-section-head">
+              <h4 class="settings-section-title">My maps</h4>
+              <button type="button" class="settings-info-btn" data-title="My maps" data-info="Private maps are listed first, then shared maps. Each row has the map name, Share, and View Map. View Map loads that map’s pins and settings. Tap a shared map name to list party members underneath — tap a member to customize their nickname, color, and visibility." aria-label="About My maps" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+            <div class="settings-status" id="set-map-mode-label">Viewing: My Map (personal)</div>
+            <div id="set-all-maps-list"></div>
+            <div id="set-map-members-panel" class="settings-map-members-panel" aria-live="polite"></div>
+            <!-- Kept for script compatibility -->
+            <div id="set-private-maps-list" hidden aria-hidden="true"></div>
+            <div id="set-shared-maps-list" hidden aria-hidden="true"></div>
+            <div id="set-party-section" hidden aria-hidden="true" style="display:none;">
+              <div id="set-party-members"></div>
+            </div>
+            <div class="settings-action-row">
+              <button type="button" class="settings-subbtn" id="set-rename-current-btn">Rename current map</button>
+              <button type="button" class="settings-info-btn" data-title="Rename current map" data-info="Change the display name of the map you are viewing now." aria-label="About rename map" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+          </section>
 
-          <div class="settings-section-title">My Maps</div>
-          <div id="set-all-maps-list"></div>
-          <!-- Kept for script compatibility; filled only if needed -->
-          <div id="set-private-maps-list" hidden aria-hidden="true"></div>
-          <div id="set-shared-maps-list" hidden aria-hidden="true"></div>
-          <div id="set-party-section" hidden aria-hidden="true" style="display:none;">
-            <div id="set-party-members"></div>
-          </div>
+          <section class="settings-section">
+            <div class="settings-section-head">
+              <h4 class="settings-section-title">New private map</h4>
+              <button type="button" class="settings-info-btn" data-title="New private map" data-info="Create another private map that only you can see. Useful for separate properties or seasons." aria-label="About New private map" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+            <div class="settings-inline-row">
+              <input type="text" id="set-create-private-name" maxlength="60" placeholder="New private map name">
+              <button type="button" id="set-create-private-btn">Create</button>
+            </div>
+          </section>
 
-          <button type="button" class="settings-subbtn" id="set-use-personal-btn" style="margin-top:8px;">Use default private map</button>
-          <button type="button" class="settings-subbtn" id="set-rename-current-btn">Rename current map</button>
-          <button type="button" class="settings-subbtn" id="set-share-code-btn">Copy invite for current shared map</button>
+          <section class="settings-section">
+            <div class="settings-section-head">
+              <h4 class="settings-section-title">Create shared map</h4>
+              <button type="button" class="settings-info-btn" data-title="Create shared map" data-info="Creates a shared party map with a unique 6-digit code. The invite is copied automatically so you can send it to hunting partners." aria-label="About Create shared map" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+            <div class="settings-inline-row">
+              <input type="text" id="set-create-map-name" maxlength="60" placeholder="Map name (e.g. Saturday club)">
+              <button type="button" id="set-create-map-btn">Create</button>
+            </div>
+          </section>
 
-          <div class="settings-section-title">New private map</div>
-          <div class="settings-inline-row">
-            <input type="text" id="set-create-private-name" maxlength="60" placeholder="New private map name">
-            <button type="button" id="set-create-private-btn">Create</button>
-          </div>
-
-          <div class="settings-section-title">Create shared map</div>
-          <div class="settings-inline-row">
-            <input type="text" id="set-create-map-name" maxlength="60" placeholder="Map name (e.g. Saturday club)">
-            <button type="button" id="set-create-map-btn">Create</button>
-          </div>
-          <p class="settings-hint">Creates a unique 6-digit code. Invite is copied automatically.</p>
-
-          <div class="settings-section-title">Join shared map</div>
-          <div class="settings-inline-row">
-            <input type="text" id="set-join-map-code" maxlength="12" inputmode="numeric" placeholder="6-digit code">
-            <button type="button" id="set-join-map-btn">Join</button>
-          </div>
-          <p class="settings-hint">Live location needs a shared map and two signed-in users.</p>
+          <section class="settings-section">
+            <div class="settings-section-head">
+              <h4 class="settings-section-title">Join shared map</h4>
+              <button type="button" class="settings-info-btn" data-title="Join shared map" data-info="Enter a 6-digit code from a partner to join their shared map. Live location needs a shared map and two signed-in users." aria-label="About Join shared map" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+            <div class="settings-inline-row">
+              <input type="text" id="set-join-map-code" maxlength="12" inputmode="numeric" placeholder="6-digit code">
+              <button type="button" id="set-join-map-btn">Join</button>
+            </div>
+          </section>
         </div>
 
         <div class="settings-pane" id="settings-pane-display">
-          <p class="settings-hint">Uncheck a section to hide it in the app until re-enabled here.</p>
-          <label class="settings-row"><input type="checkbox" id="set-disp-planner" onchange="onSettingsDisplayChange()"><span class="sr-text">Steps 1–3: Calendar, weapon, open tracts<span class="sr-sub">Hunt planner controls</span></span></label>
-          <label class="settings-row"><input type="checkbox" id="set-disp-weather" onchange="onSettingsDisplayChange()"><span class="sr-text">Weather<span class="sr-sub">Step 4 dashboard under the planner</span></span></label>
-          <label class="settings-row"><input type="checkbox" id="set-disp-map" onchange="onSettingsDisplayChange()"><span class="sr-text">Map<span class="sr-sub">Alabama map card</span></span></label>
-          <label class="settings-row" style="padding-left:28px;"><input type="checkbox" id="set-disp-map-fs" onchange="onSettingsDisplayChange()"><span class="sr-text">Open map full screen on launch<span class="sr-sub">Also used when only Map is enabled</span></span></label>
-          <div class="settings-section-title" style="margin-top:14px;">Offline maps</div>
-          <p class="settings-hint" id="offline-packs-summary">Map packs, custom draw areas, pins, stands, and public lands stay on this device. Nothing is a native app install.</p>
-          <button type="button" class="settings-subbtn" onclick="window.refreshOfflinePacksSummary && window.refreshOfflinePacksSummary()">Refresh offline status</button>
-          <button type="button" class="settings-subbtn" style="margin-top:6px;border-color:#8a3030;color:#f0a0a0;" onclick="window.clearOfflineMapPacks && window.clearOfflineMapPacks()">Clear offline map tiles</button>
-          <p class="settings-hint">Clearing tiles does not delete pins, stands, custom areas, or hunt logs — only cached map images.</p>
+          <section class="settings-section">
+            <div class="settings-section-head">
+              <h4 class="settings-section-title">Layout</h4>
+              <button type="button" class="settings-info-btn" data-title="Layout" data-info="Uncheck a section to hide it in the app until you re-enable it here." aria-label="About Layout" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+            <div class="settings-row">
+              <label class="settings-row-main" for="set-disp-planner"><input type="checkbox" id="set-disp-planner" onchange="onSettingsDisplayChange()"><span class="sr-text">Steps 1–3 planner</span></label>
+              <button type="button" class="settings-info-btn" data-title="Steps 1–3 planner" data-info="Calendar, weapon, and open tracts controls in the hunt planner." aria-label="About planner" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+            <div class="settings-row">
+              <label class="settings-row-main" for="set-disp-weather"><input type="checkbox" id="set-disp-weather" onchange="onSettingsDisplayChange()"><span class="sr-text">Weather dashboard</span></label>
+              <button type="button" class="settings-info-btn" data-title="Weather dashboard" data-info="The weather dashboard under the planner (step 4 area)." aria-label="About weather dashboard" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+            <div class="settings-row">
+              <label class="settings-row-main" for="set-disp-map"><input type="checkbox" id="set-disp-map" onchange="onSettingsDisplayChange()"><span class="sr-text">Map</span></label>
+              <button type="button" class="settings-info-btn" data-title="Map" data-info="The Alabama map card. Turning this off hides the map until you re-enable it." aria-label="About Map" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+            <div class="settings-row" style="padding-left:18px;">
+              <label class="settings-row-main" for="set-disp-map-fs"><input type="checkbox" id="set-disp-map-fs" onchange="onSettingsDisplayChange()"><span class="sr-text">Open map full screen on launch</span></label>
+              <button type="button" class="settings-info-btn" data-title="Full screen on launch" data-info="Open the map maximized when the app starts. Also used when only Map is enabled (map-only mode)." aria-label="About full screen on launch" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+          </section>
+
+          <section class="settings-section">
+            <div class="settings-section-head">
+              <h4 class="settings-section-title">Offline maps</h4>
+              <button type="button" class="settings-info-btn" data-title="Offline maps" data-info="Map packs, custom draw areas, pins, stands, and public lands stay on this device. This is not a native app install. Clearing tiles only removes cached map images — not your pins, stands, areas, or hunt logs." aria-label="About Offline maps" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+            <p class="settings-status" id="offline-packs-summary">Offline status…</p>
+            <button type="button" class="settings-subbtn" onclick="window.refreshOfflinePacksSummary && window.refreshOfflinePacksSummary()">Refresh offline status</button>
+            <div class="settings-action-row" style="margin-top:6px;">
+              <button type="button" class="settings-subbtn" style="border-color:#8a3030;color:#f0a0a0;" onclick="window.clearOfflineMapPacks && window.clearOfflineMapPacks()">Clear offline map tiles</button>
+              <button type="button" class="settings-info-btn" data-title="Clear offline map tiles" data-info="Deletes cached map images only. Pins, stands, custom areas, and hunt logs are not deleted." aria-label="About clear offline tiles" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+          </section>
         </div>
       </div>
     </div>
@@ -8305,7 +9193,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.5.2-beta';
+    const APP_VERSION = '6.6-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -14549,10 +15437,13 @@
             if (p0 && (p0.id || p0.user_id)) key = COMPASS_MODE_KEY + '_' + (p0.id || p0.user_id);
           }
         } catch (eK) {}
-        var o = JSON.parse(localStorage.getItem(key) || localStorage.getItem(COMPASS_MODE_KEY) || '{}');
-        return Object.assign({ lineColor: '#38bdf8', dotColor: '#facc15', lineWeight: 3, dotSize: 8 }, o || {});
+        var o = JSON.parse(localStorage.getItem(key) || localStorage.getItem(COMPASS_MODE_KEY) || '{}') || {};
+        // Upgrade previous factory defaults (cyan line / yellow probe) to black/red
+        if (o.lineColor === '#38bdf8') o.lineColor = '#000000';
+        if (o.dotColor === '#facc15') o.dotColor = '#ef4444';
+        return Object.assign({ lineColor: '#000000', dotColor: '#ef4444', lineWeight: 3, dotSize: 8 }, o);
       } catch (e) {
-        return { lineColor: '#38bdf8', dotColor: '#facc15', lineWeight: 3, dotSize: 8 };
+        return { lineColor: '#000000', dotColor: '#ef4444', lineWeight: 3, dotSize: 8 };
       }
     })();
 
@@ -14720,7 +15611,10 @@
       var val = selectedPinColor;
       if (pinColorSlot === 'inside') val = selectedPinInnerColor || '#ffffff';
       if (pinColorSlot === 'icon') val = (selectedPinGlyphColor && selectedPinGlyphColor !== 'natural') ? selectedPinGlyphColor : '#111111';
-      if (cp && typeof setColorPickerValue === 'function') setColorPickerValue(cp, val);
+      // Display-only: do not re-apply outer through active slot / do not rewrite other layers
+      if (cp && typeof setColorPickerValue === 'function') {
+        setColorPickerValue(cp, val, { silent: true, skipPinDistinct: true, slotDisplayOnly: true });
+      }
     }
     function updatePinEditorPreview() {
       var box = document.getElementById('pes-preview');
@@ -15010,8 +15904,8 @@
       var dc = document.getElementById('cm-dot-color');
       var lw = document.getElementById('cm-line-weight');
       var ds = document.getElementById('cm-dot-size');
-      compassModeStyle.lineColor = (lc && lc.value) || '#38bdf8';
-      compassModeStyle.dotColor = (dc && dc.value) || '#facc15';
+      compassModeStyle.lineColor = (lc && lc.value) || '#000000';
+      compassModeStyle.dotColor = (dc && dc.value) || '#ef4444';
       compassModeStyle.lineWeight = parseInt((lw && lw.value) || 3, 10) || 3;
       compassModeStyle.dotSize = parseInt((ds && ds.value) || 8, 10) || 8;
       try { persistCompassModeStyle(); } catch (e) {
@@ -15055,8 +15949,12 @@
           el.classList.remove('is-large', 'dial-enlarged', 'enlarged');
         });
       } catch (e) {}
+      // Hide any leftover expand popup (Compass Mode menu removed; keep safe for old DOM)
       var menu = document.getElementById('dial-expand-menu');
-      if (menu) menu.classList.remove('open');
+      if (menu) {
+        menu.classList.remove('open');
+        menu.style.display = 'none';
+      }
     }
 
     function ensureCompassModePanes() {
@@ -15105,9 +16003,11 @@
           if (rawStyle) {
             var oStyle = JSON.parse(rawStyle);
             if (oStyle && typeof oStyle === 'object') {
+              if (oStyle.lineColor === '#38bdf8') oStyle.lineColor = '#000000';
+              if (oStyle.dotColor === '#facc15') oStyle.dotColor = '#ef4444';
               compassModeStyle = Object.assign({
-                lineColor: '#38bdf8',
-                dotColor: '#facc15',
+                lineColor: '#000000',
+                dotColor: '#ef4444',
                 lineWeight: 3,
                 dotSize: 8
               }, oStyle);
@@ -15116,11 +16016,16 @@
         } catch (eSt) {}
         try {
           var pk = (typeof cmStorageKey === 'function') ? cmStorageKey('reg_slayer_cm_probe_mi') : 'reg_slayer_cm_probe_mi';
-          var saved = parseFloat(localStorage.getItem(pk) || localStorage.getItem('reg_slayer_cm_probe_mi') || '1');
+          var rawProbe = localStorage.getItem(pk) || localStorage.getItem('reg_slayer_cm_probe_mi');
+          // Treat missing or old 1-mile factory default as the new 5-mile default
+          var saved = parseFloat(rawProbe != null && rawProbe !== '' ? rawProbe : '5');
+          if (!isNaN(saved) && Math.abs(saved - 1) < 0.001 && (rawProbe === '1' || rawProbe === '1.0')) {
+            saved = 5;
+          }
           if (!isNaN(saved) && saved > 0) window._cmProbeDistMi = saved;
-          else if (!(window._cmProbeDistMi > 0)) window._cmProbeDistMi = 1;
+          else if (!(window._cmProbeDistMi > 0)) window._cmProbeDistMi = 5;
         } catch (eS) {
-          if (!(window._cmProbeDistMi > 0)) window._cmProbeDistMi = 1;
+          if (!(window._cmProbeDistMi > 0)) window._cmProbeDistMi = 5;
         }
         ensureCompassModePanes();
         wireCompassModeMapHooks();
@@ -15597,7 +16502,7 @@
         // only refresh HUD chip text position via GPS DOM (no setLatLngs)
         try {
           updateCompassModeHudLabel(
-            window._cmProbeDistMi || 1,
+            window._cmProbeDistMi || 5,
             window._cmLastElevTxt || '…'
           );
         } catch (eZ) {}
@@ -15605,7 +16510,7 @@
       }
       ensureCompassModePanes();
       var heading = getCompassHeadingDeg();
-      var probeMi = window._cmProbeDistMi != null ? window._cmProbeDistMi : 1;
+      var probeMi = window._cmProbeDistMi != null ? window._cmProbeDistMi : 5;
       probeMi = Math.max(0.02, Math.min(20, probeMi));
       window._cmProbeDistMi = probeMi;
       var farMi = Math.max(probeMi + 0.25, probeMi * 1.15);
@@ -15812,62 +16717,20 @@
       } catch (e) {}
     })();
 
+    // Dial expand popup (Wind / Compass Mode) removed — toolbar cycles compass mode;
+    // Wind ↔ Compass swap chips only show while the dial is enlarged.
     function ensureDialExpandMenu() {
-      var stack = document.getElementById('map-compass-radar');
-      if (!stack) return null;
+      // Tear down legacy popup if an older session left it in the DOM
       var menu = document.getElementById('dial-expand-menu');
-      if (!menu) {
-        menu = document.createElement('div');
-        menu.id = 'dial-expand-menu';
-        menu.className = 'dial-expand-menu';
-        menu.innerHTML =
-          '<button type="button" id="dial-menu-wind" onclick="event.stopPropagation();setHeadingMode(\'wind\',{fromUser:true});if(typeof setCompassModeEnabled===\'function\')setCompassModeEnabled(false);updateDialExpandMenuUi();var m=document.getElementById(\'dial-expand-menu\');if(m)m.classList.remove(\'open\');">Wind</button>' +
-          '<button type="button" id="dial-menu-cmode" onclick="event.stopPropagation();if(typeof collapseCompassDialUi===\'function\')collapseCompassDialUi();if(typeof setCompassModeEnabled===\'function\')setCompassModeEnabled(!compassModeEnabled);var m=document.getElementById(\'dial-expand-menu\');if(m)m.classList.remove(\'open\');">Compass Mode</button>';
-        stack.style.position = stack.style.position || 'absolute';
-        stack.appendChild(menu);
-      }
-      return menu;
+      if (menu && menu.parentNode) menu.parentNode.removeChild(menu);
+      return null;
     }
-    function updateDialExpandMenuUi() {
-      var w = document.getElementById('dial-menu-wind');
-      var c = document.getElementById('dial-menu-cmode');
-      if (w) w.classList.toggle('is-active', headingHudMode === 'wind');
-      if (c) c.classList.toggle('is-active', !!compassModeEnabled);
-    }
-    function toggleDialExpandMenu() {
-      var menu = ensureDialExpandMenu();
-      if (!menu) return;
-      menu.classList.toggle('open');
-      updateDialExpandMenuUi();
-    }
+    function updateDialExpandMenuUi() { /* no-op: menu removed */ }
+    function toggleDialExpandMenu() { /* no-op: menu removed */ }
     window.setCompassModeEnabled = setCompassModeEnabled;
     window.toggleDialExpandMenu = toggleDialExpandMenu;
     window.updateDialExpandMenuUi = updateDialExpandMenuUi;
-
-    // Wire dial click → expand menu (Wind / Compass Mode)
-    (function wireDialExpand() {
-      function attach() {
-        var dials = [
-          document.getElementById('wind-compass-dial'),
-          document.getElementById('device-compass-dial'),
-          document.querySelector('#map-wind-hud .compass-dial'),
-          document.querySelector('#map-wind-hud')
-        ].filter(Boolean);
-        dials.forEach(function(el) {
-          if (el._wiredDialExpand) return;
-          el._wiredDialExpand = true;
-          el.addEventListener('click', function(ev) {
-            // Only when not dragging enlarged dial - simple always open menu on small tap
-            if (el.classList && el.classList.contains('is-dragging')) return;
-            // Don't fight enlarge; open menu under dial
-            try { toggleDialExpandMenu(); } catch (e) {}
-          });
-        });
-      }
-      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attach);
-      else attach();
-      setTimeout(attach, 800);
-    })();
+    try { ensureDialExpandMenu(); } catch (eMenuGone) {}
 
 
     function wireMapLayersMenu() {
@@ -20158,6 +21021,28 @@
       } catch (e2) {}
     }
     window.togglePinHidden = togglePinHidden;
+
+    /** Toggle emphasize: pin pulses/glows until toggled off (easy to spot on shared maps). */
+    function togglePinEmphasize(id) {
+      var loc = locations.find(function(l) { return String(l.id) === String(id); });
+      if (!loc || !loc.isPin) return;
+      loc.emphasized = !loc.emphasized;
+      loc.updatedAt = new Date().toISOString();
+      try {
+        var pins = locations.filter(function(l) { return l && l.isPin; });
+        localStorage.setItem('alabama_hunt_custom_pins', JSON.stringify(pins));
+      } catch (e) {}
+      // Keep the pin visible; close popup so the pulse is easy to see
+      if (map) try { map.closePopup(); } catch (eC) {}
+      drawPinsOnMap();
+      try {
+        if (typeof window.regSlayerMapDataChanged === 'function') window.regSlayerMapDataChanged();
+        else if (window.RegSlayerCloud && typeof window.RegSlayerCloud.markDirty === 'function') {
+          window.RegSlayerCloud.markDirty();
+        }
+      } catch (e2) {}
+    }
+    window.togglePinEmphasize = togglePinEmphasize;
     function shareSavedPinChooser(id) {
       var loc = locations.find(function(l) { return String(l.id) === String(id); });
       if (!loc) return false;
@@ -20675,21 +21560,24 @@
       // Pin editor uses one picker for pin/inside/icon slots — route by pinColorSlot
       if (root.id === 'cp-pin' || bind === 'selectedPinColor') {
         var slot = (typeof pinColorSlot !== 'undefined') ? pinColorSlot : 'pin';
-        if (slot === 'inside') {
-          selectedPinInnerColor = hex;
-          var innH = document.getElementById('pin-inner-color');
-          if (innH) innH.value = hex;
-        } else if (slot === 'icon') {
-          selectedPinGlyphColor = hex;
-          var glyH = document.getElementById('pin-glyph-color');
-          if (glyH) glyH.value = hex;
-        } else {
-          selectedPinColor = hex;
-          var outerH = document.getElementById('pin-outer-color');
-          if (outerH) outerH.value = hex;
-        }
-        if (!opts.silent) {
-          try { if (typeof markPinEditorDirty === 'function') markPinEditorDirty(); } catch (eD0) {}
+        // slotDisplayOnly: just show the swatch for the active tab without rewriting layer state
+        if (!opts.slotDisplayOnly) {
+          if (slot === 'inside') {
+            selectedPinInnerColor = hex;
+            var innH = document.getElementById('pin-inner-color');
+            if (innH) innH.value = hex;
+          } else if (slot === 'icon') {
+            selectedPinGlyphColor = hex;
+            var glyH = document.getElementById('pin-glyph-color');
+            if (glyH) glyH.value = hex;
+          } else {
+            selectedPinColor = hex;
+            var outerH = document.getElementById('pin-outer-color');
+            if (outerH) outerH.value = hex;
+          }
+          if (!opts.silent) {
+            try { if (typeof markPinEditorDirty === 'function') markPinEditorDirty(); } catch (eD0) {}
+          }
         }
         try { if (typeof updatePinEditorPreview === 'function') updatePinEditorPreview(); } catch (ePrev0) {}
       }
@@ -20717,6 +21605,14 @@
         try {
           if (typeof liveCompassModePreviewFromUi === 'function') liveCompassModePreviewFromUi();
         } catch (eCm) {}
+      }
+      // Direction icon picker color (party / GPS custom arrows)
+      if (root.id === 'cp-dir-icon' || inputId === 'dir-icon-color-value') {
+        try {
+          if (typeof window.onDirIconPickerColorChange === 'function') {
+            window.onDirIconPickerColorChange(hex);
+          }
+        } catch (eDir) {}
       }
       // Fire change on hidden input so any listeners stay in sync
       if (input && !opts.silent) {
@@ -21055,28 +21951,47 @@
     }
     
     /**
-     * Picker thumb = inside of the pin only (circle + icon), not the full teardrop,
-     * so icons are easy to read in the Add pin grid.
+     * Picker thumbs:
+     * - Blank pin → full teardrop map pin (so it reads as “whole pin”, not a white picture)
+     * - Catalog icons → disc face + glyph only (easy to scan in the grid)
      */
     function buildPinPickerThumbHtml(opts) {
       opts = opts || {};
       var iconId = opts.iconId || null;
       var inner = opts.innerColor || opts.inner || '#ffffff';
+      var outer = opts.outer || opts.color || selectedPinColor || '#e59a18';
       var glyphRaw = (opts.iconColor != null ? opts.iconColor : (opts.glyph != null ? opts.glyph : 'natural'));
+      // Blank pin: whole pin chrome (body + empty white disc)
+      if (!iconId) {
+        var fullPin = (typeof buildCustomPinMarkerHtml === 'function')
+          ? buildCustomPinMarkerHtml({
+              color: outer,
+              innerColor: inner || '#ffffff',
+              iconColor: 'natural',
+              iconId: null
+            })
+          : '';
+        // Native pin is 43×53; scale so tip + body fit the picker tile
+        var sc = (opts.scale != null && opts.scale > 0) ? opts.scale : 0.78;
+        return (
+          '<div class="pin-picker-fullpin" style="width:34px;height:42px;position:relative;">' +
+            '<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(' + sc +
+              ');transform-origin:center center;line-height:0;">' +
+              fullPin +
+            '</div>' +
+          '</div>'
+        );
+      }
       // Grid must stay readable: light disc if scheme saved a black center with invisible natural icon
       var discBg = inner;
       var glyph = glyphRaw;
-      if (iconId) {
-        glyph = pinGlyphVisibleOnInside(glyphRaw, iconId, discBg);
-        // If still natural black on mid-dark scheme, force light disc for browsing
-        if (pinGlyphIsNatural(glyph, iconId) && typeof hexLuminance === 'function' &&
-            hexLuminance(normalizeHexColor(discBg) || '#fff') < 0.55 && iconId !== 'blood') {
-          discBg = '#ffffff';
-        }
+      glyph = pinGlyphVisibleOnInside(glyphRaw, iconId, discBg);
+      // If still natural black on mid-dark scheme, force light disc for browsing
+      if (pinGlyphIsNatural(glyph, iconId) && typeof hexLuminance === 'function' &&
+          hexLuminance(normalizeHexColor(discBg) || '#fff') < 0.55 && iconId !== 'blood') {
+        discBg = '#ffffff';
       }
-      var iconHtml = iconId
-        ? (typeof pinIconMarkup === 'function' ? pinIconMarkup(iconId, glyph, 32) : '')
-        : '';
+      var iconHtml = (typeof pinIconMarkup === 'function') ? pinIconMarkup(iconId, glyph, 32) : '';
       return (
         '<div class="pin-picker-disc" style="position:relative;background:' + discBg + ';" title="">' +
           (iconHtml
@@ -21184,20 +22099,50 @@ function togglePinIconPicker() {
       renderPinIconGrid();
       try { if (typeof updatePinEditorPreview === 'function') updatePinEditorPreview(); } catch (ePrev) {}
     }
-    function onPinColorInputsChange() {
+    /**
+     * Keep selected* pin colors as source of truth (what the preview shows).
+     * Never re-feed outer through the multi-slot picker — that was overwriting
+     * Inside/Icon with the pin-body color on save and could force the disc to white.
+     */
+    function syncPinColorHiddenFromSelected() {
       var o = document.getElementById('pin-outer-color');
       var i = document.getElementById('pin-inner-color');
       var g = document.getElementById('pin-glyph-color');
-      if (o && o.value) {
-        selectedPinColor = o.value;
-        var root = document.getElementById('cp-pin');
-        if (root) setColorPickerValue(root, o.value);
-        var hv = document.getElementById('pin-color-value');
-        if (hv) hv.value = o.value;
+      var pcv = document.getElementById('pin-color-value');
+      if (o) o.value = selectedPinColor || '#e59a18';
+      if (i) i.value = selectedPinInnerColor || '#ffffff';
+      if (g) g.value = (selectedPinGlyphColor == null || selectedPinGlyphColor === '')
+        ? 'natural'
+        : selectedPinGlyphColor;
+      if (pcv) {
+        var slot = (typeof pinColorSlot !== 'undefined') ? pinColorSlot : 'pin';
+        if (slot === 'inside') pcv.value = selectedPinInnerColor || '#ffffff';
+        else if (slot === 'icon') {
+          pcv.value = (selectedPinGlyphColor && selectedPinGlyphColor !== 'natural')
+            ? selectedPinGlyphColor
+            : '#111111';
+        } else {
+          pcv.value = selectedPinColor || '#e59a18';
+        }
       }
-      if (i && i.value) selectedPinInnerColor = i.value;
-      if (g && g.value) selectedPinGlyphColor = g.value;
-      applyPinInnerIconDistinct('icon');
+    }
+    function onPinColorInputsChange() {
+      // Prefer live selected* (preview). Only fill gaps from hidden fields.
+      var o = document.getElementById('pin-outer-color');
+      var i = document.getElementById('pin-inner-color');
+      var g = document.getElementById('pin-glyph-color');
+      if (!selectedPinColor && o && o.value) selectedPinColor = o.value;
+      if (!selectedPinInnerColor && i && i.value) selectedPinInnerColor = i.value;
+      if ((selectedPinGlyphColor == null || selectedPinGlyphColor === '') && g && g.value) {
+        selectedPinGlyphColor = g.value;
+      }
+      // Write selected* back to hidden inputs (do not call setColorPickerValue here)
+      syncPinColorHiddenFromSelected();
+      // Only nudge if disc and icon are the exact same solid color
+      try {
+        if (typeof applyPinInnerIconDistinct === 'function') applyPinInnerIconDistinct('icon');
+      } catch (eD) {}
+      try { if (typeof updatePinEditorPreview === 'function') updatePinEditorPreview(); } catch (eP) {}
     }
     function renderPinIconGrid() {
       var grid = document.getElementById('pin-icon-grid');
@@ -21218,24 +22163,27 @@ function togglePinIconPicker() {
       }
       function pinBtn(iconId, name, onclick, selected) {
         var sch = pinSchemeForPicker(iconId);
+        var isBlank = !iconId;
         var thumb = buildPinPickerThumbHtml({
           iconId: iconId,
           outer: sch.outer,
           inner: sch.inner,
           glyph: sch.glyph,
-          scale: 0.56
+          // Blank pin shows full teardrop; icons stay disc-only (scale unused)
+          scale: isBlank ? 0.78 : 1
         });
         var safeName = String(name || 'Pin').replace(/"/g, '&quot;');
         return (
           '<button type="button" class="' + (selected ? ' selected' : '') +
+          (isBlank ? ' pin-picker-blank-btn' : '') +
           '" data-name="' + safeName + '" title="' + safeName +
           '" aria-label="' + safeName + '" onclick="' + onclick + '">' +
           thumb + '</button>'
         );
       }
-      // Plain pin = same teardrop pin, empty white disc (no glyph)
+      // Blank pin = full teardrop in the grid (icons are disc + glyph only)
       var plainSel = !selectedPinIconId;
-      var plainBtn = pinBtn(null, 'Pin', 'clearSelectedPinIcon()', plainSel);
+      var plainBtn = pinBtn(null, 'Blank pin', 'clearSelectedPinIcon()', plainSel);
       grid.innerHTML = plainBtn + list.map(function(ic) {
         return pinBtn(ic.id, ic.name || ic.id, "selectPinIcon('" + ic.id + "')", selectedPinIconId === ic.id);
       }).join('');
@@ -21302,7 +22250,10 @@ function togglePinIconPicker() {
         var tvaLine = 'TVA Land: ' + tva.reservoir + ' (' + tva.recType + ')' + (tva.restricted ? ' - ' + tva.restricted : '');
         notes = notes ? (notes + '\n' + tvaLine) : tvaLine;
       }
-      try { if (typeof onPinColorInputsChange === 'function') onPinColorInputsChange(); } catch (eC) {}
+      // Snapshot colors from live editor state (preview), not a destructive re-apply
+      try {
+        if (typeof syncPinColorHiddenFromSelected === 'function') syncPinColorHiddenFromSelected();
+      } catch (eC) {}
       // Default name: icon name if chosen, else "Pin"
       var defaultName = 'Pin';
       if (selectedPinIconId) {
@@ -21312,14 +22263,20 @@ function togglePinIconPicker() {
       var name = nameIn || defaultName;
       var isEdit = !!editingPinId;
       var pinId = isEdit ? editingPinId : ('pin_' + Date.now());
-      // Enforce disc ≠ icon before save
-      try { applyPinInnerIconDistinct('icon'); } catch (eD) {}
-      var iconColorFinal = (selectedPinGlyphColor && selectedPinGlyphColor !== 'natural')
-        ? selectedPinGlyphColor
-        : null;
-      var pinBodyColor = selectedPinColor ||
+      // Capture exactly what the user customized (preview source of truth)
+      var pinBodyColor = (typeof normalizeHexColor === 'function'
+        ? normalizeHexColor(selectedPinColor)
+        : selectedPinColor) ||
         (selectedPinIconId ? pinIconDefaultColor(selectedPinIconId) : '#e59a18');
-      var discColor = selectedPinInnerColor || '#ffffff';
+      var discColor = (typeof normalizeHexColor === 'function'
+        ? normalizeHexColor(selectedPinInnerColor)
+        : selectedPinInnerColor) || '#ffffff';
+      var glyphSnap = selectedPinGlyphColor;
+      var iconColorFinal = (glyphSnap && glyphSnap !== 'natural' && glyphSnap !== 'none' && glyphSnap !== 'original')
+        ? ((typeof normalizeHexColor === 'function' ? normalizeHexColor(glyphSnap) : glyphSnap) || glyphSnap)
+        : null;
+      // Only auto-adjust icon tint when disc and icon are the same solid color.
+      // Never rewrite the user's disc color to white.
       if (iconColorFinal && typeof normalizeHexColor === 'function' &&
           normalizeHexColor(iconColorFinal) === normalizeHexColor(discColor)) {
         iconColorFinal = hexLuminance(discColor) > 0.55 ? '#111111' : '#ffffff';
@@ -21385,7 +22342,7 @@ function togglePinIconPicker() {
           }
         }
       }
-      // Preserve owner meta on edit
+      // Preserve owner meta / emphasize beacon on edit
       if (isEdit) {
         var prev = locations.find(function(l) { return String(l.id) === String(editingPinId); });
         if (prev) {
@@ -21393,6 +22350,7 @@ function togglePinIconPicker() {
           if (prev.ownerName) newLoc.ownerName = prev.ownerName;
           if (prev.createdAt) newLoc.createdAt = prev.createdAt;
           if (prev.savedWeather && !newLoc.savedWeather) newLoc.savedWeather = prev.savedWeather;
+          if (prev.emphasized) newLoc.emphasized = true;
           newLoc.updatedAt = new Date().toISOString();
         }
       } else {
@@ -21401,15 +22359,15 @@ function togglePinIconPicker() {
       if (selectedPinIconId) {
         pushPinIconRecent(selectedPinIconId);
         savePinIconScheme(selectedPinIconId, {
-          outer: selectedPinColor,
-          inner: selectedPinInnerColor,
-          icon: selectedPinGlyphColor
+          outer: pinBodyColor,
+          inner: discColor,
+          icon: iconColorFinal || 'natural'
         });
       } else {
         // Remember blank pin colors for next plain pin
         savePinIconScheme('__plain__', {
-          outer: selectedPinColor || '#e59a18',
-          inner: selectedPinInnerColor || '#ffffff',
+          outer: pinBodyColor || '#e59a18',
+          inner: discColor || '#ffffff',
           icon: 'natural'
         });
       }
@@ -21749,12 +22707,18 @@ function togglePinIconPicker() {
           var ic = loc.innerColor || '#ffffff';
           pinHtml = '<div style="width:14px;height:14px;border-radius:50%;background:' + ic +
             ';border:3px solid ' + oc + ';box-shadow:0 1px 4px rgba(0,0,0,0.45);"></div>';
+          if (loc.emphasized) {
+            pinHtml = '<div class="pin-emphasize-pulse">' + pinHtml + '</div>';
+          }
           s = 1;
         } else {
           pinHtml = (typeof buildCustomPinMarkerHtml === 'function')
             ? buildCustomPinMarkerHtml(loc)
             : '<div style="background:' + (loc.color || (isStandPin ? '#1f6f9f' : '#e59a18')) + ';width:20px;height:20px;border-radius:50%;border:2px solid white;"></div>';
-          if (isIdeal) {
+          // Emphasize (manual beacon) wins over ideal pulse so the ! toggle is always obvious
+          if (loc.emphasized) {
+            pinHtml = '<div class="pin-emphasize-pulse">' + pinHtml + '</div>';
+          } else if (isIdeal) {
             pinHtml = '<div class="pin-ideal-pulse">' + pinHtml + '</div>';
           }
           if (s !== 1) {
@@ -21825,7 +22789,7 @@ function togglePinIconPicker() {
           : '<div class="mdm-title">' + nameTitle + '</div>';
         /*
          * Pin popup = free-dot options (status + Rules/Weather/Share) +
-         * pin info (name, notes, who/when) + Hide / Edit / Trash at bottom.
+         * pin info (name, notes, who/when) + Hide / Emphasize / Edit / Trash at bottom.
          */
         var popupHtml =
           '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
@@ -21844,6 +22808,12 @@ function togglePinIconPicker() {
             '</div>' +
             '<div class="mdm-footer-row" style="margin-top:8px;">' +
               '<button type="button" class="mdm-edit-btn" style="flex:1;background:#1a4a5c;" onclick="event.preventDefault();event.stopPropagation();window.togglePinHidden(\'' + safeId + '\');return false;">' + (loc.hidden ? 'Unhide' : 'Hide') + '</button>' +
+              '<button type="button" class="mdm-emphasize-btn' + (loc.emphasized ? ' is-on' : '') +
+                '" title="' + (loc.emphasized ? 'Stop emphasizing pin' : 'Emphasize pin') +
+                '" aria-label="' + (loc.emphasized ? 'Stop emphasizing pin' : 'Emphasize pin') +
+                '" aria-pressed="' + (loc.emphasized ? 'true' : 'false') +
+                '" onclick="event.preventDefault();event.stopPropagation();window.togglePinEmphasize(\'' + safeId + '\');return false;">' +
+                '<span class="mdm-emphasize-bang" aria-hidden="true"></span></button>' +
               '<button type="button" class="mdm-edit-btn" style="flex:1;" onclick="event.preventDefault();event.stopPropagation();window.openEditPin(\'' + safeId + '\');return false;">Edit</button>' +
               '<button type="button" class="mdm-trash-btn" title="Delete" aria-label="Delete" onclick="event.preventDefault();event.stopPropagation();window.deletePin(\'' + safeId + '\');return false;">' +
                 '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5h6v2M8 7l1 12h6l1-12"/></svg>' +
@@ -23302,7 +24272,17 @@ function togglePinIconPicker() {
       var hud = document.getElementById('map-wind-hud');
       var stack = document.getElementById('map-compass-radar');
       if (!hud) return;
-      hud.classList.toggle('dial-expanded', !!on);
+      if (!on) {
+        // Shrink + hide swap chips / any leftover expand menu
+        try {
+          if (typeof collapseCompassDialUi === 'function') collapseCompassDialUi();
+          else hud.classList.remove('dial-expanded');
+        } catch (eCol) {
+          hud.classList.remove('dial-expanded');
+        }
+      } else {
+        hud.classList.add('dial-expanded');
+      }
       // Keep dragged position on-screen after size change (expand/collapse)
       if (stack && stack.classList.contains('is-positioned')) {
         requestAnimationFrame(function() {
@@ -23461,15 +24441,16 @@ function togglePinIconPicker() {
       wireDialDragAndToggle();
       restoreDialStackPosition();
 
-      // Tap outside collapses enlarged dial (does not reset position)
+      // Tap outside collapses enlarged dial AND hides Wind/Compass chips (keeps drag position)
       if (!document._dialCollapseWired) {
         document._dialCollapseWired = true;
         document.addEventListener('click', function(ev) {
           if (!hud || !hud.classList.contains('dial-expanded')) return;
           var stack = document.getElementById('map-compass-radar');
+          // Clicks on dial or its swap chips stay inside the stack
           if (stack && stack.contains(ev.target)) return;
           setDialExpanded(false);
-        });
+        }, true);
       }
 
       // Defaults: desktop → wind, phone → compass
@@ -25126,6 +26107,74 @@ function togglePinIconPicker() {
     }
 
     // ========== APP SETTINGS (gear near Layers) ==========
+    /** Orange “i” info buttons — show option description without cluttering rows. */
+    function hideSettingsInfo() {
+      var pop = document.getElementById('settings-info-pop');
+      if (pop) {
+        pop.classList.remove('open');
+        pop.hidden = true;
+        pop.innerHTML = '';
+        pop.style.left = '';
+        pop.style.top = '';
+      }
+      try {
+        document.querySelectorAll('.settings-info-btn.is-open').forEach(function(b) {
+          b.classList.remove('is-open');
+        });
+      } catch (e) {}
+    }
+    function showSettingsInfo(btn, ev) {
+      if (ev) {
+        try { ev.preventDefault(); ev.stopPropagation(); } catch (e0) {}
+      }
+      if (!btn) return false;
+      var pop = document.getElementById('settings-info-pop');
+      var body = document.querySelector('#settings-modal .settings-body');
+      if (!pop || !body) return false;
+      // Toggle off if same button
+      if (btn.classList.contains('is-open') && pop.classList.contains('open')) {
+        hideSettingsInfo();
+        return false;
+      }
+      hideSettingsInfo();
+      var title = btn.getAttribute('data-title') || '';
+      var info = btn.getAttribute('data-info') || btn.getAttribute('title') || '';
+      if (!info) return false;
+      function esc(s) {
+        return String(s)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+      pop.innerHTML = (title ? '<span class="sip-title">' + esc(title) + '</span>' : '') + esc(info);
+      pop.hidden = false;
+      pop.classList.add('open');
+      btn.classList.add('is-open');
+      // Position inside settings-body near the button
+      var br = btn.getBoundingClientRect();
+      var bodyR = body.getBoundingClientRect();
+      var left = br.right - bodyR.left - 200;
+      var top = br.bottom - bodyR.top + body.scrollTop + 6;
+      left = Math.max(8, Math.min(left, bodyR.width - 200));
+      pop.style.left = Math.round(left) + 'px';
+      pop.style.top = Math.round(top) + 'px';
+      // Keep fully on-screen after layout
+      requestAnimationFrame(function() {
+        var pr = pop.getBoundingClientRect();
+        if (pr.right > bodyR.right - 6) {
+          pop.style.left = Math.max(8, Math.round(bodyR.width - pr.width - 10)) + 'px';
+        }
+        if (pr.bottom > bodyR.bottom - 6) {
+          var above = br.top - bodyR.top + body.scrollTop - pr.height - 6;
+          pop.style.top = Math.max(body.scrollTop + 4, Math.round(above)) + 'px';
+        }
+      });
+      return false;
+    }
+    window.showSettingsInfo = showSettingsInfo;
+    window.hideSettingsInfo = hideSettingsInfo;
+
     function openSettingsModal(tab) {
       var modal = document.getElementById('settings-modal');
       if (!modal) return;
@@ -25135,7 +26184,9 @@ function togglePinIconPicker() {
           document.body.appendChild(modal);
         }
       } catch (eRe) {}
+      hideSettingsInfo();
       syncSettingsUiFromState();
+      try { if (typeof syncMyDirIconSettingsBtn === 'function') syncMyDirIconSettingsBtn(); } catch (eDir) {}
       try { if (typeof syncPublicLandOpacityUi === 'function') syncPublicLandOpacityUi(); } catch (eOp) {}
       if (tab) switchSettingsTab(tab);
       modal.removeAttribute('hidden');
@@ -25147,6 +26198,7 @@ function togglePinIconPicker() {
       modal.setAttribute('aria-hidden', 'false');
     }
     function closeSettingsModal() {
+      hideSettingsInfo();
       var modal = document.getElementById('settings-modal');
       if (modal) {
         modal.classList.remove('active');
@@ -25160,20 +26212,37 @@ function togglePinIconPicker() {
     }
     window.openSettingsModal = openSettingsModal;
     window.closeSettingsModal = closeSettingsModal;
-    // Escape closes settings
+    // Escape closes settings (or just the open info pop first)
     if (!window._settingsEscWired) {
       window._settingsEscWired = true;
       document.addEventListener('keydown', function(ev) {
         if (ev.key !== 'Escape') return;
         var m = document.getElementById('settings-modal');
         if (m && m.classList.contains('active')) {
+          var pop = document.getElementById('settings-info-pop');
+          if (pop && pop.classList.contains('open')) {
+            hideSettingsInfo();
+            ev.preventDefault();
+            return;
+          }
           closeSettingsModal();
           ev.preventDefault();
         }
       });
+      // Tap outside info pop closes it (inside settings)
+      document.addEventListener('click', function(ev) {
+        var pop = document.getElementById('settings-info-pop');
+        if (!pop || !pop.classList.contains('open')) return;
+        if (ev.target && ev.target.closest && (
+          ev.target.closest('.settings-info-btn') ||
+          ev.target.closest('#settings-info-pop')
+        )) return;
+        hideSettingsInfo();
+      }, true);
     }
 
     function switchSettingsTab(name) {
+      hideSettingsInfo();
       document.querySelectorAll('.settings-tab').forEach(function(t) {
         t.classList.toggle('active', t.getAttribute('data-stab') === name);
       });

@@ -1,8 +1,8 @@
-﻿/* REG SLAYER â€” production service worker
+/* REG SLAYER — production service worker
  * Caches app shell for return visits with no signal.
  * Map tiles: cache-first when already stored; network otherwise (then cache).
  */
-const SHELL_CACHE = 'reg-slayer-shell-v40';
+const SHELL_CACHE = 'reg-slayer-shell-v42';
 const TILE_CACHE = 'reg-slayer-tiles-v2';
 const DATA_CACHE = 'reg-slayer-data-v1';
 
@@ -20,7 +20,7 @@ const SHELL_ASSETS = [
   './icons/tools/draw.png',
   './icons/tools/track.png',
   './icons/tools/layers.png',
-  // Pin glyphs â€” needed offline when opening a map with saved pins
+  // Pin glyphs — needed offline when opening a map with saved pins
   './icons/pins/alligator.png',
   './icons/pins/arrow.png',
   './icons/pins/beaver_dam.png',
@@ -47,6 +47,20 @@ const SHELL_ASSETS = [
   './icons/pins/tent.png',
   './icons/pins/tree.png',
   './icons/pins/truck.png',
+  // Directional location icons (party / GPS)
+  './icons/dir/arrow_head.png',
+  './icons/dir/boat.png',
+  './icons/dir/bomb.png',
+  './icons/dir/bullet.png',
+  './icons/dir/capture.png',
+  './icons/dir/car.png',
+  './icons/dir/helicopter.png',
+  './icons/dir/prop_plane.png',
+  './icons/dir/rocket.png',
+  './icons/dir/shuttle.png',
+  './icons/dir/speed_boat.png',
+  './icons/dir/truck.png',
+  './icons/dir/x_wing.png',
   './vendor/leaflet/leaflet.js',
   './vendor/leaflet/leaflet.css',
   './vendor/leaflet/marker-icon.png',

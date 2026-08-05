@@ -1,0 +1,77 @@
+REG SLAYER — Changes 6.5.2 Beta → 6.6 Beta
+========================================
+Date: 2026-08-05
+Label: V6.6 Beta
+Shell cache: reg-slayer-shell-v42
+Git tag: v6.6-beta
+
+SUMMARY
+-------
+Large My Maps / party UX pass, custom directional icons for GPS and party
+members, pin blank-picker + color save fixes, compass defaults, and settings
+cleanup with info buttons and dark scrollbars.
+
+PINS
+----
+- Blank pin option in the picker shows the full teardrop pin (not a white disc).
+  Other types still show icon-only thumbs.
+- Pin colors (body / inside / icon) save and redraw as customized; fixed a bug
+  where save re-applied outer color through the multi-slot picker and forced
+  white inside.
+- Emphasize button (!) between Hide and Edit on pin popup: yellow square with
+  rounded “!” glyph that pulses; toggles map pin pulse/glow until turned off.
+  State stored on pin (emphasized) for shared maps.
+
+COMPASS / WIND
+--------------
+- Click-away collapses enlarged dial and hides Wind/Compass swap chips.
+- Removed popup “Compass Mode” menu under the dial (toolbar cycles mode).
+- Compass mode defaults: black line, red probe, 5 mile length (upgrades old
+  cyan/yellow/1 mi factory defaults when still on those values).
+
+SETTINGS UI
+-----------
+- Cohesive section cards; descriptions moved to orange “i” info buttons.
+- Info buttons smaller, next to option names (not pinned to the far right).
+- Compass mode control compact, above Wind/compass display.
+- Settings card fixed height so Tools ↔ Defaults does not resize the window.
+- 3D raised button look (weapon-chip style) app-wide except map bottom toolbar.
+- Dark scrollbars, no end arrows, in Settings and direction-icon popup.
+
+MY MAPS (Settings → My Maps)
+----------------------------
+- List: Not shared (private) first, then Shared.
+- Each row: gear | map name | Share | View Map.
+- View Map switches viewing context (that map’s pins/settings).
+- Tap shared map name → members list underneath; tap member → customize
+  (nickname, color, direction icon, show content; host can remove members).
+- Gear menu:
+  - Private: Rename, Delete map
+  - Shared member: Leave map
+  - Shared creator: Rename, Delete map
+- Rename shared (creator only): “Rename for everyone” vs “Just me” (local alias).
+- Server RPCs (run on Supabase HuntSlayer):
+  - migrations/20260805220000_map_host_leave_delete.sql
+  - leave / remove member / delete shared / delete private / host-only rename
+
+CUSTOM DIRECTION ICONS
+----------------------
+- Source art: button icons/location icons → tools/process_dir_icons.py
+  → icons/dir/*.png (+ _catalog.json). Same isolation pipeline as pin icons.
+- Replaces default GPS / party triangle with chosen silhouette when set.
+- Picker UI: pin-style grid + search, no notes; icon color picker under grid
+  (recolors silhouettes); live preview; default tile matches map chevron SVG.
+- All picker icons shown nose-up (frontDeg) for orientation checks; bomb set
+  to frontDeg 225 (diagonal art → tip up).
+- Thin black outline on custom icons (SVG dilate), similar to default arrow.
+- Your profile default icon shows to everyone unless they override that person
+  on their device (party prefs). Tools → “Custom default arrow” above Compass mode.
+- Server: migrations/20260805230000_direction_icon.sql
+  (profiles + party_member_prefs direction_icon_id; list members returns it).
+
+UNDO
+----
+- Git: checkout tag v6.5.2-beta (or prior) on Hunt-Slayer.
+- Shell cache: clients on v42 will re-fetch shell after this deploy.
+- Supabase: keep new RPCs/columns if already applied (safe to leave); UI on
+  6.5.2 simply will not call the new features.

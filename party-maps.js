@@ -9,7 +9,27 @@
   var C = window.RegSlayerCloud;
   var PRESENCE_KEY = 'reg_slayer_sharing_loc_v1';
   var ARROW_KEY = 'reg_slayer_my_arrow_color_v1';
+  var DIR_ICON_KEY = 'reg_slayer_my_dir_icon_v1';
   var HIDDEN_MEMBERS_KEY = 'reg_slayer_hidden_party_content_v1';
+  var MAP_ALIAS_KEY = 'reg_slayer_map_alias_v1';
+  /** Directional icons for party/GPS (from icons/dir — location icons pipeline). */
+  var DIR_ICON_CATALOG = [
+    { id: 'arrow_head', name: 'Arrow head', src: 'icons/dir/arrow_head.png', frontDeg: 0 },
+    { id: 'boat', name: 'Boat', src: 'icons/dir/boat.png', frontDeg: 0 },
+    // PNG is diagonal: nose lower-left (~225°). Rotate −225° so tip points up.
+    { id: 'bomb', name: 'Bomb', src: 'icons/dir/bomb.png', frontDeg: 225 },
+    { id: 'bullet', name: 'Bullet', src: 'icons/dir/bullet.png', frontDeg: 0 },
+    { id: 'capture', name: 'Capture', src: 'icons/dir/capture.png', frontDeg: 0 },
+    { id: 'car', name: 'Car', src: 'icons/dir/car.png', frontDeg: 0 },
+    { id: 'helicopter', name: 'Helicopter', src: 'icons/dir/helicopter.png', frontDeg: 0 },
+    { id: 'prop_plane', name: 'Prop plane', src: 'icons/dir/prop_plane.png', frontDeg: 180 },
+    { id: 'rocket', name: 'Rocket', src: 'icons/dir/rocket.png', frontDeg: 0 },
+    { id: 'shuttle', name: 'Shuttle', src: 'icons/dir/shuttle.png', frontDeg: 0 },
+    { id: 'speed_boat', name: 'Speed Boat', src: 'icons/dir/speed_boat.png', frontDeg: 0 },
+    { id: 'truck', name: 'Truck', src: 'icons/dir/truck.png', frontDeg: 0 },
+    { id: 'x_wing', name: 'X-wing', src: 'icons/dir/x_wing.png', frontDeg: 0 }
+  ];
+  var DIR_ICON_BUST = 'dir2';
   var MOVE_M = 8; // meters = "moving"
   var MOVE_MS = 4000; // min interval when moving
   var HEARTBEAT_MS = 5000; // always push at least this often while sharing
@@ -30,13 +50,24 @@
   var partyLayer = null;
   var partyMarkers = {};
   var myArrowColor = '#e11d1d';
-  var partyPrefs = {}; // memberId -> { nickname, arrow_color, show_content }
+  var myDirIconId = null; // custom directional icon for self (null = default triangle)
+  var partyPrefs = {}; // memberId -> { nickname, arrow_color, show_content, direction_icon_id }
   var hiddenContentOwners = {}; // userId -> true means HIDE their content
+  /** Selected map row in Settings → My Maps (for members list; View Map sets active view). */
+  var mapsUiSelected = { kind: null, id: null };
+  var _dirPickerOnPick = null;
+  var _dirPickerSelected = null;
+  var _dirPickerColor = '#e11d1d';
+  var _dirGlyphFilterSeq = 0;
 
   try {
     var ac = localStorage.getItem(ARROW_KEY);
     if (ac) myArrowColor = ac;
   } catch (e) {}
+  try {
+    var di = localStorage.getItem(DIR_ICON_KEY);
+    if (di) myDirIconId = di;
+  } catch (eDi) {}
 
   function $(id) { return document.getElementById(id); }
   function esc(s) {
@@ -122,27 +153,348 @@
     return h;
   }
 
-  function buildPartyArrowIcon(color, label, heading) {
+  function getDirIconById(id) {
+    if (!id) return null;
+    for (var i = 0; i < DIR_ICON_CATALOG.length; i++) {
+      if (DIR_ICON_CATALOG[i].id === id) return DIR_ICON_CATALOG[i];
+    }
+    return null;
+  }
+  function dirIconSrc(id) {
+    var ic = getDirIconById(id);
+    if (!ic) return '';
+    return ic.src + (DIR_ICON_BUST ? ('?v=' + DIR_ICON_BUST) : '');
+  }
+  /**
+   * Which direction icon to draw for a member on THIS device:
+   * 1) If I set a custom icon for them (party prefs) → use that (only I see it)
+   * 2) Else use their profile default (e.g. Scott’s rocket shows as rocket for everyone)
+   * 3) Else default red triangle
+   */
+  function memberDirIconId(m) {
+    if (!m) return null;
+    var pref = partyPrefs[m.user_id] || {};
+    if (Object.prototype.hasOwnProperty.call(pref, 'direction_icon_id')) {
+      var override = pref.direction_icon_id;
+      // Non-empty override wins for me only. Empty/null = fall back to their profile default.
+      if (override) return override;
+    }
+    return m.direction_icon_id || null;
+  }
+
+  function myDefaultDirIconLabel() {
+    if (!myDirIconId) return 'Custom default arrow';
+    var ic = getDirIconById(myDirIconId);
+    return ic ? ('Arrow: ' + ic.name) : 'Custom default arrow';
+  }
+  function syncMyDirIconSettingsBtn() {
+    var btn = $('set-my-dir-icon-btn');
+    if (btn) btn.textContent = myDefaultDirIconLabel();
+  }
+  function openMyDefaultDirIcon() {
+    openDirIconPicker({
+      title: 'Your default direction icon',
+      currentId: myDirIconId || null,
+      currentColor: myArrowColor || '#e11d1d',
+      mode: 'self',
+      onPick: function (id, color) {
+        myDirIconId = id || null;
+        if (color) myArrowColor = color;
+        try {
+          if (myDirIconId) localStorage.setItem(DIR_ICON_KEY, myDirIconId);
+          else localStorage.removeItem(DIR_ICON_KEY);
+          if (myArrowColor) localStorage.setItem(ARROW_KEY, myArrowColor);
+        } catch (eL) {}
+        try {
+          document.documentElement.style.setProperty('--gps-arrow-color', myArrowColor);
+        } catch (eCss) {}
+        try {
+          var sb = getSb() || window.__rsSb;
+          var user = getUser() || window.__rsUser;
+          if (sb && user) {
+            sb.from('profiles').update({
+              direction_icon_id: myDirIconId,
+              arrow_color: myArrowColor
+            }).eq('id', user.id).then(function () {});
+          }
+        } catch (eP) {}
+        syncMyDirIconSettingsBtn();
+        try {
+          if (typeof setGpsMarker === 'function' && typeof userLat !== 'undefined' && userLat != null) {
+            setGpsMarker(userLat, userLng);
+          }
+        } catch (eG) {}
+        try {
+          if (window.showAppCopyToast) {
+            showAppCopyToast('<span class="act">Default arrow updated</span><br>' +
+              (myDirIconId ? esc((getDirIconById(myDirIconId) || {}).name || myDirIconId) : 'Default triangle'));
+          }
+        } catch (eT) {}
+      }
+    });
+  }
+  window.openMyDefaultDirIcon = openMyDefaultDirIcon;
+  window.syncMyDirIconSettingsBtn = syncMyDirIconSettingsBtn;
+
+  function normalizeDirHex(hex) {
+    if (typeof normalizeHexColor === 'function') {
+      return normalizeHexColor(hex) || '#e11d1d';
+    }
+    var h = String(hex || '').trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(h)) return h.toLowerCase();
+    if (/^#[0-9a-fA-F]{3}$/.test(h)) {
+      return ('#' + h[1] + h[1] + h[2] + h[2] + h[3] + h[3]).toLowerCase();
+    }
+    return '#e11d1d';
+  }
+
+  /**
+   * Recolor black silhouette PNGs to a solid hex + thin black outline
+   * (matches default GPS arrow stroke).
+   */
+  function dirIconColoredMarkup(iconId, hex, size) {
+    var img = dirIconSrc(iconId);
+    var s = size || 30;
+    if (!img) return '';
+    hex = normalizeDirHex(hex);
+    _dirGlyphFilterSeq += 1;
+    var fid = 'dgf' + _dirGlyphFilterSeq + '_' + String(iconId || 'x').replace(/[^a-z0-9_-]/gi, '');
+    // Outline thickness scales slightly with size (~1.2–1.6px look)
+    var outlineR = s >= 36 ? 1.35 : (s >= 28 ? 1.2 : 1.05);
+    var src = String(img)
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    return (
+      '<svg class="rs-dir-icon-svg" width="' + s + '" height="' + s + '" viewBox="0 0 ' + s + ' ' + s + '" ' +
+        'xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ' +
+        'aria-hidden="true" focusable="false" style="display:block;overflow:visible;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.45));">' +
+        '<defs>' +
+          '<filter id="' + fid + '" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">' +
+            // Expand silhouette → black stroke ring (like default arrow outline)
+            '<feMorphology in="SourceAlpha" operator="dilate" radius="' + outlineR + '" result="dilated"/>' +
+            '<feFlood flood-color="#000000" flood-opacity="1" result="black"/>' +
+            '<feComposite in="black" in2="dilated" operator="in" result="outline"/>' +
+            // Colored fill from original alpha
+            '<feFlood flood-color="' + hex + '" flood-opacity="1" result="flood"/>' +
+            '<feComposite in="flood" in2="SourceAlpha" operator="in" result="fill"/>' +
+            '<feMerge>' +
+              '<feMergeNode in="outline"/>' +
+              '<feMergeNode in="fill"/>' +
+            '</feMerge>' +
+          '</filter>' +
+        '</defs>' +
+        '<image width="' + s + '" height="' + s + '" href="' + src + '" xlink:href="' + src + '" ' +
+          'filter="url(#' + fid + ')" preserveAspectRatio="xMidYMid meet"/>' +
+      '</svg>'
+    );
+  }
+
+  /**
+   * Directional marker body: default triangle or custom icon (slightly larger than default arrow).
+   * frontDeg = where the PNG nose points (0=up). CSS rot = heading − frontDeg.
+   * color tints the silhouette (triangle fill or PNG recolor).
+   */
+  function buildDirBodyHtml(color, heading, iconId, sizePx) {
     var rot = heading != null && !isNaN(heading) ? (((Number(heading) % 360) + 360) % 360) : 0;
-    var c = color || '#2563eb';
-    var w = 24, h = 34;
+    var c = normalizeDirHex(color || '#2563eb');
+    var ic = getDirIconById(iconId);
+    if (ic) {
+      var front = (ic.frontDeg != null && !isNaN(ic.frontDeg)) ? Number(ic.frontDeg) : 0;
+      var cssRot = ((rot - front) % 360 + 360) % 360;
+      // Custom icons: slightly larger than default ~17–24px arrow
+      var s = sizePx || 30;
+      var glyph = dirIconColoredMarkup(ic.id, c, s);
+      return (
+        '<div class="party-arrow-rot rs-dir-icon-rot" data-front="' + front + '" style="width:' + s +
+          'px;height:' + s + 'px;transform:rotate(' + cssRot.toFixed(1) +
+          'deg);transform-origin:center center;will-change:transform;line-height:0;">' +
+          glyph +
+        '</div>'
+      );
+    }
+    var w = sizePx ? Math.round(sizePx * 0.8) : 24;
+    var h = sizePx ? Math.round(sizePx * 1.13) : 34;
+    return (
+      '<div class="party-arrow-rot" data-front="0" style="width:' + w + 'px;height:' + h +
+        'px;transform:rotate(' + rot.toFixed(1) + 'deg);transform-origin:center 70%;will-change:transform;">' +
+        '<svg viewBox="0 0 24 32" width="' + w + '" height="' + h + '">' +
+          '<path d="M12 1.5 L22.5 29.5 L12 23.2 L1.5 29.5 Z" fill="' + c +
+            '" stroke="#000" stroke-width="1.5" stroke-linejoin="round"/>' +
+        '</svg>' +
+      '</div>'
+    );
+  }
+
+  function buildPartyArrowIcon(color, label, heading, iconId) {
     var name = esc((label || '').slice(0, 16));
+    var body = buildDirBodyHtml(color, heading, iconId, 30);
     var html =
       '<div class="party-arrow-wrap" style="display:flex;flex-direction:column;align-items:center;pointer-events:auto;">' +
         '<div style="font-size:10px;font-weight:800;color:#fff;text-shadow:0 0 3px #000,0 1px 2px #000;background:rgba(0,0,0,.55);padding:1px 5px;border-radius:4px;margin-bottom:2px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + name + '</div>' +
-        '<div class="party-arrow-rot" style="width:' + w + 'px;height:' + h + 'px;transform:rotate(' + rot.toFixed(1) + 'deg);transform-origin:center 70%;will-change:transform;">' +
-          '<svg viewBox="0 0 24 32" width="' + w + '" height="' + h + '">' +
-            '<path d="M12 1.5 L22.5 29.5 L12 23.2 L1.5 29.5 Z" fill="' + c + '" stroke="#000" stroke-width="1.5" stroke-linejoin="round"/>' +
-          '</svg>' +
-        '</div>' +
+        body +
       '</div>';
     return L.divIcon({
       className: 'party-presence-icon',
       html: html,
-      iconSize: [100, 56],
-      iconAnchor: [50, 44]
+      iconSize: [100, 60],
+      iconAnchor: [50, 48]
     });
   }
+
+  /**
+   * Picker-only: rotate so the icon's "front" (frontDeg) faces up.
+   * Map uses rotate(heading − frontDeg); upright preview = rotate(−frontDeg).
+   */
+  function dirIconUprightPreview(iconId, hex, size) {
+    var ic = getDirIconById(iconId);
+    if (!ic) return '';
+    var front = (ic.frontDeg != null && !isNaN(ic.frontDeg)) ? Number(ic.frontDeg) : 0;
+    var upright = ((-front) % 360 + 360) % 360;
+    return (
+      '<span class="dir-upright-wrap" style="display:inline-flex;align-items:center;justify-content:center;' +
+        'transform:rotate(' + upright.toFixed(1) + 'deg);transform-origin:center center;line-height:0;" ' +
+        'title="Front points up (frontDeg ' + front + ')">' +
+        dirIconColoredMarkup(iconId, hex, size) +
+      '</span>'
+    );
+  }
+
+  function updateDirIconLivePreview() {
+    var box = $('dir-icon-live-preview');
+    if (!box) return;
+    var c = normalizeDirHex(_dirPickerColor || '#e11d1d');
+    if (_dirPickerSelected) {
+      // Always nose-up so orientation is easy to verify
+      box.innerHTML = dirIconUprightPreview(_dirPickerSelected, c, 36);
+    } else {
+      // Match map default GPS arrow (same paths as buildGpsMarkerIcon) — tip already up
+      box.innerHTML =
+        '<svg class="dir-default-map-arrow" viewBox="0 0 24 32" width="28" height="36" aria-hidden="true" style="display:block;">' +
+          '<path d="M12 1.5 L22.5 29.5 L12 23.2 L1.5 29.5 Z" fill="' + c +
+            '" stroke="#000" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' +
+          '<path d="M12 6.5 L17.2 24.5 L12 20.5 L6.8 24.5 Z" fill="' + c + '" opacity="0.35"/>' +
+        '</svg>';
+    }
+  }
+
+  function renderDirIconPickerGrid(selectedId) {
+    var grid = $('dir-icon-grid');
+    if (!grid) return;
+    var q = (($('dir-icon-search') && $('dir-icon-search').value) || '').trim().toLowerCase();
+    var list = DIR_ICON_CATALOG.filter(function (ic) {
+      if (!q) return true;
+      return ic.name.toLowerCase().indexOf(q) >= 0 || ic.id.indexOf(q) >= 0;
+    });
+    // Friend mode: first tile = "use their profile default"; self mode = red triangle
+    var defTitle = _dirPickerMode === 'friend' ? 'Use their default' : 'Default triangle';
+    var c = normalizeDirHex(_dirPickerColor || '#e11d1d');
+    var html = '';
+    var defSel = !selectedId;
+    // Same chevron path as map GPS marker (buildGpsMarkerIcon)
+    var defaultArrowSvg =
+      '<svg class="dir-default-map-arrow" viewBox="0 0 24 32" width="28" height="36" aria-hidden="true" style="display:block;">' +
+        '<path d="M12 1.5 L22.5 29.5 L12 23.2 L1.5 29.5 Z" fill="' + c +
+          '" stroke="#000" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' +
+        '<path d="M12 6.5 L17.2 24.5 L12 20.5 L6.8 24.5 Z" fill="' + c + '" opacity="0.35"/>' +
+      '</svg>';
+    html += '<button type="button" class="dir-icon-cell' + (defSel ? ' selected' : '') +
+      '" data-id="" title="' + esc(defTitle) + '" aria-label="' + esc(defTitle) + '">' +
+      '<span class="dir-cell-glyph">' + defaultArrowSvg + '</span></button>';
+    list.forEach(function (ic) {
+      var sel = selectedId === ic.id;
+      // All custom icons drawn nose-up so frontDeg can be checked at a glance
+      html += '<button type="button" class="dir-icon-cell' + (sel ? ' selected' : '') +
+        '" data-id="' + esc(ic.id) + '" data-name="' + esc(ic.name) +
+        '" title="' + esc(ic.name) + ' (front up)" aria-label="' + esc(ic.name) + '">' +
+        '<span class="dir-cell-glyph">' + dirIconUprightPreview(ic.id, c, 40) + '</span></button>';
+    });
+    grid.innerHTML = html;
+    grid.querySelectorAll('.dir-icon-cell').forEach(function (btn) {
+      btn.onclick = function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        var id = btn.getAttribute('data-id') || '';
+        _dirPickerSelected = id || null;
+        grid.querySelectorAll('.dir-icon-cell').forEach(function (b) {
+          b.classList.toggle('selected', (b.getAttribute('data-id') || '') === id);
+        });
+        updateDirIconLivePreview();
+      };
+    });
+    updateDirIconLivePreview();
+  }
+
+  var _dirPickerMode = 'self'; // 'self' | 'friend'
+  window.onDirIconPickerColorChange = function (hex) {
+    _dirPickerColor = normalizeDirHex(hex);
+    // Live-tint thumbs + preview without full grid rebuild if possible
+    try { renderDirIconPickerGrid(_dirPickerSelected); } catch (e) {
+      try { updateDirIconLivePreview(); } catch (e2) {}
+    }
+  };
+  function wireDirIconColorPicker() {
+    var root = $('cp-dir-icon');
+    if (!root) return;
+    // Ensure picker is built (shared color-picker system in index.html)
+    try {
+      if (typeof initAllColorPickers === 'function') initAllColorPickers();
+    } catch (eI) {}
+    try {
+      if (typeof setColorPickerValue === 'function') {
+        setColorPickerValue(root, normalizeDirHex(_dirPickerColor), { silent: true });
+      }
+    } catch (eS) {}
+    var hv = $('dir-icon-color-value');
+    if (hv) hv.value = normalizeDirHex(_dirPickerColor);
+  }
+  function openDirIconPicker(opts) {
+    opts = opts || {};
+    _dirPickerOnPick = typeof opts.onPick === 'function' ? opts.onPick : null;
+    _dirPickerSelected = opts.currentId || null;
+    _dirPickerColor = normalizeDirHex(opts.currentColor || myArrowColor || '#e11d1d');
+    _dirPickerMode = opts.mode === 'friend' ? 'friend' : 'self';
+    var modal = $('dir-icon-picker-modal');
+    if (!modal) return;
+    var title = $('dir-icon-picker-title');
+    if (title) title.textContent = opts.title || 'Choose direction icon';
+    var search = $('dir-icon-search');
+    if (search) search.value = '';
+    var hv = $('dir-icon-color-value');
+    if (hv) hv.value = _dirPickerColor;
+    wireDirIconColorPicker();
+    renderDirIconPickerGrid(_dirPickerSelected);
+    modal.classList.add('active');
+    modal.removeAttribute('hidden');
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+  }
+  function closeDirIconPicker() {
+    var modal = $('dir-icon-picker-modal');
+    if (modal) {
+      modal.classList.remove('active');
+      modal.style.display = 'none';
+      modal.setAttribute('hidden', '');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+    _dirPickerOnPick = null;
+  }
+  function confirmDirIconPicker() {
+    var id = _dirPickerSelected || null;
+    var color = normalizeDirHex(_dirPickerColor || '#e11d1d');
+    var cb = _dirPickerOnPick;
+    closeDirIconPicker();
+    if (cb) {
+      try { cb(id, color); } catch (e) { console.warn(e); }
+    }
+  }
+  window.openDirIconPicker = openDirIconPicker;
+  window.closeDirIconPicker = closeDirIconPicker;
+  window.confirmDirIconPicker = confirmDirIconPicker;
+  window.renderDirIconPickerGrid = function () {
+    renderDirIconPickerGrid(_dirPickerSelected);
+  };
 
   /** Smooth in-place rotation without full icon rebuild when possible. */
   function updatePartyMarkerHeading(uid, heading) {
@@ -155,7 +507,10 @@
       if (el) {
         var rot = el.querySelector('.party-arrow-rot');
         if (rot) {
-          rot.style.transform = 'rotate(' + heading.toFixed(1) + 'deg)';
+          var front = parseFloat(rot.getAttribute('data-front') || '0');
+          if (isNaN(front)) front = 0;
+          var cssRot = ((heading - front) % 360 + 360) % 360;
+          rot.style.transform = 'rotate(' + cssRot.toFixed(1) + 'deg)';
           mk._rsHeading = heading;
           return;
         }
@@ -165,7 +520,7 @@
     try {
       var mem = (window.__rsPartyMembers || []).find(function (x) { return String(x.user_id) === String(uid); }) ||
         { user_id: uid, username: 'Hunter' };
-      var icon = buildPartyArrowIcon(memberColor(mem), memberLabel(mem), heading);
+      var icon = buildPartyArrowIcon(memberColor(mem), memberLabel(mem), heading, memberDirIconId(mem));
       mk.setIcon(icon);
       mk._rsHeading = heading;
     } catch (e2) {}
@@ -231,14 +586,25 @@
     var pref = partyPrefs[uid] || partyPrefs[mem.user_id] || {};
     var nick = pref.nickname || '';
     var col = pref.arrow_color || mem.arrow_color || memberColor(mem) || '#2563eb';
+    // Local override only — empty means “show their profile default”
+    var dirId = (Object.prototype.hasOwnProperty.call(pref, 'direction_icon_id') && pref.direction_icon_id)
+      ? pref.direction_icon_id
+      : null;
+    var dirName = dirId
+      ? ((getDirIconById(dirId) || {}).name || dirId)
+      : 'Use their default';
     var body =
-      '<p class="settings-hint" style="margin:0 0 8px;">Nickname and arrow color are only for you.</p>' +
+      '<p class="settings-hint" style="margin:0 0 8px;">Nickname, color, and direction icon are only for you. Their default icon still shows for everyone else.</p>' +
       '<label style="display:block;font-size:11px;font-weight:700;margin:6px 0 4px;">Nickname</label>' +
       '<input type="text" id="rs-friend-nick" maxlength="32" value="' + esc(nick) + '" ' +
         'style="width:100%;box-sizing:border-box;padding:8px;border-radius:6px;border:1px solid #444;background:#1a1a1a;color:#fff;">' +
       '<label style="display:block;font-size:11px;font-weight:700;margin:10px 0 4px;">Arrow color</label>' +
       '<input type="color" id="rs-friend-color" value="' + esc(col) + '" ' +
-        'style="width:100%;height:40px;padding:0;border:none;background:transparent;cursor:pointer;">';
+        'style="width:100%;height:40px;padding:0;border:none;background:transparent;cursor:pointer;">' +
+      '<label style="display:block;font-size:11px;font-weight:700;margin:10px 0 4px;">Direction icon (your screen only)</label>' +
+      '<button type="button" class="settings-subbtn" id="rs-friend-dir-btn" style="width:100%;margin:0;">' +
+        esc(dirName) + '</button>' +
+      '<input type="hidden" id="rs-friend-dir" value="' + esc(dirId || '') + '">';
     showSimpleModal('Edit friend — ' + (mem.display_name || mem.username || 'Hunter'), body, [
       {
         label: 'Save',
@@ -246,11 +612,14 @@
         onClick: function () {
           var nEl = document.getElementById('rs-friend-nick');
           var cEl = document.getElementById('rs-friend-color');
+          var dEl = document.getElementById('rs-friend-dir');
           var n = nEl ? String(nEl.value || '').trim() : '';
           var c = cEl ? (cEl.value || col) : col;
+          var d = dEl && dEl.value ? dEl.value : null;
           savePartyPref(uid, {
             nickname: n || null,
-            arrow_color: c
+            arrow_color: c,
+            direction_icon_id: d
           }).then(function () {
             pullPresence();
             try {
@@ -265,6 +634,34 @@
       },
       { label: 'Cancel' }
     ]);
+    setTimeout(function () {
+      var dirBtn = document.getElementById('rs-friend-dir-btn');
+      if (dirBtn) {
+        dirBtn.onclick = function (ev) {
+          if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+          var cur = (document.getElementById('rs-friend-dir') || {}).value || null;
+          var colEl0 = document.getElementById('rs-friend-color');
+          openDirIconPicker({
+            title: 'Direction icon — ' + (mem.display_name || 'Friend'),
+            currentId: cur || null,
+            currentColor: (colEl0 && colEl0.value) || col,
+            mode: 'friend',
+            onPick: function (id, color) {
+              var hid = document.getElementById('rs-friend-dir');
+              var lab = document.getElementById('rs-friend-dir-btn');
+              var cEl = document.getElementById('rs-friend-color');
+              if (hid) hid.value = id || '';
+              if (lab) {
+                lab.textContent = id
+                  ? ((getDirIconById(id) || {}).name || id)
+                  : 'Use their default';
+              }
+              if (cEl && color) cEl.value = color;
+            }
+          });
+        };
+      }
+    }, 30);
     // Close leaflet popup so it does not sit under the modal
     try {
       var m = getMap();
@@ -333,7 +730,7 @@
     if (!sb || !user || !mapId) return;
     try {
       var { data } = await sb.from('party_member_prefs')
-        .select('member_user_id, nickname, arrow_color, show_content')
+        .select('member_user_id, nickname, arrow_color, show_content, direction_icon_id')
         .eq('map_id', mapId)
         .eq('owner_user_id', user.id);
       (data || []).forEach(function (r) {
@@ -345,19 +742,29 @@
     } catch (e2) { hiddenContentOwners = {}; }
   }
 
-  async function savePartyPref(memberId, fields) {
-    var sb = window.__rsSb;
-    var user = window.__rsUser;
+  async function savePartyPref(memberId, fields, mapIdOpt) {
+    var sb = window.__rsSb || getSb();
+    var user = window.__rsUser || getUser();
     var vs = C.getViewState && C.getViewState();
-    if (!sb || !user || !vs || vs.mode !== 'shared' || !vs.sharedMapId) return;
+    var mapId = mapIdOpt || (vs && vs.mode === 'shared' ? vs.sharedMapId : null) ||
+      (mapsUiSelected && mapsUiSelected.kind === 'shared' ? mapsUiSelected.id : null);
+    if (!sb || !user || !mapId) return;
     var row = Object.assign({
-      map_id: vs.sharedMapId,
+      map_id: mapId,
       owner_user_id: user.id,
       member_user_id: memberId,
       updated_at: new Date().toISOString()
     }, fields);
     await sb.from('party_member_prefs').upsert(row);
     partyPrefs[memberId] = Object.assign({}, partyPrefs[memberId] || {}, fields);
+  }
+
+  async function listMembersForMap(mapId) {
+    var sb = getSb() || window.__rsSb;
+    if (!mapId || !sb) return [];
+    var { data, error } = await sb.rpc('list_shared_map_members', { p_map_id: mapId });
+    if (error) throw error;
+    return data || [];
   }
 
   function memberLabel(m) {
@@ -440,7 +847,7 @@
             }
           }
         } else {
-          var icon = buildPartyArrowIcon(color, label, hdg);
+          var icon = buildPartyArrowIcon(color, label, hdg, memberDirIconId(mem));
           var mk = L.marker([row.lat, row.lng], { icon: icon, zIndexOffset: 900 }).addTo(layer);
           mk.bindPopup(popup, {
             className: 'map-dot-popup party-member-leaflet-popup',
@@ -951,16 +1358,13 @@
     var el = $('brand-map-name');
     if (!el || !vs) return;
     if (vs.mode === 'shared') {
-      el.textContent = vs.sharedMapName || 'Shared';
+      el.textContent = displayMapName('shared', vs.sharedMapId, vs.sharedMapName || 'Shared');
       el.title = 'Shared map · ' + (vs.sharedMapCode || '');
     } else {
-      el.textContent = vs.privateMapName || vs.sharedMapName || 'My Map';
+      el.textContent = displayMapName('private', vs.privateMapId, vs.privateMapName || 'My Map');
       el.title = 'Private map';
     }
   }
-
-  /** Expanded map card in Settings → My Maps (selection ≠ active view until View). */
-  var mapsUiSelected = { kind: null, id: null };
 
   function shareMapInviteText(mapRow) {
     var code = mapRow && mapRow.code ? String(mapRow.code) : '';
@@ -979,6 +1383,244 @@
         } catch (e) { alert('Copied:\n' + text); }
       }).catch(function () { window.prompt('Copy:', text); });
     } else window.prompt('Copy:', text);
+  }
+
+  function loadMapAliases() {
+    try {
+      return JSON.parse(localStorage.getItem(MAP_ALIAS_KEY) || '{}') || {};
+    } catch (e) { return {}; }
+  }
+  function saveMapAlias(kind, id, name) {
+    var o = loadMapAliases();
+    var key = kind + ':' + id;
+    if (name && String(name).trim()) o[key] = String(name).trim().slice(0, 60);
+    else delete o[key];
+    try { localStorage.setItem(MAP_ALIAS_KEY, JSON.stringify(o)); } catch (e) {}
+  }
+  function getMapAlias(kind, id) {
+    var o = loadMapAliases();
+    return o[kind + ':' + id] || null;
+  }
+  function displayMapName(kind, id, serverName) {
+    return getMapAlias(kind, id) || serverName || (kind === 'shared' ? 'Shared map' : 'Private map');
+  }
+
+  async function listMySharedForRename(mapId) {
+    var smaps = [];
+    try {
+      if (C.listMySharedMaps) smaps = await C.listMySharedMaps();
+      if (!smaps || !smaps.length) {
+        var sb0 = getSb() || window.__rsSb;
+        if (sb0) {
+          var r0 = await sb0.rpc('list_my_shared_maps');
+          smaps = r0.data || [];
+        }
+      }
+    } catch (e) { smaps = []; }
+    var m = (smaps || []).find(function (x) { return String(x.id) === String(mapId); });
+    if (!m) return null;
+    return {
+      kind: 'shared',
+      id: m.id,
+      name: m.name || 'Shared map',
+      code: m.code || '',
+      is_host: !!m.is_host,
+      host_user_id: m.host_user_id,
+      raw: m
+    };
+  }
+
+  async function leaveSharedMap(mapId) {
+    var sb = getSb() || window.__rsSb;
+    if (!sb) throw new Error('Not ready');
+    var { error } = await sb.rpc('leave_shared_map', { p_map_id: mapId });
+    if (error) throw error;
+    var vs = C.getViewState && C.getViewState();
+    if (vs && vs.mode === 'shared' && String(vs.sharedMapId) === String(mapId)) {
+      // Fall back to default private map
+      var pmaps = await listPrivateMaps();
+      var def = (pmaps || []).find(function (m) { return m.is_default; }) || (pmaps || [])[0];
+      if (def) await switchToPrivate(def.id);
+      else {
+        vs.mode = 'private';
+        vs.sharedMapId = null;
+        vs.sharedMapName = '';
+        vs.sharedMapCode = '';
+        try { localStorage.setItem('reg_slayer_view_v1', JSON.stringify(vs)); } catch (e) {}
+        updateBrandName();
+      }
+    }
+    saveMapAlias('shared', mapId, null);
+    if (mapsUiSelected.kind === 'shared' && String(mapsUiSelected.id) === String(mapId)) {
+      mapsUiSelected = { kind: null, id: null };
+    }
+  }
+
+  async function removeSharedMember(mapId, userId) {
+    var sb = getSb() || window.__rsSb;
+    if (!sb) throw new Error('Not ready');
+    var { error } = await sb.rpc('remove_shared_map_member', {
+      p_map_id: mapId,
+      p_user_id: userId
+    });
+    if (error) throw error;
+  }
+
+  async function deleteSharedMap(mapId) {
+    var sb = getSb() || window.__rsSb;
+    if (!sb) throw new Error('Not ready');
+    var { error } = await sb.rpc('delete_shared_map', { p_map_id: mapId });
+    if (error) throw error;
+    var vs = C.getViewState && C.getViewState();
+    if (vs && vs.mode === 'shared' && String(vs.sharedMapId) === String(mapId)) {
+      var pmaps = await listPrivateMaps();
+      var def = (pmaps || []).find(function (m) { return m.is_default; }) || (pmaps || [])[0];
+      if (def) await switchToPrivate(def.id);
+    }
+    saveMapAlias('shared', mapId, null);
+    if (mapsUiSelected.kind === 'shared' && String(mapsUiSelected.id) === String(mapId)) {
+      mapsUiSelected = { kind: null, id: null };
+    }
+  }
+
+  async function deletePrivateMap(mapId) {
+    var sb = getSb() || window.__rsSb;
+    if (!sb) throw new Error('Not ready');
+    var { error } = await sb.rpc('delete_private_map', { p_id: mapId });
+    if (error) throw error;
+    var vs = C.getViewState && C.getViewState();
+    if (vs && (vs.mode === 'private' || vs.mode === 'personal') && String(vs.privateMapId) === String(mapId)) {
+      var pmaps = await listPrivateMaps();
+      var def = (pmaps || []).find(function (m) { return m.is_default; }) || (pmaps || [])[0];
+      if (def) await switchToPrivate(def.id);
+    }
+    saveMapAlias('private', mapId, null);
+    if (mapsUiSelected.kind === 'private' && String(mapsUiSelected.id) === String(mapId)) {
+      mapsUiSelected = { kind: null, id: null };
+    }
+  }
+
+  function closeAllMapGearMenus() {
+    try {
+      document.querySelectorAll('.settings-map-row.gear-open').forEach(function (el) {
+        el.classList.remove('gear-open');
+      });
+    } catch (e) {}
+  }
+
+  function openMapGearMenu(card) {
+    closeAllMapGearMenus();
+    var row = document.querySelector('.settings-map-row[data-kind="' + card.kind + '"][data-id="' + card.id + '"]');
+    if (!row) return;
+    row.classList.add('gear-open');
+    var menu = row.querySelector('.settings-map-gear-menu');
+    if (!menu) return;
+    var isHost = !!card.is_host || card.kind === 'private';
+    var html = '';
+    if (card.kind === 'private' || isHost) {
+      html += '<button type="button" class="settings-subbtn smc-gear-rename" data-kind="' + card.kind + '" data-id="' + card.id + '">Rename map</button>';
+    }
+    if (card.kind === 'shared' && !isHost) {
+      html += '<button type="button" class="settings-subbtn smc-gear-leave" data-id="' + card.id + '">Leave map</button>';
+    }
+    if (card.kind === 'shared' && isHost) {
+      html += '<button type="button" class="settings-subbtn danger smc-gear-delete" data-kind="shared" data-id="' + card.id + '">Delete map</button>';
+    }
+    if (card.kind === 'private') {
+      html += '<button type="button" class="settings-subbtn danger smc-gear-delete" data-kind="private" data-id="' + card.id + '">Delete map</button>';
+    }
+    html += '<button type="button" class="settings-subbtn smc-gear-cancel">Cancel</button>';
+    menu.innerHTML = html;
+
+    var ren = menu.querySelector('.smc-gear-rename');
+    if (ren) ren.onclick = function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      closeAllMapGearMenus();
+      promptRenameMap(card);
+    };
+    var leave = menu.querySelector('.smc-gear-leave');
+    if (leave) leave.onclick = function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      closeAllMapGearMenus();
+      if (!confirm('Leave this shared map? You can rejoin later with the invite code.')) return;
+      leaveSharedMap(card.id).then(function () {
+        refreshMapsUi();
+      }).catch(function (e) { alert(e.message || e); });
+    };
+    var del = menu.querySelector('.smc-gear-delete');
+    if (del) del.onclick = function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      closeAllMapGearMenus();
+      var msg = card.kind === 'shared'
+        ? 'Delete this shared map for everyone? Members will lose access. This cannot be undone.'
+        : 'Delete this private map? Pins and drawings on it will be removed from the cloud copy.';
+      if (!confirm(msg)) return;
+      var p = card.kind === 'shared' ? deleteSharedMap(card.id) : deletePrivateMap(card.id);
+      p.then(function () { refreshMapsUi(); }).catch(function (e) { alert(e.message || e); });
+    };
+    var cancel = menu.querySelector('.smc-gear-cancel');
+    if (cancel) cancel.onclick = function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      closeAllMapGearMenus();
+    };
+  }
+
+  function promptRenameMap(card) {
+    var current = displayMapName(card.kind, card.id, card.name);
+    var n = prompt('New map name:', current);
+    if (n == null) return;
+    n = String(n).trim().slice(0, 60);
+    if (!n) return;
+    if (card.kind === 'private') {
+      renamePrivate(card.id, n).then(function () {
+        saveMapAlias('private', card.id, null);
+        refreshMapsUi();
+      }).catch(function (e) { alert(e.message || e); });
+      return;
+    }
+    // Shared: only creator reaches here — ask everyone vs just me
+    showSimpleModal('Rename map',
+      '<p class="settings-status">Rename to <strong>' + esc(n) + '</strong>?</p>' +
+      '<p class="settings-status">Rename for everyone updates the name on all members’ screens. “Just me” only changes what you see.</p>',
+      [
+        {
+          label: 'Rename for everyone',
+          primary: true,
+          onClick: function () {
+            var sb = getSb() || window.__rsSb;
+            if (!sb) { alert('Not ready'); return; }
+            sb.rpc('rename_shared_map', { p_id: card.id, p_name: n }).then(function (r) {
+              if (r.error) throw r.error;
+              saveMapAlias('shared', card.id, null);
+              var vs = C.getViewState && C.getViewState();
+              if (vs && vs.mode === 'shared' && String(vs.sharedMapId) === String(card.id)) {
+                vs.sharedMapName = (r.data && r.data.name) || n;
+                try { localStorage.setItem('reg_slayer_view_v1', JSON.stringify(vs)); } catch (e) {}
+                updateBrandName();
+              }
+              refreshMapsUi();
+            }).catch(function (e) { alert(e.message || e); });
+          }
+        },
+        {
+          label: 'Just me',
+          onClick: function () {
+            saveMapAlias('shared', card.id, n);
+            var vs = C.getViewState && C.getViewState();
+            if (vs && vs.mode === 'shared' && String(vs.sharedMapId) === String(card.id)) {
+              // Brand can show personal alias while viewing
+              updateBrandName();
+            }
+            refreshMapsUi();
+          }
+        },
+        { label: 'Cancel' }
+      ]
+    );
   }
 
   function buildPartyMembersHtml(members, vs, user) {
@@ -1009,30 +1651,223 @@
     }).join('');
   }
 
-  function wirePartyMemberRows(container, vs) {
-    if (!container || !vs) return;
-    container.querySelectorAll('.party-member-row').forEach(function (row) {
-      var uid = row.getAttribute('data-uid');
-      var save = row.querySelector('.party-save');
-      if (save) save.onclick = function () {
-        var nick = (row.querySelector('.party-nick') || {}).value || '';
-        var col = (row.querySelector('.party-color') || {}).value || '#2563eb';
-        savePartyPref(uid, { nickname: nick.trim() || null, arrow_color: col }).then(function () {
-          pullPresence();
-          refreshMapsUi();
-        });
+  function openPartyMemberCustomize(member, mapId, mapMeta) {
+    var user = getUser() || window.__rsUser;
+    var self = user && member && member.user_id === user.id;
+    var iAmHost = !!(mapMeta && mapMeta.is_host);
+    var pref = partyPrefs[member.user_id] || {};
+    var nick = pref.nickname || '';
+    var col = pref.arrow_color || member.arrow_color || (self ? myArrowColor : '#2563eb');
+    var dirId = self
+      ? (myDirIconId || null)
+      : ((Object.prototype.hasOwnProperty.call(pref, 'direction_icon_id') && pref.direction_icon_id)
+        ? pref.direction_icon_id
+        : null);
+    var dirName = dirId
+      ? ((getDirIconById(dirId) || {}).name || dirId)
+      : (self ? 'Default triangle' : 'Use their default');
+    var show = pref.show_content !== false && !hiddenContentOwners[member.user_id];
+    var label = memberLabel(member) || 'Hunter';
+    var body =
+      '<p class="settings-status" style="margin:0 0 8px;">' + esc(label) +
+        (self ? ' (you)' : '') + (member.is_host ? ' · host' : '') + '</p>' +
+      '<label class="settings-status" style="display:block;margin:0 0 4px;">Nickname (only for you)</label>' +
+      '<input type="text" id="rs-mem-nick" class="toast-form-control" style="width:100%;box-sizing:border-box;margin-bottom:8px;" ' +
+        'value="' + esc(nick) + '" placeholder="Optional nickname">' +
+      '<label class="settings-status" style="display:block;margin:0 0 4px;">Arrow / color</label>' +
+      '<input type="color" id="rs-mem-color" value="' + esc(col) + '" style="width:100%;height:36px;border:none;margin-bottom:8px;">' +
+      '<label class="settings-status" style="display:block;margin:0 0 4px;">Direction icon' +
+        (self ? ' (everyone sees this for you)' : ' (your screen only)') + '</label>' +
+      '<button type="button" class="settings-subbtn" id="rs-mem-dir-btn" style="width:100%;margin:0 0 8px;">' +
+        esc(dirName) + '</button>' +
+      '<input type="hidden" id="rs-mem-dir" value="' + esc(dirId || '') + '">' +
+      (!self
+        ? ('<label class="settings-row" style="border:none;padding:4px 0;"><input type="checkbox" id="rs-mem-show" ' +
+            (show ? 'checked' : '') + '><span class="sr-text">Show their pins/areas on map</span></label>')
+        : '<p class="settings-status">Your live location uses this color and icon on the map. Others see your default icon unless they override it.</p>');
+    var buttons = [
+      {
+        label: 'Save',
+        primary: true,
+        onClick: function () {
+          var nickEl = $('rs-mem-nick');
+          var colEl = $('rs-mem-color');
+          var showEl = $('rs-mem-show');
+          var dirEl = $('rs-mem-dir');
+          var n = nickEl ? nickEl.value.trim() : '';
+          var c = colEl ? colEl.value : col;
+          var d = dirEl && dirEl.value ? dirEl.value : null;
+          var fields = {
+            nickname: n || null,
+            arrow_color: c || '#2563eb',
+            direction_icon_id: d
+          };
+          if (!self && showEl) {
+            fields.show_content = !!showEl.checked;
+            if (!showEl.checked) hiddenContentOwners[member.user_id] = true;
+            else delete hiddenContentOwners[member.user_id];
+            try {
+              localStorage.setItem(HIDDEN_MEMBERS_KEY + ':' + mapId, JSON.stringify(hiddenContentOwners));
+            } catch (eH) {}
+          }
+          if (self) {
+            myArrowColor = c || myArrowColor;
+            myDirIconId = d;
+            try { localStorage.setItem(ARROW_KEY, myArrowColor); } catch (eA) {}
+            try {
+              if (d) localStorage.setItem(DIR_ICON_KEY, d);
+              else localStorage.removeItem(DIR_ICON_KEY);
+            } catch (eD) {}
+            try { document.documentElement.style.setProperty('--gps-arrow-color', myArrowColor); } catch (eCss) {}
+            try {
+              var sbP = getSb();
+              if (sbP && user) {
+                sbP.from('profiles').update({
+                  arrow_color: myArrowColor,
+                  direction_icon_id: d
+                }).eq('id', user.id).then(function () {});
+              }
+            } catch (eProf) {}
+            try { syncMyDirIconSettingsBtn(); } catch (eB) {}
+          }
+          // Friends: store override only when an icon is chosen; null = use their profile default
+          if (!self) {
+            fields.direction_icon_id = d || null;
+          }
+          savePartyPref(member.user_id, fields, mapId).then(function () {
+            if (self) {
+              try {
+                if (typeof setGpsMarker === 'function' && typeof userLat !== 'undefined' && userLat != null) {
+                  setGpsMarker(userLat, userLng);
+                }
+              } catch (eG) {}
+            }
+            applyContentOwnerFilter();
+            pullPresence();
+            refreshMapsUi();
+          }).catch(function (e) { alert(e.message || e); });
+        }
+      }
+    ];
+    if (iAmHost && !self && !member.is_host) {
+      buttons.push({
+        label: 'Remove from map',
+        onClick: function () {
+          if (!confirm('Remove ' + label + ' from this map? They can rejoin with the invite code.')) return;
+          removeSharedMember(mapId, member.user_id).then(function () {
+            refreshMapsUi();
+          }).catch(function (e) { alert(e.message || e); });
+        }
+      });
+    }
+    buttons.push({ label: 'Cancel' });
+    showSimpleModal('Customize ' + label, body, buttons);
+    setTimeout(function () {
+      var dirBtn = document.getElementById('rs-mem-dir-btn');
+      if (dirBtn) {
+        dirBtn.onclick = function (ev) {
+          if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+          var cur = (document.getElementById('rs-mem-dir') || {}).value || null;
+          var colEl0 = document.getElementById('rs-mem-color');
+          openDirIconPicker({
+            title: 'Direction icon — ' + label,
+            currentId: cur || null,
+            currentColor: (colEl0 && colEl0.value) || col,
+            mode: self ? 'self' : 'friend',
+            onPick: function (id, color) {
+              var hid = document.getElementById('rs-mem-dir');
+              var lab = document.getElementById('rs-mem-dir-btn');
+              var cEl = document.getElementById('rs-mem-color');
+              if (hid) hid.value = id || '';
+              if (lab) {
+                lab.textContent = id
+                  ? ((getDirIconById(id) || {}).name || id)
+                  : (self ? 'Default triangle' : 'Use their default');
+              }
+              if (cEl && color) cEl.value = color;
+            }
+          });
+        };
+      }
+    }, 30);
+  }
+
+  async function fillSelectedMapMembersPanel(smaps) {
+    var panel = $('set-map-members-panel');
+    if (!panel) return;
+    if (!mapsUiSelected || mapsUiSelected.kind !== 'shared' || !mapsUiSelected.id) {
+      panel.innerHTML = '';
+      return;
+    }
+    var mapId = mapsUiSelected.id;
+    var mapRow = (smaps || []).find(function (x) { return String(x.id) === String(mapId); });
+    var mapName = displayMapName('shared', mapId, (mapRow && mapRow.name) || 'Shared map');
+    panel.innerHTML = '<div class="smm-title">Members · ' + esc(mapName) + '</div>' +
+      '<p class="settings-status">Loading…</p>';
+    try {
+      await loadPartyPrefs(mapId);
+      var members = await listMembersForMap(mapId);
+      // Cache for active map listMembers path
+      var vs = C.getViewState && C.getViewState();
+      if (vs && vs.mode === 'shared' && vs.sharedMapId === mapId) {
+        window.__rsPartyMembers = members;
+      }
+      var user = getUser() || window.__rsUser;
+      if (!members.length) {
+        panel.innerHTML = '<div class="smm-title">Members · ' + esc(mapName) + '</div>' +
+          '<p class="settings-status">No members listed yet. View the map and share an invite.</p>';
+        return;
+      }
+      var mapMeta = {
+        is_host: !!(mapRow && (mapRow.is_host || (user && mapRow.host_user_id === user.id)))
       };
-      var chk = row.querySelector('.party-show-content');
-      if (chk) chk.onchange = function () {
-        if (!chk.checked) hiddenContentOwners[uid] = true;
-        else delete hiddenContentOwners[uid];
-        try {
-          localStorage.setItem(HIDDEN_MEMBERS_KEY + ':' + vs.sharedMapId, JSON.stringify(hiddenContentOwners));
-        } catch (e) {}
-        savePartyPref(uid, { show_content: !!chk.checked });
-        applyContentOwnerFilter();
-      };
-    });
+      // Also detect host from members list
+      if (!mapMeta.is_host && user) {
+        var me = members.find(function (x) { return String(x.user_id) === String(user.id); });
+        if (me && me.is_host) mapMeta.is_host = true;
+      }
+      panel.innerHTML = '<div class="smm-title">Members · ' + esc(mapName) + '</div>' +
+        members.map(function (m) {
+          var self = user && m.user_id === user.id;
+          var col = memberColor(m);
+          var meta = (self ? 'you' : '') + (m.is_host ? (self ? ' · host' : 'host') : '');
+          return '<button type="button" class="smm-member settings-subbtn" data-uid="' + esc(m.user_id) + '">' +
+            '<span class="smm-dot" style="background:' + esc(col) + '"></span>' +
+            '<span class="smm-label">' + esc(memberLabel(m)) + '</span>' +
+            (meta ? '<span class="smm-meta">' + esc(meta) + '</span>' : '') +
+          '</button>';
+        }).join('');
+      panel.querySelectorAll('.smm-member').forEach(function (btn) {
+        btn.onclick = function (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          var uid = btn.getAttribute('data-uid');
+          var mem = members.find(function (x) { return String(x.user_id) === String(uid); });
+          if (mem) openPartyMemberCustomize(mem, mapId, mapMeta);
+        };
+      });
+    } catch (eMem) {
+      panel.innerHTML = '<div class="smm-title">Members · ' + esc(mapName) + '</div>' +
+        '<p class="settings-status">Could not load members' +
+        (eMem && eMem.message ? ': ' + esc(eMem.message) : '') + '.</p>';
+    }
+  }
+
+  function mapRowHtml(card) {
+    var selected = mapsUiSelected.kind === card.kind && String(mapsUiSelected.id) === String(card.id);
+    var shown = displayMapName(card.kind, card.id, card.name);
+    return '<div class="settings-map-row' +
+      (card.active ? ' is-active' : '') +
+      (selected ? ' is-selected' : '') +
+      '" data-kind="' + card.kind + '" data-id="' + card.id + '">' +
+      '<button type="button" class="smc-gear settings-subbtn" data-kind="' + card.kind + '" data-id="' + card.id +
+        '" title="Map options" aria-label="Map options">⚙</button>' +
+      '<button type="button" class="smc-name settings-subbtn" data-kind="' + card.kind + '" data-id="' + card.id + '" title="' +
+        esc(shown) + '">' + esc(shown) + '</button>' +
+      '<button type="button" class="smc-share settings-subbtn" data-kind="' + card.kind + '" data-id="' + card.id + '">Share</button>' +
+      '<button type="button" class="smc-view settings-subbtn" data-kind="' + card.kind + '" data-id="' + card.id + '">View Map</button>' +
+      '<div class="settings-map-gear-menu" role="menu"></div>' +
+    '</div>';
   }
 
   async function refreshMapsUi() {
@@ -1042,12 +1877,15 @@
     var privBox = $('set-private-maps-list');
     var sharedBox = $('set-shared-maps-list');
     var modeLabel = $('set-map-mode-label');
+    var membersPanel = $('set-map-members-panel');
     var vs = C.getViewState && C.getViewState();
     if (modeLabel && vs) {
       if (vs.mode === 'shared') {
-        modeLabel.textContent = 'Viewing: ' + (vs.sharedMapName || 'Shared');
+        modeLabel.textContent = 'Viewing: ' +
+          displayMapName('shared', vs.sharedMapId, vs.sharedMapName || 'Shared') + ' (shared)';
       } else {
-        modeLabel.textContent = 'Viewing: ' + (vs.privateMapName || 'My Map') + ' (private)';
+        modeLabel.textContent = 'Viewing: ' +
+          displayMapName('private', vs.privateMapId, vs.privateMapName || 'My Map') + ' (not shared)';
       }
     }
 
@@ -1057,7 +1895,7 @@
     try {
       if (C.listMySharedMaps) smaps = await C.listMySharedMaps();
       if (!smaps || !smaps.length) {
-        var sb0 = window.__rsSb;
+        var sb0 = getSb() || window.__rsSb;
         if (sb0) {
           var r0 = await sb0.rpc('list_my_shared_maps');
           smaps = r0.data || [];
@@ -1065,35 +1903,39 @@
       }
     } catch (eS) { smaps = []; }
 
-    // Unified list: currently viewing first, then other private, then other shared
-    var cards = [];
-    pmaps.forEach(function (m) {
-      cards.push({
+    // Sort: private (not shared) first by name, then shared by name
+    pmaps = (pmaps || []).slice().sort(function (a, b) {
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    });
+    smaps = (smaps || []).slice().sort(function (a, b) {
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    });
+
+    var privateCards = pmaps.map(function (m) {
+      return {
         kind: 'private',
         id: m.id,
         name: m.name || 'Private map',
         is_default: !!m.is_default,
+        is_host: true,
         active: !!(vs && (vs.mode === 'private' || vs.mode === 'personal') && vs.privateMapId === m.id),
         raw: m
-      });
+      };
     });
-    (smaps || []).forEach(function (m) {
-      cards.push({
+    var sharedCards = (smaps || []).map(function (m) {
+      return {
         kind: 'shared',
         id: m.id,
         name: m.name || 'Shared map',
         code: m.code || '',
+        is_host: !!m.is_host,
+        host_user_id: m.host_user_id,
         active: !!(vs && vs.mode === 'shared' && vs.sharedMapId === m.id),
         raw: m
-      });
-    });
-    cards.sort(function (a, b) {
-      if (a.active !== b.active) return a.active ? -1 : 1;
-      if (a.kind !== b.kind) return a.kind === 'private' ? -1 : 1;
-      return String(a.name).localeCompare(String(b.name));
+      };
     });
 
-    // Keep expansion on the active map if selection is empty
+    // Default selection to currently viewed map
     if (!mapsUiSelected.id && vs) {
       if (vs.mode === 'shared' && vs.sharedMapId) {
         mapsUiSelected = { kind: 'shared', id: vs.sharedMapId };
@@ -1102,89 +1944,59 @@
       }
     }
 
-    async function partyDetailsHtml(card) {
-      if (card.kind !== 'shared') {
-        return '<p class="settings-hint">Private map — only you. Use Rename current map below if this is active.</p>' +
-          '<button type="button" class="settings-subbtn smc-rename" data-pid="' + card.id + '">Rename</button>';
-      }
-      var html = '<p class="smc-code">Invite code: <span>' + esc(card.code || '—') + '</span></p>';
-      // Party members only when this is the map currently open (prefs/presence are for active shared map)
-      if (vs && vs.mode === 'shared' && vs.sharedMapId === card.id) {
-        await loadPartyPrefs(vs.sharedMapId);
-        try {
-          var members = await listMembers();
-          html += '<div class="settings-section-title" style="margin-top:8px;">Party</div>';
-          html += '<p class="settings-hint">Members on this shared map. Nicknames and colors are only for you.</p>';
-          html += '<div class="smc-party">' + buildPartyMembersHtml(members, vs, window.__rsUser) + '</div>';
-        } catch (eMem) {
-          html += '<p class="settings-hint">Could not load party.</p>';
-        }
-      } else {
-        html += '<p class="settings-hint">Tap <strong>View</strong> to open this map and manage party members.</p>';
-      }
-      return html;
-    }
-
     if (allBox) {
-      if (!cards.length) {
-        allBox.innerHTML = '<p class="settings-hint">No maps yet. Create a private or shared map below.</p>';
+      if (!privateCards.length && !sharedCards.length) {
+        allBox.innerHTML = '<p class="settings-status">No maps yet. Create a private or shared map below.</p>';
       } else {
-        // Build shells first (async party html filled after)
-        allBox.innerHTML = cards.map(function (card) {
-          var expanded = mapsUiSelected.kind === card.kind && mapsUiSelected.id === card.id;
-          var badge = card.active ? 'Active' : (card.kind === 'shared' ? 'Shared' : (card.is_default ? 'Default' : 'Private'));
-          return '<div class="settings-map-card' +
-            (card.active ? ' is-active' : '') +
-            (expanded ? ' is-expanded' : '') +
-            '" data-kind="' + card.kind + '" data-id="' + card.id + '">' +
-            '<div class="settings-map-card-main">' +
-              '<button type="button" class="smc-name" data-kind="' + card.kind + '" data-id="' + card.id + '">' +
-                esc(card.name) +
-              '</button>' +
-              '<span class="smc-badge">' + esc(badge) + '</span>' +
-              '<div class="settings-map-card-actions">' +
-                '<button type="button" class="primary smc-view" data-kind="' + card.kind + '" data-id="' + card.id + '">View</button>' +
-                (card.kind === 'shared'
-                  ? '<button type="button" class="smc-share" data-id="' + card.id + '">Share</button>'
-                  : '') +
-              '</div>' +
-            '</div>' +
-            '<div class="settings-map-card-details" data-details-for="' + card.kind + ':' + card.id + '"></div>' +
-          '</div>';
-        }).join('');
-
-        // Fill details for expanded card(s)
-        for (var i = 0; i < cards.length; i++) {
-          var c = cards[i];
-          if (!(mapsUiSelected.kind === c.kind && mapsUiSelected.id === c.id)) continue;
-          var det = allBox.querySelector('[data-details-for="' + c.kind + ':' + c.id + '"]');
-          if (!det) continue;
-          det.innerHTML = await partyDetailsHtml(c);
-          wirePartyMemberRows(det, vs);
-          var ren = det.querySelector('.smc-rename');
-          if (ren) {
-            ren.onclick = function (ev) {
-              ev.stopPropagation();
-              var id = ren.getAttribute('data-pid');
-              var row = pmaps.find(function (x) { return x.id === id; }) || { id: id, name: '' };
-              var n = prompt('New name:', row.name || '');
-              if (!n || !n.trim()) return;
-              renamePrivate(id, n.trim()).then(refreshMapsUi).catch(function (e) { alert(e.message || e); });
-            };
-          }
+        var html = '';
+        html += '<div class="settings-maps-group">';
+        html += '<div class="settings-maps-group-title">Not shared</div>';
+        if (!privateCards.length) {
+          html += '<p class="settings-status">No private maps yet.</p>';
+        } else {
+          html += privateCards.map(mapRowHtml).join('');
         }
+        html += '</div>';
+        html += '<div class="settings-maps-group">';
+        html += '<div class="settings-maps-group-title">Shared</div>';
+        if (!sharedCards.length) {
+          html += '<p class="settings-status">No shared maps yet.</p>';
+        } else {
+          html += sharedCards.map(mapRowHtml).join('');
+        }
+        html += '</div>';
+        allBox.innerHTML = html;
 
-        allBox.querySelectorAll('.settings-map-card-main .smc-name, .settings-map-card-main').forEach(function (el) {
-          // Only wire name button for selection; avoid double-fire from main
-        });
-        allBox.querySelectorAll('.smc-name').forEach(function (btn) {
+        function findCard(kind, id) {
+          var list = kind === 'shared' ? sharedCards : privateCards;
+          return list.find(function (c) { return String(c.id) === String(id); });
+        }
+        allBox.querySelectorAll('.smc-gear').forEach(function (btn) {
           btn.onclick = function (ev) {
             ev.preventDefault();
             ev.stopPropagation();
             var kind = btn.getAttribute('data-kind');
             var id = btn.getAttribute('data-id');
-            if (mapsUiSelected.kind === kind && mapsUiSelected.id === id) {
-              mapsUiSelected = { kind: null, id: null };
+            var card = findCard(kind, id);
+            if (!card) return;
+            var row = btn.closest('.settings-map-row');
+            if (row && row.classList.contains('gear-open')) {
+              closeAllMapGearMenus();
+              return;
+            }
+            openMapGearMenu(card);
+          };
+        });
+        allBox.querySelectorAll('.smc-name').forEach(function (btn) {
+          btn.onclick = function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            closeAllMapGearMenus();
+            var kind = btn.getAttribute('data-kind');
+            var id = btn.getAttribute('data-id');
+            if (mapsUiSelected.kind === kind && String(mapsUiSelected.id) === String(id)) {
+              // Toggle off only for shared (hide members); keep private selection light
+              if (kind === 'shared') mapsUiSelected = { kind: null, id: null };
             } else {
               mapsUiSelected = { kind: kind, id: id };
             }
@@ -1195,11 +2007,14 @@
           btn.onclick = function (ev) {
             ev.preventDefault();
             ev.stopPropagation();
+            closeAllMapGearMenus();
             var kind = btn.getAttribute('data-kind');
             var id = btn.getAttribute('data-id');
             mapsUiSelected = { kind: kind, id: id };
             if (kind === 'private') {
-              switchToPrivate(id).catch(function (e) { alert(e.message || e); });
+              switchToPrivate(id).then(function () {
+                refreshMapsUi();
+              }).catch(function (e) { alert(e.message || e); });
             } else if (C.switchToShared) {
               C.switchToShared(id).then(function () {
                 refreshMapsUi();
@@ -1212,19 +2027,38 @@
           btn.onclick = function (ev) {
             ev.preventDefault();
             ev.stopPropagation();
+            closeAllMapGearMenus();
+            var kind = btn.getAttribute('data-kind');
             var id = btn.getAttribute('data-id');
-            var row = (smaps || []).find(function (x) { return x.id === id; });
-            if (row) copyMapInvite(row);
+            if (kind === 'shared') {
+              var row = (smaps || []).find(function (x) { return String(x.id) === String(id); });
+              if (row) copyMapInvite(row);
+              else alert('Could not find invite code for this map.');
+            } else {
+              showSimpleModal('Share map',
+                '<p class="settings-status">This map is <strong>not shared</strong> — only you can see it. Create a <strong>shared map</strong> below to invite hunting partners with a 6-digit code.</p>',
+                [{ label: 'OK', primary: true }]
+              );
+            }
           };
         });
       }
     }
 
-    // Legacy containers left empty (unified list above)
+    // Click outside closes gear menus
+    if (!document._rsMapGearOutside) {
+      document._rsMapGearOutside = true;
+      document.addEventListener('click', function (ev) {
+        if (ev.target && ev.target.closest && ev.target.closest('.settings-map-row')) return;
+        closeAllMapGearMenus();
+      }, true);
+    }
+
+    await fillSelectedMapMembersPanel(smaps);
+
     if (privBox) privBox.innerHTML = '';
     if (sharedBox) sharedBox.innerHTML = '';
 
-    // Presence markers only while on a shared map
     if (vs && vs.mode === 'shared' && vs.sharedMapId) {
       pullPresence();
     } else {
@@ -1623,20 +2457,23 @@
     if (renameCur) renameCur.onclick = function () {
       var vs = C.getViewState && C.getViewState();
       if (!vs) return;
-      var cur = vs.mode === 'shared' ? vs.sharedMapName : (vs.privateMapName || 'My Map');
-      var n = prompt('Rename current map:', cur);
-      if (!n || !n.trim()) return;
-      var sb = window.__rsSb;
       if (vs.mode === 'shared' && vs.sharedMapId) {
-        sb.rpc('rename_shared_map', { p_id: vs.sharedMapId, p_name: n.trim() }).then(function (r) {
-          if (r.error) throw r.error;
-          vs.sharedMapName = r.data.name;
-          try { localStorage.setItem('reg_slayer_view_v1', JSON.stringify(vs)); } catch (e) {}
-          updateBrandName();
-          refreshMapsUi();
+        // Only host can rename; open same flow as gear
+        listMySharedForRename(vs.sharedMapId).then(function (card) {
+          if (!card) { alert('Map not found'); return; }
+          if (!card.is_host) {
+            alert('Only the map creator can rename this map.');
+            return;
+          }
+          promptRenameMap(card);
         }).catch(function (e) { alert(e.message || e); });
       } else if (vs.privateMapId) {
-        renamePrivate(vs.privateMapId, n.trim()).then(refreshMapsUi).catch(function (e) { alert(e.message || e); });
+        promptRenameMap({
+          kind: 'private',
+          id: vs.privateMapId,
+          name: vs.privateMapName || 'My Map',
+          is_host: true
+        });
       } else alert('Open a map first');
     };
     var arrowInp = $('set-my-arrow-color');
@@ -1675,12 +2512,35 @@
     // Own GPS marker is non-interactive. Make share via toolbar. Also hook snapToGPS secondary menu:
   }
 
-  // Patch buildGpsMarkerIcon color via CSS if path fill hardcoded — override after load
+  // Patch buildGpsMarkerIcon: own color + optional custom directional icon
   var _origBuildGps = null;
   function installGpsColor() {
     if (typeof buildGpsMarkerIcon === 'function' && !buildGpsMarkerIcon._rsColor) {
       _origBuildGps = buildGpsMarkerIcon;
       window.buildGpsMarkerIcon = function (headingDeg) {
+        // Custom direction icon for self
+        if (myDirIconId && getDirIconById(myDirIconId) && typeof L !== 'undefined') {
+          var scale = 1.5;
+          try {
+            if (typeof getGpsMarkerScale === 'function') scale = getGpsMarkerScale();
+          } catch (eS) {}
+          // Slightly larger than default arrow (~17×24 * scale)
+          var s = Math.round(28 * scale);
+          var rot = 0;
+          if (headingDeg != null && !isNaN(headingDeg)) {
+            rot = ((Number(headingDeg) % 360) + 360) % 360;
+          }
+          var body = buildDirBodyHtml(myArrowColor, rot, myDirIconId, s);
+          var html =
+            '<div class="gps-heading-tri-wrap rs-dir-gps-wrap" style="width:' + s +
+              'px;height:' + s + 'px;position:relative;overflow:visible;">' + body + '</div>';
+          return L.divIcon({
+            className: 'gps-heading-icon',
+            html: html,
+            iconSize: [s, s],
+            iconAnchor: [s / 2, s / 2]
+          });
+        }
         var icon = _origBuildGps(headingDeg);
         try {
           if (icon && icon.options && icon.options.html) {
@@ -1713,7 +2573,33 @@
     if (sb) {
       window.__rsSb = sb;
       sb.auth.getSession().then(function (res) {
-        if (res.data && res.data.session) window.__rsUser = res.data.session.user;
+        if (res.data && res.data.session) {
+          window.__rsUser = res.data.session.user;
+          var uid = res.data.session.user.id;
+          sb.from('profiles').select('arrow_color, direction_icon_id').eq('id', uid).maybeSingle()
+            .then(function (r) {
+              if (r.data) {
+                if (r.data.arrow_color) {
+                  myArrowColor = r.data.arrow_color;
+                  try { localStorage.setItem(ARROW_KEY, myArrowColor); } catch (eA) {}
+                  try { document.documentElement.style.setProperty('--gps-arrow-color', myArrowColor); } catch (eC) {}
+                }
+                if (r.data.direction_icon_id) {
+                  myDirIconId = r.data.direction_icon_id;
+                  try { localStorage.setItem(DIR_ICON_KEY, myDirIconId); } catch (eD) {}
+                } else {
+                  myDirIconId = null;
+                  try { localStorage.removeItem(DIR_ICON_KEY); } catch (eD2) {}
+                }
+                try { syncMyDirIconSettingsBtn(); } catch (eB) {}
+                try {
+                  if (typeof setGpsMarker === 'function' && typeof userLat !== 'undefined' && userLat != null) {
+                    setGpsMarker(userLat, userLng);
+                  }
+                } catch (eG) {}
+              }
+            }).catch(function () {});
+        }
       }).catch(function () {});
     }
   }
