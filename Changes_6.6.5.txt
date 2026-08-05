@@ -1,0 +1,19 @@
+V6.6.5 Beta — changes since V6.6.4
+
+Map chrome
+- Tool completion toasts rise from behind the bottom toolbar, left near the calendar, barely over the map
+- Leaflet zoom +/- buttons removed (pinch / scroll still work)
+- Map name chip: same 3D look as old max-mode top-left button; bottom-center over Current Location; max mode only (min mode uses title bar)
+- Map switcher opens upward from the bottom chip; smoother open/close animation + cached list for less lag
+- Mobile default compass dial lower so iPhone camera / Dynamic Island does not cover it
+
+Draw / measure
+- Draw line creation matches measure UX (dashed rubber-band, vertex re-tap / double-click / Finish, segment labels)
+- Removed “tap again to finish measure/line” vertex tooltips (less clutter)
+
+Delete / offline confirm
+- Delete confirm dialog sits over the Delete control that was pressed (no two Delete buttons visible)
+- “Save offline map around this spot” uses in-app modal (Download / Cancel) instead of browser confirm
+
+Files
+- index.html, party-maps.js, auth-sync.js, sw.js (shell v47)

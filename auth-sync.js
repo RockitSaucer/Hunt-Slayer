@@ -785,6 +785,12 @@
       fsTitle.textContent = mapLabel;
       fsTitle.title = (mapTitle || 'Active map') + ' — click to switch maps';
     }
+    var bottomName = $('map-bottom-map-name');
+    if (bottomName) {
+      bottomName.textContent = mapLabel;
+      bottomName.title = (mapTitle || 'Active map') + ' — click to switch maps';
+      try { bottomName.setAttribute('aria-label', 'Map: ' + mapLabel + '. Click to switch.'); } catch (eBn) {}
+    }
     var badge = $('auth-user-chip');
     if (badge) {
       badge.textContent = profile && profile.username ? ('@' + profile.username) : (sessionUser ? 'Signed in' : '');

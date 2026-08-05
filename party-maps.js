@@ -2022,7 +2022,7 @@
     var title = vs.mode === 'shared'
       ? ('Shared map · ' + (vs.sharedMapCode || '') + ' — click to switch maps')
       : 'Private map — click to switch maps';
-    ['brand-map-name', 'map-title-mobile', 'map-fs-title'].forEach(function (id) {
+    ['brand-map-name', 'map-title-mobile', 'map-fs-title', 'map-bottom-map-name'].forEach(function (id) {
       var el = $(id);
       if (!el) return;
       el.textContent = label;
@@ -2031,13 +2031,26 @@
     });
   }
 
+  /** Cached map lists so the switcher opens instantly (no laggy blank wait). */
+  var _mapSwitcherCache = { pmaps: null, smaps: null, at: 0 };
+  var MAP_SWITCHER_CACHE_MS = 45000;
+
   function closeMapSwitcher() {
     var dd = $('map-switcher-dropdown');
     if (dd) {
       dd.classList.remove('open');
-      dd.innerHTML = '';
+      /* Let CSS transition finish before clearing list / open-up class */
+      clearTimeout(dd._rsCloseT);
+      dd._rsCloseT = setTimeout(function () {
+        if (!dd.classList.contains('open')) {
+          dd.classList.remove('open-up');
+          dd.style.top = '';
+          dd.style.bottom = '';
+          /* Keep last HTML so next open can paint immediately if cache hits */
+        }
+      }, 200);
     }
-    document.querySelectorAll('#map-title-mobile, #map-fs-title, #brand-map-name').forEach(function (b) {
+    document.querySelectorAll('#map-title-mobile, #map-fs-title, #brand-map-name, #map-bottom-map-name').forEach(function (b) {
       try { b.setAttribute('aria-expanded', 'false'); } catch (e) {}
     });
     document.removeEventListener('click', _mapSwitcherOutside, true);
@@ -2049,106 +2062,103 @@
     if (ev.target && ev.target.closest && (
       ev.target.closest('#map-title-mobile') ||
       ev.target.closest('#map-fs-title') ||
-      ev.target.closest('#brand-map-name')
+      ev.target.closest('#brand-map-name') ||
+      ev.target.closest('#map-bottom-map-name')
     )) return;
     closeMapSwitcher();
   }
 
-  async function openMapSwitcher(anchorEl) {
-    var dd = $('map-switcher-dropdown');
-    if (!dd) {
-      dd = document.createElement('div');
-      dd.id = 'map-switcher-dropdown';
-      dd.setAttribute('role', 'listbox');
-      dd.setAttribute('aria-label', 'Your maps');
-      document.body.appendChild(dd);
-    }
-    // Toggle closed if already open from same anchor
-    if (dd.classList.contains('open') && dd._rsAnchor === anchorEl) {
-      closeMapSwitcher();
-      return;
-    }
-    dd._rsAnchor = anchorEl || null;
-    dd.innerHTML = '<div class="msd-empty">Loading maps…</div>';
-    dd.classList.add('open');
-    if (anchorEl) {
-      try { anchorEl.setAttribute('aria-expanded', 'true'); } catch (e) {}
-      try {
-        var r = anchorEl.getBoundingClientRect();
-        var w = Math.max(200, Math.min(300, r.width + 40));
-        dd.style.minWidth = w + 'px';
-        var left = r.left;
-        var top = r.bottom + 4;
-        if (left + w > window.innerWidth - 8) left = window.innerWidth - w - 8;
-        if (left < 8) left = 8;
-        if (top + 200 > window.innerHeight - 8) {
-          top = Math.max(8, r.top - 8 - Math.min(360, window.innerHeight * 0.5));
-        }
-        dd.style.left = Math.round(left) + 'px';
-        dd.style.top = Math.round(top) + 'px';
-      } catch (ePos) {
-        dd.style.left = '12px';
-        dd.style.top = '60px';
-      }
-    }
-    setTimeout(function () {
-      document.addEventListener('click', _mapSwitcherOutside, true);
-    }, 0);
-
-    var vs = C.getViewState && C.getViewState();
-    var pmaps = [];
-    var smaps = [];
-    try { pmaps = await listPrivateMaps(); } catch (eP) { pmaps = []; }
+  /** Position map-switcher under or above the anchor. Bottom chip opens upward so the list scrolls up. */
+  function placeMapSwitcherDropdown(dd, anchorEl) {
+    if (!dd || !anchorEl) return;
     try {
-      if (C.listMySharedMaps) smaps = await C.listMySharedMaps();
-      else {
-        var sb0 = getSb() || window.__rsSb;
-        if (sb0) {
-          var r0 = await sb0.rpc('list_my_shared_maps');
-          smaps = r0.data || [];
-        }
+      var r = anchorEl.getBoundingClientRect();
+      var w = Math.max(200, Math.min(300, Math.max(r.width + 48, 220)));
+      dd.style.minWidth = w + 'px';
+      dd.style.width = 'auto';
+      dd.style.maxWidth = Math.min(320, window.innerWidth - 16) + 'px';
+
+      var openUp = anchorEl.id === 'map-bottom-map-name' ||
+        (r.top > window.innerHeight * 0.55);
+
+      var left = r.left + (r.width / 2) - (w / 2);
+      if (left + w > window.innerWidth - 8) left = window.innerWidth - w - 8;
+      if (left < 8) left = 8;
+      dd.style.left = Math.round(left) + 'px';
+
+      if (openUp) {
+        dd.classList.add('open-up');
+        var gap = 6;
+        var room = Math.max(100, r.top - 12);
+        var maxH = Math.min(360, room);
+        dd.style.maxHeight = Math.round(maxH) + 'px';
+        dd.style.top = 'auto';
+        dd.style.bottom = Math.round(window.innerHeight - r.top + gap) + 'px';
+      } else {
+        dd.classList.remove('open-up');
+        var top = r.bottom + 4;
+        var maxDown = Math.min(360, window.innerHeight - top - 8);
+        dd.style.maxHeight = Math.round(Math.max(120, maxDown)) + 'px';
+        dd.style.bottom = 'auto';
+        dd.style.top = Math.round(top) + 'px';
       }
-    } catch (eS) { smaps = []; }
-
-    function isCurrent(kind, id) {
-      if (!vs) return false;
-      if (kind === 'shared') return vs.mode === 'shared' && String(vs.sharedMapId) === String(id);
-      return (vs.mode === 'private' || vs.mode === 'personal') && String(vs.privateMapId) === String(id);
+    } catch (ePos) {
+      dd.style.left = '12px';
+      dd.style.top = '60px';
+      dd.style.bottom = 'auto';
     }
+  }
 
+  function isMapSwitcherCurrent(vs, kind, id) {
+    if (!vs) return false;
+    if (kind === 'shared') return vs.mode === 'shared' && String(vs.sharedMapId) === String(id);
+    return (vs.mode === 'private' || vs.mode === 'personal') && String(vs.privateMapId) === String(id);
+  }
+
+  function buildMapSwitcherHtml(pmaps, smaps, vs) {
     var html = '';
     html += '<div class="msd-group">Not shared</div>';
-    if (!pmaps.length) {
+    if (!pmaps || !pmaps.length) {
       html += '<div class="msd-empty">No private maps</div>';
     } else {
       pmaps.forEach(function (m) {
         var name = displayMapName('private', m.id, m.name || 'Private map');
-        var cur = isCurrent('private', m.id);
+        var cur = isMapSwitcherCurrent(vs, 'private', m.id);
         html += '<button type="button" class="msd-item' + (cur ? ' is-current' : '') +
           '" data-kind="private" data-id="' + esc(m.id) + '" role="option" aria-selected="' +
           (cur ? 'true' : 'false') + '">' + esc(name) + (cur ? ' · viewing' : '') + '</button>';
       });
     }
     html += '<div class="msd-group">Shared</div>';
-    if (!smaps.length) {
+    if (!smaps || !smaps.length) {
       html += '<div class="msd-empty">No shared maps</div>';
     } else {
       smaps.forEach(function (m) {
         var name = displayMapName('shared', m.id, m.name || 'Shared map');
-        var cur = isCurrent('shared', m.id);
+        var cur = isMapSwitcherCurrent(vs, 'shared', m.id);
         html += '<button type="button" class="msd-item' + (cur ? ' is-current' : '') +
           '" data-kind="shared" data-id="' + esc(m.id) + '" role="option" aria-selected="' +
           (cur ? 'true' : 'false') + '">' + esc(name) + (cur ? ' · viewing' : '') + '</button>';
       });
     }
-    dd.innerHTML = html;
+    return html;
+  }
+
+  function wireMapSwitcherItems(dd, vs) {
+    if (!dd) return;
+    try {
+      var curBtn = dd.querySelector('.msd-item.is-current');
+      if (curBtn && typeof curBtn.scrollIntoView === 'function') {
+        curBtn.scrollIntoView({ block: 'nearest' });
+      }
+    } catch (eScr) {}
     dd.querySelectorAll('.msd-item').forEach(function (btn) {
       btn.onclick = function (ev) {
         if (ev) { ev.preventDefault(); ev.stopPropagation(); }
         var kind = btn.getAttribute('data-kind');
         var id = btn.getAttribute('data-id');
         closeMapSwitcher();
-        if (isCurrent(kind, id)) return;
+        if (isMapSwitcherCurrent(vs, kind, id)) return;
         mapsUiSelected = { kind: kind, id: id };
         if (kind === 'private') {
           switchToPrivate(id).then(function () {
@@ -2164,6 +2174,82 @@
         }
       };
     });
+  }
+
+  async function fetchMapSwitcherLists() {
+    var pmaps = [];
+    var smaps = [];
+    try { pmaps = await listPrivateMaps(); } catch (eP) { pmaps = []; }
+    try {
+      if (C.listMySharedMaps) smaps = await C.listMySharedMaps();
+      else {
+        var sb0 = getSb() || window.__rsSb;
+        if (sb0) {
+          var r0 = await sb0.rpc('list_my_shared_maps');
+          smaps = r0.data || [];
+        }
+      }
+    } catch (eS) { smaps = []; }
+    _mapSwitcherCache = { pmaps: pmaps || [], smaps: smaps || [], at: Date.now() };
+    return _mapSwitcherCache;
+  }
+
+  async function openMapSwitcher(anchorEl) {
+    var dd = $('map-switcher-dropdown');
+    if (!dd) {
+      dd = document.createElement('div');
+      dd.id = 'map-switcher-dropdown';
+      dd.setAttribute('role', 'listbox');
+      dd.setAttribute('aria-label', 'Your maps');
+      document.body.appendChild(dd);
+    }
+    clearTimeout(dd._rsCloseT);
+    // Toggle closed if already open from same anchor
+    if (dd.classList.contains('open') && dd._rsAnchor === anchorEl) {
+      closeMapSwitcher();
+      return;
+    }
+    dd._rsAnchor = anchorEl || null;
+    var vs = C.getViewState && C.getViewState();
+    var cacheFresh = _mapSwitcherCache.at &&
+      (Date.now() - _mapSwitcherCache.at) < MAP_SWITCHER_CACHE_MS &&
+      (_mapSwitcherCache.pmaps || _mapSwitcherCache.smaps);
+
+    /* Paint immediately from cache so open feels snappy */
+    if (cacheFresh) {
+      dd.innerHTML = buildMapSwitcherHtml(_mapSwitcherCache.pmaps, _mapSwitcherCache.smaps, vs);
+      wireMapSwitcherItems(dd, vs);
+    } else if (!dd.querySelector('.msd-item')) {
+      dd.innerHTML = '<div class="msd-empty">Loading maps…</div>';
+    }
+
+    if (anchorEl) {
+      try { anchorEl.setAttribute('aria-expanded', 'true'); } catch (e) {}
+      placeMapSwitcherDropdown(dd, anchorEl);
+    }
+    /* Two rAFs: place first, then transition open (smoother pop) */
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        dd.classList.add('open');
+      });
+    });
+    setTimeout(function () {
+      document.addEventListener('click', _mapSwitcherOutside, true);
+    }, 0);
+
+    var gen = (dd._rsFetchGen = (dd._rsFetchGen || 0) + 1);
+    try {
+      var lists = await fetchMapSwitcherLists();
+      if (gen !== dd._rsFetchGen || !dd.classList.contains('open')) return;
+      vs = C.getViewState && C.getViewState();
+      dd.innerHTML = buildMapSwitcherHtml(lists.pmaps, lists.smaps, vs);
+      wireMapSwitcherItems(dd, vs);
+      if (anchorEl) placeMapSwitcherDropdown(dd, anchorEl);
+    } catch (eFetch) {
+      if (!dd.querySelector('.msd-item')) {
+        dd.innerHTML = '<div class="msd-empty">Could not load maps</div>';
+      }
+    }
   }
   window.openMapSwitcher = openMapSwitcher;
   window.closeMapSwitcher = closeMapSwitcher;

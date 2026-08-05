@@ -221,7 +221,7 @@
       font-weight: 700;
     }
     #map-switcher-dropdown {
-      display: none;
+      display: block;
       position: fixed;
       z-index: 2147483645;
       min-width: 200px;
@@ -237,8 +237,29 @@
       box-sizing: border-box;
       scrollbar-width: thin;
       scrollbar-color: #1a1e16 #0a0c09;
+      /* Smooth open / close — stay in layout tree for transform */
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translateY(-8px) scale(0.97);
+      transition:
+        opacity 0.16s ease,
+        transform 0.18s cubic-bezier(0.22, 0.9, 0.28, 1),
+        visibility 0.16s ease;
+      will-change: opacity, transform;
     }
-    #map-switcher-dropdown.open { display: block; }
+    #map-switcher-dropdown.open-up:not(.open) {
+      transform: translateY(8px) scale(0.97);
+    }
+    #map-switcher-dropdown.open {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: translateY(0) scale(1);
+    }
+    #map-switcher-dropdown.open.open-up {
+      transform: translateY(0) scale(1);
+    }
     #map-switcher-dropdown .msd-group {
       font-size: 10px;
       font-weight: 800;
@@ -341,60 +362,15 @@
       flex: 1 1 auto;
       min-height: 0;
     }
-    /* Fullscreen: map name top-left next to zoom controls (clickable switcher) */
+    /*
+     * Fullscreen map-name chip (was top-left). Now lives bottom-center over CL
+     * via #map-bottom-map-name — keep this class for shared 3D look only.
+     */
     .map-fs-title,
     button.map-fs-title {
-      display: none;
-      position: absolute;
-      z-index: 1000;
-      left: 52px;
-      top: 12px;
-      width: auto;
-      max-width: min(46vw, 260px);
-      padding: 5px 10px;
-      border-radius: 8px;
-      background: linear-gradient(180deg, #2a3222 0%, rgba(22, 28, 18, 0.96) 45%, #12160e 100%);
-      border: 1px solid rgba(40, 50, 26, 0.95);
-      color: var(--accent, #e59a18);
-      font-size: 12px;
-      font-weight: 800;
-      letter-spacing: 0.03em;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      pointer-events: auto;
-      cursor: pointer;
-      box-shadow:
-        0 2px 0 rgba(0, 0, 0, 0.4),
-        0 4px 12px rgba(0, 0, 0, 0.45),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
-      line-height: 1.25;
-      font-family: inherit;
-      text-align: left;
-      -webkit-appearance: none;
-      appearance: none;
+      display: none !important; /* top-left placement removed; use bottom chip */
     }
-    button.map-fs-title:hover,
-    button.map-fs-title[aria-expanded="true"] {
-      border-color: rgba(229, 154, 24, 0.65);
-      background: linear-gradient(180deg, #323c28 0%, rgba(30, 36, 22, 0.98) 45%, #1a2014 100%);
-    }
-    button.map-fs-title:active {
-      transform: translateY(1px);
-    }
-    button.map-fs-title::after {
-      content: ' ▾';
-      font-size: 10px;
-      opacity: 0.8;
-    }
-    .map-wrapper.fullscreen .map-fs-title {
-      display: block;
-    }
-    html.layout-phone .map-wrapper.fullscreen .map-fs-title {
-      left: max(52px, env(safe-area-inset-left, 0px) + 48px);
-      top: max(10px, env(safe-area-inset-top, 0px) + 8px);
-    }
-    /* Hide title strip while true fullscreen (name is on the map) */
+    /* Hide title strip while true fullscreen (name is on the map, bottom center) */
     html.map-is-fullscreen .card-map > .map-title-bar {
       display: none !important;
     }
@@ -3158,35 +3134,121 @@
       margin-top: 4px;
     }
     .map-dot-menu .mdm-btn.danger:hover { filter: brightness(1.1); }
-    /* Brief toast when a Google Maps link is copied */
+    /*
+     * Tool / copy toasts: rise from BEHIND the bottom toolbar (z < bar),
+     * left-aligned near the calendar (mbb-context), barely onto the map.
+     */
     .app-copy-toast {
-      position: fixed;
-      left: 50%;
-      bottom: 28px;
-      transform: translateX(-50%) translateY(12px);
-      z-index: 200000;
-      max-width: min(420px, calc(100vw - 24px));
+      position: absolute;
+      left: 8px;
+      right: auto;
+      /* Sit just above the bar so the bar edge covers the toast base */
+      bottom: calc(var(--mbb-bar-h, 45px) + env(safe-area-inset-bottom, 0px) - 2px);
+      transform: translateY(10px);
+      z-index: 70; /* toolbar is z-index 80 — toast peeks from behind */
+      max-width: min(260px, calc(100% - 100px));
       background: rgba(15, 18, 14, 0.96);
       border: 1px solid var(--accent);
       color: #fff;
-      border-radius: 10px;
-      padding: 12px 16px;
-      font-size: 13px;
+      border-radius: 10px 10px 4px 4px;
+      padding: 8px 12px 10px;
+      font-size: 12px;
       font-weight: 600;
       line-height: 1.35;
-      box-shadow: 0 8px 28px rgba(0,0,0,0.55);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.45);
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.2s ease, transform 0.2s ease;
-      text-align: center;
+      text-align: left;
     }
     .app-copy-toast.show {
       opacity: 1;
-      transform: translateX(-50%) translateY(0);
+      transform: translateY(0);
     }
     .app-copy-toast .act {
       color: var(--accent);
       font-weight: 800;
+    }
+    /* Fallback when toast is on body (no map-wrapper host yet) */
+    body > .app-copy-toast {
+      position: fixed;
+      bottom: calc(52px + env(safe-area-inset-bottom, 0px));
+      z-index: 70;
+    }
+    /*
+     * Map name chip — bottom center, centered over Current Location.
+     * Same 3D look as the old max-mode top-left button.
+     */
+    /* Map-name chip only in max / fullscreen (min mode uses title bar) */
+    .map-bottom-map-name,
+    button.map-bottom-map-name {
+      display: none;
+      position: absolute;
+      left: 50%; /* JS positionMapBottomName() pins over #gps-snap-btn */
+      bottom: calc(var(--mbb-bar-h, 45px) + env(safe-area-inset-bottom, 0px) + 6px);
+      transform: translateX(-50%);
+      z-index: 75;
+      width: auto;
+      max-width: min(46vw, 260px);
+      padding: 5px 10px;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #2a3222 0%, rgba(22, 28, 18, 0.96) 45%, #12160e 100%);
+      border: 1px solid rgba(40, 50, 26, 0.95);
+      color: var(--accent, #e59a18);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      line-height: 1.25;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: center;
+      pointer-events: auto;
+      cursor: pointer;
+      font-family: inherit;
+      -webkit-appearance: none;
+      appearance: none;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow:
+        0 2px 0 rgba(0, 0, 0, 0.4),
+        0 4px 12px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+    }
+    .map-wrapper.fullscreen .map-bottom-map-name,
+    .map-wrapper.fullscreen button.map-bottom-map-name {
+      display: block;
+    }
+    button.map-bottom-map-name::after {
+      content: ' ▾';
+      font-size: 10px;
+      opacity: 0.8;
+      font-weight: 700;
+    }
+    button.map-bottom-map-name:hover,
+    button.map-bottom-map-name:focus-visible,
+    button.map-bottom-map-name[aria-expanded="true"] {
+      border-color: rgba(229, 154, 24, 0.65);
+      background: linear-gradient(180deg, #323c28 0%, rgba(30, 36, 22, 0.98) 45%, #1a2014 100%);
+      outline: none;
+    }
+    button.map-bottom-map-name:active {
+      transform: translateX(-50%) translateY(1px);
+    }
+    html.layout-phone .map-bottom-map-name,
+    html.layout-phone button.map-bottom-map-name {
+      font-size: 11px;
+      max-width: min(42vw, 200px);
+      padding: 4px 9px;
+      bottom: calc(var(--mbb-bar-h, 45px) + env(safe-area-inset-bottom, 0px) + 4px);
+    }
+    /* Open-up map list (from bottom chip) */
+    #map-switcher-dropdown.open-up {
+      box-shadow: 0 -10px 32px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    /* Zoom controls removed — pinch / scroll / double-tap still work via Leaflet */
+    .leaflet-control-zoom {
+      display: none !important;
     }
 
     /* Bottom bar tools: Measure / Draw / Track always on bar (if enabled) */
@@ -3230,6 +3292,63 @@
       align-items: center;
       justify-content: center;
       flex: 0 0 auto;
+      position: relative;
+    }
+    /*
+     * Toolbar name tips — fixed above the bottom bar, locked to each button
+     * (not browser title tooltips that float near the cursor).
+     */
+    .map-bottom-bar [data-mbb-tip] {
+      position: relative;
+    }
+    .map-bottom-bar [data-mbb-tip]::after {
+      content: attr(data-mbb-tip);
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 7px);
+      transform: translateX(-50%) translateY(3px);
+      background: rgba(12, 16, 10, 0.97);
+      color: #f2f5ee;
+      border: 1px solid rgba(229, 154, 24, 0.55);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+      line-height: 1.2;
+      pointer-events: none;
+      opacity: 0;
+      z-index: 200;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+      transition: opacity 0.12s ease, transform 0.12s ease;
+    }
+    .map-bottom-bar [data-mbb-tip]::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 2px);
+      transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: rgba(229, 154, 24, 0.55);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 200;
+      transition: opacity 0.12s ease;
+    }
+    .map-bottom-bar [data-mbb-tip]:hover::after,
+    .map-bottom-bar [data-mbb-tip]:focus-visible::after {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .map-bottom-bar [data-mbb-tip]:hover::before,
+    .map-bottom-bar [data-mbb-tip]:focus-visible::before {
+      opacity: 1;
+    }
+    /* Prefer tips on the button itself, not nested wrappers */
+    .map-bottom-bar .map-radar-control,
+    .map-bottom-bar .map-layers-menu {
+      position: relative;
     }
     .map-draw-tools .mdt-btn.mdt-icon-btn {
       padding: 0;
@@ -4411,15 +4530,16 @@
      * .is-positioned keeps map-relative % position across min ↔ max — never forced
      * to screen center / notch offset (that made the dial jump relative to the map).
      */
+    /* Phone default: clear Dynamic Island / front camera cutout */
     html.layout-phone .map-wrapper:not(.fullscreen) .map-compass-radar:not(.is-positioned) {
-      top: 0 !important;
+      top: max(52px, calc(env(safe-area-inset-top, 0px) + 44px)) !important;
       left: 50% !important;
       right: auto !important;
       bottom: auto !important;
       transform: translateX(-50%) !important;
     }
     html.layout-phone .map-wrapper.fullscreen .map-compass-radar:not(.is-positioned) {
-      top: max(0px, env(safe-area-inset-top, 0px)) !important;
+      top: max(56px, calc(env(safe-area-inset-top, 0px) + 48px)) !important;
       left: 50% !important;
       transform: translateX(-50%) !important;
     }
@@ -4450,9 +4570,7 @@
       visibility: visible !important;
     }
     
-    html.layout-phone .leaflet-control-zoom {
-      margin-top: 6px !important;
-    }
+
     /* Compass settings always above main Settings */
     #compass-mode-settings-modal {
       z-index: 2147483646 !important;
@@ -4603,7 +4721,7 @@
       display: block;
       overflow: visible;
     }
-    /* Delete confirm — stacked over pin popup (JS positions left/top; centered fallback) */
+    /* Delete confirm — sits over the Delete button that was pressed */
     .map-item-confirm {
       position: fixed;
       z-index: 2147483645;
@@ -4621,6 +4739,12 @@
       left: 50%;
       top: 50%;
       transform: translate(-50%, -50%);
+    }
+    .map-item-confirm.is-over-btn {
+      /* Slightly larger shadow so it fully masks the underlying Delete control */
+      box-shadow:
+        0 0 0 2px rgba(15, 18, 14, 0.95),
+        0 12px 40px rgba(0,0,0,0.7);
     }
     /* Host / creator-only notice (replaces browser alert for map creator messages) */
     #rs-creator-notice {
@@ -5068,14 +5192,15 @@
       background: #e59a18;
     }
     .draw-vertex-dot.is-close {
-      width: 20px;
-      height: 20px;
-      margin: 2px;
+      width: 16px;
+      height: 16px;
+      margin: 4px;
       border: 2px solid #fff;
       background: #fbbf24;
       box-shadow: 0 1px 4px rgba(0,0,0,0.55);
       cursor: pointer;
     }
+    /* Draw-line creation uses .is-measure vertices (same as measure tool) */
     .draw-vertex-dot.is-close.is-first {
       background: #22c55e;
       width: 22px;
@@ -5835,11 +5960,14 @@
      *  - Buttons never shrink, never pack toward center, never overlap
      *  - Zone wrappers use display:contents so all controls share the same gap
      */
-    .map-bottom-bar {
+    /* Bar metrics on map-wrapper so floating chrome (toast, map name) can clear the toolbar */
+    .map-wrapper {
       --mbb-h: 43px;
       --mbb-gap: 6px;
       --mbb-icon: 43px;
       --mbb-bar-h: calc(var(--mbb-h) * 1.05);
+    }
+    .map-bottom-bar {
       position: absolute;
       left: 0;
       right: 0;
@@ -6374,6 +6502,12 @@
      * equal gaps, equal squares, no packing, no overlap, no overflow crush.
      * Icon size scales down only so everything still fits.
      */
+    html.layout-phone .map-wrapper {
+      --mbb-h: 32px;
+      --mbb-icon: 32px;
+      --mbb-gap: 4px;
+      --mbb-bar-h: calc(var(--mbb-h) * 1.05);
+    }
     html.layout-phone .map-bottom-bar {
       --mbb-h: 32px;
       --mbb-icon: 32px;
@@ -6519,6 +6653,12 @@
     }
     /* Narrow phones — shrink squares + gap together so nothing overlaps */
     @media (max-width: 390px) {
+      html.layout-phone .map-wrapper {
+        --mbb-h: 30px;
+        --mbb-icon: 30px;
+        --mbb-gap: 3px;
+        --mbb-bar-h: calc(var(--mbb-h) * 1.05);
+      }
       html.layout-phone .map-bottom-bar,
       html.layout-phone .map-wrapper.fullscreen .map-bottom-bar {
         --mbb-h: 30px;
@@ -6551,6 +6691,12 @@
     }
     /* Very narrow phones — still equal squares + equal gaps */
     @media (max-width: 340px) {
+      html.layout-phone .map-wrapper {
+        --mbb-h: 28px;
+        --mbb-icon: 28px;
+        --mbb-gap: 2px;
+        --mbb-bar-h: calc(var(--mbb-h) * 1.05);
+      }
       html.layout-phone .map-bottom-bar,
       html.layout-phone .map-wrapper.fullscreen .map-bottom-bar {
         --mbb-h: 28px;
@@ -8679,7 +8825,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.6.4 Beta">V6.6.4 Beta</span>
+      <span class="brand-version" aria-label="Version 6.6.5 Beta">V6.6.5 Beta</span>
     </div>
   </header>
 
@@ -9004,8 +9150,8 @@
       </div>
       <div class="map-section-block">
         <div class="map-wrapper" id="map-wrapper">
-          <!-- Fullscreen only: map name next to zoom controls (map switcher) -->
-          <button type="button" class="map-fs-title" id="map-fs-title" title="Switch map" aria-label="Switch map" aria-haspopup="listbox" aria-expanded="false" onclick="if(window.RegSlayerParty&&window.RegSlayerParty.openMapSwitcher){window.RegSlayerParty.openMapSwitcher(this);}">My Map</button>
+          <!-- Hidden legacy id kept for name-sync; visible chip is #map-bottom-map-name -->
+          <button type="button" class="map-fs-title" id="map-fs-title" title="Switch map" aria-label="Switch map" aria-haspopup="listbox" aria-expanded="false" tabindex="-1" aria-hidden="true">My Map</button>
           <!-- Free-standing compass / wind dials — absolute on map; draggable when enlarged -->
           <div class="map-compass-radar" id="map-compass-radar" data-v63="1">
             <div id="map-wind-hud" class="map-wind-hud mode-wind" aria-live="polite">
@@ -9054,6 +9200,9 @@
           <button id="map-maximize-btn" class="map-fs-btn" onclick="toggleMapFullscreen()" type="button" title="Maximize map">Max</button>
           <button id="map-minimize-btn" class="map-fs-btn" onclick="toggleMapFullscreen()" type="button" style="display:none;" title="Minimize map">Min</button>
 
+          <!-- Map name chip (max-mode 3D look) — centered over Current Location; list opens upward -->
+          <button type="button" class="map-bottom-map-name" id="map-bottom-map-name" title="Switch map" aria-label="Map: My Map. Click to switch." aria-haspopup="listbox" aria-expanded="false" onclick="if(window.RegSlayerParty&&window.RegSlayerParty.openMapSwitcher){window.RegSlayerParty.openMapSwitcher(this);}">My Map</button>
+
           <!-- Slim bottom bar: [date+tools] | CL (center) | [radar layers settings] -->
           <div class="map-bottom-bar" id="map-bottom-bar">
             <div class="mbb-left">
@@ -9062,16 +9211,16 @@
                 <span class="mbb-weapon is-empty" id="mbb-weapon" aria-hidden="true"></span>
               </button>
               <div class="map-draw-tools" id="map-draw-tools">
-                <button type="button" class="mdt-btn mdt-icon-btn" id="mdt-measure" onclick="startMapMeasure()" title="Measure" aria-label="Measure">
+                <button type="button" class="mdt-btn mdt-icon-btn" id="mdt-measure" onclick="startMapMeasure()" data-mbb-tip="Measure" aria-label="Measure">
                   <img class="mdt-icon-img" src="icons/tools/measure.png?v=tool4" alt="" width="30" height="30" draggable="false">
                 </button>
-                <button type="button" class="mdt-btn mdt-icon-btn" id="mdt-draw" onclick="startMapDrawShape()" title="Draw" aria-label="Draw">
+                <button type="button" class="mdt-btn mdt-icon-btn" id="mdt-draw" onclick="startMapDrawShape()" data-mbb-tip="Draw" aria-label="Draw">
                   <img class="mdt-icon-img" src="icons/tools/draw.png?v=tool4" alt="" width="30" height="30" draggable="false">
                 </button>
-                <button type="button" class="mdt-btn mdt-icon-btn mdt-track-idle" id="mdt-track" onclick="toggleGpsTrack()" title="Track" aria-label="Track" aria-pressed="false">
+                <button type="button" class="mdt-btn mdt-icon-btn mdt-track-idle" id="mdt-track" onclick="toggleGpsTrack()" data-mbb-tip="Track" aria-label="Track" aria-pressed="false">
                   <img class="mdt-icon-img" src="icons/tools/track.png?v=tool4" alt="" width="30" height="30" draggable="false">
                 </button>
-                <button type="button" class="mdt-btn mdt-track-stop" id="mdt-track-stop" onclick="stopGpsTrack()" title="Stop" aria-label="Stop GPS tracking" tabindex="-1">Stop</button>
+                <button type="button" class="mdt-btn mdt-track-stop" id="mdt-track-stop" onclick="stopGpsTrack()" data-mbb-tip="Stop" aria-label="Stop GPS tracking" tabindex="-1">Stop</button>
                 <!-- Live track stats + stop — anchored above the Track icon while recording -->
                 <div class="map-track-live-hud is-draggable" id="map-track-live-hud" role="status" aria-live="polite" hidden>
                   <div class="mtl-drag" id="mtl-drag-handle" title="Drag to move">⠿ drag</div>
@@ -9093,7 +9242,7 @@
 
             <!-- Center cluster must be ONE grid cell (GPS + share) or right tools wrap below the bar -->
             <div class="mbb-center" id="mbb-center">
-              <button type="button" class="mbb-icon-btn mbb-gps mbb-ctrl" id="gps-snap-btn" onclick="snapToGPS()" title="Current Location — snap map to your GPS" aria-label="Current Location">
+              <button type="button" class="mbb-icon-btn mbb-gps mbb-ctrl" id="gps-snap-btn" onclick="snapToGPS()" data-mbb-tip="My location" aria-label="Current Location">
                 <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <circle cx="12" cy="12" r="7.25" fill="none" stroke="currentColor" stroke-width="1.6"/>
                   <path d="M12 2.5v3.2M12 18.3v3.2M2.5 12h3.2M18.3 12h3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
@@ -9101,7 +9250,7 @@
                   <circle cx="12" cy="10.9" r="1" fill="#fff"/>
                 </svg>
               </button>
-              <button type="button" class="mbb-icon-btn mbb-share-loc mbb-ctrl" id="share-loc-btn" title="Share current location with party" aria-label="Share location" aria-pressed="false">
+              <button type="button" class="mbb-icon-btn mbb-share-loc mbb-ctrl" id="share-loc-btn" data-mbb-tip="Share location" aria-label="Share location" aria-pressed="false">
                 <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <circle cx="12" cy="12" r="3.2" fill="currentColor"/>
                   <circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="1.6" opacity="0.7"/>
@@ -9113,7 +9262,7 @@
             <!-- Right tools: one horizontal row, equal height (radar · compass · layers · settings) -->
             <div class="mbb-right" id="mbb-right">
               <div class="map-radar-control" id="map-radar-control">
-                <button type="button" class="map-radar-toggle" id="map-radar-toggle" onclick="toggleMapRadar()" title="Weather radar — last hour, ~5 min steps" aria-label="Radar" aria-pressed="false">
+                <button type="button" class="map-radar-toggle" id="map-radar-toggle" onclick="toggleMapRadar()" data-mbb-tip="Radar" aria-label="Radar" aria-pressed="false">
                   <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <circle class="radar-screen" cx="12" cy="13" r="8.2" fill="rgba(8,40,60,0.55)" stroke="currentColor" stroke-width="1.45"/>
                     <circle cx="12" cy="13" r="5.4" fill="none" stroke="currentColor" stroke-width="0.95" opacity="0.55"/>
@@ -9143,7 +9292,7 @@
                 <button type="button" class="map-radar-stop" id="map-radar-stop" onclick="stopMapRadar()" title="Stop radar loop">Stop</button>
               </div>
 
-              <button type="button" class="mbb-compass-btn mbb-ctrl is-on" id="mbb-compass-btn" onclick="toggleDialHudFromToolbar()" title="Show/hide compass or wind" aria-label="Compass or wind" aria-pressed="true">
+              <button type="button" class="mbb-compass-btn mbb-ctrl is-on" id="mbb-compass-btn" onclick="toggleDialHudFromToolbar()" data-mbb-tip="Compass / Wind" aria-label="Compass or wind" aria-pressed="true">
                 <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/>
                   <path d="M12 5.5 L14.2 12 L12 18.5 L9.8 12 Z" fill="currentColor"/>
@@ -9152,7 +9301,7 @@
               </button>
 
               <div class="map-layers-menu map-layers-bottom" id="map-layers-menu">
-                <button type="button" class="map-layers-toggle-btn mdt-icon-btn" id="map-layers-toggle-btn" aria-expanded="false" aria-controls="map-layers-panel" title="Layers" aria-label="Layers">
+                <button type="button" class="map-layers-toggle-btn mdt-icon-btn" id="map-layers-toggle-btn" aria-expanded="false" aria-controls="map-layers-panel" data-mbb-tip="Layers" aria-label="Layers">
                   <img class="mdt-icon-img" src="icons/tools/layers.png?v=tool4" alt="" width="32" height="32" draggable="false">
                 </button>
 <div class="map-layers-panel" id="map-layers-panel" role="group" aria-label="Map layers">
@@ -9283,7 +9432,7 @@
                           </div>
               </div>
             </div>
-            <button type="button" class="map-settings-btn mbb-ctrl" id="map-settings-btn" onclick="openSettingsModal()" title="Settings">⚙</button>
+            <button type="button" class="map-settings-btn mbb-ctrl" id="map-settings-btn" onclick="openSettingsModal()" data-mbb-tip="Settings" aria-label="Settings">⚙</button>
             </div><!-- /.mbb-right -->
           </div><!-- /.map-bottom-bar -->
 
@@ -9477,6 +9626,18 @@
     </div>
   </div>
 
+  <!-- Offline map download confirm (in-app, not browser confirm) -->
+  <div id="offline-map-confirm" class="app-prompt-modal" hidden style="display:none;" role="dialog" aria-modal="true" aria-labelledby="offline-map-confirm-title" onclick="if(event.target===this)closeOfflineMapConfirm(false)">
+    <div class="shape-save-card" onclick="event.stopPropagation()">
+      <h3 id="offline-map-confirm-title">Save offline map</h3>
+      <div class="ss-meta" id="offline-map-confirm-msg">Download map tiles around this spot for offline use.</div>
+      <div class="shape-save-actions" style="margin-top:14px;">
+        <button type="button" class="ss-save" id="offline-map-confirm-yes" onclick="closeOfflineMapConfirm(true)">Download</button>
+        <button type="button" class="ss-cancel" id="offline-map-confirm-no" onclick="closeOfflineMapConfirm(false)">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Distance origin: street address lookup -->
   <div id="dist-address-modal" class="app-prompt-modal" hidden style="display:none;" onclick="if(event.target===this)closeDistAddressModal()">
     <div class="shape-save-card" role="dialog" aria-modal="true" aria-labelledby="dist-address-title" onclick="event.stopPropagation()">
@@ -9542,8 +9703,8 @@
     <div class="shape-save-card" role="dialog" aria-modal="true" aria-labelledby="shape-save-title">
       <h3 id="shape-save-title">Save custom hunt area</h3>
       <div class="ss-meta" id="shape-save-meta">Name this area and choose colors. It will use the deer rules for the land under its center.</div>
-      <label for="shape-name-input">Area name</label>
-      <input type="text" id="shape-name-input" placeholder="e.g. North ridge stand box" maxlength="80" />
+      <label for="shape-name-input">Area name <span style="font-weight:500;color:var(--muted);text-transform:none;letter-spacing:0;">(optional)</span></label>
+      <input type="text" id="shape-name-input" placeholder="Optional — e.g. North ridge stand box" maxlength="80" />
       <label>Colors</label>
       <div class="pes-slot-btns shape-color-slots" style="display:flex;gap:6px;margin:4px 0 8px;">
         <button type="button" class="is-active" id="shape-slot-line" onclick="setShapeColorSlot('line')">Line</button>
@@ -9914,7 +10075,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.6.4-beta';
+    const APP_VERSION = '6.6.5-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -17711,11 +17872,13 @@
         ev.target.closest('#map-switcher-dropdown') ||
         ev.target.closest('#map-title-mobile') ||
         ev.target.closest('#map-fs-title') ||
+        ev.target.closest('#map-bottom-map-name') ||
         ev.target.closest('.rs-simple-modal') ||
         ev.target.closest('#regs-modal') ||
         ev.target.closest('.map-dot-menu') ||
         ev.target.closest('.color-picker') ||
         ev.target.closest('.app-prompt-modal') ||
+        ev.target.closest('#offline-map-confirm') ||
         ev.target.closest('.map-item-confirm') ||
         ev.target.closest('#map-item-confirm') ||
         ev.target.closest('#mbb-context')
@@ -17959,6 +18122,8 @@
         minZoom: initMinZ,
         maxZoom: LIDAR_MAX_ZOOM,
         preferCanvas: true,
+        // Zoom +/- buttons removed (pinch / scroll / keyboard still work)
+        zoomControl: false,
         // Never zoom on double-click — it shoves open popups to the top of the map
         doubleClickZoom: false,
         // Smoother pan/zoom feel (less janky redraw while interacting)
@@ -18813,6 +18978,53 @@
     }
     window.handleMapDotAction = handleMapDotAction;
 
+    var _offlineMapConfirmResolve = null;
+    function closeOfflineMapConfirm(yes) {
+      var modal = document.getElementById('offline-map-confirm');
+      if (modal) {
+        modal.classList.remove('active');
+        modal.hidden = true;
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+      }
+      var r = _offlineMapConfirmResolve;
+      _offlineMapConfirmResolve = null;
+      if (typeof r === 'function') r(!!yes);
+    }
+    window.closeOfflineMapConfirm = closeOfflineMapConfirm;
+
+    /** In-app confirm for offline map download (replaces browser confirm). */
+    function showOfflineMapConfirm(detailHtml) {
+      return new Promise(function(resolve) {
+        var modal = document.getElementById('offline-map-confirm');
+        var msg = document.getElementById('offline-map-confirm-msg');
+        if (!modal) {
+          resolve(window.confirm(String(detailHtml || '').replace(/<[^>]+>/g, ' ')));
+          return;
+        }
+        if (_offlineMapConfirmResolve) {
+          try { _offlineMapConfirmResolve(false); } catch (eR) {}
+          _offlineMapConfirmResolve = null;
+        }
+        _offlineMapConfirmResolve = resolve;
+        if (msg) {
+          msg.innerHTML = detailHtml || 'Download map tiles around this spot for offline use.';
+        }
+        modal.hidden = false;
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+        modal.setAttribute('aria-hidden', 'false');
+        try {
+          if (modal.parentNode !== document.body) document.body.appendChild(modal);
+        } catch (eM) {}
+        setTimeout(function() {
+          var yes = document.getElementById('offline-map-confirm-yes');
+          if (yes) try { yes.focus(); } catch (eF) {}
+        }, 30);
+      });
+    }
+    window.showOfflineMapConfirm = showOfflineMapConfirm;
+
     /**
      * Download basemap tiles for a 2-mile radius.
      * Uses current basemap; works best on topo / street / lidar.
@@ -18820,63 +19032,72 @@
     function saveOfflineMapAround(lat, lng, opts) {
       opts = opts || {};
       if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) {
-        alert('No location to save offline.');
+        if (typeof showAppCopyToast === 'function') {
+          showAppCopyToast('<span class="act">Offline map</span><br>No location to save offline.');
+        }
         return Promise.resolve(null);
       }
       if (!window.RegSlayerOffline || typeof RegSlayerOffline.saveOfflineAround !== 'function') {
-        alert('Offline engine not loaded.');
+        if (typeof showAppCopyToast === 'function') {
+          showAppCopyToast('<span class="act">Offline map</span><br>Offline engine not loaded.');
+        }
         return Promise.resolve(null);
       }
       if (!navigator.onLine) {
-        alert('You need a network connection once to download map tiles. After that, this area works offline.');
+        if (typeof showAppCopyToast === 'function') {
+          showAppCopyToast('<span class="act">Offline map</span><br>Need network once to download tiles.');
+        }
         return Promise.resolve(null);
       }
       var basemap = (typeof activeBasemapKey === 'string' && activeBasemapKey) ? activeBasemapKey : 'topo';
       var est = RegSlayerOffline.estimatePack(lat, lng, basemap);
       var label = opts.label || 'Map spot';
-      var ok = confirm(
-        'Save offline map around this spot?\n\n' +
-        'Radius: 2 miles\n' +
-        'Basemap: ' + basemap + '\n' +
-        'About ' + est.tileCount + ' tiles (~' + est.approxMb + ' MB)\n\n' +
-        'Needs good signal while downloading. Online use is unchanged.'
-      );
-      if (!ok) return Promise.resolve(null);
+      var detail =
+        '<strong style="color:var(--accent);">Around: ' + escHtml(label) + '</strong><br>' +
+        'Radius: <strong>2 miles</strong><br>' +
+        'Basemap: <strong>' + escHtml(basemap) + '</strong><br>' +
+        'About <strong>' + escHtml(String(est.tileCount)) + ' tiles</strong> (~' + escHtml(String(est.approxMb)) + ' MB)<br><br>' +
+        'Needs good signal while downloading. Online use is unchanged.';
 
-      if (typeof showAppCopyToast === 'function') {
-        showAppCopyToast('<span class="act">Downloading offline map…</span><br>2 mi · ' + escHtml(label));
-      }
-      if (map) try { map.closePopup(); } catch (eC) {}
+      return showOfflineMapConfirm(detail).then(function(ok) {
+        if (!ok) return null;
 
-      return RegSlayerOffline.saveOfflineAround(lat, lng, {
-        label: label,
-        basemap: basemap,
-        source: opts.source || 'pin',
-        sourceId: opts.sourceId || null,
-        radiusMi: 2,
-        onProgress: function(p) {
-          if (window.RegSlayerOffline) {
-            RegSlayerOffline.updateOfflineBanner(
-              'Offline map ' + (p.pct || 0) + '% (' + p.ok + '/' + p.total + ' tiles)'
-            );
-          }
-        }
-      }).then(function(pack) {
-        var msg = pack && pack.status === 'ready'
-          ? ('Offline map ready · ' + (pack.ok || 0) + ' tiles · 2 mi around ' + label)
-          : ('Offline map finished with issues · ok ' + (pack && pack.ok) + ' / fail ' + (pack && pack.fail));
         if (typeof showAppCopyToast === 'function') {
-          showAppCopyToast('<span class="act">Offline map</span><br>' + escHtml(msg));
-        } else {
-          alert(msg);
+          showAppCopyToast('<span class="act">Downloading offline map…</span><br>2 mi · ' + escHtml(label));
         }
-        if (window.RegSlayerOffline) {
-          RegSlayerOffline.updateOfflineBanner(pack && pack.status === 'ready' ? 'Offline map saved' : null);
-        }
-        return pack;
-      }).catch(function(err) {
-        alert((err && err.message) || 'Offline map download failed.');
-        return null;
+        if (map) try { map.closePopup(); } catch (eC) {}
+
+        return RegSlayerOffline.saveOfflineAround(lat, lng, {
+          label: label,
+          basemap: basemap,
+          source: opts.source || 'pin',
+          sourceId: opts.sourceId || null,
+          radiusMi: 2,
+          onProgress: function(p) {
+            if (window.RegSlayerOffline) {
+              RegSlayerOffline.updateOfflineBanner(
+                'Offline map ' + (p.pct || 0) + '% (' + p.ok + '/' + p.total + ' tiles)'
+              );
+            }
+          }
+        }).then(function(pack) {
+          var msg = pack && pack.status === 'ready'
+            ? ('Offline map ready · ' + (pack.ok || 0) + ' tiles · 2 mi around ' + label)
+            : ('Offline map finished with issues · ok ' + (pack && pack.ok) + ' / fail ' + (pack && pack.fail));
+          if (typeof showAppCopyToast === 'function') {
+            showAppCopyToast('<span class="act">Offline map</span><br>' + escHtml(msg));
+          }
+          if (window.RegSlayerOffline) {
+            RegSlayerOffline.updateOfflineBanner(pack && pack.status === 'ready' ? 'Offline map saved' : null);
+          }
+          return pack;
+        }).catch(function(err) {
+          if (typeof showAppCopyToast === 'function') {
+            showAppCopyToast('<span class="act">Offline map failed</span><br>' +
+              escHtml((err && err.message) || 'Download failed.'));
+          }
+          return null;
+        });
       });
     }
     window.saveOfflineMapAround = saveOfflineMapAround;
@@ -19125,7 +19346,7 @@
           hint.innerHTML = '<strong>Draw shape</strong> — 3+ corners. Tap an existing <strong>dot</strong> (or Finish) to close.';
         } else if (drawingLine) {
           hint.classList.add('active');
-          hint.innerHTML = '<strong>Draw line</strong> — tap points (solid). Finish to save (not a hunt area).';
+          hint.innerHTML = '<strong>Draw line</strong> — tap map points. Double-click, tap a point again, or <strong>Finish</strong> to save.';
         } else {
           hint.classList.remove('active');
           hint.innerHTML = '';
@@ -19190,19 +19411,22 @@
     /** Update only the draft line to the cursor — keeps vertex markers stable for click-to-close. */
     function updateMapDrawRubberBand() {
       if (!map || !mapDrawPreviewLayer || !mapDrawMode || !mapDrawPoints.length) return;
+      /* Measure + draw-line share the same dashed creation UX */
+      var isPathDraft = mapDrawMode === 'measure' || mapDrawMode === 'drawline';
       var isMeasure = mapDrawMode === 'measure';
       var color = isMeasure ? MEASURE_LINE_COLOR : '#e59a18';
+      var haloColor = isMeasure ? MEASURE_LINE_HALO : 'rgba(255, 248, 220, 0.95)';
       var latlngs = mapDrawPoints.map(function(p) { return [p.lat, p.lng]; });
       if (mapDrawMouseLatLng) {
         latlngs = latlngs.concat([[mapDrawMouseLatLng.lat, mapDrawMouseLatLng.lng]]);
       }
-      // Light halo under dark dashed measure line (reads as a thin light border on each dash)
-      if (isMeasure) {
+      // Light halo under dashed path (measure + draw-line) so dashes read on any basemap
+      if (isPathDraft) {
         if (mapDrawLineHaloLayer && mapDrawPreviewLayer.hasLayer(mapDrawLineHaloLayer)) {
           try {
             mapDrawLineHaloLayer.setLatLngs(latlngs);
             mapDrawLineHaloLayer.setStyle({
-              color: MEASURE_LINE_HALO,
+              color: haloColor,
               weight: 7,
               opacity: 0.95,
               dashArray: '7 7',
@@ -19215,7 +19439,7 @@
         }
         if (!mapDrawLineHaloLayer) {
           mapDrawLineHaloLayer = L.polyline(latlngs, {
-            color: MEASURE_LINE_HALO,
+            color: haloColor,
             weight: 7,
             opacity: 0.95,
             dashArray: '7 7',
@@ -19233,9 +19457,9 @@
           mapDrawLineLayer.setLatLngs(latlngs);
           mapDrawLineLayer.setStyle({
             color: color,
-            weight: isMeasure ? 3.5 : 3,
+            weight: isPathDraft ? 3.5 : 3,
             opacity: 1,
-            dashArray: isMeasure ? '7 7' : null,
+            dashArray: isPathDraft ? '7 7' : null,
             lineCap: 'round',
             lineJoin: 'round'
           });
@@ -19246,9 +19470,9 @@
       if (!mapDrawLineLayer) {
         mapDrawLineLayer = L.polyline(latlngs, {
           color: color,
-          weight: isMeasure ? 3.5 : 3,
+          weight: isPathDraft ? 3.5 : 3,
           opacity: 1,
-          dashArray: isMeasure ? '7 7' : null,
+          dashArray: isPathDraft ? '7 7' : null,
           lineCap: 'round',
           lineJoin: 'round',
           interactive: false
@@ -19296,40 +19520,51 @@
       updateMapDrawRubberBand();
 
       // Vertices as DOM DivIcon markers (marker pane) so preferCanvas cannot eat clicks.
-      // Previous dots (3+ points) close the shape when tapped — first = green, others = gold.
+      // Shape: previous dots close polygon.
+      // Measure + draw-line: same creation UX — any existing vertex ends the path.
       mapDrawVertexGroup = L.layerGroup().addTo(mapDrawPreviewLayer);
       mapDrawPoints.forEach(function(p, idx) {
         var isDraw = mapDrawMode === 'draw';
+        var isLine = mapDrawMode === 'drawline';
+        var isMeasurePt = mapDrawMode === 'measure';
+        var isPathDraft = isMeasurePt || isLine;
         var canClose = isDraw && mapDrawPoints.length >= 3 && idx < mapDrawPoints.length - 1;
         var isLatest = idx === mapDrawPoints.length - 1;
+        // Path modes (measure + line): re-tap any vertex (incl. latest) to finish — same as measure
+        var pathCanFinish = isPathDraft && mapDrawPoints.length >= 2;
         var cls = 'draw-vertex-dot';
         if (canClose) cls += ' is-close' + (idx === 0 ? ' is-first' : '');
-        else if (mapDrawMode === 'measure') cls += ' is-measure';
+        else if (isPathDraft) cls += ' is-measure';
         else if (isLatest) cls += ' is-latest';
         else cls += ' is-latest';
 
-        var isMeasurePt = mapDrawMode === 'measure';
-        var size = canClose ? (idx === 0 ? 24 : 22) : (isMeasurePt ? 20 : 18);
-        // Measure: allow re-clicking any existing vertex (esp. last) to finish
-        var measureCanFinish = isMeasurePt && mapDrawPoints.length >= 2;
+        var size = canClose ? (idx === 0 ? 24 : 22) : (isPathDraft ? 20 : 18);
+        /* No hover “tap again to finish” tips on measure/line — feels clunky */
         var m = L.marker([p.lat, p.lng], {
           icon: L.divIcon({
             className: 'draw-vertex-icon',
-            html: '<div class="' + cls + '" title="' +
-              (canClose
-                ? (idx === 0 ? 'Tap to close shape' : 'Tap previous corner to finish')
-                : (measureCanFinish ? 'Tap again to finish measure' : '')) +
-              '"></div>',
+            html: '<div class="' + cls + '"></div>',
             iconSize: [size, size],
             iconAnchor: [size / 2, size / 2]
           }),
-          interactive: !!(canClose || measureCanFinish),
+          interactive: !!(canClose || pathCanFinish),
           keyboard: false,
-          zIndexOffset: canClose ? 2500 : (measureCanFinish ? 2400 : 2000),
+          zIndexOffset: canClose ? 2500 : (pathCanFinish ? 2400 : 2000),
           bubblingMouseEvents: false
         });
+        function stopAndFinish(ev) {
+          try {
+            if (ev) L.DomEvent.stop(ev);
+            if (ev && ev.originalEvent) {
+              L.DomEvent.stopPropagation(ev.originalEvent);
+              L.DomEvent.preventDefault(ev.originalEvent);
+            }
+          } catch (eS) {}
+          mapDrawLastClickAt = 0;
+          mapDrawLastClickLatLng = null;
+          finishMapDraw();
+        }
         if (canClose) {
-          // mousedown + click: stop map from adding another vertex on the same tap
           m.on('mousedown', function(ev) {
             try {
               if (ev && ev.originalEvent) {
@@ -19339,14 +19574,7 @@
             } catch (eMd) {}
           });
           m.on('click', closeShapeFromVertexClick);
-          try {
-            m.bindTooltip(idx === 0 ? 'Tap to close shape' : 'Tap previous corner to finish', {
-              direction: 'top',
-              opacity: 0.95,
-              className: 'measured-path-tooltip'
-            });
-          } catch (eTip) {}
-        } else if (measureCanFinish) {
+        } else if (pathCanFinish) {
           m.on('mousedown', function(ev) {
             try {
               if (ev && ev.originalEvent) {
@@ -19355,31 +19583,13 @@
               }
             } catch (eMm) {}
           });
-          m.on('click', function(ev) {
-            try {
-              if (ev) L.DomEvent.stop(ev);
-              if (ev && ev.originalEvent) {
-                L.DomEvent.stopPropagation(ev.originalEvent);
-                L.DomEvent.preventDefault(ev.originalEvent);
-              }
-            } catch (eMc) {}
-            mapDrawLastClickAt = 0;
-            mapDrawLastClickLatLng = null;
-            finishMapDraw();
-          });
-          try {
-            m.bindTooltip('Tap point again to finish', {
-              direction: 'top',
-              opacity: 0.95,
-              className: 'measured-path-tooltip'
-            });
-          } catch (eTipM) {}
+          m.on('click', stopAndFinish);
         }
         m.addTo(mapDrawVertexGroup);
       });
 
-      // Segment distance labels (measure mode)
-      if (mapDrawMode === 'measure' && mapDrawPoints.length >= 2) {
+      // Segment distance labels (measure + draw-line — same creation feedback)
+      if ((mapDrawMode === 'measure' || mapDrawMode === 'drawline') && mapDrawPoints.length >= 2) {
         for (var i = 1; i < mapDrawPoints.length; i++) {
           var a = mapDrawPoints[i - 1], b = mapDrawPoints[i];
           var mid = { lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 };
@@ -19468,8 +19678,8 @@
         if (dMi < 0.015) isDouble = true;
       }
 
-      // Measure: re-click any existing vertex (same point a second time) → finish
-      if (!isDouble && mapDrawMode === 'measure' && mapDrawPoints.length >= 2) {
+      // Measure + draw-line: re-click any existing vertex → finish (identical creation UX)
+      if (!isDouble && (mapDrawMode === 'measure' || mapDrawMode === 'drawline') && mapDrawPoints.length >= 2) {
         var nearMeas = findNearbyDrawVertexIndex(latlng, 36);
         if (nearMeas >= 0) {
           mapDrawLastClickAt = 0;
@@ -20233,7 +20443,7 @@
       }
       if (mapDrawMode === 'drawline') {
         if (mapDrawPoints.length < 2) {
-          alert('Add at least two points for a line, then Finish.');
+          alert('Add at least two points for a line, then double-click, tap a point again, or press Finish.');
           return;
         }
         var totalL = pathDistanceMiles(mapDrawPoints);
@@ -20359,7 +20569,7 @@
         }
       }
       showAppPromptModal('shape-save-modal');
-      setTimeout(function() { if (nameInp) nameInp.focus(); }, 50);
+      // Name is optional — don't force focus/keyboard
     }
 
     function cancelShapeSaveModal() {
@@ -20544,8 +20754,23 @@
           clock = tA;
           elapsed = points[0].t != null ? (tA - points[0].t) : 0;
         }
+        // Interpolate elevation (meters) along the segment when samples exist
+        var elevM = null;
+        var elevA = a.elevM != null && !isNaN(a.elevM) ? a.elevM : null;
+        var elevB = b.elevM != null && !isNaN(b.elevM) ? b.elevM : null;
+        if (elevA != null && elevB != null) elevM = elevA + (elevB - elevA) * t;
+        else if (elevA != null) elevM = elevA;
+        else if (elevB != null) elevM = elevB;
         if (!best || d < best.d) {
-          best = { d: d, distFromStartMi: along, elapsedMs: elapsed, clockMs: clock, lat: pLat, lng: pLng };
+          best = {
+            d: d,
+            distFromStartMi: along,
+            elapsedMs: elapsed,
+            clockMs: clock,
+            lat: pLat,
+            lng: pLng,
+            elevM: elevM
+          };
         }
         distAlong += segMi;
       }
@@ -20585,11 +20810,30 @@
       }
 
       var alongHtml = '';
+      var alongElevLine = '';
+      try {
+        if (along) {
+          var elevAt = null;
+          if (along.elevM != null && path.points[0] && path.points[0].elevM != null) {
+            elevAt = formatElevDeltaFt((along.elevM - path.points[0].elevM) * 3.28084);
+          } else if (path.elev && path.elev.netFt != null && path.distanceMi) {
+            elevAt = formatElevDeltaFt(
+              (along.distFromStartMi / Math.max(path.distanceMi, 1e-6)) * path.elev.netFt
+            );
+          }
+          if (elevAt) {
+            alongElevLine =
+              '<div style="margin-top:2px;">Elev Δ from start: <strong style="color:#fff;">' +
+              elevAt + '</strong></div>';
+          }
+        }
+      } catch (eAl) {}
       if (along && isTrack) {
         alongHtml =
           '<div style="margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.15);">' +
             '<div style="font-size:10px;color:#fca5a5;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">At this point</div>' +
             '<div>From start: <strong style="color:#fff;">' + formatMiles(along.distFromStartMi) + '</strong></div>' +
+            alongElevLine +
             (along.elapsedMs != null
               ? '<div style="margin-top:2px;">Time into track: <strong style="color:#fff;">' + formatDurationMs(along.elapsedMs) + '</strong></div>'
               : '') +
@@ -20602,6 +20846,7 @@
           '<div style="margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.15);">' +
             '<div style="font-size:10px;color:#7dd3fc;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">At this point</div>' +
             '<div>From start: <strong style="color:#fff;">' + formatMiles(along.distFromStartMi) + '</strong></div>' +
+            alongElevLine +
           '</div>';
       }
 
@@ -21102,13 +21347,18 @@
         return Promise.resolve(null);
       }
       // Cap samples to keep URL reasonable (sample evenly if many vertices)
+      var idxs = [];
       var sample = points;
       if (points.length > 40) {
         sample = [];
         var step = (points.length - 1) / 39;
         for (var i = 0; i < 40; i++) {
-          sample.push(points[Math.round(i * step)]);
+          var ix = Math.round(i * step);
+          idxs.push(ix);
+          sample.push(points[ix]);
         }
+      } else {
+        for (var j = 0; j < points.length; j++) idxs.push(j);
       }
       var lats = sample.map(function(p) { return p.lat; }).join(',');
       var lngs = sample.map(function(p) { return p.lng; }).join(',');
@@ -21120,11 +21370,35 @@
       }).then(function(data) {
         var elevM = data && data.elevation;
         if (!elevM || !elevM.length) throw new Error('no elevation');
+        // Stamp elevM (meters) onto path points so probes can show elev Δ at a click
+        for (var s = 0; s < elevM.length && s < idxs.length; s++) {
+          if (elevM[s] != null && !isNaN(elevM[s]) && points[idxs[s]]) {
+            points[idxs[s]].elevM = elevM[s];
+          }
+        }
+        // Linear fill gaps between sampled vertices
+        if (points.length > elevM.length) {
+          var lastKnown = null;
+          var lastIdx = -1;
+          for (var pi = 0; pi < points.length; pi++) {
+            if (points[pi].elevM != null) {
+              if (lastKnown != null && lastIdx >= 0 && pi - lastIdx > 1) {
+                var span = pi - lastIdx;
+                for (var k = 1; k < span; k++) {
+                  var t = k / span;
+                  points[lastIdx + k].elevM = lastKnown + (points[pi].elevM - lastKnown) * t;
+                }
+              }
+              lastKnown = points[pi].elevM;
+              lastIdx = pi;
+            }
+          }
+        }
         var elevFt = elevM.map(function(m) { return m == null ? null : m * 3.28084; });
         var gain = 0, loss = 0;
-        for (var i = 1; i < elevFt.length; i++) {
-          if (elevFt[i] == null || elevFt[i - 1] == null) continue;
-          var d = elevFt[i] - elevFt[i - 1];
+        for (var ii = 1; ii < elevFt.length; ii++) {
+          if (elevFt[ii] == null || elevFt[ii - 1] == null) continue;
+          var d = elevFt[ii] - elevFt[ii - 1];
           if (d > 0) gain += d;
           else loss += -d;
         }
@@ -21185,6 +21459,8 @@
           if (String(all[i].id) === String(path.id)) {
             all[i].elev = path.elev;
             all[i].elevError = path.elevError;
+            // Persist per-point elevM for probe / tooltip at-a-point
+            all[i].points = path.points;
             break;
           }
         }
@@ -21248,20 +21524,22 @@
           elevTxt = formatElevDeltaFt((along.elevM - path.points[0].elevM) * 3.28084);
         } else if (path.elev && path.elev.netFt != null && path.distanceMi) {
           elevTxt = formatElevDeltaFt((along.distFromStartMi / Math.max(path.distanceMi, 1e-6)) * path.elev.netFt);
+        } else if (!path.elevError && !path.elev) {
+          elevTxt = 'loading…';
         }
       } catch (eE) {}
       var html = '<div class="path-probe-popup">' +
         formatMiles(distMi) + ' from start' +
         (timeMs != null ? '<br>' + formatDurationMs(timeMs) : '') +
-        '<br>Elev Δ ' + elevTxt +
+        '<br>Elev Δ from start: ' + elevTxt +
         '</div>';
       var label = L.marker([along.lat, along.lng], {
         interactive: false,
         icon: L.divIcon({
           className: '',
           html: html,
-          iconSize: [140, 54],
-          iconAnchor: [70, 62]
+          iconSize: [160, 58],
+          iconAnchor: [80, 66]
         })
       });
       measuredPathGroup.addLayer(marker);
@@ -21372,17 +21650,10 @@
           try { line.setStyle({ weight: baseW, opacity: 0.92 }); } catch (e1) {}
           line.setTooltipContent(measuredPathTooltipHtml(path));
         });
-        // Click line: first click selects; second click places probe (#23)
+        // Click line: place distance + elevation probe at that point (drag to slide)
         line.on('click', function(e) {
           L.DomEvent.stop(e);
-          if (pathProbeState && String(pathProbeState.pathId) === String(path.id)) {
-            placePathProbe(path, e.latlng);
-            return;
-          }
-          clearPathProbe();
-          pathProbeState = { pathId: path.id, marker: null, label: null, path: path };
-          // Open edit popup; next click places probe
-          line.openPopup(e.latlng);
+          placePathProbe(path, e.latlng);
         });
         line.on('dblclick', function(e) {
           L.DomEvent.stop(e);
@@ -21394,9 +21665,9 @@
           '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
             '<div class="mdm-title">' + escHtml(path.name || (isTrack ? 'GPS track' : 'Measured line')) + '</div>' +
             '<div class="mdm-sub">' + measuredPathTooltipHtml(path) + '</div>' +
-            '<div class="mdm-sub" style="margin-top:4px;">Click line again for distance probe · drag probe</div>' +
+            '<div class="mdm-sub" style="margin-top:4px;">Tap the line for distance &amp; elev Δ · drag the probe</div>' +
             '<button type="button" class="mdm-btn pin" onclick="event.preventDefault();event.stopPropagation();window.openPathEditModal(\'' + safeId + '\');return false;">Edit name / color / thickness</button>' +
-            '<button type="button" class="mdm-btn danger" onclick="event.preventDefault();event.stopPropagation();window.deleteMeasuredPath(\'' + safeId + '\');return false;">Delete line</button>' +
+            '<button type="button" class="mdm-btn danger" onclick="event.preventDefault();event.stopPropagation();window.deleteMeasuredPath(\'' + safeId + '\', event);return false;">Delete line</button>' +
           '</div>';
         line.bindPopup(popHtml, {
           className: 'saved-item-popup map-dot-popup',
@@ -21404,6 +21675,11 @@
           autoPan: false,
           maxWidth: (typeof isPhoneLayout === 'function' && isPhoneLayout()) ? 248 : 320,
           closeOnClick: false
+        });
+        // Right-click / long-press menu for edit/delete (left click is the probe)
+        line.on('contextmenu', function(e) {
+          try { L.DomEvent.stop(e); } catch (eCr) {}
+          try { line.openPopup(e.latlng); } catch (eOp) {}
         });
         line.on('popupopen', function() {
           var el = line.getPopup() && line.getPopup().getElement();
@@ -21427,14 +21703,14 @@
       }
     }
 
-    function deleteMeasuredPath(id) {
+    function deleteMeasuredPath(id, ev) {
       showMapItemConfirm('Delete this line?', function() {
         var paths = loadMeasuredPathsFromStorage().filter(function(p) { return String(p.id) !== String(id); });
         saveMeasuredPathsToStorage(paths);
         if (map) map.closePopup();
         drawMeasuredPathsOnMap();
         if (pathEditId && String(pathEditId) === String(id)) cancelPathEditModal();
-      });
+      }, null, ev);
     }
     window.deleteMeasuredPath = deleteMeasuredPath;
 
@@ -21662,7 +21938,7 @@
             '<button type="button" class="mdm-btn regs" onclick="event.preventDefault();event.stopPropagation();window.openCustomAreaRegs(\'' + safeId + '\');return false;">Rules &amp; regs</button>' +
             '<button type="button" class="mdm-btn" style="background:#1a4a5c;" onclick="event.preventDefault();event.stopPropagation();window.saveOfflineMapForCustomArea(\'' + safeId + '\');return false;">Save map offline (2 mi)</button>' +
             '<button type="button" class="mdm-btn share" onclick="event.preventDefault();event.stopPropagation();window.shareLocationLink(' + Number(area.lat) + ',' + Number(area.lng) + ',\'' + escJsStr(area.name) + '\');return false;">Share location</button>' +
-            '<button type="button" class="mdm-btn danger" onclick="event.preventDefault();event.stopPropagation();window.deleteCustomArea(\'' + safeId + '\');return false;">Delete area</button>' +
+            '<button type="button" class="mdm-btn danger" onclick="event.preventDefault();event.stopPropagation();window.deleteCustomArea(\'' + safeId + '\', event);return false;">Delete area</button>' +
           '</div>';
         poly.bindPopup(popupHtml, {
           className: 'saved-item-popup map-dot-popup',
@@ -21707,11 +21983,6 @@
       }
       var nameEl = document.getElementById('shape-name-input');
       var name = nameEl ? nameEl.value.trim() : '';
-      if (!name) {
-        alert('Please enter a name for this area.');
-        if (nameEl) nameEl.focus();
-        return;
-      }
       var permChk = document.getElementById('shape-permission-chk');
       var hasHuntPermission = !!(permChk && permChk.checked);
       var lineColor = (document.getElementById('shape-line-color') || {}).value || '#e59a18';
@@ -21723,6 +21994,12 @@
         return;
       }
       var land = resolveLandContextAtPoint(c.lat, c.lng);
+      // Name optional — default from land under the shape, else generic
+      if (!name) {
+        if (land && land.unitName) name = land.unitName + ' area';
+        else if (land && land.label) name = land.label + ' area';
+        else name = 'Custom area';
+      }
       var ringCopy = pendingShapeRing.slice();
       var perimeterMi = customAreaPerimeterMiles(ringCopy);
       var area = {
@@ -21794,23 +22071,8 @@
           }
         } catch (selErr) {}
       }
-      // Shape geometry is always in localStorage; optionally cache map tiles (2 mi)
-      try {
-        if (navigator.onLine && window.saveOfflineMapAround) {
-          var wantTiles = confirm(
-            'Custom area “' + name + '” is saved on this device.\n\n' +
-            'Also download map tiles for offline use (2-mile radius around the area center)?\n' +
-            'Uses a little storage; only needed if you will be out of service.'
-          );
-          if (wantTiles) {
-            saveOfflineMapAround(c.lat, c.lng, {
-              label: name,
-              source: 'custom-area',
-              sourceId: area.id
-            });
-          }
-        }
-      } catch (offErr) {}
+      // Do not auto-download offline map tiles after drawing a shape.
+      // Users can cache tiles separately via Offline map on the map menu.
     }
     window.confirmSaveCustomShape = confirmSaveCustomShape;
 
@@ -21831,7 +22093,7 @@
     }
     window.openCustomAreaRegs = openCustomAreaRegs;
 
-    function deleteCustomArea(id) {
+    function deleteCustomArea(id, ev) {
       showMapItemConfirm('Delete this custom hunt area?', function() {
         var areas = loadCustomAreasFromStorage().filter(function(a) { return String(a.id) !== String(id); });
         saveCustomAreasToStorage(areas);
@@ -21845,7 +22107,7 @@
         if (map) map.closePopup();
         drawCustomAreasOnMap();
         if (typeof updateAvailableList === 'function' && selectedDate && selectedWeapon) updateAvailableList();
-      });
+      }, null, ev);
     }
     window.deleteCustomArea = deleteCustomArea;
 
@@ -21858,12 +22120,16 @@
 
     function showAppCopyToast(messageHtml) {
       var el = document.getElementById('app-copy-toast');
+      /* Host on map-wrapper so toast sits above calendar, behind the toolbar */
+      var host = document.querySelector('.map-wrapper') || document.body;
       if (!el) {
         el = document.createElement('div');
         el.id = 'app-copy-toast';
         el.className = 'app-copy-toast';
         el.setAttribute('role', 'status');
-        document.body.appendChild(el);
+        host.appendChild(el);
+      } else if (el.parentNode !== host) {
+        try { host.appendChild(el); } catch (eHost) {}
       }
       el.innerHTML = messageHtml;
       el.classList.add('show');
@@ -23765,7 +24031,7 @@ function togglePinIconPicker() {
                 '" onclick="event.preventDefault();event.stopPropagation();window.togglePinEmphasize(\'' + safeId + '\');return false;">' +
                 '<span class="mdm-emphasize-bang" aria-hidden="true"></span></button>' +
               '<button type="button" class="mdm-edit-btn" style="flex:1;" onclick="event.preventDefault();event.stopPropagation();window.openEditPin(\'' + safeId + '\');return false;">Edit</button>' +
-              '<button type="button" class="mdm-trash-btn" title="Delete" aria-label="Delete" onclick="event.preventDefault();event.stopPropagation();window.deletePin(\'' + safeId + '\');return false;">' +
+              '<button type="button" class="mdm-trash-btn" title="Delete" aria-label="Delete" onclick="event.preventDefault();event.stopPropagation();window.deletePin(\'' + safeId + '\', event);return false;">' +
                 '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5h6v2M8 7l1 12h6l1-12"/></svg>' +
               '</button>' +
             '</div>' +
@@ -23840,7 +24106,7 @@ function togglePinIconPicker() {
           '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
             '<div class="mdm-title">Past hunt</div>' +
             '<div class="mdm-sub">' + escHtml(hunt.name) + '<br>' + escHtml(hunt.date) + tempLine + '</div>' +
-            '<button type="button" class="mdm-btn danger" onclick="event.preventDefault();event.stopPropagation();window.deleteHunt(\'' + safeId + '\');return false;">Delete hunt</button>' +
+            '<button type="button" class="mdm-btn danger" onclick="event.preventDefault();event.stopPropagation();window.deleteHunt(\'' + safeId + '\', event);return false;">Delete hunt</button>' +
           '</div>';
         m.bindPopup(popupHtml, { className: 'saved-item-popup map-dot-popup', closeButton: true, autoPan: false, maxWidth: 280, closeOnClick: false });
         m.on('popupopen', function() {
@@ -23853,26 +24119,55 @@ function togglePinIconPicker() {
         huntMarkerGroup.addLayer(m);
       });
     }
+    /** Resolve the Delete control that was pressed (from click event). */
+    function resolveDeleteConfirmAnchor(evOrEl) {
+      if (!evOrEl) return null;
+      var el = evOrEl;
+      if (evOrEl.target || evOrEl.currentTarget) {
+        el = evOrEl.currentTarget || evOrEl.target;
+      }
+      if (!el || !el.closest) {
+        try {
+          if (el && el.nodeType === 1) return el;
+        } catch (e0) {}
+        return null;
+      }
+      return el.closest('button') ||
+        el.closest('.mdm-btn') ||
+        el.closest('.mdm-trash-btn') ||
+        el.closest('[onclick*="delete"]') ||
+        el;
+    }
+
     /**
-     * Position delete confirm over the open pin popup (or pin editor), not the screen center.
-     * Falls back to viewport center when no anchor is found.
+     * Position delete confirm over the Delete button that was pressed so
+     * the original Delete is fully covered (no two “Delete” labels visible).
+     * Falls back to open popup / center.
      */
-    function positionMapItemConfirm(el) {
+    function positionMapItemConfirm(el, anchorBtn) {
       if (!el) return;
       el.classList.remove('is-centered');
+      el.classList.remove('is-over-btn');
       el.style.left = '';
       el.style.top = '';
       el.style.transform = '';
-      var anchor = null;
-      try {
-        // Prefer an open Leaflet popup (pin menu)
-        anchor = document.querySelector('.leaflet-popup.leaflet-popup-open') ||
-          document.querySelector('.leaflet-popup');
-      } catch (e1) {}
+      var anchor = anchorBtn || null;
+      if (!anchor) {
+        try {
+          // Prefer danger delete / trash in the open popup
+          var popup = document.querySelector('.leaflet-popup.leaflet-popup-open') ||
+            document.querySelector('.leaflet-popup');
+          if (popup) {
+            anchor = popup.querySelector('.mdm-btn.danger, .mdm-trash-btn, button.danger') || popup;
+          }
+        } catch (e1) {}
+      }
       if (!anchor) {
         try {
           var sheet = document.getElementById('pin-editor-sheet');
-          if (sheet && sheet.classList.contains('open')) anchor = sheet;
+          if (sheet && sheet.classList.contains('open')) {
+            anchor = sheet.querySelector('.mdm-trash-btn, .mdm-btn.danger, button[onclick*="delete"]') || sheet;
+          }
         } catch (e2) {}
       }
       // Force layout so offsetWidth/Height are real
@@ -23882,15 +24177,16 @@ function togglePinIconPicker() {
         try {
           var r = anchor.getBoundingClientRect();
           if (r && r.width > 0 && r.height > 0) {
+            // Cover the pressed control: center confirm over it
             var left = r.left + (r.width / 2) - (w / 2);
             var top = r.top + (r.height / 2) - (h / 2);
-            // Prefer slightly above center of popup so it feels stacked on top
-            top = r.top + Math.max(8, (r.height * 0.2)) - 4;
+            // Keep on screen
             left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
             top = Math.max(8, Math.min(top, window.innerHeight - h - 8));
             el.style.left = Math.round(left) + 'px';
             el.style.top = Math.round(top) + 'px';
             el.style.transform = 'none';
+            el.classList.add('is-over-btn');
             return;
           }
         } catch (eP) {}
@@ -23899,14 +24195,18 @@ function togglePinIconPicker() {
     }
 
     /**
-     * Confirmation dialog stacked over the pin popup instead of browser confirm().
-     * Does not close the underlying pin popup — sits on top until answered.
+     * Confirmation dialog stacked over the Delete control that was pressed.
+     * @param {string} message
+     * @param {Function} onYes
+     * @param {Function} [onNo]
+     * @param {Event|Element} [anchorEvOrEl] click event or the Delete button
      */
-    function showMapItemConfirm(message, onYes, onNo) {
+    function showMapItemConfirm(message, onYes, onNo, anchorEvOrEl) {
       try {
         var old = document.getElementById('map-item-confirm');
         if (old && old.parentNode) old.parentNode.removeChild(old);
       } catch (eO) {}
+      var anchorBtn = resolveDeleteConfirmAnchor(anchorEvOrEl);
       var el = document.createElement('div');
       el.id = 'map-item-confirm';
       el.className = 'map-item-confirm';
@@ -23920,10 +24220,10 @@ function togglePinIconPicker() {
         '</div>';
       el.querySelector('.mic-msg').textContent = message || 'Delete this item?';
       document.body.appendChild(el);
-      try { positionMapItemConfirm(el); } catch (ePos) { el.classList.add('is-centered'); }
+      try { positionMapItemConfirm(el, anchorBtn); } catch (ePos) { el.classList.add('is-centered'); }
       // Re-measure after paint (fonts/layout)
       requestAnimationFrame(function() {
-        try { positionMapItemConfirm(el); } catch (e2) {}
+        try { positionMapItemConfirm(el, anchorBtn); } catch (e2) {}
       });
 
       function cleanup() {
@@ -23993,7 +24293,7 @@ function togglePinIconPicker() {
     window.showCreatorOnlyNotice = showCreatorOnlyNotice;
     window.closeCreatorOnlyNotice = closeCreatorOnlyNotice;
 
-    function deleteHunt(id) {
+    function deleteHunt(id, ev) {
       showMapItemConfirm('Delete this past hunt?', function() {
         historicalHunts = historicalHunts.filter(function(h) { return String(h.id) !== String(id); });
         try { localStorage.setItem('alabama_hunt_historical_hunts', JSON.stringify(historicalHunts)); } catch (eH) {}
@@ -24004,11 +24304,11 @@ function togglePinIconPicker() {
           else if (window.RegSlayerCloud && typeof window.RegSlayerCloud.markDirty === 'function') window.RegSlayerCloud.markDirty();
           if (window.RegSlayerCloud && typeof window.RegSlayerCloud.forcePush === 'function') window.RegSlayerCloud.forcePush();
         } catch (eCloud) { console.warn('deleteHunt cloud sync', eCloud); }
-      });
+      }, null, ev);
     }
     window.deleteHunt = deleteHunt;
 
-    function deletePin(id) {
+    function deletePin(id, ev) {
       showMapItemConfirm('Delete this pin?', function() {
         var idx = locations.findIndex(function(l) { return String(l.id) === String(id); });
         if (idx !== -1) locations.splice(idx, 1);
@@ -24028,7 +24328,7 @@ function togglePinIconPicker() {
           else if (window.RegSlayerCloud && typeof window.RegSlayerCloud.markDirty === 'function') window.RegSlayerCloud.markDirty();
           if (window.RegSlayerCloud && typeof window.RegSlayerCloud.forcePush === 'function') window.RegSlayerCloud.forcePush();
         } catch (eCloud) { console.warn('deletePin cloud sync', eCloud); }
-      });
+      }, null, ev);
     }
     window.deletePin = deletePin;
 
@@ -24157,7 +24457,7 @@ function togglePinIconPicker() {
             '<div class="mdm-title">Stand</div>' +
             '<div class="mdm-sub">' + escHtml(sub.name) + '</div>' +
             '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.selectSavedStand(\'' + safeLocId + '\',' + fullIdx + ');return false;">Get weather</button>' +
-            '<button type="button" class="mdm-btn danger" onclick="event.preventDefault();event.stopPropagation();window.removeSubsection(\'' + safeLocId + '\',' + fullIdx + ');return false;">Delete stand</button>' +
+            '<button type="button" class="mdm-btn danger" onclick="event.preventDefault();event.stopPropagation();window.removeSubsection(\'' + safeLocId + '\',' + fullIdx + ', event);return false;">Delete stand</button>' +
           '</div>';
         m.bindPopup(popupHtml, { className: 'saved-item-popup map-dot-popup', closeButton: true, autoPan: false, maxWidth: 280, closeOnClick: false });
         m.on('popupopen', function() {
@@ -26704,7 +27004,7 @@ function togglePinIconPicker() {
         if (i < 0) return;
         const div = document.createElement('div');
         div.className = 'subsection-item' + (selectedSubsectionIndex===i ? ' selected' : '');
-        div.innerHTML = '<div style="flex:1;" onclick="selectSubsection(' + JSON.stringify(String(location.id)) + ',' + i + ')">Stand <strong>' + sub.name + '</strong> <span style="font-size:11px;color:var(--muted);margin-left:8px;">(' + sub.lat.toFixed(5) + ', ' + sub.lng.toFixed(5) + ')</span></div><button onclick="event.stopPropagation();removeSubsection(' + JSON.stringify(String(location.id)) + ',' + i + ')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:11px;">Remove</button>';
+        div.innerHTML = '<div style="flex:1;" onclick="selectSubsection(' + JSON.stringify(String(location.id)) + ',' + i + ')">Stand <strong>' + sub.name + '</strong> <span style="font-size:11px;color:var(--muted);margin-left:8px;">(' + sub.lat.toFixed(5) + ', ' + sub.lng.toFixed(5) + ')</span></div><button onclick="event.stopPropagation();removeSubsection(' + JSON.stringify(String(location.id)) + ',' + i + ', event)" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:11px;">Remove</button>';
         cont.appendChild(div);
       });
     }
@@ -26928,7 +27228,7 @@ function togglePinIconPicker() {
     }
     window.promptAddSubsection = promptAddSubsection;
 
-    function removeSubsection(locId, index) {
+    function removeSubsection(locId, index, ev) {
       const loc = locations.find(function(l) { return String(l.id) === String(locId); });
       if (loc && loc.subSections && loc.subSections[index] != null) {
         var standLabel = loc.subSections[index].name || 'this stand';
@@ -26946,7 +27246,7 @@ function togglePinIconPicker() {
           if (String(selectedLocationId) === String(locId)) {
             selectLocation(loc, rule);
           }
-        });
+        }, null, ev);
       }
     }
     window.removeSubsection = removeSubsection;
@@ -27032,6 +27332,46 @@ function togglePinIconPicker() {
       } catch (ePin) {}
     }
 
+    /**
+     * Pin the map-name chip horizontally over the Current Location button.
+     * Bottom offset stays CSS (above toolbar).
+     */
+    function positionMapBottomName() {
+      var name = document.getElementById('map-bottom-map-name');
+      var gps = document.getElementById('gps-snap-btn');
+      var wrap = document.getElementById('map-wrapper') || document.querySelector('.map-wrapper');
+      if (!name || !gps || !wrap) return;
+      try {
+        var wr = wrap.getBoundingClientRect();
+        var gr = gps.getBoundingClientRect();
+        if (!wr.width || !gr.width) return;
+        var cx = gr.left + (gr.width / 2) - wr.left;
+        name.style.left = Math.round(cx) + 'px';
+        name.style.transform = 'translateX(-50%)';
+      } catch (ePos) {}
+    }
+    window.positionMapBottomName = positionMapBottomName;
+    (function wireMapBottomNamePosition() {
+      var t = null;
+      function schedule() {
+        if (t) clearTimeout(t);
+        t = setTimeout(function () {
+          t = null;
+          positionMapBottomName();
+        }, 40);
+      }
+      window.addEventListener('resize', schedule);
+      window.addEventListener('orientationchange', schedule);
+      document.addEventListener('DOMContentLoaded', function () {
+        schedule();
+        [80, 250, 600, 1200].forEach(function (ms) { setTimeout(positionMapBottomName, ms); });
+      });
+      if (document.readyState !== 'loading') {
+        schedule();
+        [80, 250, 600].forEach(function (ms) { setTimeout(positionMapBottomName, ms); });
+      }
+    })();
+
     function toggleMapFullscreen() {
       ensureMap().then(function() {
         var w = document.getElementById('map-wrapper') || document.querySelector('.map-wrapper');
@@ -27052,6 +27392,7 @@ function togglePinIconPicker() {
               fitPhoneMapSize();
               if (typeof fitDesktopMapHeight === 'function') fitDesktopMapHeight();
               if (map) { try { map.invalidateSize(true); } catch (e) {} }
+              if (typeof positionMapBottomName === 'function') positionMapBottomName();
             }, ms);
           });
         } else if (map) {
@@ -27079,7 +27420,13 @@ function togglePinIconPicker() {
           if (full && lastMapWind.wdir != null) {
             updateMapWindHud(lastMapWind.wspd, lastMapWind.wdir, lastMapWind.isCurrent);
           }
+          if (typeof positionMapBottomName === 'function') positionMapBottomName();
         }, 300);
+        [40, 120, 350].forEach(function (ms) {
+          setTimeout(function () {
+            if (typeof positionMapBottomName === 'function') positionMapBottomName();
+          }, ms);
+        });
       });
     }
     function snapToGPS() {
@@ -28146,9 +28493,11 @@ function togglePinIconPicker() {
               var bn = document.getElementById('brand-map-name');
               var mn = document.getElementById('map-title-mobile');
               var fs = document.getElementById('map-fs-title');
+              var btm = document.getElementById('map-bottom-map-name');
               if (bn) bn.textContent = mapNm;
               if (mn) mn.textContent = mapNm;
               if (fs) fs.textContent = mapNm;
+              if (btm) btm.textContent = mapNm;
               var chip = document.getElementById('auth-user-chip');
               var prof = window.RegSlayerCloud.getProfile && window.RegSlayerCloud.getProfile();
               if (chip) chip.textContent = prof && prof.username
