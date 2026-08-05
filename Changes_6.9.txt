@@ -1,4 +1,11 @@
-REG SLAYER V6.9 Nice — WMA permit zones + can/can’t weapon clarity
+REG SLAYER V6.9 Nice / V6.9.1 Nice — WMA permit zones + public lands overlay fix
+
+V6.9.1 (overlay fix)
+--------------------
+- Public land polygons froze during draw: buildAdcnrPopup ran getWmaZoneAt (full zone PIP) for every feature. Popup content is now lazy on open.
+- Each feature draw wrapped in try/catch so one bad poly cannot stop the rest.
+- Bump GIS cache key to alabama_hunt_public_lands_v6; skip empty/corrupt cache.
+- SW shell v56.
 
 What / why
 ----------

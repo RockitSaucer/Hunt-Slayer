@@ -10919,7 +10919,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.9-nice';
+    const APP_VERSION = '6.9.1-nice';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -11130,7 +11130,8 @@
     // Public lands overlay + list (ADCNR, TVA, federal) - cached ~30 days
     const ADCNR_BASE = 'https://conservationgis.alabama.gov/adcnrweb/rest/services';
     // v5: NWR fill uses FWS Public Hunt Units 2025-2026 (not full admin refuge outline)
-    const ADCNR_CACHE_KEY = 'alabama_hunt_public_lands_v5';
+    // Bump key when GIS payload shape / draw rules change so clients drop stale empty/partial cache
+    const ADCNR_CACHE_KEY = 'alabama_hunt_public_lands_v6';
     const ADCNR_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
     const HIDDEN_LOCS_KEY = 'alabama_hunt_hidden_locations_v1';
     const USER_STANDS_KEY = 'alabama_hunt_user_stands_v1';
@@ -14999,10 +15000,19 @@
       if (!wmaOn) return;
 
       wmaZoneFeatures.forEach(function(f) {
+        try {
         var latlngs = [];
-        f.rings.forEach(function(ring) {
-          var path = ring.map(function(pt) { return [pt[1], pt[0]]; });
-          latlngs.push(path);
+        (f.rings || []).forEach(function(ring) {
+          if (!ring || !ring.length) return;
+          var path = [];
+          for (var pi = 0; pi < ring.length; pi++) {
+            var pt = ring[pi];
+            if (!pt || pt.length < 2) continue;
+            var la = Number(pt[1]), lo = Number(pt[0]);
+            if (isNaN(la) || isNaN(lo)) continue;
+            path.push([la, lo]);
+          }
+          if (path.length >= 3) latlngs.push(path);
         });
         if (!latlngs.length) return;
         var isOpen = false;
@@ -15030,7 +15040,9 @@
         if (typeof applyPublicLandOpacityMul === 'function') {
           fillOp = applyPublicLandOpacityMul(fillOp, isOpen);
         }
-        var poly = L.polygon(latlngs, {
+        // MultiPolygon: one Leaflet poly per outer ring (avoid treating extra exteriors as holes)
+        var polyGroup = latlngs.length === 1 ? latlngs[0] : latlngs;
+        var poly = L.polygon(polyGroup, {
           color: f.color || '#ccc',
           weight: isOpen ? 2.4 : 1.6,
           opacity: 0.95,
@@ -15119,6 +15131,9 @@
           placeOrMoveMapDot(clickLatLng, { skipWeather: false, openMenu: true });
         });
         wmaZoneLayerGroup.addLayer(poly);
+        } catch (eWzFeat) {
+          console.warn('WMA zone draw skipped', f && f.unitName, eWzFeat);
+        }
       });
     }
     window.drawWmaZoneOverlays = drawWmaZoneOverlays;
@@ -15189,6 +15204,16 @@
 
     function writeAdcnrCache(payload) {
       try {
+        // Do not persist a totally empty GIS payload (failed network blip would blank overlays for weeks)
+        var layers = (payload && payload.layers) || [];
+        var totalFeats = 0;
+        for (var i = 0; i < layers.length; i++) {
+          totalFeats += ((layers[i] && layers[i].features) || []).length;
+        }
+        if (totalFeats < 5) {
+          console.warn('ADCNR cache skip: too few features (' + totalFeats + ')');
+          return false;
+        }
         localStorage.setItem(ADCNR_CACHE_KEY, JSON.stringify(payload));
         return true;
       } catch (e) {
@@ -15261,7 +15286,14 @@
 
       if (!forceRefresh) {
         var cached = readAdcnrCache();
-        if (cached && (Date.now() - cached.timestamp) < ADCNR_CACHE_TTL_MS) {
+        var cacheFeatCount = 0;
+        try {
+          (cached && cached.layers || []).forEach(function(Lyr) {
+            cacheFeatCount += ((Lyr && Lyr.features) || []).length;
+          });
+        } catch (eCf) { cacheFeatCount = 0; }
+        // Ignore empty/corrupt cache so a past failed fetch cannot blank overlays for 30 days
+        if (cached && cacheFeatCount >= 5 && (Date.now() - cached.timestamp) < ADCNR_CACHE_TTL_MS) {
           adcnrLandsData = cached;
           updateAdcnrCacheStatus(cached.timestamp);
           syncPublicLandsToLocations(cached);
@@ -15337,14 +15369,23 @@
       return null;
     }
 
-    function buildAdcnrPopup(layer, attrs) {
+    function buildAdcnrPopup(layer, attrs, opts) {
       attrs = attrs || {};
+      opts = opts || {};
       var name = attrName(attrs, layer.nameFields || ['Name']) || layer.label;
-      // Prefer WMA permit zone at last click (not Alabama deer zone)
+      // WMA permit zone: only when caller already knows it (zone poly) or opts.lat/lng
+      // (never scan all zone rings for every polygon during bulk map draw — freezes overlay paint)
       var wmaHere = null;
       try {
-        if (clickLat != null && clickLng != null && typeof getWmaZoneAt === 'function') {
-          wmaHere = getWmaZoneAt(clickLat, clickLng);
+        if (attrs.wmaZone) {
+          wmaHere = {
+            wmaZone: String(attrs.wmaZone).toUpperCase().charAt(0),
+            unitName: stripZoneSuffixFromName(name),
+            label: stripZoneSuffixFromName(name) + ' (Zone ' + String(attrs.wmaZone).toUpperCase().charAt(0) + ')',
+            mapPdf: attrs.Link || attrs.MapLink || ''
+          };
+        } else if (opts.lat != null && opts.lng != null && typeof getWmaZoneAt === 'function') {
+          wmaHere = getWmaZoneAt(opts.lat, opts.lng);
         }
       } catch (eWh) {}
       if (wmaHere && namesRoughMatch(wmaHere.unitName, name)) {
@@ -17249,6 +17290,7 @@
         // Per-type toggle (Layers menu color buttons) — default all ON at launch
         if (!isPublicLandLayerKeyVisible(layer.key)) return;
         (layer.features || []).forEach(function(feat) {
+          try {
           var attrs = feat.attributes || {};
           // Managed hunt / public recreation lands (not parks with CanHunt=No)
           if (!mayDrawHuntableFeature(layer, attrs)) return;
@@ -17299,13 +17341,17 @@
             inPeakRut = !!(selectedDate && isDateInPeakRut(zoneForRut, selectedDate));
           } catch (ePr) { inPeakRut = false; }
           if (interactive) {
-            poly.bindPopup(buildAdcnrPopup(layer, attrs), {
+            // Lazy popup: build on open so bulk draw stays fast (zone scan only if needed)
+            poly.bindPopup('', {
               className: 'map-dot-popup adcnr-land-popup',
               closeButton: true,
               autoPan: false,
               maxWidth: (typeof isPhoneLayout === 'function' && isPhoneLayout()) ? 248 : 300,
               closeOnClick: false
             });
+            poly._plLayer = layer;
+            poly._plAttrs = attrs;
+            poly._plCent = c;
             // Per-polygon long-press state (phone: hold to drop pin/dot)
             poly._lpTimer = null;
             poly._lpFired = false;
@@ -17436,6 +17482,15 @@
                 if (map) map.closePopup();
                 return;
               }
+              try {
+                var lyr = poly._plLayer || layer;
+                var at = poly._plAttrs || attrs;
+                var cen = poly._plCent || c;
+                var htmlPop = buildAdcnrPopup(lyr, at, { lat: cen.lat, lng: cen.lng });
+                poly.setPopupContent(htmlPop);
+              } catch (ePop) {
+                try { poly.setPopupContent('<strong>Public land</strong>'); } catch (e2) {}
+              }
               wireAdcnrPopupWeatherBtn(layer, attrs, c.lat, c.lng);
             });
           }
@@ -17452,6 +17507,9 @@
             });
           }
           // NO green ✓ from GIS here — only from drawListedHuntCheckmarks()
+          } catch (eFeatDraw) {
+            console.warn('Public land feature draw skipped', layer && layer.key, eFeatDraw);
+          }
         });
       });
       // Peak-rut: one flash per cluster when zoomed out; per-unit when zoomed in enough
