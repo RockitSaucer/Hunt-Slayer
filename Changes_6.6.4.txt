@@ -1,0 +1,43 @@
+REG SLAYER — Changes 6.6.3 → 6.6.4 Beta
+========================================
+Date: 2026-08-05
+Tag: v6.6.4-beta
+Shell cache: reg-slayer-shell-v46 (was v45)
+Files: index.html, party-maps.js, auth-sync.js, sw.js, icons/tools/layers.png, tools/thin_layers_icon.py
+
+WHAT / WHY
+----------
+UI & map chrome
+- Delete pin confirm stacks over pin popup; map-item-confirm centered fallback
+- Map creator-only custom notice (not browser alert)
+- Date/weapon toolbar chip: 3D, abbreviated date, today green / future red outline
+- Map title is switcher dropdown for all maps
+- Toolbar icons 3D like weapon buttons; larger glyphs; thinner layers icon
+- Draw tool: last mode default, chooser toggles, active mode highlighted
+- Rules & regs: draggable; source link buttons for all authorities
+- Compass/wind dial position is map-relative % (stable min ↔ max)
+
+Share / pins
+- Share to another map: map list UI; full pin/hunt/stand clone (colors, icon, notes, size…)
+- Share map list stacks on top of prior share chooser
+
+Party / friends / markers
+- Friend edit: compact no-scroll; Nickname button + color; Change marker with live icon/color/size
+- Size slider lives in Change marker picker; map size matches save
+- Own GPS: Edit marker next to Share location
+- Members list shows colored directional markers
+- Kick {name} from map (host only); invite code rotates on kick (SQL migration required)
+
+Auth / domains
+- Same HuntSlayer account on regslayer.com and huntslayer.com
+- Invite links use current origin; note on sign-in screen
+
+Supabase (apply on HuntSlayer if not done)
+- supabase/migrations/20260806010000_rotate_code_on_kick.sql
+  (remove_shared_map_member returns new 6-digit code after kick)
+
+UNDO
+----
+git checkout v6.6.3-beta -- index.html party-maps.js auth-sync.js sw.js icons/tools/layers.png
+Or redeploy tag v6.6.3-beta.
+Roll back kick SQL by restoring prior remove_shared_map_member if needed.

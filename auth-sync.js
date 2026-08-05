@@ -478,6 +478,9 @@
     if (!window.supabase || !window.supabase.createClient) {
       throw new Error('Supabase library not loaded');
     }
+    // Same Supabase project for regslayer.com + huntslayer.com — one account works on both.
+    // Session storage is origin-scoped (sign in once per domain if switching sites),
+    // but username / password / recovery codes are identical against HuntSlayer auth.
     sb = window.supabase.createClient(SB_URL, SB_ANON, {
       auth: {
         persistSession: true,
@@ -487,6 +490,23 @@
       }
     });
     return sb;
+  }
+
+  /** Public origins that share this auth backend (for invite links / docs). */
+  function appPublicOrigins() {
+    return ['https://regslayer.com', 'https://huntslayer.com', 'https://www.regslayer.com', 'https://www.huntslayer.com'];
+  }
+  function currentAppOrigin() {
+    try {
+      if (window.location && window.location.origin && /^https?:/i.test(window.location.origin)) {
+        return window.location.origin.replace(/\/$/, '');
+      }
+    } catch (e) {}
+    return 'https://regslayer.com';
+  }
+  function inviteJoinUrl(code) {
+    var c = String(code || '').replace(/\D/g, '').slice(0, 6);
+    return currentAppOrigin() + '/?join=' + c;
   }
 
   async function loadProfile() {
@@ -758,7 +778,12 @@
     var mobileName = $('map-title-mobile');
     if (mobileName) {
       mobileName.textContent = mapLabel;
-      mobileName.title = mapTitle;
+      mobileName.title = (mapTitle || 'Active map') + ' — click to switch maps';
+    }
+    var fsTitle = $('map-fs-title');
+    if (fsTitle) {
+      fsTitle.textContent = mapLabel;
+      fsTitle.title = (mapTitle || 'Active map') + ' — click to switch maps';
     }
     var badge = $('auth-user-chip');
     if (badge) {
@@ -996,9 +1021,10 @@
 
   function inviteShareText(code, mapName) {
     var c = String(code || '').replace(/\D/g, '').slice(0, 6);
-    var link = 'https://regslayer.com/?join=' + c;
+    var link = inviteJoinUrl(c);
     var nameLine = mapName ? ('Map: ' + mapName + '\n') : '';
-    return 'Join my HuntSlayer map!\n' + nameLine + 'Code: ' + c + '\n' + link;
+    return 'Join my HuntSlayer map!\n' + nameLine + 'Code: ' + c + '\n' + link +
+      '\n(Works on regslayer.com and huntslayer.com — same account)';
   }
 
   async function onAuthed(fromLogin) {
@@ -1108,6 +1134,9 @@
     setOfflineMode: setOfflineMode,
     getClient: function () { return sb; },
     switchToShared: switchToShared,
+    inviteJoinUrl: inviteJoinUrl,
+    currentAppOrigin: currentAppOrigin,
+    appPublicOrigins: appPublicOrigins,
     get _sb() { return sb; }
   };
   // Expose for party extension

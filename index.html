@@ -162,18 +162,152 @@
       gap: 8px;
       min-height: 0;
     }
-    .map-title-bar .map-title-text {
-      flex: 1 1 auto;
+    .map-title-switcher {
+      position: relative;
+      flex: 0 1 auto;
       min-width: 0;
-      font-size: 13px;
+      max-width: min(48vw, 260px);
+      display: flex;
+      align-items: center;
+      width: auto;
+    }
+    .map-title-bar .map-title-text,
+    button.map-title-text {
+      flex: 0 0 auto;
+      width: auto;
+      max-width: 100%;
+      min-width: 0;
+      font-size: 12px;
       font-weight: 800;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.03em;
       color: var(--accent, #e59a18);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
       text-align: left;
       line-height: 1.2;
+      /* 3D chip — only as wide as the map name */
+      background: linear-gradient(180deg, #2a3222 0%, var(--panel-light, #1e2418) 45%, #141810 100%);
+      border: 1px solid var(--border, #2e3a2a);
+      border-radius: 8px;
+      padding: 5px 9px;
+      cursor: pointer;
+      font-family: inherit;
+      -webkit-appearance: none;
+      appearance: none;
+      box-shadow:
+        0 2px 0 rgba(0, 0, 0, 0.35),
+        0 3px 7px rgba(0, 0, 0, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, transform 0.08s ease;
+    }
+    button.map-title-text:hover,
+    button.map-title-text:focus-visible,
+    button.map-title-text[aria-expanded="true"] {
+      border-color: var(--accent, #e59a18);
+      background: linear-gradient(180deg, #323c28 0%, #262e1e 45%, #1a2014 100%);
+      outline: none;
+    }
+    button.map-title-text:active {
+      transform: translateY(1px);
+      box-shadow:
+        0 1px 0 rgba(0, 0, 0, 0.3),
+        inset 0 2px 4px rgba(0, 0, 0, 0.35);
+    }
+    button.map-title-text::after {
+      content: ' ▾';
+      font-size: 10px;
+      opacity: 0.8;
+      font-weight: 700;
+    }
+    #map-switcher-dropdown {
+      display: none;
+      position: fixed;
+      z-index: 2147483645;
+      min-width: 200px;
+      max-width: min(320px, calc(100vw - 16px));
+      max-height: min(50vh, 360px);
+      overflow-x: hidden;
+      overflow-y: auto;
+      padding: 6px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(14, 18, 12, 0.98);
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55);
+      box-sizing: border-box;
+      scrollbar-width: thin;
+      scrollbar-color: #1a1e16 #0a0c09;
+    }
+    #map-switcher-dropdown.open { display: block; }
+    #map-switcher-dropdown .msd-group {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      padding: 6px 8px 4px;
+    }
+    #map-switcher-dropdown .msd-item {
+      display: block;
+      width: 100%;
+      text-align: left;
+      margin: 2px 0;
+      padding: 9px 10px;
+      border-radius: 7px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: #e8efe4;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      box-sizing: border-box;
+    }
+    #map-switcher-dropdown .msd-item:hover {
+      background: rgba(229, 154, 24, 0.12);
+      border-color: rgba(229, 154, 24, 0.35);
+    }
+    #map-switcher-dropdown .msd-item.is-current {
+      background: rgba(229, 154, 24, 0.18);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    #map-switcher-dropdown .msd-empty {
+      padding: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    /* Share-to-map list inside simple modal */
+    .rs-share-map-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: min(40vh, 280px);
+      overflow-y: auto;
+      margin: 4px 0 8px;
+      scrollbar-width: thin;
+    }
+    .rs-share-map-list button {
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, #2a3222 0%, var(--panel-light) 45%, #181e14 100%);
+      color: #e8efe4;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .rs-share-map-list button:hover {
+      border-color: var(--accent);
+      background: linear-gradient(180deg, #323c28 0%, #262e1e 45%, #1c2418 100%);
+    }
+    .rs-share-map-list .rs-share-kind {
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-top: 2px;
     }
     .map-title-settings-btn {
       flex: 0 0 auto;
@@ -207,28 +341,51 @@
       flex: 1 1 auto;
       min-height: 0;
     }
-    /* Fullscreen: map name top-left next to zoom controls */
-    .map-fs-title {
+    /* Fullscreen: map name top-left next to zoom controls (clickable switcher) */
+    .map-fs-title,
+    button.map-fs-title {
       display: none;
       position: absolute;
       z-index: 1000;
       left: 52px;
       top: 12px;
-      max-width: min(46vw, 280px);
+      width: auto;
+      max-width: min(46vw, 260px);
       padding: 5px 10px;
       border-radius: 8px;
-      background: rgba(12, 16, 10, 0.88);
-      border: 1px solid rgba(40, 50, 26, 0.9);
+      background: linear-gradient(180deg, #2a3222 0%, rgba(22, 28, 18, 0.96) 45%, #12160e 100%);
+      border: 1px solid rgba(40, 50, 26, 0.95);
       color: var(--accent, #e59a18);
       font-size: 12px;
       font-weight: 800;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.03em;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      pointer-events: none;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.45);
+      pointer-events: auto;
+      cursor: pointer;
+      box-shadow:
+        0 2px 0 rgba(0, 0, 0, 0.4),
+        0 4px 12px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
       line-height: 1.25;
+      font-family: inherit;
+      text-align: left;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    button.map-fs-title:hover,
+    button.map-fs-title[aria-expanded="true"] {
+      border-color: rgba(229, 154, 24, 0.65);
+      background: linear-gradient(180deg, #323c28 0%, rgba(30, 36, 22, 0.98) 45%, #1a2014 100%);
+    }
+    button.map-fs-title:active {
+      transform: translateY(1px);
+    }
+    button.map-fs-title::after {
+      content: ' ▾';
+      font-size: 10px;
+      opacity: 0.8;
     }
     .map-wrapper.fullscreen .map-fs-title {
       display: block;
@@ -251,9 +408,24 @@
       padding: 6px 12px 4px;
       text-align: center;
     }
-    html.layout-phone .map-title-bar .map-title-text {
-      display: block;
+    html.layout-phone .map-title-bar .map-title-text,
+    html.layout-phone button.map-title-text {
+      display: inline-block;
+      width: auto;
+      max-width: min(80vw, 260px);
       text-align: center;
+      margin: 0 auto;
+    }
+    html.layout-phone .map-title-switcher {
+      width: auto;
+      max-width: 100%;
+      justify-content: center;
+      margin: 0 auto;
+    }
+    html.layout-phone .map-title-bar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
     html.layout-phone .map-title-settings-btn {
       display: none !important;
@@ -2216,17 +2388,7 @@
         0 3px 7px rgba(0, 0, 0, 0.22),
         inset 0 1px 0 rgba(255, 255, 255, 0.18);
     }
-    /* Map bottom toolbar stays flat / its own language — not the raised chip look */
-    .map-bottom-bar button,
-    .map-bottom-bar .mdt-btn,
-    .map-bottom-bar .mbb-icon-btn,
-    .map-bottom-bar .mbb-compass-btn,
-    .map-bottom-bar .mbb-ctrl,
-    .map-bottom-bar .map-settings-btn,
-    .map-bottom-bar .map-layers-toggle-btn {
-      transform: none;
-      background-image: none;
-    }
+    /* Map bottom toolbar uses the same raised 3D chip language as filter/weapon buttons */
     .sec-minmax-btn,
     .planner-minmax-btn {
       background: linear-gradient(180deg, #2a3222 0%, var(--panel) 50%, #141810 100%);
@@ -3113,10 +3275,11 @@
      */
     .map-draw-tools .mdt-icon-img,
     .map-layers-toggle-btn .mdt-icon-img {
-      width: 24px;
-      height: 24px;
-      max-width: 58%;
-      max-height: 58%;
+      /* Larger glyphs; button box size unchanged */
+      width: 30px;
+      height: 30px;
+      max-width: 76%;
+      max-height: 76%;
       object-fit: contain;
       display: block;
       pointer-events: none;
@@ -3136,12 +3299,12 @@
     .map-draw-tools #mdt-track .mdt-icon-img {
       filter: brightness(0) saturate(100%) invert(16%) sepia(95%) saturate(5000%) hue-rotate(348deg) brightness(1.05);
     }
-    /* Layers: slightly larger in the button; light ink on dark chrome */
+    /* Layers: larger glyph, thinner strokes (asset thinned); light ink on dark chrome */
     .map-layers-toggle-btn .mdt-icon-img {
-      width: 28px;
-      height: 28px;
-      max-width: 72%;
-      max-height: 72%;
+      width: 32px;
+      height: 32px;
+      max-width: 80%;
+      max-height: 80%;
       filter: brightness(0) invert(1);
     }
     /* Active / tracking — same “is-on” language as compass (accent border) */
@@ -3279,11 +3442,15 @@
     .map-bottom-bar .mbb-icon-btn.active,
     .map-bottom-bar .mbb-compass-btn.compass-mode-on,
     .map-bottom-bar .map-radar-control.radar-on .map-radar-toggle {
-      box-shadow: 0 0 0 2px rgba(229, 154, 24, 0.85), 0 0 14px rgba(229, 154, 24, 0.45) !important;
+      box-shadow:
+        0 2px 0 rgba(0, 0, 0, 0.35),
+        0 0 0 2px rgba(229, 154, 24, 0.75),
+        0 0 14px rgba(229, 154, 24, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
     }
     .map-bottom-bar .mdt-btn.mdt-icon-btn.active {
       border-color: var(--accent) !important;
-      background: rgba(229, 154, 24, 0.22) !important;
+      background: linear-gradient(180deg, #5a4820 0%, #3a3014 50%, #241e0c 100%) !important;
     }
     .map-draw-tools.tool-active #mdt-finish:not(:disabled) {
       background: rgba(74, 124, 42, 0.35);
@@ -4096,17 +4263,28 @@
     .draw-mode-chooser.open { display: flex; }
     .draw-mode-chooser button {
       border: 1px solid var(--border);
-      background: var(--panel-light);
+      background: linear-gradient(180deg, #2a3222 0%, var(--panel-light) 45%, #181e14 100%);
       color: var(--ink);
       border-radius: 8px;
       padding: 8px 10px;
       font-size: 12px;
       font-weight: 800;
       cursor: pointer;
+      box-shadow:
+        0 2px 0 rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
     }
     .draw-mode-chooser button:hover {
       border-color: var(--accent);
       color: var(--accent);
+    }
+    .draw-mode-chooser button.is-active {
+      border-color: var(--accent);
+      color: #111;
+      background: linear-gradient(180deg, #e8b84a 0%, var(--accent) 50%, #b87a12 100%);
+      box-shadow:
+        0 2px 0 rgba(0, 0, 0, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.25);
     }
     /* Overlay opacity sliders (#28) */
     .ml-opacity-row {
@@ -4229,28 +4407,37 @@
     }
     
     /*
-     * Mobile MIN mode: compass at the very top of the map card.
-     * Do NOT use safe-area-inset here — the map is mid-page, not under the notch.
-     * Inline drag positions are overridden so a dragged/fullscreen position
-     * cannot leave the dial mid-map after returning to Min.
+     * Default (not user-dragged) dial placement only.
+     * .is-positioned keeps map-relative % position across min ↔ max — never forced
+     * to screen center / notch offset (that made the dial jump relative to the map).
      */
-    html.layout-phone .map-wrapper:not(.fullscreen) .map-compass-radar,
-    html.layout-phone .map-wrapper:not(.fullscreen) .map-compass-radar.is-positioned {
+    html.layout-phone .map-wrapper:not(.fullscreen) .map-compass-radar:not(.is-positioned) {
       top: 0 !important;
       left: 50% !important;
       right: auto !important;
       bottom: auto !important;
       transform: translateX(-50%) !important;
     }
-    /* Mobile MAX / true fullscreen: respect notch */
-    html.layout-phone .map-wrapper.fullscreen .map-compass-radar {
+    html.layout-phone .map-wrapper.fullscreen .map-compass-radar:not(.is-positioned) {
       top: max(0px, env(safe-area-inset-top, 0px)) !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
     }
-    html.layout-desktop .map-wrapper:not(.fullscreen) .map-compass-radar {
+    html.layout-desktop .map-wrapper:not(.fullscreen) .map-compass-radar:not(.is-positioned) {
       top: 2px !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
     }
-    html.layout-desktop .map-wrapper.fullscreen .map-compass-radar {
+    html.layout-desktop .map-wrapper.fullscreen .map-compass-radar:not(.is-positioned) {
       top: max(4px, env(safe-area-inset-top, 0px)) !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+    }
+    /* User-placed dial: only inline left/top (from % of map) — no !important overrides */
+    .map-compass-radar.is-positioned {
+      right: auto !important;
+      bottom: auto !important;
+      transform: none !important;
     }
     /* Always keep dial stack paintable when not intentionally hidden */
     .map-compass-radar:not(.dial-hud-hidden) {
@@ -4416,12 +4603,9 @@
       display: block;
       overflow: visible;
     }
-    /* Centered delete confirmation — above pin popup / editor */
+    /* Delete confirm — stacked over pin popup (JS positions left/top; centered fallback) */
     .map-item-confirm {
       position: fixed;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
       z-index: 2147483645;
       min-width: 220px;
       max-width: min(300px, calc(100vw - 24px));
@@ -4432,6 +4616,207 @@
       box-shadow: 0 12px 40px rgba(0,0,0,0.65);
       color: var(--ink);
       box-sizing: border-box;
+    }
+    .map-item-confirm.is-centered {
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+    }
+    /* Host / creator-only notice (replaces browser alert for map creator messages) */
+    #rs-creator-notice {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 2147483646;
+      background: rgba(0, 0, 0, 0.55);
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+    #rs-creator-notice.active { display: flex; }
+    #rs-creator-notice .rs-cn-card {
+      width: min(320px, 100%);
+      background: rgba(14, 18, 12, 0.98);
+      border: 1px solid rgba(229, 154, 24, 0.45);
+      border-radius: 12px;
+      padding: 16px 16px 14px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+      box-sizing: border-box;
+    }
+    #rs-creator-notice .rs-cn-card h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+      font-weight: 800;
+      color: #fff;
+    }
+    #rs-creator-notice .rs-cn-msg {
+      margin: 0 0 14px;
+      font-size: 13px;
+      line-height: 1.4;
+      color: #c5d0be;
+      font-weight: 600;
+    }
+    #rs-creator-notice .rs-cn-ok {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #b87a12;
+      background: var(--accent);
+      color: #000;
+      font-weight: 800;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    /* Map bottom-bar date/weapon picker */
+    #map-date-weapon-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 2147483644;
+      background: rgba(0, 0, 0, 0.55);
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      box-sizing: border-box;
+    }
+    #map-date-weapon-modal.active { display: flex; }
+    #map-date-weapon-modal .mdw-card {
+      width: min(340px, 100%);
+      max-height: min(86vh, 560px);
+      overflow: auto;
+      background: rgba(14, 18, 12, 0.98);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 12px 10px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+      box-sizing: border-box;
+      scrollbar-width: thin;
+      scrollbar-color: #1a1e16 #0a0c09;
+    }
+    #map-date-weapon-modal .mdw-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 0 0 10px;
+    }
+    #map-date-weapon-modal .mdw-head h3 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 800;
+      color: #fff;
+    }
+    #map-date-weapon-modal .mdw-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 22px;
+      font-weight: 700;
+      cursor: pointer;
+      line-height: 1;
+      padding: 2px 6px;
+    }
+    #map-date-weapon-modal .mdw-cal-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    #map-date-weapon-modal .mdw-cal-nav button {
+      background: var(--panel-light);
+      border: 1px solid var(--border);
+      color: var(--ink);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    #map-date-weapon-modal .mdw-month {
+      font-size: 13px;
+      font-weight: 800;
+      color: #fff;
+      text-align: center;
+      flex: 1;
+    }
+    #map-date-weapon-modal .mdw-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 3px;
+      margin-bottom: 12px;
+    }
+    #map-date-weapon-modal .mdw-dow {
+      text-align: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      padding: 2px 0;
+    }
+    #map-date-weapon-modal .mdw-day {
+      aspect-ratio: 1;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: var(--panel-light);
+      color: #e8efe4;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0;
+    }
+    #map-date-weapon-modal .mdw-day.empty {
+      background: transparent;
+      cursor: default;
+      pointer-events: none;
+    }
+    #map-date-weapon-modal .mdw-day.selected {
+      background: rgba(229, 154, 24, 0.28);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    #map-date-weapon-modal .mdw-day:not(.empty):hover {
+      border-color: var(--muted);
+    }
+    #map-date-weapon-modal .mdw-wpn-label {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin: 0 0 6px;
+    }
+    #map-date-weapon-modal .mdw-weapons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    #map-date-weapon-modal .mdw-weapons button {
+      padding: 9px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, #2a3222 0%, var(--panel-light) 45%, #181e14 100%);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    #map-date-weapon-modal .mdw-weapons button.active {
+      background: linear-gradient(180deg, #5d8e3d 0%, var(--green) 50%, #3a5826 100%);
+      border-color: #2f4a1f;
+      color: #fff;
+    }
+    #map-date-weapon-modal .mdw-done {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #b87a12;
+      background: var(--accent);
+      color: #000;
+      font-weight: 800;
+      font-size: 13px;
+      cursor: pointer;
     }
     .map-item-confirm .mic-msg {
       font-size: 13px;
@@ -5541,20 +5926,24 @@
       flex-shrink: 0;
     }
     /*
-     * Unified bar chrome (match wind/compass): neutral dark fill + muted border.
-     * No green / yellow / blue colored boxes on measure·draw·track·layers·radar·settings.
+     * Toolbar icons: same 3D raised chip as Choose Your Weapon, keep equal size/spacing.
      */
     .map-bottom-bar .mdt-btn.mdt-icon-btn,
     .map-bottom-bar .map-layers-toggle-btn,
     .map-bottom-bar .map-radar-toggle,
     .map-bottom-bar .map-settings-btn,
     .map-bottom-bar .mbb-icon-btn,
-    .map-bottom-bar .mbb-compass-btn {
-      background: rgba(22, 26, 18, 0.95) !important;
+    .map-bottom-bar .mbb-compass-btn,
+    .map-bottom-bar .mbb-ctrl {
+      background: linear-gradient(180deg, #2a3222 0%, var(--panel-light) 45%, #181e14 100%) !important;
       border: 1px solid var(--border) !important;
       border-radius: 10px !important;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+      box-shadow:
+        0 2px 0 rgba(0, 0, 0, 0.32),
+        0 3px 7px rgba(0, 0, 0, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
       outline: none !important;
+      transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.08s ease !important;
     }
     .map-bottom-bar .mdt-btn.mdt-icon-btn:hover,
     .map-bottom-bar .map-layers-toggle-btn:hover,
@@ -5564,17 +5953,28 @@
     .map-bottom-bar .mbb-compass-btn:hover,
     .map-bottom-bar .map-layers-menu.open .map-layers-toggle-btn,
     .map-bottom-bar .mbb-compass-btn.is-on {
-      border-color: var(--accent) !important;
-      background: rgba(229, 154, 24, 0.14) !important;
+      border-color: var(--muted) !important;
+      background: linear-gradient(180deg, #323c28 0%, #262e1e 45%, #1c2418 100%) !important;
+    }
+    .map-bottom-bar .mdt-btn.mdt-icon-btn:active,
+    .map-bottom-bar .map-layers-toggle-btn:active,
+    .map-bottom-bar .map-radar-toggle:active,
+    .map-bottom-bar .map-settings-btn:active,
+    .map-bottom-bar .mbb-icon-btn:active,
+    .map-bottom-bar .mbb-compass-btn:active {
+      transform: translateY(1px) !important;
+      box-shadow:
+        0 1px 0 rgba(0, 0, 0, 0.28),
+        inset 0 2px 4px rgba(0, 0, 0, 0.35) !important;
     }
     .map-bottom-bar .map-radar-control.radar-on .map-radar-toggle {
       border-color: rgba(56, 189, 248, 0.55) !important;
-      background: rgba(8, 40, 60, 0.9) !important;
+      background: linear-gradient(180deg, #1a4a5c 0%, #0a2838 50%, #061820 100%) !important;
       color: #7dd3fc !important;
     }
     .map-bottom-bar .mbb-compass-btn.mode-wind.is-on {
       border-color: rgba(56, 189, 248, 0.45) !important;
-      background: rgba(8, 40, 60, 0.9) !important;
+      background: linear-gradient(180deg, #1a4a5c 0%, #0a2838 50%, #061820 100%) !important;
       color: #7dd3fc !important;
     }
     .map-bottom-bar .mbb-icon-btn.mbb-share-loc {
@@ -5585,7 +5985,7 @@
     .map-bottom-bar .mbb-icon-btn.mbb-share-loc.is-sharing {
       color: #ff4d4d !important;
       border-color: #f87171 !important;
-      background: rgba(220, 38, 38, 0.28) !important;
+      background: linear-gradient(180deg, #7a2222 0%, #4a1515 50%, #2a0c0c 100%) !important;
       box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.75) !important;
       animation: shareLocPulse 1.15s ease-out infinite !important;
     }
@@ -5723,41 +6123,103 @@
     }
 
     /*
-     * Date + weapon — far left. Date is always full (never ellipsis-abbreviated);
-     * font size scales to fit the reserved slot via fitMbbDateText().
+     * Date + weapon — far left. Abbreviated date (Sun Mar 15 '26); 3D clickable chip.
+     * Today = green on black; future = red on black; past = muted on dark.
      */
     .mbb-context {
       display: flex;
       flex-direction: column;
       align-items: flex-start;
       justify-content: center;
-      gap: 1px;
-      flex: 0 1 auto;
+      gap: 2px;
+      flex: 0 0 auto;
       width: auto;
-      min-width: 88px;
-      max-width: min(38vw, 168px);
+      min-width: 0;
+      max-width: min(42vw, 140px);
       height: var(--mbb-h) !important;
       max-height: var(--mbb-h) !important;
       overflow: hidden;
       box-sizing: border-box;
-      padding: 0 4px 0 0;
+      padding: 2px 7px;
       color: var(--ink);
+      cursor: pointer;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, #2a3222 0%, var(--panel-light, #1e2418) 45%, #141810 100%);
+      font: inherit;
+      text-align: left;
+      transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, transform 0.08s ease;
+      -webkit-appearance: none;
+      appearance: none;
+      box-shadow:
+        0 2px 0 rgba(0, 0, 0, 0.35),
+        0 3px 7px rgba(0, 0, 0, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+    .mbb-context:hover,
+    .mbb-context:focus-visible {
+      border-color: var(--accent);
+      background: linear-gradient(180deg, #323c28 0%, #262e1e 45%, #1a2014 100%);
+      outline: none;
+    }
+    .mbb-context:active {
+      transform: translateY(1px);
+      box-shadow:
+        0 1px 0 rgba(0, 0, 0, 0.3),
+        inset 0 2px 4px rgba(0, 0, 0, 0.35);
     }
     .mbb-date {
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 800;
       letter-spacing: 0.01em;
       white-space: nowrap;
       overflow: hidden;
-      text-overflow: clip; /* never "…" — shrink font instead */
+      text-overflow: clip;
       color: #e8efe4;
       font-variant-numeric: tabular-nums;
-      line-height: 1.1;
+      line-height: 1.15;
       max-width: 100%;
-      width: 100%;
-      display: block;
+      width: auto;
+      display: inline-block;
+      border-radius: 4px;
+      padding: 1px 4px;
+      box-sizing: border-box;
+      /* Thin black outline around date text */
+      text-shadow:
+        -0.6px -0.6px 0 #000,
+         0.6px -0.6px 0 #000,
+        -0.6px  0.6px 0 #000,
+         0.6px  0.6px 0 #000,
+        -0.6px  0    0 #000,
+         0.6px  0    0 #000,
+         0    -0.6px 0 #000,
+         0     0.6px 0 #000;
     }
-    .mbb-date.is-empty { color: var(--muted); font-weight: 700; }
+    .mbb-date.is-empty {
+      color: var(--muted);
+      font-weight: 700;
+      background: transparent;
+      padding: 0;
+      text-shadow: none;
+    }
+    /* Current day — darker green (no fill) */
+    .mbb-date.is-today {
+      color: #2f7a3a !important;
+      background: transparent !important;
+      padding: 0;
+    }
+    /* Future day — darker red (no fill) */
+    .mbb-date.is-future {
+      color: #b91c1c !important;
+      background: transparent !important;
+      padding: 0;
+    }
+    /* Past day — muted (no fill) */
+    .mbb-date.is-past {
+      color: #8a9680 !important;
+      background: transparent !important;
+      padding: 0;
+    }
     .mbb-weapon {
       display: inline-flex;
       align-items: center;
@@ -5954,14 +6416,14 @@
       margin-left: 0 !important;
       padding-left: 0 !important;
     }
-    /* Date/weapon block — one flex item; may be slightly wider than an icon */
+    /* Date/weapon block — compact 3D chip (abbrev date fits without ellipsis) */
     html.layout-phone .mbb-context {
       width: auto;
       min-width: 0;
-      max-width: 4.8rem;
+      max-width: min(36vw, 7.2rem);
       height: var(--mbb-h) !important;
       gap: 1px;
-      padding: 0 2px;
+      padding: 1px 5px;
       flex: 0 0 auto !important;
       flex-shrink: 0 !important;
       overflow: hidden;
@@ -5969,12 +6431,13 @@
       box-sizing: border-box;
     }
     html.layout-phone .mbb-date {
-      font-size: 9px;
+      font-size: 8.5px;
       letter-spacing: 0;
       line-height: 1.05;
       font-weight: 800;
       text-overflow: clip;
       white-space: nowrap;
+      padding: 0 3px;
     }
     html.layout-phone .mbb-weapon {
       height: 12px;
@@ -6024,16 +6487,16 @@
       height: 18px !important;
     }
     html.layout-phone .map-draw-tools .mdt-icon-img {
-      width: 18px !important;
-      height: 18px !important;
-      max-width: 58% !important;
-      max-height: 58% !important;
-    }
-    html.layout-phone .map-layers-toggle-btn .mdt-icon-img {
       width: 22px !important;
       height: 22px !important;
       max-width: 72% !important;
       max-height: 72% !important;
+    }
+    html.layout-phone .map-layers-toggle-btn .mdt-icon-img {
+      width: 24px !important;
+      height: 24px !important;
+      max-width: 78% !important;
+      max-height: 78% !important;
       filter: brightness(0) invert(1);
     }
     html.layout-phone .map-settings-btn {
@@ -7332,18 +7795,91 @@
       line-height: 1;
     }
     .current-data-banner { background: rgba(217,65,54,0.15); border: 1px solid var(--danger); color: var(--danger); font-weight: bold; font-size: 13px; padding: 8px 12px; border-radius: 6px; text-align: center; margin-bottom: 10px; display: none; flex-shrink: 0; }
-    #regs-modal { display: none; position: fixed; inset: 0; z-index: 100000; background: rgba(0,0,0,0.65); align-items: center; justify-content: center; padding: 16px; }
+    #regs-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100000;
+      background: rgba(0, 0, 0, 0.45);
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      box-sizing: border-box;
+      /* Allow free drag of the card; backdrop still closes on click */
+      overflow: hidden;
+    }
     #regs-modal.active { display: flex; }
-    .regs-modal-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; max-width: 520px; width: 100%; max-height: min(85vh, 720px); overflow: auto; box-shadow: 0 12px 40px rgba(0,0,0,0.55); padding: 18px 18px 16px; color: var(--ink); }
+    .regs-modal-card {
+      position: relative;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      max-width: min(520px, calc(100vw - 24px));
+      width: min(520px, calc(100vw - 24px));
+      max-height: min(85vh, 720px);
+      overflow: auto;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+      padding: 0 0 14px;
+      color: var(--ink);
+      box-sizing: border-box;
+      /* When dragged, left/top take over from flex centering */
+      will-change: left, top;
+    }
+    .regs-modal-card.is-dragged {
+      position: fixed;
+      margin: 0;
+    }
+    .regs-drag-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 14px 10px;
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(42, 50, 34, 0.55) 0%, transparent 100%);
+      border-radius: 12px 12px 0 0;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    .regs-drag-head:active { cursor: grabbing; }
+    .regs-drag-hint {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin: 2px 0 0;
+    }
+    .regs-modal-body { padding: 12px 18px 4px; }
     .regs-modal-card h3 { margin: 0 0 4px; color: #fff; font-size: 17px; }
-    .regs-modal-jurisdiction { font-size: 11px; color: var(--accent); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+    .regs-modal-jurisdiction { font-size: 11px; color: var(--accent); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0; }
     .regs-modal-section { margin-top: 12px; }
     .regs-modal-section h4 { margin: 0 0 6px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
     .regs-modal-card ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.45; }
     .regs-modal-card li { margin-bottom: 6px; }
     .regs-modal-card a { color: var(--accent); }
     .regs-link-row { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
-    .regs-link-btn { display: block; text-align: center; background: var(--panel-light); border: 1px solid var(--border); color: var(--ink); text-decoration: none; border-radius: 8px; padding: 9px 12px; font-size: 12px; font-weight: 600; }
+    .regs-link-btn {
+      display: block;
+      text-align: center;
+      background: linear-gradient(180deg, #2a3222 0%, var(--panel-light) 45%, #181e14 100%);
+      border: 1px solid var(--border);
+      color: var(--ink);
+      text-decoration: none;
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      box-shadow:
+        0 2px 0 rgba(0, 0, 0, 0.28),
+        0 2px 6px rgba(0, 0, 0, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      transition: border-color 0.12s ease, background 0.12s ease, transform 0.08s ease;
+    }
     /* Map-dot main actions: compact 2×2 grid (saves vertical space) */
     .map-dot-menu .mdm-actions-grid {
       display: grid;
@@ -7370,9 +7906,36 @@
       padding: 8px 10px;
       font-size: 11px;
     }
-    .regs-link-btn:hover { border-color: var(--accent); color: #fff; }
-    .regs-link-btn.primary { background: rgba(229,154,24,0.15); border-color: var(--accent); color: var(--accent); }
-    .regs-disclaimer { font-size: 11px; color: var(--muted); margin-top: 12px; line-height: 1.4; }
+    .regs-link-btn:hover {
+      border-color: var(--accent);
+      color: #fff;
+      background: linear-gradient(180deg, #323c28 0%, #262e1e 45%, #1c2418 100%);
+    }
+    .regs-link-btn:active {
+      transform: translateY(1px);
+      box-shadow:
+        0 1px 0 rgba(0, 0, 0, 0.28),
+        inset 0 2px 3px rgba(0, 0, 0, 0.3);
+    }
+    .regs-link-btn.primary {
+      background: linear-gradient(180deg, #5a3d12 0%, #3a280c 50%, #241806 100%);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .regs-link-btn.primary:hover {
+      background: linear-gradient(180deg, #6a4a18 0%, #4a3410 50%, #2e1e0a 100%);
+      color: #ffd78a;
+    }
+    .regs-source-kind {
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      margin-top: 2px;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+    .regs-disclaimer { font-size: 11px; color: var(--muted); margin-top: 12px; line-height: 1.4; padding: 0 18px; }
     #regs-modal-closed-banner {
       display: none; margin: 12px 0 4px; padding: 14px 12px; border-radius: 8px;
       background: rgba(217, 65, 54, 0.18); border: 2px solid var(--danger);
@@ -7484,9 +8047,14 @@
       box-sizing: border-box;
     }
     .rs-simple-modal.active { display: flex; }
+    /* Stacked on top of another simple modal (e.g. share → pick map) */
+    .rs-simple-modal.rs-simple-modal-stack {
+      z-index: 2147483647;
+      background: rgba(0, 0, 0, 0.45);
+    }
     .rs-simple-card {
-      width: min(260px, 92vw);
-      max-width: 280px;
+      width: min(300px, 92vw);
+      max-width: 320px;
       background: rgba(14, 18, 12, 0.96);
       border: 1px solid rgba(141, 156, 132, 0.45);
       border-radius: 10px;
@@ -7563,13 +8131,46 @@
       background: rgba(0, 0, 0, 0.12);
       position: relative;
     }
+    /* Currently viewing this map (bright gold — primary) */
     .settings-map-row.is-active {
       border-color: var(--accent);
-      box-shadow: 0 0 0 1px rgba(229, 154, 24, 0.4);
+      box-shadow: 0 0 0 1px rgba(229, 154, 24, 0.55), 0 0 12px rgba(229, 154, 24, 0.12);
+      background: rgba(229, 154, 24, 0.16);
     }
-    .settings-map-row.is-selected {
-      border-color: rgba(229, 154, 24, 0.75);
-      background: rgba(229, 154, 24, 0.08);
+    /* Selected in Settings to view members/info (softer, not as bright as viewing) */
+    .settings-map-row.is-selected:not(.is-active) {
+      border-color: rgba(141, 156, 132, 0.85);
+      background: rgba(90, 110, 80, 0.18);
+      box-shadow: inset 0 0 0 1px rgba(141, 156, 132, 0.22);
+    }
+    /* Viewing + also selected for members panel */
+    .settings-map-row.is-active.is-selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(229, 154, 24, 0.55), inset 0 0 0 1px rgba(141, 156, 132, 0.35);
+      background: rgba(229, 154, 24, 0.16);
+    }
+    .settings-map-row .smc-state-badge {
+      flex: 0 0 auto;
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-radius: 4px;
+      padding: 2px 5px;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    .settings-map-row.is-active .smc-state-badge.smc-viewing {
+      color: #111;
+      background: var(--accent);
+    }
+    .settings-map-row.is-selected:not(.is-active) .smc-state-badge.smc-inspect {
+      color: #d4e0c8;
+      background: rgba(70, 90, 60, 0.65);
+      border: 1px solid rgba(141, 156, 132, 0.45);
+    }
+    .settings-map-row.is-active.is-selected .smc-state-badge.smc-inspect {
+      display: none;
     }
     .settings-map-row .smc-gear {
       flex: 0 0 32px;
@@ -7677,6 +8278,25 @@
       flex: 0 0 12px;
       box-shadow: 0 0 0 1px rgba(0,0,0,0.35);
     }
+    .settings-map-members-panel .smm-member .smm-marker {
+      flex: 0 0 28px;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid rgba(80, 90, 70, 0.55);
+      overflow: hidden;
+      line-height: 0;
+    }
+    .settings-map-members-panel .smm-member .smm-marker svg,
+    .settings-map-members-panel .smm-member .smm-marker img {
+      max-width: 22px;
+      max-height: 22px;
+      display: block;
+    }
     .settings-map-members-panel .smm-member .smm-label {
       flex: 1;
       min-width: 0;
@@ -7685,6 +8305,36 @@
       font-size: 10px;
       font-weight: 600;
       color: var(--muted);
+    }
+    /* Compact member/friend edit — fit without scrolling */
+    .rs-simple-card.rs-compact-edit {
+      max-height: none;
+      overflow: visible;
+      width: min(300px, 92vw);
+      max-width: 300px;
+      padding: 10px 10px 8px;
+    }
+    .rs-simple-card.rs-compact-edit h3 {
+      font-size: 12px;
+      margin: 0 0 6px;
+      line-height: 1.25;
+    }
+    .rs-simple-card.rs-compact-edit .settings-hint {
+      font-size: 10px !important;
+      margin: 0 0 6px !important;
+      line-height: 1.3;
+    }
+    .rs-simple-card.rs-compact-edit .rs-simple-actions {
+      margin-top: 6px;
+      gap: 5px;
+    }
+    .rs-simple-card.rs-compact-edit .rs-simple-actions button {
+      min-height: 34px;
+      padding: 7px 8px;
+      font-size: 11px;
+    }
+    .rs-simple-card.rs-compact-edit .settings-subbtn {
+      font-size: 11px;
     }
     /* Direction icon picker (pin-grid style, no notes) */
     #dir-icon-picker-modal {
@@ -8029,7 +8679,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.6.3 Beta">V6.6.3 Beta</span>
+      <span class="brand-version" aria-label="Version 6.6.4 Beta">V6.6.4 Beta</span>
     </div>
   </header>
 
@@ -8038,6 +8688,7 @@
     <div class="auth-card" role="dialog" aria-modal="true" aria-labelledby="auth-title">
       <h2 id="auth-title">REG SLAYER</h2>
       <p class="auth-sub">Sign in to sync maps across devices and share live location with your hunting party.</p>
+      <p class="auth-sub" style="margin-top:-4px;font-size:11px;opacity:0.9;">One account works on <strong>regslayer.com</strong> and <strong>huntslayer.com</strong> — same username and password on both.</p>
       <p id="auth-error" role="alert"></p>
       <div id="auth-panel-signin">
         <div class="auth-field"><label for="auth-si-user">Username</label><input id="auth-si-user" autocomplete="username" autocapitalize="none" spellcheck="false"></div>
@@ -8080,35 +8731,38 @@
     </div>
   </div>
 
-  <!-- Deer regulations detail panel (opened from map overlay Details) -->
+  <!-- Deer regulations detail panel (draggable; source links for every authority used) -->
   <div id="regs-modal" onclick="if(event.target===this)closeDeerRegsPanel()">
-    <div class="regs-modal-card" role="dialog" aria-modal="true" aria-labelledby="regs-modal-title">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
-        <div>
+    <div class="regs-modal-card" id="regs-modal-card" role="dialog" aria-modal="true" aria-labelledby="regs-modal-title" onclick="event.stopPropagation()">
+      <div class="regs-drag-head" id="regs-drag-head" title="Drag to move">
+        <div style="min-width:0;flex:1;">
           <h3 id="regs-modal-title">Deer hunting regulations</h3>
           <div class="regs-modal-jurisdiction" id="regs-modal-jurisdiction">-</div>
+          <p class="regs-drag-hint">⠿ Drag to move</p>
         </div>
-        <button type="button" onclick="closeDeerRegsPanel()" title="Close" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;font-weight:bold;line-height:1;padding:0 2px;">&times;</button>
+        <button type="button" id="regs-modal-close" onclick="closeDeerRegsPanel()" title="Close" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;font-weight:bold;line-height:1;padding:0 2px;flex-shrink:0;">&times;</button>
       </div>
-      <div id="regs-modal-closed-banner" role="alert">Cannot hunt this area</div>
-      <div id="regs-modal-closed-detail"></div>
-      <div class="regs-modal-section">
-        <h4 id="regs-modal-day-label">Condensed deer rules (selected day)</h4>
-        <ul id="regs-modal-bullets"></ul>
+      <div class="regs-modal-body">
+        <div id="regs-modal-closed-banner" role="alert">Cannot hunt this area</div>
+        <div id="regs-modal-closed-detail"></div>
+        <div class="regs-modal-section">
+          <h4 id="regs-modal-day-label">Condensed deer rules (selected day)</h4>
+          <ul id="regs-modal-bullets"></ul>
+        </div>
+        <div class="regs-modal-section">
+          <h4>Legislation &amp; sources for this spot</h4>
+          <div class="regs-link-row" id="regs-modal-legislation"></div>
+        </div>
+        <div class="regs-modal-section" id="regs-modal-oa-section" style="display:none;">
+          <h4>Additional sources</h4>
+          <div class="regs-link-row" id="regs-modal-oa"></div>
+        </div>
+        <div class="regs-modal-section" id="regs-modal-area-map-section" style="display:none;">
+          <h4>Area map &amp; rules</h4>
+          <div class="regs-link-row" id="regs-modal-area-map"></div>
+        </div>
+        <p class="regs-disclaimer" style="padding:0;">Summary only for planning. Always verify the current AREA permit, refuge brochure, and full code before hunting. Seasons and weapons can change by year and unit.</p>
       </div>
-      <div class="regs-modal-section">
-        <h4>Legislation &amp; official sources</h4>
-        <div class="regs-link-row" id="regs-modal-legislation"></div>
-      </div>
-      <div class="regs-modal-section" id="regs-modal-oa-section" style="display:none;">
-        <h4>Outdoor Alabama - this area</h4>
-        <div class="regs-link-row" id="regs-modal-oa"></div>
-      </div>
-      <div class="regs-modal-section" id="regs-modal-area-map-section" style="display:none;">
-        <h4>Area rules &amp; map</h4>
-        <div class="regs-link-row" id="regs-modal-area-map"></div>
-      </div>
-      <p class="regs-disclaimer">Summary only for planning. Always verify the current AREA permit, refuge brochure, and full code before hunting. Seasons and weapons can change by year and unit.</p>
     </div>
   </div>
 
@@ -8343,13 +8997,15 @@
     <div class="card card-map">
       <!-- Map name + settings — flush above map (desktop min + phone); hidden in true fullscreen -->
       <div class="map-title-bar" id="map-title-bar" aria-live="polite">
-        <span class="map-title-text" id="map-title-mobile">My Map</span>
+        <div class="map-title-switcher">
+          <button type="button" class="map-title-text" id="map-title-mobile" title="Switch map" aria-label="Switch map" aria-haspopup="listbox" aria-expanded="false" onclick="if(window.RegSlayerParty&&window.RegSlayerParty.openMapSwitcher){window.RegSlayerParty.openMapSwitcher(this);}">My Map</button>
+        </div>
         <button type="button" class="map-title-settings-btn" id="map-title-settings-btn" onclick="openSettingsModal()" title="Settings" aria-label="Settings">⚙</button>
       </div>
       <div class="map-section-block">
         <div class="map-wrapper" id="map-wrapper">
-          <!-- Fullscreen only: map name next to zoom controls -->
-          <div class="map-fs-title" id="map-fs-title" aria-hidden="true">My Map</div>
+          <!-- Fullscreen only: map name next to zoom controls (map switcher) -->
+          <button type="button" class="map-fs-title" id="map-fs-title" title="Switch map" aria-label="Switch map" aria-haspopup="listbox" aria-expanded="false" onclick="if(window.RegSlayerParty&&window.RegSlayerParty.openMapSwitcher){window.RegSlayerParty.openMapSwitcher(this);}">My Map</button>
           <!-- Free-standing compass / wind dials — absolute on map; draggable when enlarged -->
           <div class="map-compass-radar" id="map-compass-radar" data-v63="1">
             <div id="map-wind-hud" class="map-wind-hud mode-wind" aria-live="polite">
@@ -8401,19 +9057,19 @@
           <!-- Slim bottom bar: [date+tools] | CL (center) | [radar layers settings] -->
           <div class="map-bottom-bar" id="map-bottom-bar">
             <div class="mbb-left">
-              <div class="mbb-context" id="mbb-context" title="Hunt calendar date and weapon">
+              <button type="button" class="mbb-context" id="mbb-context" title="Change hunt date and weapon" aria-label="Change hunt date and weapon" onclick="openMapDateWeaponPicker()">
                 <span class="mbb-date is-empty" id="mbb-date">No date</span>
                 <span class="mbb-weapon is-empty" id="mbb-weapon" aria-hidden="true"></span>
-              </div>
+              </button>
               <div class="map-draw-tools" id="map-draw-tools">
                 <button type="button" class="mdt-btn mdt-icon-btn" id="mdt-measure" onclick="startMapMeasure()" title="Measure" aria-label="Measure">
-                  <img class="mdt-icon-img" src="icons/tools/measure.png?v=tool3" alt="" width="24" height="24" draggable="false">
+                  <img class="mdt-icon-img" src="icons/tools/measure.png?v=tool4" alt="" width="30" height="30" draggable="false">
                 </button>
                 <button type="button" class="mdt-btn mdt-icon-btn" id="mdt-draw" onclick="startMapDrawShape()" title="Draw" aria-label="Draw">
-                  <img class="mdt-icon-img" src="icons/tools/draw.png?v=tool3" alt="" width="24" height="24" draggable="false">
+                  <img class="mdt-icon-img" src="icons/tools/draw.png?v=tool4" alt="" width="30" height="30" draggable="false">
                 </button>
                 <button type="button" class="mdt-btn mdt-icon-btn mdt-track-idle" id="mdt-track" onclick="toggleGpsTrack()" title="Track" aria-label="Track" aria-pressed="false">
-                  <img class="mdt-icon-img" src="icons/tools/track.png?v=tool3" alt="" width="24" height="24" draggable="false">
+                  <img class="mdt-icon-img" src="icons/tools/track.png?v=tool4" alt="" width="30" height="30" draggable="false">
                 </button>
                 <button type="button" class="mdt-btn mdt-track-stop" id="mdt-track-stop" onclick="stopGpsTrack()" title="Stop" aria-label="Stop GPS tracking" tabindex="-1">Stop</button>
                 <!-- Live track stats + stop — anchored above the Track icon while recording -->
@@ -8497,7 +9153,7 @@
 
               <div class="map-layers-menu map-layers-bottom" id="map-layers-menu">
                 <button type="button" class="map-layers-toggle-btn mdt-icon-btn" id="map-layers-toggle-btn" aria-expanded="false" aria-controls="map-layers-panel" title="Layers" aria-label="Layers">
-                  <img class="mdt-icon-img" src="icons/tools/layers.png?v=tool3" alt="" width="28" height="28" draggable="false">
+                  <img class="mdt-icon-img" src="icons/tools/layers.png?v=tool4" alt="" width="32" height="32" draggable="false">
                 </button>
 <div class="map-layers-panel" id="map-layers-panel" role="group" aria-label="Map layers">
                           <div class="ml-section">Base map</div>
@@ -8788,6 +9444,39 @@
     </div>
   </div>
 
+  <!-- Map bottom-bar: change hunt date + weapon (overlays map) -->
+  <div id="map-date-weapon-modal" role="dialog" aria-modal="true" aria-labelledby="mdw-title" aria-hidden="true" onclick="if(event.target===this)closeMapDateWeaponPicker()">
+    <div class="mdw-card" onclick="event.stopPropagation()">
+      <div class="mdw-head">
+        <h3 id="mdw-title">Hunt date &amp; weapon</h3>
+        <button type="button" class="mdw-close" onclick="closeMapDateWeaponPicker()" title="Close" aria-label="Close">&times;</button>
+      </div>
+      <div class="mdw-cal-nav">
+        <button type="button" id="mdw-prev" onclick="mapDwChangeMonth(-1)" aria-label="Previous month">&lt;</button>
+        <div class="mdw-month" id="mdw-month-label">Month</div>
+        <button type="button" id="mdw-next" onclick="mapDwChangeMonth(1)" aria-label="Next month">&gt;</button>
+      </div>
+      <div class="mdw-grid" id="mdw-grid"></div>
+      <div class="mdw-wpn-label">Weapon</div>
+      <div class="mdw-weapons" id="mdw-weapons">
+        <button type="button" data-wpn="Either" onclick="mapDwSetWeapon('Either')">Either</button>
+        <button type="button" data-wpn="Archery" onclick="mapDwSetWeapon('Archery')">Archery</button>
+        <button type="button" data-wpn="Gun" onclick="mapDwSetWeapon('Gun')" title="Rifle (modern gun season)">Rifle</button>
+        <button type="button" data-wpn="Primitive" onclick="mapDwSetWeapon('Primitive')">Primitive</button>
+      </div>
+      <button type="button" class="mdw-done" onclick="closeMapDateWeaponPicker()">Done</button>
+    </div>
+  </div>
+
+  <!-- Host / map creator only notice -->
+  <div id="rs-creator-notice" role="dialog" aria-modal="true" aria-labelledby="rs-cn-title" aria-hidden="true" onclick="if(event.target===this)closeCreatorOnlyNotice()">
+    <div class="rs-cn-card" onclick="event.stopPropagation()">
+      <h3 id="rs-cn-title">Map creator only</h3>
+      <p class="rs-cn-msg" id="rs-cn-msg">Only the map creator can do this.</p>
+      <button type="button" class="rs-cn-ok" onclick="closeCreatorOnlyNotice()">OK</button>
+    </div>
+  </div>
+
   <!-- Distance origin: street address lookup -->
   <div id="dist-address-modal" class="app-prompt-modal" hidden style="display:none;" onclick="if(event.target===this)closeDistAddressModal()">
     <div class="shape-save-card" role="dialog" aria-modal="true" aria-labelledby="dist-address-title" onclick="event.stopPropagation()">
@@ -8970,6 +9659,10 @@
           <div class="dip-color-label">Icon color</div>
           <div class="color-picker" id="cp-dir-icon" data-input-id="dir-icon-color-value" data-initial="#e11d1d" data-bind-var=""></div>
           <input type="hidden" id="dir-icon-color-value" value="#e11d1d" />
+          <div class="dip-color-label" style="margin-top:10px;">Icon size <span id="dir-icon-size-val">100</span>%</div>
+          <input type="range" id="dir-icon-size" min="40" max="160" step="5" value="100"
+            oninput="if(window.onDirIconPickerSizeChange)window.onDirIconPickerSizeChange(this.value);"
+            style="width:100%;margin:0 0 6px;" />
           <div class="dip-preview-row" aria-hidden="true">
             <span class="dip-preview-label">Preview</span>
             <div id="dir-icon-live-preview" class="dip-live-preview"></div>
@@ -9221,7 +9914,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.6.3-beta';
+    const APP_VERSION = '6.6.4-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -10412,6 +11105,14 @@
         outdoorAlabama = [LEGISLATION.stateDeer];
       }
 
+      // Tag sources for UI buttons (legislation first, then field/OA sources)
+      var legislationTagged = dedupe(legislation).map(function(l) {
+        return { label: l.label, url: l.url, kind: 'Legislation' };
+      });
+      var outdoorTagged = dedupe(outdoorAlabama).map(function(l) {
+        return { label: l.label, url: l.url, kind: 'Source' };
+      });
+
       return {
         name: name || 'Hunting area',
         jurisdiction: jurisdiction,
@@ -10423,9 +11124,86 @@
         canHuntToday: condensed.canHuntToday,
         statusKnown: condensed.statusKnown,
         closedReason: condensed.closedReason,
-        legislation: dedupe(legislation),
-        outdoorAlabama: jurisdiction === 'federal' ? dedupe(outdoorAlabama) : dedupe(outdoorAlabama)
+        legislation: legislationTagged,
+        outdoorAlabama: outdoorTagged
       };
+    }
+
+    /** Build one HTML link button for a regs source. */
+    function regsSourceLinkHtml(item, primary) {
+      if (!item || !item.url) return '';
+      var cls = primary ? 'regs-link-btn primary' : 'regs-link-btn';
+      var label = String(item.label || item.url)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+      var kind = item.kind
+        ? ('<span class="regs-source-kind">' +
+            String(item.kind).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</span>')
+        : '';
+      var href = String(item.url).replace(/"/g, '&quot;').replace(/</g, '');
+      return '<a class="' + cls + '" href="' + href + '" target="_blank" rel="noopener noreferrer">' +
+        label + kind + '</a>';
+    }
+
+    function wireRegsModalDrag() {
+      var head = document.getElementById('regs-drag-head');
+      var card = document.getElementById('regs-modal-card');
+      if (!head || !card || head._rsDragWired) return;
+      head._rsDragWired = true;
+      var dragging = false;
+      var sx = 0, sy = 0, ox = 0, oy = 0;
+
+      function onDown(ev) {
+        // Don't start drag from the close button or links
+        if (ev.target && ev.target.closest && (
+          ev.target.closest('#regs-modal-close') ||
+          ev.target.closest('a') ||
+          ev.target.closest('button')
+        )) return;
+        var e = (ev.touches && ev.touches[0]) ? ev.touches[0] : ev;
+        var r = card.getBoundingClientRect();
+        // Switch from centered flex to free fixed position
+        card.classList.add('is-dragged');
+        card.style.left = r.left + 'px';
+        card.style.top = r.top + 'px';
+        card.style.right = 'auto';
+        card.style.bottom = 'auto';
+        card.style.margin = '0';
+        card.style.transform = 'none';
+        ox = r.left;
+        oy = r.top;
+        sx = e.clientX;
+        sy = e.clientY;
+        dragging = true;
+        try { ev.preventDefault(); } catch (eP) {}
+      }
+      function onMove(ev) {
+        if (!dragging) return;
+        var e = (ev.touches && ev.touches[0]) ? ev.touches[0] : ev;
+        var nx = ox + (e.clientX - sx);
+        var ny = oy + (e.clientY - sy);
+        var w = card.offsetWidth || 320;
+        var h = card.offsetHeight || 200;
+        nx = Math.max(4, Math.min(nx, window.innerWidth - Math.min(w, window.innerWidth - 8)));
+        ny = Math.max(4, Math.min(ny, window.innerHeight - 48));
+        card.style.left = Math.round(nx) + 'px';
+        card.style.top = Math.round(ny) + 'px';
+        try { ev.preventDefault(); } catch (eP2) {}
+      }
+      function onUp() {
+        if (!dragging) return;
+        dragging = false;
+        // Remember last free position for next open in this session
+        try {
+          card._rsLastLeft = card.style.left;
+          card._rsLastTop = card.style.top;
+        } catch (eL) {}
+      }
+      head.addEventListener('mousedown', onDown);
+      head.addEventListener('touchstart', onDown, { passive: false });
+      window.addEventListener('mousemove', onMove, { passive: false });
+      window.addEventListener('touchmove', onMove, { passive: false });
+      window.addEventListener('mouseup', onUp);
+      window.addEventListener('touchend', onUp);
     }
 
     window.__regsCache = window.__regsCache || {};
@@ -10489,49 +11267,105 @@
         return '<li>' + String(b).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</li>';
       }).join('');
 
+      // Legislation buttons (primary = main hunting law for this land type)
       var leg = document.getElementById('regs-modal-legislation');
-      leg.innerHTML = info.legislation.map(function(l, i) {
-        var cls = i === 0 ? 'regs-link-btn primary' : 'regs-link-btn';
-        return '<a class="' + cls + '" href="' + l.url + '" target="_blank" rel="noopener">' + l.label + '</a>';
-      }).join('');
-
-      var oaSec = document.getElementById('regs-modal-oa-section');
-      var oa = document.getElementById('regs-modal-oa');
-      if (info.jurisdiction === 'state' || info.jurisdiction === 'tva' || (info.outdoorAlabama && info.outdoorAlabama.length)) {
-        oaSec.style.display = 'block';
-        oa.innerHTML = (info.outdoorAlabama || []).map(function(l) {
-          return '<a class="regs-link-btn" href="' + l.url + '" target="_blank" rel="noopener">' + l.label + '</a>';
-        }).join('') || '<span style="font-size:12px;color:var(--muted);">See Outdoor Alabama WMA index for area maps/permits.</span>';
-      } else {
-        oaSec.style.display = 'none';
-        oa.innerHTML = '';
+      if (leg) {
+        leg.innerHTML = (info.legislation || []).map(function(l, i) {
+          return regsSourceLinkHtml(l, i === 0);
+        }).join('') ||
+          '<span style="font-size:12px;color:var(--muted);">No legislation links for this spot.</span>';
       }
 
-      // Area rules & map (ADCNR) — shown in regs modal (removed from map-dot stack to save space)
+      // Additional Outdoor Alabama / GIS / TVA sources
+      var oaSec = document.getElementById('regs-modal-oa-section');
+      var oa = document.getElementById('regs-modal-oa');
+      var extraSources = (info.outdoorAlabama || []).slice();
+      // Drop extras that already appear under legislation (same URL)
+      var legUrls = {};
+      (info.legislation || []).forEach(function(l) {
+        if (l && l.url) legUrls[l.url] = true;
+      });
+      extraSources = extraSources.filter(function(l) {
+        return l && l.url && !legUrls[l.url];
+      });
+      if (oaSec && oa) {
+        if (extraSources.length) {
+          oaSec.style.display = 'block';
+          oa.innerHTML = extraSources.map(function(l) {
+            return regsSourceLinkHtml(l, false);
+          }).join('');
+        } else {
+          oaSec.style.display = 'none';
+          oa.innerHTML = '';
+        }
+      }
+
+      // Area rules & map for this unit (always a button when we have one)
       var areaMapSec = document.getElementById('regs-modal-area-map-section');
       var areaMapEl = document.getElementById('regs-modal-area-map');
       if (areaMapSec && areaMapEl) {
         var mapRules = null;
         try {
-          if (layerKey && layerKey !== 'private') {
-            mapRules = resolveAreaMapRulesLink(layerKey, name, attrs);
-          }
+          mapRules = resolveAreaMapRulesLink(
+            { key: layerKey },
+            name,
+            attrs
+          );
         } catch (eMapR) { mapRules = null; }
+        // Skip if same URL already listed above
+        if (mapRules && mapRules.url && legUrls[mapRules.url]) {
+          mapRules = null;
+        }
+        if (mapRules && mapRules.url) {
+          for (var xi = 0; xi < extraSources.length; xi++) {
+            if (extraSources[xi] && extraSources[xi].url === mapRules.url) {
+              mapRules = null;
+              break;
+            }
+          }
+        }
         if (mapRules && mapRules.url) {
           areaMapSec.style.display = 'block';
-          areaMapEl.innerHTML = '<a class="regs-link-btn primary" href="' + String(mapRules.url).replace(/"/g, '&quot;') +
-            '" target="_blank" rel="noopener">' + String(mapRules.label || 'Area rules & map (ADCNR)').replace(/</g, '&lt;') + '</a>';
+          areaMapEl.innerHTML = regsSourceLinkHtml({
+            label: mapRules.label || 'Area rules & map',
+            url: mapRules.url,
+            kind: 'Map / unit rules'
+          }, true);
         } else {
           areaMapSec.style.display = 'none';
           areaMapEl.innerHTML = '';
         }
       }
 
-      document.getElementById('regs-modal').classList.add('active');
+      var modal = document.getElementById('regs-modal');
+      var card = document.getElementById('regs-modal-card');
+      if (modal) modal.classList.add('active');
+      // Restore last dragged position if any; otherwise center via flex
+      if (card) {
+        if (card._rsLastLeft && card._rsLastTop) {
+          card.classList.add('is-dragged');
+          card.style.left = card._rsLastLeft;
+          card.style.top = card._rsLastTop;
+          card.style.right = 'auto';
+          card.style.bottom = 'auto';
+          card.style.margin = '0';
+          card.style.transform = 'none';
+        } else {
+          card.classList.remove('is-dragged');
+          card.style.left = '';
+          card.style.top = '';
+          card.style.right = '';
+          card.style.bottom = '';
+          card.style.margin = '';
+          card.style.transform = '';
+        }
+      }
+      try { wireRegsModalDrag(); } catch (eD) {}
     }
 
     function closeDeerRegsPanel() {
-      document.getElementById('regs-modal').classList.remove('active');
+      var modal = document.getElementById('regs-modal');
+      if (modal) modal.classList.remove('active');
     }
     window.openDeerRegsPanel = openDeerRegsPanel;
     window.openDeerRegsFromCache = openDeerRegsFromCache;
@@ -16872,11 +17706,19 @@
       // do not treat those clicks as "outside" (that was auto-saving / closing the pin editor).
       if (ev.target && ev.target.closest && (
         ev.target.closest('#pin-note-modal') ||
+        ev.target.closest('#map-date-weapon-modal') ||
+        ev.target.closest('#rs-creator-notice') ||
+        ev.target.closest('#map-switcher-dropdown') ||
+        ev.target.closest('#map-title-mobile') ||
+        ev.target.closest('#map-fs-title') ||
+        ev.target.closest('.rs-simple-modal') ||
+        ev.target.closest('#regs-modal') ||
         ev.target.closest('.map-dot-menu') ||
         ev.target.closest('.color-picker') ||
         ev.target.closest('.app-prompt-modal') ||
         ev.target.closest('.map-item-confirm') ||
-        ev.target.closest('#map-item-confirm')
+        ev.target.closest('#map-item-confirm') ||
+        ev.target.closest('#mbb-context')
       )) return;
       try {
         // Selected pin or any customize → drop; empty sheet click-away → do nothing (close)
@@ -17353,6 +18195,15 @@
       }
 
       // Main menu: 2×2 primary actions; offline + share below. ADCNR area map lives in Rules & regs.
+      // Own GPS: Share + Edit marker side by side
+      var belowRow = fromGps
+        ? ('<div class="mdm-actions-grid" style="margin-top:6px;">' +
+            '<button type="button" class="mdm-btn share" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'share\');return false;">' + shareLabel + '</button>' +
+            '<button type="button" class="mdm-btn pin" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'edit-marker\');return false;">Edit marker</button>' +
+          '</div>')
+        : ('<div class="mdm-actions-below">' +
+            '<button type="button" class="mdm-btn share" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'share\');return false;">' + shareLabel + '</button>' +
+          '</div>');
       return (
         '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
           statusBlock +
@@ -17363,9 +18214,7 @@
           '<button type="button" class="mdm-btn pin" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'add-menu\');return false;">Add pin</button>' +
           '<button type="button" class="mdm-btn" style="background:#1a4a5c;" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'offline-save\');return false;">Offline map</button>' +
           '</div>' +
-          '<div class="mdm-actions-below">' +
-          '<button type="button" class="mdm-btn share" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'share\');return false;">' + shareLabel + '</button>' +
-          '</div>' +
+          belowRow +
         '</div>'
       );
     }
@@ -17915,6 +18764,19 @@
             fromGps: mapDotMenuSource === 'gps',
             shareName: shareName
           });
+          return false;
+        }
+        if (act === 'edit-marker') {
+          try {
+            if (map) map.closePopup();
+          } catch (eCl) {}
+          if (window.RegSlayerParty && typeof window.RegSlayerParty.openEditOwnMarker === 'function') {
+            window.RegSlayerParty.openEditOwnMarker();
+          } else if (window.openMyDefaultDirIcon) {
+            window.openMyDefaultDirIcon();
+          } else {
+            alert('Sign in to edit your location marker.');
+          }
           return false;
         }
         if (act === 'share-copy') {
@@ -18708,6 +19570,7 @@
       clearMapDrawPreview();
       setMapDrawUi();
       hideAppPromptModal('shape-save-modal');
+      try { hideDrawModeChooser(); } catch (eH) {}
     }
 
     // ========== WEATHER RADAR (RainViewer — last hour, ~5 min steps) ==========
@@ -19219,9 +20082,40 @@
     }
     window.startMapMeasure = startMapMeasure;
 
+    /** Remember last Draw mode so next open defaults to Shape or Line. */
+    var LAST_DRAW_KIND_KEY = 'reg_slayer_last_draw_kind';
+    var lastDrawKind = 'shape';
+    try {
+      var _ldk = localStorage.getItem(LAST_DRAW_KIND_KEY);
+      if (_ldk === 'line' || _ldk === 'shape') lastDrawKind = _ldk;
+    } catch (eLdk) {}
+
+    function persistLastDrawKind(kind) {
+      lastDrawKind = (kind === 'line') ? 'line' : 'shape';
+      try { localStorage.setItem(LAST_DRAW_KIND_KEY, lastDrawKind); } catch (eP) {}
+    }
+    function currentDrawKind() {
+      if (mapDrawMode === 'drawline') return 'line';
+      if (mapDrawMode === 'draw') return 'shape';
+      return lastDrawKind || 'shape';
+    }
     function hideDrawModeChooser() {
       var el = document.getElementById('draw-mode-chooser');
       if (el) el.classList.remove('open');
+    }
+    function isDrawModeChooserOpen() {
+      var el = document.getElementById('draw-mode-chooser');
+      return !!(el && el.classList.contains('open'));
+    }
+    function syncDrawModeChooserHighlight() {
+      var el = document.getElementById('draw-mode-chooser');
+      if (!el) return;
+      var cur = currentDrawKind();
+      el.querySelectorAll('button[data-draw-kind]').forEach(function(btn) {
+        var k = btn.getAttribute('data-draw-kind');
+        btn.classList.toggle('is-active', k === cur);
+        btn.setAttribute('aria-pressed', k === cur ? 'true' : 'false');
+      });
     }
     function showDrawModeChooser() {
       var btn = document.getElementById('mdt-draw');
@@ -19230,29 +20124,49 @@
         el = document.createElement('div');
         el.id = 'draw-mode-chooser';
         el.className = 'draw-mode-chooser';
+        el.setAttribute('role', 'group');
+        el.setAttribute('aria-label', 'Draw mode');
         el.innerHTML =
-          '<button type="button" onclick="event.stopPropagation();beginMapDrawMode(\'shape\')">Shape</button>' +
-          '<button type="button" onclick="event.stopPropagation();beginMapDrawMode(\'line\')">Line</button>';
+          '<button type="button" data-draw-kind="shape" onclick="event.stopPropagation();beginMapDrawMode(\'shape\')">Shape</button>' +
+          '<button type="button" data-draw-kind="line" onclick="event.stopPropagation();beginMapDrawMode(\'line\')">Line</button>';
         document.body.appendChild(el);
       }
-      if (!btn) { el.classList.add('open'); return; }
+      if (!btn) {
+        el.classList.add('open');
+        syncDrawModeChooserHighlight();
+        return;
+      }
       var r = btn.getBoundingClientRect();
       el.style.left = Math.max(4, r.left + r.width / 2 - 54) + 'px';
       el.style.bottom = Math.max(8, window.innerHeight - r.top + 6) + 'px';
       el.style.top = 'auto';
       el.classList.add('open');
+      syncDrawModeChooserHighlight();
     }
     function startMapDrawShape() {
-      // #26: chooser Line vs Shape
-      if (mapDrawMode === 'draw' || mapDrawMode === 'drawline') {
-        cancelMapDraw();
+      // Second click on Draw: dismiss chooser + stop draw mode
+      if (mapDrawMode === 'draw' || mapDrawMode === 'drawline' || isDrawModeChooserOpen()) {
+        if (mapDrawMode === 'draw' || mapDrawMode === 'drawline') {
+          try { cancelMapDraw(); } catch (eC) {}
+        }
         hideDrawModeChooser();
         return;
       }
-      showDrawModeChooser();
+      // Open: start last-used mode immediately, show chooser with it highlighted
+      beginMapDrawMode(lastDrawKind || 'shape', { keepChooser: true });
     }
-    function beginMapDrawMode(kind) {
-      hideDrawModeChooser();
+    /**
+     * @param {'shape'|'line'} kind
+     * @param {{ keepChooser?: boolean }} [opts]
+     */
+    function beginMapDrawMode(kind, opts) {
+      opts = opts || {};
+      var keepChooser = !!opts.keepChooser;
+      persistLastDrawKind(kind);
+      if (!keepChooser) {
+        // Switching from the popup still keeps it open so the new mode stays highlighted
+        keepChooser = isDrawModeChooserOpen();
+      }
       ensureMap().then(function(m) {
         if (!m) return;
         if (mapRadarActive) stopMapRadar();
@@ -19268,16 +20182,20 @@
         clearMapDot();
         refreshMapDrawPreview();
         setMapDrawUi();
+        if (keepChooser) showDrawModeChooser();
+        else hideDrawModeChooser();
       });
     }
     window.startMapDrawShape = startMapDrawShape;
     window.beginMapDrawMode = beginMapDrawMode;
     window.hideDrawModeChooser = hideDrawModeChooser;
+    window.showDrawModeChooser = showDrawModeChooser;
     document.addEventListener('click', function(ev) {
       var ch = document.getElementById('draw-mode-chooser');
       if (!ch || !ch.classList.contains('open')) return;
       if (ch.contains(ev.target)) return;
       if (ev.target && ev.target.closest && ev.target.closest('#mdt-draw')) return;
+      // Outside click only hides the chooser; draw mode keeps running with last choice
       hideDrawModeChooser();
     });
     window.undoMapDrawVertex = undoMapDrawVertex;
@@ -21083,7 +22001,7 @@
         '<div class="mdm-title">Share pin</div>' +
         '<div class="mdm-sub">' + escHtml(loc.name || 'Pin') + '</div>' +
         '<button type="button" class="mdm-btn pin" onclick="event.preventDefault();event.stopPropagation();window.shareSavedPinLocation(\'' + safeId + '\');return false;">Copy location</button>' +
-        '<button type="button" class="mdm-btn share" onclick="event.preventDefault();event.stopPropagation();if(window.RegSlayerParty&&window.RegSlayerParty.openShareToMapFlow){window.RegSlayerParty.openShareToMapFlow({lat:' + loc.lat + ',lng:' + loc.lng + ',name:' + JSON.stringify(String(loc.name || 'Pin')) + '},\'pin\');}else{alert(\'Sign in and open Settings → My Maps to share to another map.\');}return false;">Share to another map</button>' +
+        '<button type="button" class="mdm-btn share" onclick="event.preventDefault();event.stopPropagation();if(window.RegSlayerParty&&window.RegSlayerParty.openShareToMapFlow){window.RegSlayerParty.openShareToMapFlow({id:' + JSON.stringify(String(loc.id)) + '},\'pin\');}else{alert(\'Sign in and open Settings → My Maps to share to another map.\');}return false;">Share to another map</button>' +
         '</div>';
       if (map) {
         L.popup({ className: 'saved-item-popup map-dot-popup', maxWidth: 280 })
@@ -22936,7 +23854,52 @@ function togglePinIconPicker() {
       });
     }
     /**
-     * Centered confirmation dialog (above pin popup / map chrome) instead of browser confirm().
+     * Position delete confirm over the open pin popup (or pin editor), not the screen center.
+     * Falls back to viewport center when no anchor is found.
+     */
+    function positionMapItemConfirm(el) {
+      if (!el) return;
+      el.classList.remove('is-centered');
+      el.style.left = '';
+      el.style.top = '';
+      el.style.transform = '';
+      var anchor = null;
+      try {
+        // Prefer an open Leaflet popup (pin menu)
+        anchor = document.querySelector('.leaflet-popup.leaflet-popup-open') ||
+          document.querySelector('.leaflet-popup');
+      } catch (e1) {}
+      if (!anchor) {
+        try {
+          var sheet = document.getElementById('pin-editor-sheet');
+          if (sheet && sheet.classList.contains('open')) anchor = sheet;
+        } catch (e2) {}
+      }
+      // Force layout so offsetWidth/Height are real
+      var w = el.offsetWidth || 240;
+      var h = el.offsetHeight || 100;
+      if (anchor) {
+        try {
+          var r = anchor.getBoundingClientRect();
+          if (r && r.width > 0 && r.height > 0) {
+            var left = r.left + (r.width / 2) - (w / 2);
+            var top = r.top + (r.height / 2) - (h / 2);
+            // Prefer slightly above center of popup so it feels stacked on top
+            top = r.top + Math.max(8, (r.height * 0.2)) - 4;
+            left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
+            top = Math.max(8, Math.min(top, window.innerHeight - h - 8));
+            el.style.left = Math.round(left) + 'px';
+            el.style.top = Math.round(top) + 'px';
+            el.style.transform = 'none';
+            return;
+          }
+        } catch (eP) {}
+      }
+      el.classList.add('is-centered');
+    }
+
+    /**
+     * Confirmation dialog stacked over the pin popup instead of browser confirm().
      * Does not close the underlying pin popup — sits on top until answered.
      */
     function showMapItemConfirm(message, onYes, onNo) {
@@ -22956,8 +23919,12 @@ function togglePinIconPicker() {
           '<button type="button" class="mic-no">Cancel</button>' +
         '</div>';
       el.querySelector('.mic-msg').textContent = message || 'Delete this item?';
-      // Always append to body so fixed centering is relative to the viewport
       document.body.appendChild(el);
+      try { positionMapItemConfirm(el); } catch (ePos) { el.classList.add('is-centered'); }
+      // Re-measure after paint (fonts/layout)
+      requestAnimationFrame(function() {
+        try { positionMapItemConfirm(el); } catch (e2) {}
+      });
 
       function cleanup() {
         try {
@@ -22997,6 +23964,34 @@ function togglePinIconPicker() {
       }, 0);
     }
     window.showMapItemConfirm = showMapItemConfirm;
+    window.positionMapItemConfirm = positionMapItemConfirm;
+
+    /** Custom notice for host/creator-only actions (no browser alert). */
+    function showCreatorOnlyNotice(message, title) {
+      var modal = document.getElementById('rs-creator-notice');
+      var msgEl = document.getElementById('rs-cn-msg');
+      var titleEl = document.getElementById('rs-cn-title');
+      if (!modal) {
+        try { alert(message || 'Only the map creator can do this.'); } catch (eA) {}
+        return;
+      }
+      if (titleEl) titleEl.textContent = title || 'Map creator only';
+      if (msgEl) msgEl.textContent = message || 'Only the map creator can do this.';
+      modal.classList.add('active');
+      modal.setAttribute('aria-hidden', 'false');
+      try {
+        if (modal.parentNode !== document.body) document.body.appendChild(modal);
+      } catch (eM) {}
+    }
+    function closeCreatorOnlyNotice() {
+      var modal = document.getElementById('rs-creator-notice');
+      if (modal) {
+        modal.classList.remove('active');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+    }
+    window.showCreatorOnlyNotice = showCreatorOnlyNotice;
+    window.closeCreatorOnlyNotice = closeCreatorOnlyNotice;
 
     function deleteHunt(id) {
       showMapItemConfirm('Delete this past hunt?', function() {
@@ -24089,30 +25084,35 @@ function togglePinIconPicker() {
       }
     }
 
-    /** Force dial onto top of map (mobile min mode) and clear bad drag offsets. */
+    /**
+     * Re-apply dial on the map after min/max layout changes.
+     * If the user placed it, keep map-relative % position (not screen-relative).
+     * Only pin to default top-center when never positioned.
+     */
     function pinCompassToMapTop(opts) {
       opts = opts || {};
       var stack = document.getElementById('map-compass-radar');
-      var wrap = document.getElementById('map-wrapper');
       if (!stack) return;
-      var phone = document.documentElement.classList.contains('layout-phone');
-      var fs = wrap && wrap.classList.contains('fullscreen');
-      // In mobile min mode always pin to top-center (ignore saved drag pos)
-      if (phone && !fs) {
-        stack.classList.remove('is-positioned');
-        stack.style.left = '';
-        stack.style.top = '';
-        stack.style.right = '';
-        stack.style.bottom = '';
-        stack.style.transform = '';
-      } else if (opts.clamp && stack.classList.contains('is-positioned')) {
-        try {
-          var l = parseFloat(stack.style.left);
-          var t = parseFloat(stack.style.top);
-          if (!isNaN(l) && !isNaN(t) && typeof applyDialStackPosition === 'function') {
-            applyDialStackPosition(l, t);
-          }
-        } catch (eC) {}
+      if (stack.classList.contains('is-positioned') || hasSavedDialPct()) {
+        try { reapplyDialStackFromPct(); } catch (eR) {}
+        return;
+      }
+      // Default (never dragged): leave CSS default top-center
+      stack.style.left = '';
+      stack.style.top = '';
+      stack.style.right = '';
+      stack.style.bottom = '';
+      stack.style.transform = '';
+    }
+
+    function hasSavedDialPct() {
+      try {
+        var raw = localStorage.getItem(DIAL_POS_KEY);
+        if (!raw) return false;
+        var p = JSON.parse(raw);
+        return !!(p && (typeof p.pctLeft === 'number' || typeof p.left === 'number'));
+      } catch (e) {
+        return false;
       }
     }
 
@@ -24283,42 +25283,95 @@ function togglePinIconPicker() {
       } else {
         hud.classList.add('dial-expanded');
       }
-      // Keep dragged position on-screen after size change (expand/collapse)
+      // Keep map-relative placement after expand/collapse size change
       if (stack && stack.classList.contains('is-positioned')) {
         requestAnimationFrame(function() {
-          var l = parseFloat(stack.style.left);
-          var t = parseFloat(stack.style.top);
-          if (!isNaN(l) && !isNaN(t)) applyDialStackPosition(l, t);
+          reapplyDialStackFromPct();
         });
       }
     }
 
+    /**
+     * Place dial in map-wrapper coords and persist as % of map size so
+     * min ↔ max keeps the same relative map location.
+     */
     function applyDialStackPosition(left, top) {
       var stack = document.getElementById('map-compass-radar');
       var wrap = document.getElementById('map-wrapper');
       if (!stack || !wrap) return;
       var wr = wrap.getBoundingClientRect();
+      // Measure after class so size is correct
+      stack.classList.add('is-positioned');
+      stack.style.transform = 'none';
+      stack.style.right = 'auto';
+      stack.style.bottom = 'auto';
       var sr = stack.getBoundingClientRect();
-      var maxL = Math.max(4, wr.width - sr.width - 4);
-      var maxT = Math.max(4, wr.height - sr.height - 4);
+      var maxL = Math.max(4, wr.width - (sr.width || 40) - 4);
+      var maxT = Math.max(4, wr.height - (sr.height || 40) - 4);
       left = Math.max(4, Math.min(maxL, left));
       top = Math.max(4, Math.min(maxT, top));
-      stack.classList.add('is-positioned');
       stack.style.left = Math.round(left) + 'px';
       stack.style.top = Math.round(top) + 'px';
-      stack.style.transform = 'none';
+      var pctLeft = wr.width > 0 ? left / wr.width : 0.5;
+      var pctTop = wr.height > 0 ? top / wr.height : 0.05;
+      pctLeft = Math.max(0, Math.min(1, pctLeft));
+      pctTop = Math.max(0, Math.min(1, pctTop));
+      stack.dataset.pctLeft = String(pctLeft);
+      stack.dataset.pctTop = String(pctTop);
       try {
-        localStorage.setItem(DIAL_POS_KEY, JSON.stringify({ left: Math.round(left), top: Math.round(top) }));
+        localStorage.setItem(DIAL_POS_KEY, JSON.stringify({
+          pctLeft: pctLeft,
+          pctTop: pctTop,
+          left: Math.round(left),
+          top: Math.round(top)
+        }));
       } catch (e) {}
     }
+
+    /** Recompute pixel left/top from stored map % after wrapper size changes. */
+    function reapplyDialStackFromPct() {
+      var stack = document.getElementById('map-compass-radar');
+      var wrap = document.getElementById('map-wrapper');
+      if (!stack || !wrap) return;
+      var pctLeft = parseFloat(stack.dataset.pctLeft);
+      var pctTop = parseFloat(stack.dataset.pctTop);
+      if (isNaN(pctLeft) || isNaN(pctTop)) {
+        try {
+          var raw = localStorage.getItem(DIAL_POS_KEY);
+          var p = raw ? JSON.parse(raw) : null;
+          if (p && typeof p.pctLeft === 'number' && typeof p.pctTop === 'number') {
+            pctLeft = p.pctLeft;
+            pctTop = p.pctTop;
+          } else if (p && typeof p.left === 'number' && typeof p.top === 'number') {
+            // Migrate old pixel-only saves once
+            var wr0 = wrap.getBoundingClientRect();
+            pctLeft = wr0.width > 0 ? p.left / wr0.width : 0.5;
+            pctTop = wr0.height > 0 ? p.top / wr0.height : 0.05;
+          }
+        } catch (e) {}
+      }
+      if (isNaN(pctLeft) || isNaN(pctTop)) return;
+      var wr = wrap.getBoundingClientRect();
+      applyDialStackPosition(pctLeft * wr.width, pctTop * wr.height);
+    }
+    window.reapplyDialStackFromPct = reapplyDialStackFromPct;
 
     function restoreDialStackPosition() {
       try {
         var raw = localStorage.getItem(DIAL_POS_KEY);
         if (!raw) return;
         var p = JSON.parse(raw);
-        if (!p || typeof p.left !== 'number' || typeof p.top !== 'number') return;
-        applyDialStackPosition(p.left, p.top);
+        if (!p) return;
+        if (typeof p.pctLeft === 'number' && typeof p.pctTop === 'number') {
+          var wrap = document.getElementById('map-wrapper');
+          if (!wrap) return;
+          var wr = wrap.getBoundingClientRect();
+          applyDialStackPosition(p.pctLeft * wr.width, p.pctTop * wr.height);
+          return;
+        }
+        if (typeof p.left === 'number' && typeof p.top === 'number') {
+          applyDialStackPosition(p.left, p.top);
+        }
       } catch (e) {}
     }
 
@@ -25915,7 +26968,12 @@ function togglePinIconPicker() {
       try {
         if (typeof dialHudVisible !== 'undefined' && dialHudVisible &&
             typeof ensureDialHudShown === 'function') {
-          setTimeout(function() { ensureDialHudShown({ quiet: true }); }, 50);
+          setTimeout(function() {
+            ensureDialHudShown({ quiet: true });
+            try {
+              if (typeof reapplyDialStackFromPct === 'function') reapplyDialStackFromPct();
+            } catch (eR) {}
+          }, 80);
         }
       } catch (eFs) {}
     }
@@ -25959,13 +27017,18 @@ function togglePinIconPicker() {
         if (typeof fitDesktopMapHeight === 'function') fitDesktopMapHeight();
         if (typeof scheduleDesktopMapFit === 'function') scheduleDesktopMapFit();
       } catch (eFit) {}
-      // Mobile min: pin compass to very top of map; restore dial if it was on
+      // Restore dial on map (keep user map-relative % position across min/max)
       try {
-        if (typeof pinCompassToMapTop === 'function') pinCompassToMapTop();
         if (typeof dialHudVisible !== 'undefined' && dialHudVisible &&
             typeof ensureDialHudShown === 'function') {
           ensureDialHudShown({ quiet: true });
         }
+        setTimeout(function() {
+          try {
+            if (typeof reapplyDialStackFromPct === 'function') reapplyDialStackFromPct();
+            else if (typeof pinCompassToMapTop === 'function') pinCompassToMapTop();
+          } catch (eR) {}
+        }, 80);
       } catch (ePin) {}
     }
 
@@ -26384,8 +27447,20 @@ function togglePinIconPicker() {
       return String(weapon);
     }
 
-    /** Full date string — never weekday/month abbreviations like "Aug" / "Sun". */
+    /** Compact date for map bar: "Sun Mar 15 '26" (abbrev day/month, 2-digit year). */
     function formatMbbFullDate(d) {
+      if (!d) return '';
+      try {
+        var days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        var yy = String(d.getFullYear()).slice(-2);
+        return days[d.getDay()] + ' ' + months[d.getMonth()] + ' ' + d.getDate() + " '" + yy;
+      } catch (e) {
+        return '';
+      }
+    }
+    /** Full wording for tooltips / titles only. */
+    function formatMbbLongDate(d) {
       if (!d) return '';
       try {
         return d.toLocaleDateString(undefined, {
@@ -26394,10 +27469,8 @@ function togglePinIconPicker() {
           day: 'numeric',
           year: 'numeric'
         });
-      } catch (e) {
-        var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-        var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-        return days[d.getDay()] + ', ' + months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+      } catch (e2) {
+        return formatMbbFullDate(d);
       }
     }
     /**
@@ -26443,11 +27516,16 @@ function togglePinIconPicker() {
       var wpnEl = document.getElementById('mbb-weapon');
       var ctx = document.getElementById('mbb-context');
       if (dateEl) {
+        dateEl.classList.remove('is-today', 'is-future', 'is-past', 'is-empty');
         if (selectedDate) {
           var label = formatMbbFullDate(selectedDate);
+          var longLabel = formatMbbLongDate(selectedDate);
           dateEl.textContent = label;
-          dateEl.classList.remove('is-empty');
-          dateEl.setAttribute('title', label);
+          dateEl.setAttribute('title', longLabel);
+          var delta = (typeof getDaysFromToday === 'function') ? getDaysFromToday(selectedDate) : 0;
+          if (delta === 0) dateEl.classList.add('is-today');
+          else if (delta > 0) dateEl.classList.add('is-future');
+          else dateEl.classList.add('is-past');
         } else {
           dateEl.textContent = 'No date';
           dateEl.classList.add('is-empty');
@@ -26473,15 +27551,16 @@ function togglePinIconPicker() {
       }
       if (ctx) {
         var parts = [];
-        if (selectedDate) parts.push(formatMbbFullDate(selectedDate));
+        if (selectedDate) parts.push(formatMbbLongDate(selectedDate));
         if (selectedWeapon) parts.push(displayWeaponName(selectedWeapon));
-        ctx.title = parts.length ? parts.join(' · ') : 'Hunt calendar date and weapon';
+        ctx.title = parts.length
+          ? ('Change hunt date & weapon · ' + parts.join(' · '))
+          : 'Change hunt date and weapon';
       }
-      // Fit after layout so clientWidth is correct
+      // Compact abbrev rarely needs shrink; still fit if phone is very tight
       if (dateEl && selectedDate) {
         requestAnimationFrame(function() {
           fitMbbDateText(dateEl);
-          requestAnimationFrame(function() { fitMbbDateText(dateEl); });
         });
       }
     }
@@ -26494,6 +27573,122 @@ function togglePinIconPicker() {
         if (el && selectedDate) fitMbbDateText(el);
       });
     } catch (eR) {}
+
+    /** Map overlay calendar + weapon picker (from bottom-bar date/weapon button). */
+    var mapDwMonthDate = null;
+    function ensureMapDwMonth() {
+      if (!mapDwMonthDate || isNaN(mapDwMonthDate.getTime())) {
+        mapDwMonthDate = selectedDate
+          ? new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1)
+          : (typeof calendarTargetDate !== 'undefined' && calendarTargetDate
+            ? new Date(calendarTargetDate.getFullYear(), calendarTargetDate.getMonth(), 1)
+            : new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+      }
+      return mapDwMonthDate;
+    }
+    function renderMapDwCalendar() {
+      var grid = document.getElementById('mdw-grid');
+      var label = document.getElementById('mdw-month-label');
+      if (!grid) return;
+      var base = ensureMapDwMonth();
+      var y = base.getFullYear();
+      var m = base.getMonth();
+      var names = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      if (label) label.textContent = names[m] + ' ' + y;
+      var first = new Date(y, m, 1).getDay();
+      var last = new Date(y, m + 1, 0).getDate();
+      var html = '';
+      ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(function(d) {
+        html += '<div class="mdw-dow">' + d + '</div>';
+      });
+      for (var i = 0; i < first; i++) html += '<button type="button" class="mdw-day empty" tabindex="-1" aria-hidden="true"></button>';
+      for (var day = 1; day <= last; day++) {
+        var sel = selectedDate &&
+          selectedDate.getDate() === day &&
+          selectedDate.getMonth() === m &&
+          selectedDate.getFullYear() === y;
+        html += '<button type="button" class="mdw-day' + (sel ? ' selected' : '') +
+          '" data-day="' + day + '" aria-label="' + names[m] + ' ' + day + ', ' + y + '">' + day + '</button>';
+      }
+      grid.innerHTML = html;
+      grid.querySelectorAll('.mdw-day[data-day]').forEach(function(btn) {
+        btn.onclick = function(ev) {
+          if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+          var d = parseInt(btn.getAttribute('data-day'), 10);
+          if (isNaN(d)) return;
+          // Keep planner calendar in the same month
+          try {
+            if (typeof calendarTargetDate !== 'undefined') {
+              calendarTargetDate = new Date(y, m, 1);
+            }
+          } catch (eC) {}
+          if (typeof selectDateStep === 'function') selectDateStep(d);
+          else {
+            selectedDate = new Date(y, m, d);
+            if (typeof updateBottomBarContext === 'function') updateBottomBarContext();
+          }
+          renderMapDwCalendar();
+          syncMapDwWeapons();
+        };
+      });
+    }
+    function syncMapDwWeapons() {
+      var box = document.getElementById('mdw-weapons');
+      if (!box) return;
+      var cur = selectedWeapon || '';
+      box.querySelectorAll('button[data-wpn]').forEach(function(btn) {
+        btn.classList.toggle('active', btn.getAttribute('data-wpn') === cur);
+      });
+    }
+    function mapDwChangeMonth(dir) {
+      var base = ensureMapDwMonth();
+      mapDwMonthDate = new Date(base.getFullYear(), base.getMonth() + (dir || 0), 1);
+      try {
+        if (typeof calendarTargetDate !== 'undefined') {
+          calendarTargetDate = new Date(mapDwMonthDate.getFullYear(), mapDwMonthDate.getMonth(), 1);
+        }
+      } catch (e) {}
+      renderMapDwCalendar();
+    }
+    function mapDwSetWeapon(w) {
+      if (typeof setWeapon === 'function') setWeapon(w);
+      else selectedWeapon = w;
+      syncMapDwWeapons();
+      if (typeof updateBottomBarContext === 'function') updateBottomBarContext();
+    }
+    function openMapDateWeaponPicker() {
+      var modal = document.getElementById('map-date-weapon-modal');
+      if (!modal) return;
+      mapDwMonthDate = selectedDate
+        ? new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1)
+        : (typeof calendarTargetDate !== 'undefined' && calendarTargetDate
+          ? new Date(calendarTargetDate.getFullYear(), calendarTargetDate.getMonth(), 1)
+          : new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+      renderMapDwCalendar();
+      syncMapDwWeapons();
+      modal.classList.add('active');
+      modal.setAttribute('aria-hidden', 'false');
+      try {
+        if (modal.parentNode !== document.body) document.body.appendChild(modal);
+      } catch (eM) {}
+    }
+    function closeMapDateWeaponPicker() {
+      var modal = document.getElementById('map-date-weapon-modal');
+      if (modal) {
+        modal.classList.remove('active');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+      try {
+        if (typeof renderCalendar === 'function') renderCalendar();
+      } catch (eR) {}
+      try {
+        if (typeof updateBottomBarContext === 'function') updateBottomBarContext();
+      } catch (eB) {}
+    }
+    window.openMapDateWeaponPicker = openMapDateWeaponPicker;
+    window.closeMapDateWeaponPicker = closeMapDateWeaponPicker;
+    window.mapDwChangeMonth = mapDwChangeMonth;
+    window.mapDwSetWeapon = mapDwSetWeapon;
 
     function applyDisplayVisibility() {
       var d = appSettings.display;
