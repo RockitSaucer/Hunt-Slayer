@@ -3038,6 +3038,34 @@
       margin: -2px 0 2px;
       line-height: 1.3;
     }
+    /* Creator · date · time — bolder / clearer than other mdm-sub lines */
+    .map-dot-menu .mdm-pin-meta {
+      margin-top: 6px !important;
+      margin-bottom: 0 !important;
+      padding: 5px 8px;
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid rgba(229, 154, 24, 0.28);
+      font-size: 12px !important;
+      font-weight: 800 !important;
+      color: #f1f5f0 !important;
+      opacity: 1 !important;
+      line-height: 1.35 !important;
+      letter-spacing: 0.01em;
+    }
+    .map-dot-menu .mdm-pin-meta .mdm-pin-meta-who {
+      color: var(--accent, #e59a18);
+      font-weight: 800;
+    }
+    .map-dot-menu .mdm-pin-meta .mdm-pin-meta-sep {
+      color: rgba(255, 255, 255, 0.45);
+      font-weight: 700;
+      margin: 0 0.25em;
+    }
+    .map-dot-menu .mdm-pin-meta .mdm-pin-meta-when {
+      color: #e8efe4;
+      font-weight: 800;
+    }
     .map-dot-menu .mdm-btn {
       display: block;
       width: 100%;
@@ -8884,7 +8912,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.7 Beta">V6.7 Beta</span>
+      <span class="brand-version" aria-label="Version 6.7.1 Beta">V6.7.1 Beta</span>
     </div>
   </header>
 
@@ -10139,7 +10167,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.7-beta';
+    const APP_VERSION = '6.7.1-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -22394,6 +22422,79 @@
     }
     window.togglePinHidden = togglePinHidden;
 
+    /** Signed-in user for pin creator stamp (id + display name). */
+    function getCurrentPinOwnerMeta() {
+      var user = null;
+      try {
+        user = window.__rsUser || null;
+        if (!user && window.RegSlayerCloud && window.RegSlayerCloud.getClient) {
+          /* session may only be on auth module */
+        }
+      } catch (eU) {}
+      var prof = null;
+      try {
+        if (window.RegSlayerCloud && typeof window.RegSlayerCloud.getProfile === 'function') {
+          prof = window.RegSlayerCloud.getProfile();
+        }
+      } catch (eP) {}
+      var ownerId = (user && user.id) || (prof && prof.id) || null;
+      var ownerName = '';
+      if (prof) {
+        ownerName = (prof.display_name && String(prof.display_name).trim())
+          || (prof.username && String(prof.username).trim())
+          || '';
+      }
+      if (!ownerName && user) {
+        try {
+          var meta = user.user_metadata || {};
+          ownerName = (meta.username || meta.display_name || '').trim();
+        } catch (eM) {}
+      }
+      if (!ownerName && ownerId) ownerName = 'Hunter';
+      if (!ownerId && !ownerName) return null;
+      return { ownerId: ownerId, ownerName: ownerName || 'Hunter' };
+    }
+    window.getCurrentPinOwnerMeta = getCurrentPinOwnerMeta;
+
+    /** Bold who · date · time line for pin popups. */
+    function buildPinCreatorMetaHtml(loc) {
+      if (!loc) return '';
+      var who = (loc.ownerName && String(loc.ownerName).trim()) ? String(loc.ownerName).trim() : '';
+      // Fallback: if this pin has no owner but current user is signed in, show them
+      // only for brand-new unsaved edge cases — prefer stored ownerName.
+      if (!who) {
+        try {
+          var om = getCurrentPinOwnerMeta();
+          if (om && om.ownerName && loc.ownerId && om.ownerId && String(loc.ownerId) === String(om.ownerId)) {
+            who = om.ownerName;
+          } else if (om && om.ownerName && !loc.ownerId) {
+            who = om.ownerName;
+          }
+        } catch (eF) {}
+      }
+      var when = '';
+      try {
+        var ca = loc.createdAt || loc.updatedAt;
+        if (ca) {
+          var d = new Date(ca);
+          if (!isNaN(d.getTime())) {
+            var dd = String(d.getDate()).padStart(2, '0');
+            var mm = String(d.getMonth() + 1).padStart(2, '0');
+            var yy = String(d.getFullYear()).slice(-2);
+            var tm = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+            when = dd + '-' + mm + '-' + yy + ' · ' + tm;
+          }
+        }
+      } catch (eD) {}
+      if (!who && !when) return '';
+      var parts = '';
+      if (who) parts += '<span class="mdm-pin-meta-who">' + escHtml(who) + '</span>';
+      if (who && when) parts += '<span class="mdm-pin-meta-sep">·</span>';
+      if (when) parts += '<span class="mdm-pin-meta-when">' + escHtml(when) + '</span>';
+      return '<div class="mdm-sub mdm-pin-meta">' + parts + '</div>';
+    }
+    window.buildPinCreatorMetaHtml = buildPinCreatorMetaHtml;
+
     /**
      * Toggle emphasize: pin pulses until toggled off.
      * On shared maps this is pushed immediately so every member sees the pulse
@@ -23748,19 +23849,36 @@ function togglePinIconPicker() {
           }
         }
       }
-      // Preserve owner meta / emphasize beacon on edit
-      if (isEdit) {
-        var prev = locations.find(function(l) { return String(l.id) === String(editingPinId); });
-        if (prev) {
-          if (prev.ownerId) newLoc.ownerId = prev.ownerId;
-          if (prev.ownerName) newLoc.ownerName = prev.ownerName;
-          if (prev.createdAt) newLoc.createdAt = prev.createdAt;
-          if (prev.savedWeather && !newLoc.savedWeather) newLoc.savedWeather = prev.savedWeather;
-          if (prev.emphasized) newLoc.emphasized = true;
-          newLoc.updatedAt = new Date().toISOString();
+      // Creator + timestamp: always stamp on create; preserve on edit (backfill if missing)
+      try {
+        var ownerMeta = (typeof getCurrentPinOwnerMeta === 'function')
+          ? getCurrentPinOwnerMeta()
+          : null;
+        if (isEdit) {
+          var prev = locations.find(function(l) { return String(l.id) === String(editingPinId); });
+          if (prev) {
+            if (prev.ownerId) newLoc.ownerId = prev.ownerId;
+            if (prev.ownerName) newLoc.ownerName = prev.ownerName;
+            if (prev.createdAt) newLoc.createdAt = prev.createdAt;
+            if (prev.savedWeather && !newLoc.savedWeather) newLoc.savedWeather = prev.savedWeather;
+            if (prev.emphasized) newLoc.emphasized = true;
+            newLoc.updatedAt = new Date().toISOString();
+          }
+          // Older pins saved without owner — attach current user if signed in
+          if (!newLoc.ownerId && ownerMeta && ownerMeta.ownerId) {
+            newLoc.ownerId = ownerMeta.ownerId;
+            newLoc.ownerName = ownerMeta.ownerName;
+          }
+          if (!newLoc.createdAt) newLoc.createdAt = new Date().toISOString();
+        } else {
+          newLoc.createdAt = new Date().toISOString();
+          if (ownerMeta) {
+            if (ownerMeta.ownerId) newLoc.ownerId = ownerMeta.ownerId;
+            if (ownerMeta.ownerName) newLoc.ownerName = ownerMeta.ownerName;
+          }
         }
-      } else {
-        newLoc.createdAt = new Date().toISOString();
+      } catch (eOwn) {
+        if (!isEdit) newLoc.createdAt = new Date().toISOString();
       }
       if (selectedPinIconId) {
         pushPinIconRecent(selectedPinIconId);
@@ -24173,21 +24291,9 @@ function togglePinIconPicker() {
         }
         var createdMeta = '';
         try {
-          var ca = loc.createdAt || loc.updatedAt;
-          if (ca) {
-            var d = new Date(ca);
-            if (!isNaN(d.getTime())) {
-              var dd = String(d.getDate()).padStart(2, '0');
-              var mm = String(d.getMonth() + 1).padStart(2, '0');
-              var yy = String(d.getFullYear()).slice(-2);
-              var tm = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-              createdMeta = '<div class="mdm-sub mdm-pin-meta" style="font-size:10px;opacity:0.85;margin-top:4px;">' +
-                (loc.ownerName ? escHtml(loc.ownerName) + ' · ' : '') + dd + '-' + mm + '-' + yy + ' ' + tm + '</div>';
-            }
-          } else if (loc.ownerName) {
-            createdMeta = '<div class="mdm-sub mdm-pin-meta" style="font-size:10px;opacity:0.85;margin-top:4px;">' +
-              escHtml(loc.ownerName) + '</div>';
-          }
+          createdMeta = (typeof buildPinCreatorMetaHtml === 'function')
+            ? buildPinCreatorMetaHtml(loc)
+            : '';
         } catch (eMeta) {}
         var nameTitle = loc.isHunt ? escHtml(loc.name || 'Hunt') : titleLine;
         var nameBlock = showQualifier && !loc.isHunt

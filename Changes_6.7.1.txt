@@ -1,0 +1,10 @@
+V6.7.1 Beta — changes since V6.7
+
+Pin creator on popup
+- New pins stamp ownerId + ownerName (display name / username) and createdAt on save
+- Edit preserves creator; backfills owner if an old pin is missing it
+- Popup line shows creator · date · time with bolder, higher-contrast styling
+  (orange name, white date/time, subtle card background)
+
+Files
+- index.html, party-maps.js (owner stamp fallback), sw.js v54

@@ -3678,10 +3678,16 @@
       var user = window.__rsUser;
       var prof = C.getProfile && C.getProfile();
       var changed = false;
+      var stampName = (prof && (prof.display_name || prof.username))
+        || (user && user.user_metadata && (user.user_metadata.username || user.user_metadata.display_name))
+        || 'Hunter';
       pins.forEach(function (p) {
         if (p && !p.ownerId && user) {
           p.ownerId = user.id;
-          p.ownerName = (prof && prof.username) || 'me';
+          p.ownerName = stampName;
+          changed = true;
+        } else if (p && p.ownerId && !p.ownerName && user && String(p.ownerId) === String(user.id)) {
+          p.ownerName = stampName;
           changed = true;
         }
       });
@@ -3691,7 +3697,7 @@
       areas.forEach(function (a) {
         if (a && !a.ownerId && user) {
           a.ownerId = user.id;
-          a.ownerName = (prof && prof.username) || 'me';
+          a.ownerName = stampName;
           ca = true;
         }
       });
