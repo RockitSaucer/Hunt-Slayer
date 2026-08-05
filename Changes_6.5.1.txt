@@ -1,0 +1,41 @@
+REG SLAYER V6.5.1 Beta
+======================
+Date: 2026-08-04
+Shell cache: reg-slayer-shell-v39 (was v38)
+Prior: V6.5 Beta (tag v6.5-beta)
+
+WHAT
+----
+Desktop planner + pin polish on top of V6.5:
+
+1) Available tracts is the only vertical scrollbar on desktop
+   - Right column height matches left steps (1–3 / Open Tracts)
+   - Hourly forecast bottom lines up with Open Tracts bottom
+   - Weather has no vertical scroll; outer planner card does not scroll
+   - Dark scrollbar (track #0a0c09, thumb #2a3224), no up/down arrow buttons
+
+2) Section min/max defaults
+   - First open: all sections expanded (non-minimized)
+   - Storage key reg_slayer_section_min_v2 (fresh defaults; no migrate of old min flags)
+   - User min/max still persists after they toggle
+
+3) Customize pin layering
+   - Layers: pin body → inside fill → icon (icon on top)
+   - Solid icon colors use CSS mask so colored glyphs show on black insides
+   - Picker thumbs use the same stack
+
+Phone layout remains frozen to 6.4.9-style (desktop-only reflow rules).
+
+WHY
+---
+Align weather with Open Tracts, keep only the tracts list scrolling, kill classic
+scrollbar arrows, start expanded, and make black inside + colored icon readable.
+
+UNDO
+----
+git checkout v6.5-beta
+or restore shell cache to reg-slayer-shell-v38 and APP_VERSION 6.5-beta
+
+FILES
+-----
+index.html, sw.js, Changes_6.5.1.txt

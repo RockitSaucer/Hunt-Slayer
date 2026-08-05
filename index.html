@@ -476,7 +476,8 @@
       max-height: 100%;
       height: 100%;
       overflow-x: hidden;
-      overflow-y: auto;
+      /* Outer planner does not scroll on desktop — only Available tracts list */
+      overflow-y: hidden;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
     }
@@ -1415,29 +1416,29 @@
     }
     /*
      * Desktop planner card:
-     *   Left: steps 1 → 2 → 3
-     *   Right: available tracts (flex-fills remaining height) + weather (bottom)
-     *   Columns stretch to equal height; weather sits at bottom of right stack.
+     *   Left: steps 1 → 2 → 3 (natural height)
+     *   Right: same height as left — weather (hourly) bottom aligns with Open Tracts;
+     *          Available tracts is the only vertical scrollbar (dark, no end buttons).
      */
     html.layout-desktop .card-planner {
       display: grid;
       grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.57fr);
-      /* Fill map-column height when short; grow with taller steps side */
-      grid-template-rows: minmax(min-content, 1fr);
+      grid-template-rows: auto;
       gap: 10px 12px;
-      align-items: stretch;
+      align-items: start;
       height: 100% !important;
       min-height: 0;
       max-height: 100%;
       overflow-x: hidden;
-      overflow-y: auto;
+      overflow-y: hidden; /* no outer planner scrollbar — only tracts list scrolls */
     }
     html.layout-desktop .card-planner > .planner-row {
       grid-column: 1;
       grid-row: 1;
       min-width: 0;
       min-height: min-content;
-      align-self: stretch;
+      align-self: start;
+      height: auto;
     }
     html.layout-desktop .card-planner > .planner-right-col {
       grid-column: 2;
@@ -1447,9 +1448,14 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
-      align-self: stretch;
+      align-self: start;
+      /* Height matched to left steps via --planner-right-h (JS) */
+      height: var(--planner-right-h, auto);
+      max-height: var(--planner-right-h, none);
+      overflow: hidden;
+      box-sizing: border-box;
     }
-    /* Tracts: grow to fill space above weather; scroll only when list overflows that space */
+    /* Tracts: fill space above weather; list is sole vertical scroll region */
     html.layout-desktop .planner-right-col > .available-tracts-panel,
     html.layout-desktop .planner-right-col > #locations-under-steps {
       flex: 1 1 auto;
@@ -1464,7 +1470,9 @@
     html.layout-desktop .planner-right-col > #locations-under-steps.is-minimized {
       flex: 0 0 auto;
     }
-    /* Must win over .is-minimized { display:none } only when expanded */
+    html.layout-desktop .planner-right-col .available-tracts-header {
+      flex: 0 0 auto;
+    }
     html.layout-desktop .planner-right-col .available-tracts-body {
       flex: 1 1 auto;
       min-height: 0;
@@ -1472,6 +1480,15 @@
       flex-direction: column;
       overflow: hidden;
       padding-bottom: 6px;
+    }
+    html.layout-desktop .planner-right-col .available-tracts-body > .list-toolbar {
+      flex: 0 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
     }
     html.layout-desktop .planner-right-col > .available-tracts-panel.is-minimized .available-tracts-body,
     html.layout-desktop .planner-right-col > #locations-under-steps.is-minimized .available-tracts-body {
@@ -1481,38 +1498,97 @@
       overflow: hidden;
       padding: 0;
     }
-    html.layout-desktop .planner-right-col .location-list {
+    /* Only Available tracts list scrolls — dark track/thumb, zero arrow buttons */
+    html.layout-desktop .planner-right-col .location-list,
+    html.layout-desktop .planner-right-col .location-list.tracts-scroll {
       flex: 1 1 auto;
       min-height: 0;
       max-height: none !important;
       overflow-x: hidden;
       overflow-y: auto;
+      overscroll-behavior: contain;
+      margin-bottom: 0;
+      /* Firefox: thin + dark, no arrow buttons */
       scrollbar-width: thin;
-      scrollbar-color: #3d4a32 rgba(0, 0, 0, 0.25);
+      scrollbar-color: #2a3224 #0a0c09;
+      color-scheme: dark;
+      -ms-overflow-style: auto;
     }
-    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar { width: 8px; }
-    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-track {
-      background: rgba(0, 0, 0, 0.25);
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar,
+    html.layout-desktop .planner-right-col .location-list.tracts-scroll::-webkit-scrollbar {
+      width: 8px !important;
+      height: 8px !important;
+      background: #0a0c09;
+    }
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-track,
+    html.layout-desktop .planner-right-col .location-list.tracts-scroll::-webkit-scrollbar-track {
+      background: #0a0c09;
       border-radius: 4px;
+      border: 1px solid #1a1f16;
+      -webkit-box-shadow: none;
     }
-    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-thumb {
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-thumb,
+    html.layout-desktop .planner-right-col .location-list.tracts-scroll::-webkit-scrollbar-thumb {
+      background: #2a3224;
+      border-radius: 4px;
+      border: 1px solid #1a1f16;
+      min-height: 28px;
+    }
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-thumb:hover,
+    html.layout-desktop .planner-right-col .location-list.tracts-scroll::-webkit-scrollbar-thumb:hover {
       background: #3d4a32;
-      border-radius: 4px;
-      border: 1px solid #28321a;
     }
-    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-thumb:hover {
-      background: #4f6140;
+    /*
+     * Remove up/down (and left/right) scrollbar buttons.
+     * Chrome/Edge: height:0 + display:block is more reliable than display:none alone.
+     */
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-button,
+    html.layout-desktop .planner-right-col .location-list.tracts-scroll::-webkit-scrollbar-button,
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-button:single-button,
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-button:double-button,
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-button:vertical:start:decrement,
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-button:vertical:end:increment,
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-button:vertical:start:increment,
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-button:vertical:end:decrement,
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-button:horizontal:start:decrement,
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-button:horizontal:end:increment,
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-button:horizontal:start:increment,
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-button:horizontal:end:decrement,
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-button:start:decrement,
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-button:end:increment,
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-button:start:increment,
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-button:end:decrement {
+      display: block !important;
+      width: 0 !important;
+      height: 0 !important;
+      max-width: 0 !important;
+      max-height: 0 !important;
+      min-width: 0 !important;
+      min-height: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: 0 !important;
+      background: transparent !important;
+      background-color: transparent !important;
+      background-image: none !important;
+      box-shadow: none !important;
+      -webkit-appearance: none !important;
+      appearance: none !important;
     }
-    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-button {
-      display: none;
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-corner,
+    html.layout-desktop .planner-right-col .location-list.tracts-scroll::-webkit-scrollbar-corner {
+      background: #0a0c09;
       width: 0;
       height: 0;
     }
+    /* Weather: natural height at bottom of right col (= Open Tracts bottom when heights match) */
     html.layout-desktop .planner-right-col > #dashboard-container,
     html.layout-desktop .planner-right-col > .dashboard-under-steps {
       flex: 0 0 auto;
       min-width: 0;
-      margin-top: auto; /* pin weather to bottom of right column when tracts expands */
+      margin-top: 0;
+      overflow: hidden; /* no vertical scroll on weather */
+      max-height: none;
     }
     /*
      * Half minimized:
@@ -1792,7 +1868,7 @@
       padding: 5px 7px;
       font-size: 11px;
     }
-    /* Weather: natural height under tracts — no internal scrollbar / dead stretch */
+    /* Weather: natural height under tracts — no vertical scrollbar */
     html.layout-desktop .dashboard-under-steps {
       margin-top: 0;
       padding: 10px 12px;
@@ -1800,10 +1876,15 @@
       border-radius: 10px;
       background: var(--panel-light);
       box-sizing: border-box;
-      overflow: visible;
+      overflow-x: hidden;
+      overflow-y: hidden;
       min-height: 0;
       height: auto !important;
       max-height: none !important;
+    }
+    html.layout-desktop .dashboard-under-steps .hourly-table-container {
+      overflow-x: auto;
+      overflow-y: hidden;
     }
     html.layout-desktop .dashboard-under-steps #current-data-banner {
       margin-bottom: 8px;
@@ -4195,13 +4276,38 @@
       justify-content: center;
       overflow: hidden;
       pointer-events: none;
+      position: relative;
     }
-    #pin-editor-sheet .pin-picker-disc img {
+    /* Icon always paints above inside fill (sibling layer + z-index) */
+    #pin-editor-sheet .pin-picker-disc .pin-picker-icon-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    #pin-editor-sheet .pin-picker-disc img,
+    #pin-editor-sheet .pin-picker-disc .pin-glyph-img,
+    #pin-editor-sheet .pin-picker-disc .pin-glyph-layer {
       width: 88% !important;
       height: 88% !important;
       max-width: 36px;
       max-height: 36px;
       object-fit: contain;
+      display: block;
+      position: relative;
+      z-index: 2;
+    }
+    /* Map / preview pin layers */
+    .rs-pin .rs-pin-body { z-index: 0; }
+    .rs-pin .rs-pin-inside { z-index: 1; }
+    .rs-pin .rs-pin-icon { z-index: 2; }
+    .rs-pin .rs-pin-icon .pin-glyph-img,
+    .rs-pin .rs-pin-icon .pin-glyph-layer {
+      width: 100%;
+      height: 100%;
       display: block;
     }
     /* Map-anchored delete confirmation (replaces window.confirm at popup) */
@@ -7159,7 +7265,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.5 Beta">V6.5 Beta</span>
+      <span class="brand-version" aria-label="Version 6.5.1 Beta">V6.5.1 Beta</span>
     </div>
   </header>
 
@@ -7375,7 +7481,7 @@
             <button id="restore-hidden-btn" onclick="restoreAllHidden()" style="background:var(--green);border:none;color:#fff;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:10px;font-weight:bold;display:none;">Restore</button>
             <span id="hidden-count-label" style="font-size:10px;color:var(--muted);"></span>
           </div>
-          <div class="location-list" id="location-list"></div>
+          <div class="location-list tracts-scroll" id="location-list"></div>
         </div>
       </div>
 
@@ -8198,7 +8304,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.5-beta';
+    const APP_VERSION = '6.5.1-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -8245,30 +8351,28 @@
         huntListSortMode = _savedSort;
       }
     } catch (eSortInit) {}
-    /** Desktop steps 1–3 collapsed into thin strip (legacy key kept for migration) */
+    /** Desktop steps 1–3 collapsed into thin strip (derived from section min state) */
     let plannerStepsMinimized = false;
-    try {
-      plannerStepsMinimized = localStorage.getItem('reg_slayer_planner_steps_min') === '1';
-    } catch (eMinInit) {}
-    /** Per-section minimize (desktop): step1/2/3, tracts, solunar, hourly */
+    /**
+     * Per-section minimize (desktop): step1/2/3, tracts, solunar, hourly.
+     * Default = all open (false). v2 key starts fresh so first open is expanded;
+     * user min/max choices still persist after they toggle.
+     */
     var sectionMinState = {
       step1: false, step2: false, step3: false,
       tracts: false, solunar: false, hourly: false
     };
     try {
-      var _secRaw = localStorage.getItem('reg_slayer_section_min_v1');
+      var _secRaw = localStorage.getItem('reg_slayer_section_min_v2');
       if (_secRaw) {
         var _secObj = JSON.parse(_secRaw);
         Object.keys(sectionMinState).forEach(function(k) {
           if (typeof _secObj[k] === 'boolean') sectionMinState[k] = _secObj[k];
         });
-      } else {
-        // migrate older single flags
-        if (localStorage.getItem('reg_slayer_tracts_min') === '1') sectionMinState.tracts = true;
-        if (plannerStepsMinimized) {
-          sectionMinState.step1 = sectionMinState.step2 = sectionMinState.step3 = true;
-        }
       }
+      // Do not migrate v1 / legacy keys — those left sections minimized on "first" open.
+      try { localStorage.removeItem('reg_slayer_section_min_v1'); } catch (eRm1) {}
+      plannerStepsMinimized = !!(sectionMinState.step1 && sectionMinState.step2 && sectionMinState.step3);
     } catch (eSecInit) {}
     let editingEventId = null, userLat = null, userLng = null;
     let selectedPinColor = '#e59a18', selectedHuntColor = '#e59a18';
@@ -10807,11 +10911,11 @@
     window.applyHuntListSort = applyHuntListSort;
 
     function saveSectionMinState() {
-      try { localStorage.setItem('reg_slayer_section_min_v1', JSON.stringify(sectionMinState)); } catch (eS) {}
+      try { localStorage.setItem('reg_slayer_section_min_v2', JSON.stringify(sectionMinState)); } catch (eS) {}
       try {
-        localStorage.setItem('reg_slayer_tracts_min', sectionMinState.tracts ? '1' : '0');
         plannerStepsMinimized = !!(sectionMinState.step1 && sectionMinState.step2 && sectionMinState.step3);
         localStorage.setItem('reg_slayer_planner_steps_min', plannerStepsMinimized ? '1' : '0');
+        localStorage.setItem('reg_slayer_tracts_min', sectionMinState.tracts ? '1' : '0');
       } catch (eL) {}
     }
 
@@ -10884,6 +10988,14 @@
           });
         }
       } catch (eMapGrow) {}
+      try {
+        if (typeof scheduleSyncPlannerRightCol === 'function') scheduleSyncPlannerRightCol();
+        else if (typeof syncPlannerRightColToOpenTracts === 'function') {
+          requestAnimationFrame(function() {
+            try { syncPlannerRightColToOpenTracts(); } catch (eR) {}
+          });
+        }
+      } catch (eRsync) {}
     }
 
     function applyAllSectionMinStates() {
@@ -10893,6 +11005,9 @@
         requestAnimationFrame(function() {
           try { syncPlannerCalendarSquare(); } catch (eSq) {}
           try { if (typeof fitDesktopMapHeight === 'function') fitDesktopMapHeight(); } catch (eFit) {}
+          try {
+            if (typeof syncPlannerRightColToOpenTracts === 'function') syncPlannerRightColToOpenTracts();
+          } catch (eR2) {}
         });
       } else if (typeof fitDesktopMapHeight === 'function') {
         requestAnimationFrame(function() { try { fitDesktopMapHeight(); } catch (e2) {} });
@@ -20835,38 +20950,68 @@
       if (hex === '#fff' || hex === '#ffffff') {
         return 'brightness(0) invert(1)';
       }
+      // Legacy filter path (prefer mask recolor in pinIconMarkup)
       return 'brightness(0) saturate(100%) drop-shadow(0 0 0.6px ' + hex + ') drop-shadow(0 0 0 ' + hex + ')';
     }
+    /**
+     * Icon markup. Solid tints use CSS mask + background so the glyph is a true
+     * top layer over the inside disc (black inside no longer swallows colored icons).
+     */
     function pinIconMarkup(iconId, glyphColor, size) {
       var img = pinIconImageSrc(iconId);
       var s = size || 26;
       if (!img) return '';
-      // Default: natural PNG colors (white already removed at build time)
-      var filt = pinIconColorFilter(glyphColor, iconId);
-      return '<img src="' + img + '" width="' + s + '" height="' + s + '" alt="" draggable="false" ' +
-        'style="filter:' + filt + ';opacity:1;display:block;width:100%;height:100%;object-fit:contain;background:transparent;border:none;margin:0;padding:0;">';
+      var g = (glyphColor == null || glyphColor === '') ? 'natural' : glyphColor;
+      var natural = (g === 'natural' || g === 'none' || g === 'original');
+      // Blood natural red asset
+      if (iconId === 'blood' && !natural) {
+        var hb = String(g).toLowerCase();
+        if (hb === '#e43844' || hb === '#dc2626' || hb === '#ef4444' || hb === '#e43945') natural = true;
+      }
+      var layer =
+        'position:relative;z-index:2;display:block;width:100%;height:100%;' +
+        'box-sizing:border-box;pointer-events:none;flex-shrink:0;';
+      if (natural) {
+        return '<img class="pin-glyph-img" src="' + img + '" width="' + s + '" height="' + s +
+          '" alt="" draggable="false" style="' + layer +
+          'object-fit:contain;background:transparent;border:none;margin:0;padding:0;filter:none;opacity:1;">';
+      }
+      var hex = (typeof normalizeHexColor === 'function')
+        ? (normalizeHexColor(g) || '#111111')
+        : String(g);
+      // Mask paints solid color in icon shape — sits above inside fill
+      return '<span class="pin-glyph-layer" role="img" aria-hidden="true" style="' + layer +
+        'background-color:' + hex + ';' +
+        '-webkit-mask-image:url(\'' + img + '\');mask-image:url(\'' + img + '\');' +
+        '-webkit-mask-size:contain;mask-size:contain;' +
+        '-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;' +
+        '-webkit-mask-position:center;mask-position:center;' +
+        '-webkit-mask-mode:alpha;mask-mode:alpha;"></span>';
     }
     function buildCustomPinMarkerHtml(loc) {
       var iconId = loc.iconId || null;
       var outer = loc.color || (iconId ? pinIconDefaultColor(iconId) : '#e59a18');
-      // White disc default so black/red glyphs stand out; glyph fills disc edge-to-edge
+      // White disc default so black/red glyphs stand out
       var inner = loc.innerColor || '#ffffff';
       var glyph = (loc.iconColor == null || loc.iconColor === '') ? 'natural' : loc.iconColor;
       var pinW = 43, pinH = 53, disc = 30, body = 38;
-      // disc inset: (body-ish layout) glyph may touch inner circle edge
       var discLeft = 6, discTop = 4;
-      var innerContent = iconId
-        ? pinIconMarkup(iconId, glyph, disc)
+      // Three layers: pin body (0) → inside fill (1) → icon glyph (2)
+      var iconLayer = iconId
+        ? ('<div class="rs-pin-icon" style="position:absolute;left:' + discLeft + 'px;top:' + discTop +
+          'px;width:' + disc + 'px;height:' + disc + 'px;z-index:2;display:flex;align-items:center;' +
+          'justify-content:center;overflow:hidden;padding:0;box-sizing:border-box;pointer-events:none;">' +
+          pinIconMarkup(iconId, glyph, disc) + '</div>')
         : '';
       return (
-        '<div style="width:' + pinW + 'px;height:' + pinH + 'px;position:relative;">' +
-          '<div style="width:' + body + 'px;height:' + body + 'px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:' + outer +
-            ';border:2.5px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,0.55);position:absolute;left:2px;top:0;"></div>' +
-          '<div style="position:absolute;left:' + discLeft + 'px;top:' + discTop + 'px;width:' + disc + 'px;height:' + disc +
-            'px;border-radius:50%;background:' + inner + ';border:1px solid rgba(0,0,0,0.22);' +
-            'display:flex;align-items:center;justify-content:center;overflow:hidden;padding:0;box-sizing:border-box;">' +
-            innerContent +
-          '</div>' +
+        '<div class="rs-pin" style="width:' + pinW + 'px;height:' + pinH + 'px;position:relative;">' +
+          '<div class="rs-pin-body" style="width:' + body + 'px;height:' + body +
+            'px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:' + outer +
+            ';border:2.5px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,0.55);position:absolute;left:2px;top:0;z-index:0;"></div>' +
+          '<div class="rs-pin-inside" style="position:absolute;left:' + discLeft + 'px;top:' + discTop +
+            'px;width:' + disc + 'px;height:' + disc + 'px;border-radius:50%;background:' + inner +
+            ';border:1px solid rgba(0,0,0,0.22);z-index:1;box-sizing:border-box;"></div>' +
+          iconLayer +
         '</div>'
       );
     }
@@ -20883,9 +21028,13 @@
       var iconHtml = iconId
         ? (typeof pinIconMarkup === 'function' ? pinIconMarkup(iconId, glyph, 32) : '')
         : '';
+      // Inside fill under icon layer (icon z-index:2 via pinIconMarkup)
       return (
-        '<div class="pin-picker-disc" style="background:' + inner + ';" title="">' +
-          iconHtml +
+        '<div class="pin-picker-disc" style="position:relative;background:' + inner + ';" title="">' +
+          (iconHtml
+            ? '<div class="pin-picker-icon-layer" style="position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;pointer-events:none;">' +
+              iconHtml + '</div>'
+            : '') +
         '</div>'
       );
     }
@@ -22312,7 +22461,8 @@ function togglePinIconPicker() {
       grid.style.height = gridH + 'px';
       document.documentElement.style.setProperty('--planner-cal-grid-h', gridH + 'px');
 
-      // Desktop: steps stack left; tracts + weather stack right (natural heights — no forced weather stretch).
+      // Desktop: steps stack left; right col height = left so hourly bottom lines up with Open Tracts.
+      // Only Available tracts list scrolls inside that height.
       if (wpn) {
         wpn.style.minHeight = '';
         wpn.style.height = '';
@@ -22334,7 +22484,61 @@ function togglePinIconPicker() {
         ? Math.round(step1.getBoundingClientRect().height)
         : Math.round(cal.getBoundingClientRect().height);
       document.documentElement.style.setProperty('--planner-side-height', sideH + 'px');
+      try {
+        if (typeof syncPlannerRightColToOpenTracts === 'function') syncPlannerRightColToOpenTracts();
+      } catch (eR) {}
     }
+    /**
+     * Match right column height to left steps (1–3). Weather sits at bottom →
+     * hourly forecast bottom aligns with Open Tracts bottom. Tracts list scrolls.
+     * Desktop only; half-min stack modes clear the lock.
+     */
+    function syncPlannerRightColToOpenTracts() {
+      if (typeof isPhoneLayout === 'function' && isPhoneLayout()) {
+        document.documentElement.style.removeProperty('--planner-right-h');
+        var r0 = document.getElementById('planner-right-col');
+        if (r0) { r0.style.height = ''; r0.style.maxHeight = ''; }
+        return;
+      }
+      try {
+        if (!document.documentElement.classList.contains('layout-desktop')) {
+          document.documentElement.style.removeProperty('--planner-right-h');
+          var rDesk = document.getElementById('planner-right-col');
+          if (rDesk) { rDesk.style.height = ''; rDesk.style.maxHeight = ''; }
+          return;
+        }
+      } catch (eDesk) {}
+      var root = document.documentElement;
+      if (root.classList.contains('planner-right-half-min') ||
+          root.classList.contains('planner-left-half-min')) {
+        root.style.removeProperty('--planner-right-h');
+        var r1 = document.getElementById('planner-right-col');
+        if (r1) { r1.style.height = ''; r1.style.maxHeight = ''; }
+        return;
+      }
+      var left = document.getElementById('planner-row');
+      var right = document.getElementById('planner-right-col');
+      if (!left || !right) return;
+      // Clear forced height so left measures natural content height
+      right.style.height = '';
+      right.style.maxHeight = '';
+      root.style.removeProperty('--planner-right-h');
+      var leftH = Math.round(left.getBoundingClientRect().height);
+      if (leftH < 120) return;
+      root.style.setProperty('--planner-right-h', leftH + 'px');
+      right.style.height = leftH + 'px';
+      right.style.maxHeight = leftH + 'px';
+    }
+    var _rightColSyncTimer = null;
+    function scheduleSyncPlannerRightCol() {
+      if (_rightColSyncTimer) clearTimeout(_rightColSyncTimer);
+      _rightColSyncTimer = setTimeout(function() {
+        _rightColSyncTimer = null;
+        try { syncPlannerRightColToOpenTracts(); } catch (eS) {}
+      }, 40);
+    }
+    window.syncPlannerRightColToOpenTracts = syncPlannerRightColToOpenTracts;
+    window.scheduleSyncPlannerRightCol = scheduleSyncPlannerRightCol;
     window.syncPlannerCalendarSquare = syncPlannerCalendarSquare;
 
     function renderCalendar() {
@@ -24230,6 +24434,15 @@ function togglePinIconPicker() {
         applyOneSectionMin('hourly');
         updatePlannerHalfMinClasses();
       } catch (eSecWx) {}
+      // Weather height changed — keep right col locked to Open Tracts bottom
+      try {
+        if (typeof scheduleSyncPlannerRightCol === 'function') scheduleSyncPlannerRightCol();
+        else if (typeof syncPlannerRightColToOpenTracts === 'function') {
+          requestAnimationFrame(function() {
+            try { syncPlannerRightColToOpenTracts(); } catch (eRw) {}
+          });
+        }
+      } catch (eWxSync) {}
 
       if (subsection) {
         document.getElementById('db-title').innerText = location.name + ' - ' + subsection.name;
