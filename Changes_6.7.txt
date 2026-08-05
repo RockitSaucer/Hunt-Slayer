@@ -1,0 +1,14 @@
+V6.7 Beta — changes since V6.6.10
+
+Add / Edit pin popup layout
+- Name field moved to top, directly under “Add pin” (compact width, not full sheet)
+- Picking an icon fills the name with that icon’s default label; user can erase and type a custom name
+- Re-picking icons updates the name only while it still matches the last auto-fill (custom names kept)
+- Under colors: pin size slider, then Notes (bold orange “Notes” label + textarea) — no separate Notes button
+- Order in Customize: colors → preview → hide → size → notes → ideal/advanced
+
+Files
+- index.html (pin editor HTML/CSS/JS)
+- sw.js shell v53
+
+Ship tag: v6.7-beta

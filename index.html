@@ -5136,8 +5136,8 @@
     }
     
     /* Save/Cancel sticky bar styles are with #pin-editor-sheet flex layout above */
-    #pin-editor-sheet .pes-notes { display: none; }
-    #pin-editor-sheet.notes-open .pes-notes { display: block; }
+    /* Notes always visible under size (no separate Notes button) */
+    #pin-editor-sheet .pes-notes { display: block; }
     .pin-zoom-scale { transform-origin: center bottom; }
     
     /* Phone: active tool chrome is top-left (see .tool-active .mdt-tools-panel) */
@@ -5360,18 +5360,65 @@
       background: var(--panel-light);
       color: var(--ink);
     }
-    #pin-editor-sheet .pes-notes {
-      width: 100%;
+    /* Name row under “Add pin” — compact, not full sheet width */
+    #pin-editor-sheet .pes-name-row {
+      margin: 0 12px 8px;
+      padding: 0;
+    }
+    #pin-editor-sheet .pes-field-label {
+      display: block;
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--muted);
+      margin: 0 0 4px;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+    #pin-editor-sheet .pes-name-input {
+      width: auto !important;
+      max-width: 68%;
+      min-width: 9rem;
       box-sizing: border-box;
-      min-height: 48px;
-      margin: 6px 0;
+      display: block;
       padding: 6px 8px;
       font-size: 12px;
+      font-weight: 600;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-light);
+      color: var(--ink);
+    }
+    #pin-editor-sheet .pes-size-label {
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      margin: 8px 0 4px;
+    }
+    /* Bold accent orange — same as --accent / app highlight text */
+    #pin-editor-sheet .pes-notes-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--accent, #e59a18);
+      margin: 10px 0 4px;
+      letter-spacing: 0.02em;
+    }
+    #pin-editor-sheet .pes-notes {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 56px;
+      margin: 0 0 6px;
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.35;
       border-radius: 8px;
       border: 1px solid var(--border);
       background: var(--panel-light);
       color: var(--ink);
       resize: vertical;
+      font-family: inherit;
     }
     #pin-editor-sheet .pes-customize-btn {
       width: 100%;
@@ -8837,7 +8884,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.6.10 Beta">V6.6.10 Beta</span>
+      <span class="brand-version" aria-label="Version 6.7 Beta">V6.7 Beta</span>
     </div>
   </header>
 
@@ -9505,19 +9552,22 @@
           </div>
 
 
-          <!-- V6.3 pin editor docked above toolbar (#18) -->
+          <!-- Pin editor docked above toolbar -->
           <div id="pin-editor-sheet" aria-hidden="true">
             <div class="pes-head" id="pes-drag-head">
               <strong id="pes-title">Add pin</strong>
               <button type="button" class="pes-close" onclick="cancelPinEditorSheet()" title="Cancel" aria-label="Cancel">&times;</button>
             </div>
             <div class="pes-scroll">
+            <!-- Name directly under title (not full width); icon pick fills default name -->
+            <div class="pes-name-row">
+              <label for="pin-name-input" class="pes-field-label">Name</label>
+              <input type="text" id="pin-name-input" class="toast-form-control pes-name-input" placeholder="Pin name" autocomplete="off" oninput="onPinNameInput()" />
+            </div>
             <div id="pin-icon-recent" style="display:none;margin-bottom:6px;"></div>
             <div id="pin-icon-grid" class="pin-icon-grid"></div>
             <input type="search" id="pin-icon-search" class="pin-icon-search" placeholder="Search pins…" oninput="renderPinIconGrid()" />
-            <button type="button" class="pes-customize-btn" id="pes-note-btn" onclick="openPinNoteModal()">Add note</button>
-            <textarea id="pin-notes-input" class="pes-notes" placeholder="Notes…" style="display:none;" aria-hidden="true"></textarea>
-            
+
             <button type="button" class="pes-customize-btn" id="pes-customize-btn" onclick="togglePinCustomizePanel()">Customize pin</button>
             <div id="pes-customize-panel" style="display:none;">
               <div class="pes-slot-btns">
@@ -9536,13 +9586,15 @@
                 <div class="color-picker" id="cp-pin-glyph" data-input-id="pin-glyph-color" data-initial="#111111" data-bind-var="selectedPinGlyphColor"></div>
               </div>
               <div class="pes-preview" id="pes-preview" aria-label="Pin preview"></div>
-              <label for="pin-name-input" style="display:block;font-size:10px;font-weight:700;color:var(--muted);margin:6px 0 4px;">Custom name</label>
-              <input type="text" id="pin-name-input" class="toast-form-control" placeholder="Leave blank for default pin name" style="width:100%;box-sizing:border-box;" oninput="markPinEditorDirty()" />
-              <label style="display:flex;align-items:center;gap:6px;margin:6px 0;font-size:11px;font-weight:700;cursor:pointer;">
+              <label style="display:flex;align-items:center;gap:6px;margin:8px 0 4px;font-size:11px;font-weight:700;cursor:pointer;">
                 <input type="checkbox" id="pin-hide-chk" onchange="markPinEditorDirty()"> Hide pin
               </label>
-              <label style="display:block;font-size:10px;font-weight:700;color:var(--muted);margin:4px 0;">Pin size <span id="pin-size-val">100</span>%</label>
+              <!-- Size under colors, above notes -->
+              <label class="pes-size-label" for="pin-size-slider">Pin size <span id="pin-size-val">100</span>%</label>
               <input type="range" id="pin-size-slider" min="25" max="150" value="100" oninput="document.getElementById('pin-size-val').textContent=this.value;markPinEditorDirty();updatePinEditorPreview();" style="width:100%;" />
+              <!-- Notes where custom name used to be -->
+              <label for="pin-notes-input" class="pes-notes-label">Notes</label>
+              <textarea id="pin-notes-input" class="pes-notes" placeholder="Type a note for this pin…" rows="3" oninput="markPinEditorDirty()"></textarea>
               <div id="pin-ideal-block" style="display:none;margin-top:6px;">
                 <button type="button" class="pes-customize-btn" onclick="togglePinIdealPanel()">Ideal conditions</button>
                 <div id="pin-ideal-panel" style="display:none;font-size:11px;">
@@ -10087,7 +10139,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.6.10-beta';
+    const APP_VERSION = '6.7-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -16483,10 +16535,47 @@
     })();
 
     var pinEditorDirty = false;
+    /** Last auto-filled pin name from icon pick (so re-picks can replace until user types a custom name). */
+    var pinNameAutoFill = '';
     function markPinEditorDirty() {
       pinEditorDirty = true;
     }
     window.markPinEditorDirty = markPinEditorDirty;
+    function defaultPinNameForIcon(iconId) {
+      if (!iconId) return 'Pin';
+      try {
+        var ic = getPinIconById(iconId);
+        if (ic && ic.name) return String(ic.name);
+      } catch (e) {}
+      return String(iconId).replace(/_/g, ' ');
+    }
+    /** Fill name from icon if empty or still the previous auto name (user can erase/type over). */
+    function applyPinIconDefaultName(iconId) {
+      var nEl = document.getElementById('pin-name-input');
+      if (!nEl) return;
+      var next = defaultPinNameForIcon(iconId);
+      var cur = (nEl.value || '').trim();
+      // Fill when empty, still "Pin", or still the last auto-filled icon name
+      if (!cur || cur === pinNameAutoFill || cur === 'Pin' ||
+          (pinNameAutoFill && cur === pinNameAutoFill)) {
+        nEl.value = next;
+        pinNameAutoFill = next;
+      }
+    }
+    function onPinNameInput() {
+      markPinEditorDirty();
+      var nEl = document.getElementById('pin-name-input');
+      // If user clears or edits away from auto text, stop treating as auto-fill
+      if (!nEl) return;
+      var cur = (nEl.value || '').trim();
+      if (cur !== pinNameAutoFill) {
+        // Keep pinNameAutoFill as last auto so picking a new icon still updates if they only
+        // changed from a previous icon name by picking again — handled by exact match.
+        // When user types a custom name, pinNameAutoFill won't match and won't overwrite.
+      }
+    }
+    window.onPinNameInput = onPinNameInput;
+    window.applyPinIconDefaultName = applyPinIconDefaultName;
     function pinEditorHasPlaceableContent() {
       // Editing an existing pin: click-away always saves
       if (editingPinId) return true;
@@ -16510,6 +16599,7 @@
       var sheet = document.getElementById('pin-editor-sheet');
       if (!sheet) return;
       pinEditorDirty = false;
+      pinNameAutoFill = '';
       ensureHuntContext();
       if (opts.mode === 'edit' && opts.loc) {
         editingPinId = opts.loc.id;
@@ -16519,7 +16609,20 @@
         var nEl = document.getElementById('pin-name-input');
         var notesEl = document.getElementById('pin-notes-input');
         if (nEl) nEl.value = bare;
-        if (notesEl) notesEl.value = opts.loc.notes || '';
+        // Don't auto-overwrite custom edit names when re-picking icons unless matches icon default
+        pinNameAutoFill = '';
+        try {
+          if (opts.loc.iconId && bare === defaultPinNameForIcon(opts.loc.iconId)) {
+            pinNameAutoFill = bare;
+          }
+        } catch (eAf) {}
+        if (notesEl) {
+          // Strip auto TVA lines for display in notes box
+          var rawN = opts.loc.notes || '';
+          notesEl.value = String(rawN).split(/\n+/).filter(function(line) {
+            return line && !/^TVA Land:/i.test(line.trim());
+          }).join('\n').trim();
+        }
         selectedPinColor = opts.loc.color || (opts.loc.iconId ? pinIconDefaultColor(opts.loc.iconId) : '#e59a18');
         selectedPinInnerColor = opts.loc.innerColor || '#ffffff';
         selectedPinGlyphColor = (opts.loc.iconColor == null || opts.loc.iconColor === '') ? 'natural' : opts.loc.iconColor;
@@ -16530,6 +16633,16 @@
         if (asH) asH.checked = !!opts.loc.isHunt;
         if (asS) asS.checked = !!opts.loc.isStand;
         if (ign) ign.checked = !!opts.loc.ignoreOverlayRules;
+        try {
+          var hideChk = document.getElementById('pin-hide-chk');
+          if (hideChk) hideChk.checked = !!opts.loc.hidden;
+          var psz = document.getElementById('pin-size-slider');
+          var pszv = document.getElementById('pin-size-val');
+          var sc = (opts.loc.pinScale != null && !isNaN(opts.loc.pinScale)) ? Number(opts.loc.pinScale) : 1;
+          var pct = Math.round(Math.max(0.25, Math.min(1.5, sc)) * 100);
+          if (psz) psz.value = String(pct);
+          if (pszv) pszv.textContent = String(pct);
+        } catch (eSzL) {}
         if (opts.loc.idealConditions) {
           var ih = document.getElementById('pin-ideal-high');
           var il = document.getElementById('pin-ideal-low');
@@ -16540,13 +16653,9 @@
         }
         var title = document.getElementById('pes-title');
         if (title) title.textContent = 'Edit pin';
-        // Load notes into hidden field (TVA lines kept for save, stripped for display)
-        try {
-          var notesLoad = document.getElementById('pin-notes-input');
-          if (notesLoad) notesLoad.value = opts.loc.notes || '';
-        } catch (eNl) {}
       } else {
         editingPinId = null;
+        pinNameAutoFill = '';
         if (document.getElementById('pin-name-input')) document.getElementById('pin-name-input').value = '';
         if (document.getElementById('pin-notes-input')) document.getElementById('pin-notes-input').value = '';
         try {
@@ -16563,6 +16672,14 @@
         if (asH0) asH0.checked = false;
         if (asS0) asS0.checked = false;
         if (ign0) ign0.checked = false;
+        try {
+          var hide0 = document.getElementById('pin-hide-chk');
+          if (hide0) hide0.checked = false;
+          var psz0 = document.getElementById('pin-size-slider');
+          var pszv0 = document.getElementById('pin-size-val');
+          if (psz0) psz0.value = '100';
+          if (pszv0) pszv0.textContent = '100';
+        } catch (eSz0) {}
         var title0 = document.getElementById('pes-title');
         if (title0) title0.textContent = 'Add pin';
       }
@@ -16588,7 +16705,6 @@
       if (cp && typeof setColorPickerValue === 'function') setColorPickerValue(cp, selectedPinColor, { silent: true });
       pinEditorDirty = false; // open/init should not count as customize
       updatePinEditorPreview();
-      try { syncPinNoteButtonLabel(); } catch (eN) {}
       sheet.classList.add('open');
       sheet.setAttribute('aria-hidden', 'false');
       try { wirePinEditorSheetDrag(); } catch (eD) {}
@@ -16683,11 +16799,8 @@
       if (ideal) ideal.style.display = on ? 'block' : 'none';
     }
     function syncPinNoteButtonLabel() {
-      var ta = document.getElementById('pin-notes-input');
-      var btn = document.getElementById('pes-note-btn');
-      if (!btn) return;
-      var has = !!(ta && ta.value && ta.value.trim());
-      btn.textContent = has ? 'Edit note' : 'Add note';
+      // Notes are inline under size — no separate Notes button
+      return;
     }
     function openPinNoteModal() {
       var ta = document.getElementById('pin-notes-input');
@@ -23336,12 +23449,16 @@ function togglePinIconPicker() {
           if (outer) outer.value = selectedPinColor;
         }
       } catch (eS) {}
+      // Plain pin → default name "Pin" if still auto-filled
+      try { applyPinIconDefaultName(null); } catch (eNm) {}
       renderPinIconGrid();
       try { if (typeof updatePinEditorPreview === 'function') updatePinEditorPreview(); } catch (e) {}
     }
     function selectPinIcon(id) {
       selectedPinIconId = id || null;
       markPinEditorDirty();
+      // Fill name with icon's default label (unless user already typed a custom name)
+      try { applyPinIconDefaultName(id); } catch (eAf) {}
       if (id) {
         var icMeta = getPinIconById(id);
         var defOuter = (icMeta && icMeta.defaultColor) ? icMeta.defaultColor : '#1a1a1a';
@@ -23511,14 +23628,12 @@ function togglePinIconPicker() {
     window.setHuntStandType = setHuntStandType;
 
     function savePinFromMap() {
-      // Flush open note modal into the hidden field before reading notes
+      // Notes are typed in-sheet; keep modal flush only if still open
       try {
         var noteModal = document.getElementById('pin-note-modal');
         var noteArea = document.getElementById('pin-note-modal-text');
         var notesField = document.getElementById('pin-notes-input');
         if (noteModal && noteModal.classList.contains('active') && noteArea && notesField) {
-          notesField.value = noteArea.value;
-        } else if (noteArea && notesField && noteArea.value && !notesField.value) {
           notesField.value = noteArea.value;
         }
         if (noteModal) noteModal.classList.remove('active');
