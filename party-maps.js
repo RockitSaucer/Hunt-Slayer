@@ -1944,7 +1944,11 @@
 
     // Use original snapshot/cache path via internal hooks we expose
     if (typeof C._switchToPrivate === 'function') {
-      return C._switchToPrivate(mapId);
+      await C._switchToPrivate(mapId);
+      // Always refresh chrome labels after switch (mobile title + max-mode chip)
+      try { updateBrandName(); } catch (eBn) {}
+      try { refreshMapsUi(); } catch (eRu) {}
+      return;
     }
     // Fallback: set view + pull
     var { data, error } = await sb.from('private_maps').select('id, name, map_state, map_revision').eq('id', mapId).maybeSingle();
@@ -2010,25 +2014,73 @@
     vs = vs || (C.getViewState && C.getViewState());
     if (!vs) return 'My Map';
     if (vs.mode === 'shared') {
-      return displayMapName('shared', vs.sharedMapId, vs.sharedMapName || 'Shared');
+      return displayMapName('shared', vs.sharedMapId, vs.sharedMapName || 'Shared map');
     }
     return displayMapName('private', vs.privateMapId, vs.privateMapName || 'My Map');
   }
 
+  /**
+   * Keep viewState map names aligned with the live private/shared list
+   * so the mobile title / max-mode chip never stay stuck on a stale "My Map".
+   */
+  function syncViewStateNamesFromLists(pmaps, smaps) {
+    var vs = C.getViewState && C.getViewState();
+    if (!vs) return false;
+    var changed = false;
+    try {
+      if (vs.mode === 'shared' && vs.sharedMapId) {
+        var sm = (smaps || []).find(function (m) { return String(m.id) === String(vs.sharedMapId); });
+        if (sm) {
+          if (sm.name && String(sm.name) !== String(vs.sharedMapName || '')) {
+            vs.sharedMapName = sm.name;
+            changed = true;
+          }
+          if (sm.code && String(sm.code) !== String(vs.sharedMapCode || '')) {
+            vs.sharedMapCode = sm.code;
+            changed = true;
+          }
+        }
+      } else if (vs.privateMapId) {
+        var pm = (pmaps || []).find(function (m) { return String(m.id) === String(vs.privateMapId); });
+        if (pm && pm.name && String(pm.name) !== String(vs.privateMapName || '')) {
+          vs.privateMapName = pm.name;
+          changed = true;
+        }
+      }
+      if (changed) {
+        try { localStorage.setItem('reg_slayer_view_v1', JSON.stringify(vs)); } catch (eLs) {}
+      }
+    } catch (eSync) {}
+    return changed;
+  }
+
+  /** All chrome that shows the active map name (mobile title, max chip, brand, FS). */
   function updateBrandName() {
     var vs = C.getViewState && C.getViewState();
-    if (!vs) return;
     var label = currentMapDisplayName(vs);
-    var title = vs.mode === 'shared'
-      ? ('Shared map · ' + (vs.sharedMapCode || '') + ' — click to switch maps')
+    if (!label || !String(label).trim()) label = 'My Map';
+    var title = (vs && vs.mode === 'shared')
+      ? ('Shared map · ' + ((vs && vs.sharedMapCode) || '') + ' — click to switch maps')
       : 'Private map — click to switch maps';
     ['brand-map-name', 'map-title-mobile', 'map-fs-title', 'map-bottom-map-name'].forEach(function (id) {
       var el = $(id);
       if (!el) return;
+      // Always overwrite — never leave the static HTML "My Map" placeholder
       el.textContent = label;
-      el.title = title;
+      el.title = title + ' · ' + label;
       try { el.setAttribute('aria-label', 'Map: ' + label + '. Click to switch.'); } catch (eA) {}
     });
+    // Settings status line
+    try {
+      var modeLabel = $('set-map-mode-label');
+      if (modeLabel && vs) {
+        if (vs.mode === 'shared') {
+          modeLabel.textContent = 'Viewing: ' + label + ' (shared)';
+        } else {
+          modeLabel.textContent = 'Viewing: ' + label + ' (not shared)';
+        }
+      }
+    } catch (eMl) {}
   }
 
   /** Cached map lists so the switcher opens instantly (no laggy blank wait). */
@@ -2241,6 +2293,8 @@
     try {
       var lists = await fetchMapSwitcherLists();
       if (gen !== dd._rsFetchGen || !dd.classList.contains('open')) return;
+      try { syncViewStateNamesFromLists(lists.pmaps, lists.smaps); } catch (eSn2) {}
+      try { updateBrandName(); } catch (eBn2) {}
       vs = C.getViewState && C.getViewState();
       dd.innerHTML = buildMapSwitcherHtml(lists.pmaps, lists.smaps, vs);
       wireMapSwitcherItems(dd, vs);
@@ -2854,7 +2908,6 @@
   }
 
   async function refreshMapsUi() {
-    updateBrandName();
     updateShareLocBtn();
     var allBox = $('set-all-maps-list');
     var privBox = $('set-private-maps-list');
@@ -2862,15 +2915,6 @@
     var modeLabel = $('set-map-mode-label');
     var membersPanel = $('set-map-members-panel');
     var vs = C.getViewState && C.getViewState();
-    if (modeLabel && vs) {
-      if (vs.mode === 'shared') {
-        modeLabel.textContent = 'Viewing: ' +
-          displayMapName('shared', vs.sharedMapId, vs.sharedMapName || 'Shared') + ' (shared)';
-      } else {
-        modeLabel.textContent = 'Viewing: ' +
-          displayMapName('private', vs.privateMapId, vs.privateMapName || 'My Map') + ' (not shared)';
-      }
-    }
 
     var pmaps = [];
     var smaps = [];
@@ -2885,6 +2929,11 @@
         }
       }
     } catch (eS) { smaps = []; }
+
+    // Refresh active-map name from live lists so mobile chip/title match what you're viewing
+    try { syncViewStateNamesFromLists(pmaps, smaps); } catch (eSn) {}
+    try { updateBrandName(); } catch (eBn) {}
+    vs = C.getViewState && C.getViewState();
 
     // Sort: private (not shared) first by name, then shared by name
     pmaps = (pmaps || []).slice().sort(function (a, b) {
@@ -3826,6 +3875,8 @@
   // Public API
   window.RegSlayerParty = {
     refreshMapsUi: refreshMapsUi,
+    updateBrandName: updateBrandName,
+    currentMapDisplayName: currentMapDisplayName,
     toggleSharing: toggleSharing,
     startSharing: startSharing,
     stopSharing: stopSharing,

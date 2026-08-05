@@ -1,0 +1,10 @@
+V6.6.7 Beta — changes since V6.6.6
+
+Active map name on mobile
+- Mobile map title button + max-mode map chip always show the name of the map you are viewing
+- Syncs name from live private/shared map lists (no stale "My Map" placeholder after switch/rename)
+- Auth chrome and party brand labels share the same display name (including personal aliases)
+- Refresh on map switch, maps list load, map switcher open, and entering max mode
+
+Files
+- party-maps.js, auth-sync.js, index.html, sw.js (shell v49)

@@ -141,7 +141,9 @@
     cache[cacheSlotKey()] = {
       state: state,
       savedAt: Date.now(),
-      name: viewState.mode === 'shared' ? viewState.sharedMapName : 'My Map',
+      name: viewState.mode === 'shared'
+        ? (viewState.sharedMapName || 'Shared map')
+        : (viewState.privateMapName || 'My Map'),
       code: viewState.sharedMapCode || null
     };
     // Prune if too large
@@ -758,38 +760,65 @@
   }
 
   // ---- UI ----
+  function resolveActiveMapLabel() {
+    // Prefer party-maps display (includes personal aliases) when available
+    try {
+      if (window.RegSlayerParty && typeof window.RegSlayerParty.currentMapDisplayName === 'function') {
+        var fromParty = window.RegSlayerParty.currentMapDisplayName(viewState);
+        if (fromParty && String(fromParty).trim()) return String(fromParty).trim();
+      }
+    } catch (eP) {}
+    if (viewState.mode === 'shared') {
+      return (viewState.sharedMapName && String(viewState.sharedMapName).trim())
+        ? String(viewState.sharedMapName).trim()
+        : 'Shared map';
+    }
+    return (viewState.privateMapName && String(viewState.privateMapName).trim())
+      ? String(viewState.privateMapName).trim()
+      : 'My Map';
+  }
+
   function updateAuthChrome() {
-    var mapLabel = 'My Map';
-    var mapTitle = 'Private map';
-    if (viewState.mode === 'shared' && viewState.sharedMapName) {
-      mapLabel = viewState.sharedMapName;
-      mapTitle = 'Shared map · code ' + (viewState.sharedMapCode || '');
-    } else {
-      mapLabel = viewState.privateMapName || 'My Map';
-      mapTitle = 'Private map';
-    }
-    var nameEl = $('brand-map-name');
-    if (nameEl) {
-      nameEl.textContent = mapLabel;
-      nameEl.title = mapTitle;
-      // Desktop shows header name; mobile CSS hides it
-      nameEl.style.display = '';
-    }
-    var mobileName = $('map-title-mobile');
-    if (mobileName) {
-      mobileName.textContent = mapLabel;
-      mobileName.title = (mapTitle || 'Active map') + ' — click to switch maps';
-    }
-    var fsTitle = $('map-fs-title');
-    if (fsTitle) {
-      fsTitle.textContent = mapLabel;
-      fsTitle.title = (mapTitle || 'Active map') + ' — click to switch maps';
-    }
-    var bottomName = $('map-bottom-map-name');
-    if (bottomName) {
-      bottomName.textContent = mapLabel;
-      bottomName.title = (mapTitle || 'Active map') + ' — click to switch maps';
-      try { bottomName.setAttribute('aria-label', 'Map: ' + mapLabel + '. Click to switch.'); } catch (eBn) {}
+    var mapLabel = resolveActiveMapLabel();
+    var mapTitle = viewState.mode === 'shared'
+      ? ('Shared map · code ' + (viewState.sharedMapCode || ''))
+      : 'Private map';
+    // Prefer unified party label writer (mobile title + max chip + brand)
+    try {
+      if (window.RegSlayerParty && typeof window.RegSlayerParty.updateBrandName === 'function') {
+        window.RegSlayerParty.updateBrandName();
+      } else {
+        var nameEl = $('brand-map-name');
+        if (nameEl) {
+          nameEl.textContent = mapLabel;
+          nameEl.title = mapTitle;
+          nameEl.style.display = '';
+        }
+        var mobileName = $('map-title-mobile');
+        if (mobileName) {
+          mobileName.textContent = mapLabel;
+          mobileName.title = (mapTitle || 'Active map') + ' — click to switch maps';
+          try { mobileName.setAttribute('aria-label', 'Map: ' + mapLabel + '. Click to switch.'); } catch (e1) {}
+        }
+        var fsTitle = $('map-fs-title');
+        if (fsTitle) {
+          fsTitle.textContent = mapLabel;
+          fsTitle.title = (mapTitle || 'Active map') + ' — click to switch maps';
+        }
+        var bottomName = $('map-bottom-map-name');
+        if (bottomName) {
+          bottomName.textContent = mapLabel;
+          bottomName.title = (mapTitle || 'Active map') + ' — click to switch maps';
+          try { bottomName.setAttribute('aria-label', 'Map: ' + mapLabel + '. Click to switch.'); } catch (eBn) {}
+        }
+      }
+    } catch (eLabels) {
+      try {
+        var mn = $('map-title-mobile');
+        if (mn) mn.textContent = mapLabel;
+        var btm = $('map-bottom-map-name');
+        if (btm) btm.textContent = mapLabel;
+      } catch (e2) {}
     }
     var badge = $('auth-user-chip');
     if (badge) {
@@ -798,9 +827,9 @@
     var modeLabel = $('set-map-mode-label');
     if (modeLabel) {
       if (viewState.mode === 'shared') {
-        modeLabel.textContent = 'Viewing: ' + (viewState.sharedMapName || 'Shared');
+        modeLabel.textContent = 'Viewing: ' + mapLabel + ' (shared)';
       } else {
-        modeLabel.textContent = 'Viewing: ' + (viewState.privateMapName || 'My Map') + ' (private)';
+        modeLabel.textContent = 'Viewing: ' + mapLabel + ' (private)';
       }
     }
     var off = $('set-offline-mode');

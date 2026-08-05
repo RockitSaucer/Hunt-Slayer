@@ -8825,7 +8825,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.6.6 Beta">V6.6.6 Beta</span>
+      <span class="brand-version" aria-label="Version 6.6.7 Beta">V6.6.7 Beta</span>
     </div>
   </header>
 
@@ -10075,7 +10075,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.6.6-beta';
+    const APP_VERSION = '6.6.7-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -27442,6 +27442,12 @@ function togglePinIconPicker() {
         [40, 120, 350].forEach(function (ms) {
           setTimeout(function () {
             if (typeof positionMapBottomName === 'function') positionMapBottomName();
+            // Max-mode chip must show the live map name (not static "My Map")
+            try {
+              if (window.RegSlayerParty && typeof window.RegSlayerParty.updateBrandName === 'function') {
+                window.RegSlayerParty.updateBrandName();
+              }
+            } catch (eBn) {}
           }, ms);
         });
       });
