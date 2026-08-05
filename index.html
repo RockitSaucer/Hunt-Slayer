@@ -5466,19 +5466,20 @@
       0%, 100% { filter: drop-shadow(0 0 4px #facc15) drop-shadow(0 0 8px rgba(250, 204, 21, 0.4)); transform: scale(1); }
       50% { filter: drop-shadow(0 0 10px #fde047) drop-shadow(0 0 18px rgba(250, 204, 21, 0.7)); transform: scale(1.06); }
     }
-    /* Emphasize: stronger pulse/glow so a pin is easy to spot on a shared map */
+    /* Emphasize: strong continuous pulse for all map members until toggled off */
     .pin-emphasize-pulse {
-      animation: pinEmphasizePulse 1s ease-in-out infinite;
+      animation: pinEmphasizePulse 0.9s ease-in-out infinite;
       will-change: transform, filter;
+      transform-origin: center bottom;
     }
     @keyframes pinEmphasizePulse {
       0%, 100% {
-        filter: drop-shadow(0 0 6px #facc15) drop-shadow(0 0 14px rgba(250, 204, 21, 0.75)) drop-shadow(0 0 22px rgba(253, 224, 71, 0.45));
+        filter: drop-shadow(0 0 8px #facc15) drop-shadow(0 0 16px rgba(250, 204, 21, 0.85)) drop-shadow(0 0 28px rgba(253, 224, 71, 0.5));
         transform: scale(1);
       }
       50% {
-        filter: drop-shadow(0 0 12px #fde047) drop-shadow(0 0 24px rgba(250, 204, 21, 0.95)) drop-shadow(0 0 36px rgba(253, 224, 71, 0.65));
-        transform: scale(1.12);
+        filter: drop-shadow(0 0 14px #fde047) drop-shadow(0 0 28px rgba(250, 204, 21, 1)) drop-shadow(0 0 44px rgba(253, 224, 71, 0.75));
+        transform: scale(1.18);
       }
     }
     .mdm-footer-row {
@@ -8836,7 +8837,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.6.9 Beta">V6.6.9 Beta</span>
+      <span class="brand-version" aria-label="Version 6.6.10 Beta">V6.6.10 Beta</span>
     </div>
   </header>
 
@@ -10086,7 +10087,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.6.9-beta';
+    const APP_VERSION = '6.6.10-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -22280,7 +22281,11 @@
     }
     window.togglePinHidden = togglePinHidden;
 
-    /** Toggle emphasize: pin pulses/glows until toggled off (easy to spot on shared maps). */
+    /**
+     * Toggle emphasize: pin pulses until toggled off.
+     * On shared maps this is pushed immediately so every member sees the pulse
+     * (cloud pull / realtime redraws pins with .pin-emphasize-pulse).
+     */
     function togglePinEmphasize(id) {
       var loc = locations.find(function(l) { return String(l.id) === String(id); });
       if (!loc || !loc.isPin) return;
@@ -22294,11 +22299,22 @@
       if (map) try { map.closePopup(); } catch (eC) {}
       drawPinsOnMap();
       try {
-        if (typeof window.regSlayerMapDataChanged === 'function') window.regSlayerMapDataChanged();
-        else if (window.RegSlayerCloud && typeof window.RegSlayerCloud.markDirty === 'function') {
+        // Immediate cloud write so party members pick up emphasize ASAP
+        if (window.RegSlayerCloud && typeof window.RegSlayerCloud.forcePush === 'function') {
+          window.RegSlayerCloud.forcePush();
+        } else if (typeof window.regSlayerMapDataChanged === 'function') {
+          window.regSlayerMapDataChanged();
+        } else if (window.RegSlayerCloud && typeof window.RegSlayerCloud.markDirty === 'function') {
           window.RegSlayerCloud.markDirty();
         }
       } catch (e2) {}
+      try {
+        if (typeof showAppCopyToast === 'function') {
+          showAppCopyToast(loc.emphasized
+            ? '<span class="act">Pin highlighted</span><br>Pulsing for everyone on this map until you turn it off'
+            : '<span class="act">Highlight off</span><br>Pin pulse stopped');
+        }
+      } catch (eT) {}
     }
     window.togglePinEmphasize = togglePinEmphasize;
     function shareSavedPinChooser(id) {
@@ -28582,7 +28598,9 @@ function togglePinIconPicker() {
     }
 
     // Reload in-memory map data after cloud applyMapState / map switch
-    window.regSlayerRefreshMapData = function() {
+    // opts.silent — no toast (background party sync / emphasize pulse)
+    window.regSlayerRefreshMapData = function(opts) {
+      opts = opts || {};
       try {
         // Drop user pins/stands from locations, re-read from localStorage
         for (var i = locations.length - 1; i >= 0; i--) {
@@ -28615,7 +28633,7 @@ function togglePinIconPicker() {
         if (typeof drawHuntsOnMap === 'function') drawHuntsOnMap();
         if (typeof drawCustomAreasOnMap === 'function') drawCustomAreasOnMap();
         if (typeof updateAvailableList === 'function') updateAvailableList();
-        if (typeof showAppCopyToast === 'function') {
+        if (!opts.silent && typeof showAppCopyToast === 'function') {
           showAppCopyToast('<span class="act">Map data refreshed</span>');
         }
       } catch (eR) {

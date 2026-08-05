@@ -288,7 +288,9 @@
   async function pullMapFromCloud(force) {
     if (!sb || !sessionUser) return;
     if (!isOnline()) return;
-    if (!force && Date.now() - lastPullAt < 12000) return;
+    // Shared maps need quicker pin/emphasize sync; private can stay slower
+    var minGap = (viewState.mode === 'shared') ? 2500 : 12000;
+    if (!force && Date.now() - lastPullAt < minGap) return;
     // Never overwrite a local delete/edit that has not uploaded yet
     if (isDirty()) {
       scheduleCloudPush(true);
@@ -367,10 +369,84 @@
 
   function refreshMapFromLocalState() {
     try {
-      if (typeof window.regSlayerRefreshMapData === 'function') window.regSlayerRefreshMapData();
+      // silent: background party sync (emphasize pulse, pin edits) — no toast spam
+      if (typeof window.regSlayerRefreshMapData === 'function') {
+        window.regSlayerRefreshMapData({ silent: true });
+      }
     } catch (e) {
       console.warn('refreshMapFromLocalState', e);
     }
+  }
+
+  /** Supabase Realtime: shared map updates (emphasize beacon, pin edits) for all members. */
+  var sharedMapChannel = null;
+  var sharedMapFastPoll = null;
+
+  function stopSharedMapLiveSync() {
+    try {
+      if (sharedMapChannel && sb) {
+        sb.removeChannel(sharedMapChannel);
+      }
+    } catch (e0) {}
+    sharedMapChannel = null;
+    if (sharedMapFastPoll) {
+      try { clearInterval(sharedMapFastPoll); } catch (e1) {}
+      sharedMapFastPoll = null;
+    }
+  }
+
+  function startSharedMapLiveSync() {
+    stopSharedMapLiveSync();
+    if (!sb || !sessionUser) return;
+    if (viewState.mode !== 'shared' || !viewState.sharedMapId) return;
+    var mapId = viewState.sharedMapId;
+
+    // Realtime on shared_maps row (requires Realtime enabled for table in Supabase)
+    try {
+      sharedMapChannel = sb
+        .channel('shared-map-live-' + mapId)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'shared_maps',
+            filter: 'id=eq.' + mapId
+          },
+          function (payload) {
+            try {
+              if (isDirty()) return; // don't clobber local edits
+              var row = payload && payload.new;
+              if (!row) return;
+              var rev = row.map_revision || 0;
+              if (rev && rev === localRevision) return;
+              var state = row.map_state || {};
+              applyMapState(state);
+              localRevision = rev;
+              writeLocalCache(state);
+              lastPullAt = Date.now();
+              refreshMapFromLocalState();
+            } catch (eRt) {
+              console.warn('shared map realtime apply', eRt);
+            }
+          }
+        )
+        .subscribe(function (status) {
+          // status: SUBSCRIBED | CHANNEL_ERROR | TIMED_OUT | CLOSED
+          try { /* optional debug */ } catch (eS) {}
+        });
+    } catch (eCh) {
+      console.warn('shared map realtime unavailable', eCh);
+      sharedMapChannel = null;
+    }
+
+    // Fast poll backup so emphasize still lands if Realtime is off (every 4s on shared maps)
+    sharedMapFastPoll = setInterval(function () {
+      if (document.visibilityState === 'hidden') return;
+      if (!isOnline() || isDirty()) return;
+      if (viewState.mode !== 'shared' || !viewState.sharedMapId) return;
+      pullMapFromCloud(false);
+    }, 4000);
   }
 
   async function persistViewPrefsCloud() {
@@ -626,6 +702,7 @@
       try { fallbackCopy(inviteShareText(data.code, data.name)); } catch (e2) {}
     }
     updateAuthChrome();
+    try { startSharedMapLiveSync(); } catch (eLive) {}
     return data;
   }
 
@@ -644,6 +721,7 @@
     localRevision = 0;
     await pullMapFromCloud(true);
     updateAuthChrome();
+    try { startSharedMapLiveSync(); } catch (eLive) {}
     return data;
   }
 
@@ -666,6 +744,7 @@
     var cached = readLocalCache(cacheSlotKey());
     if (cached && cached.state) applyMapState(cached.state);
     dirty = false;
+    try { stopSharedMapLiveSync(); } catch (eStop) {}
     await pullMapFromCloud(true);
     refreshMapFromLocalState();
     updateAuthChrome();
@@ -689,6 +768,7 @@
     var cached = readLocalCache(cacheSlotKey());
     if (cached && cached.state) applyMapState(cached.state);
     dirty = false;
+    try { stopSharedMapLiveSync(); } catch (eStop) {}
     await pullMapFromCloud(true);
     refreshMapFromLocalState();
     updateAuthChrome();
@@ -713,6 +793,7 @@
     await pullMapFromCloud(true);
     refreshMapFromLocalState();
     updateAuthChrome();
+    try { startSharedMapLiveSync(); } catch (eLive) {}
   }
 
   async function snapshotCurrentToCache() {
@@ -1022,8 +1103,10 @@
     pullTimer = setInterval(function () {
       if (document.visibilityState === 'hidden') return;
       if (!isOnline() || isDirty()) return;
+      // Shared maps use startSharedMapLiveSync (4s + realtime); keep slow poll as fallback
       runWhenIdle(function () { pullMapFromCloud(false); });
     }, 30000);
+    try { startSharedMapLiveSync(); } catch (eLive) {}
   }
 
   function captureJoinFromUrl() {
@@ -1162,6 +1245,8 @@
     createSharedMap: createSharedMap,
     joinSharedMap: joinSharedMap,
     listMySharedMaps: listMySharedMaps,
+    startSharedMapLiveSync: startSharedMapLiveSync,
+    stopSharedMapLiveSync: stopSharedMapLiveSync,
     authReady: authReady,
     getViewState: function () { return viewState; },
     getProfile: function () { return profile; },

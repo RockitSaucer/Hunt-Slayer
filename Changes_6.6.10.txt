@@ -1,0 +1,16 @@
+V6.6.10 Beta — changes since V6.6.9
+
+Pin emphasize (!) for all map members
+- Toggling ! on a pin immediately force-pushes map state to the cloud
+- Shared maps: Supabase Realtime subscription + 4s poll backup so every member
+  redraws pins with the yellow pulse until emphasize is turned off
+- Pulse animation slightly stronger; background refresh is silent (no toast spam)
+- Works while the pin stays highlighted; second press stops pulse for everyone after sync
+
+Files
+- index.html (togglePinEmphasize, pulse CSS, silent refresh)
+- auth-sync.js (startSharedMapLiveSync, faster shared pull gap, force path)
+- sw.js shell v52
+
+Note: Realtime needs `shared_maps` in the Supabase publication (default on many projects).
+  4s poll still works if Realtime is not enabled.
