@@ -2,7 +2,7 @@
  * Caches app shell for return visits with no signal.
  * Map tiles: cache-first when already stored; network otherwise (then cache).
  */
-const SHELL_CACHE = 'reg-slayer-shell-v54';
+const SHELL_CACHE = 'reg-slayer-shell-v55';
 const TILE_CACHE = 'reg-slayer-tiles-v2';
 const DATA_CACHE = 'reg-slayer-data-v1';
 
@@ -16,6 +16,8 @@ const SHELL_ASSETS = [
   './offline-engine.js',
   './auth-sync.js',
   './party-maps.js',
+  // WMA permit Zone A/B rings (required offline / hard-refresh)
+  './wma-zones-data.js',
   './icons/tools/measure.png',
   './icons/tools/draw.png',
   './icons/tools/track.png',

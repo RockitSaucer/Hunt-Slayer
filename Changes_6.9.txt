@@ -1,0 +1,32 @@
+REG SLAYER V6.9 Nice — WMA permit zones + can/can’t weapon clarity
+
+What / why
+----------
+- WMA internal permit zones (Zone A/B) vs Alabama deer zones A–E kept distinct.
+- Available tracts: if only some zones open for date/weapon → "Unit Name (Zone B)";
+  if entire multi-zone WMA open → plain unit name.
+- Green ✓ sits on open zone centroid (not whole WMA outline).
+- Zone geometry embedded in wma-zones-data.js (works offline / file://).
+- Official OA 2026–27 AREA map PDF button for ADCNR WMAs.
+- Black Warrior 2026–27 zone-specific gun seasons (e.g. Nov 19 gun = Zone B only).
+- Nine multi-zone units digitized from OA maps + ADCNR clip.
+- Map click: zone acts like WMA; popup Can/Can’t hunt with weapon + Can hunt with: …
+- Unit-specific rules hide statewide deer-zone / peak-rut lines; parcel block removed from status popup.
+- Settings → Display: map click-dot color + size.
+- GPS boot: single browser location prompt (no double prompt).
+- SW shell v55 + precache wma-zones-data.js.
+
+Docs
+----
+- docs/WMA_INTERNAL_ZONES.md — full rules + multi-state checklist
+- tools/digitize_wma_zones.py — re-digitize zone rings from AREA PDFs
+
+Undo
+----
+- Revert tag to v6.7.1-beta / prior shell v54 if needed.
+- Remove wma-zones-data.js from shell and multi-zone list path only if abandoning zone feature.
+
+Ship
+----
+- APP_VERSION 6.9-nice, badge V6.9 Nice
+- SHELL_CACHE reg-slayer-shell-v55
