@@ -141,40 +141,30 @@
       user-select: none;
       text-shadow: 0 1px 3px rgba(0,0,0,0.85);
     }
-    /* Desktop: map name in brand header, top-right */
+    /* Brand header map name retired — name lives flush above the map */
     .brand-map-name {
-      position: absolute;
-      right: 14px;
-      top: 50%;
-      transform: translateY(-50%);
-      z-index: 2;
-      max-width: min(40vw, 260px);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font-size: 13px;
-      font-weight: 800;
-      letter-spacing: 0.04em;
-      color: var(--accent, #e59a18);
-      text-shadow: 0 1px 4px rgba(0,0,0,0.85);
-      pointer-events: none;
-      text-align: right;
-    }
-    /* Mobile: hide header name — shown above map instead */
-    html.layout-phone .brand-map-name {
       display: none !important;
     }
-    /* Mobile strip: between available tracts and the map */
+    /*
+     * Map title strip — tight above the map (desktop min-mode + phone).
+     * Settings gear sits top-right (same action as toolbar settings).
+     */
     .map-title-bar {
       display: none;
       width: 100%;
       box-sizing: border-box;
-      padding: 6px 12px 4px;
-      text-align: center;
+      padding: 2px 4px 3px;
+      margin: 0;
       background: transparent;
+      flex: 0 0 auto;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 0;
     }
     .map-title-bar .map-title-text {
-      display: block;
+      flex: 1 1 auto;
+      min-width: 0;
       font-size: 13px;
       font-weight: 800;
       letter-spacing: 0.04em;
@@ -182,10 +172,91 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      text-align: left;
+      line-height: 1.2;
     }
+    .map-title-settings-btn {
+      flex: 0 0 auto;
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, #2a3222 0%, var(--panel) 50%, #141810 100%);
+      color: var(--accent);
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 0 rgba(0,0,0,0.32), 0 2px 6px rgba(0,0,0,0.2);
+    }
+    .map-title-settings-btn:hover {
+      border-color: var(--accent);
+      background: linear-gradient(180deg, #323c28 0%, var(--panel-light) 50%, #1a2014 100%);
+    }
+    /* Desktop min-mode: title flush above map */
+    html.layout-desktop .card-map > .map-title-bar {
+      display: flex;
+      order: 0;
+      padding: 0 2px 2px;
+    }
+    html.layout-desktop .card-map > .map-section-block {
+      order: 1;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+    /* Fullscreen: map name top-left next to zoom controls */
+    .map-fs-title {
+      display: none;
+      position: absolute;
+      z-index: 1000;
+      left: 52px;
+      top: 12px;
+      max-width: min(46vw, 280px);
+      padding: 5px 10px;
+      border-radius: 8px;
+      background: rgba(12, 16, 10, 0.88);
+      border: 1px solid rgba(40, 50, 26, 0.9);
+      color: var(--accent, #e59a18);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      pointer-events: none;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.45);
+      line-height: 1.25;
+    }
+    .map-wrapper.fullscreen .map-fs-title {
+      display: block;
+    }
+    html.layout-phone .map-wrapper.fullscreen .map-fs-title {
+      left: max(52px, env(safe-area-inset-left, 0px) + 48px);
+      top: max(10px, env(safe-area-inset-top, 0px) + 8px);
+    }
+    /* Hide title strip while true fullscreen (name is on the map) */
+    html.map-is-fullscreen .card-map > .map-title-bar {
+      display: none !important;
+    }
+    /*
+     * Phone map title strip — match V6.4.9 layout (centered name only).
+     * Desktop min-mode keeps flex + settings gear; do not change phone chrome.
+     */
     html.layout-phone .map-title-bar {
       display: block;
-      order: 2; /* with card-map children; parent card-map is order 3 in stack */
+      order: 2;
+      padding: 6px 12px 4px;
+      text-align: center;
+    }
+    html.layout-phone .map-title-bar .map-title-text {
+      display: block;
+      text-align: center;
+    }
+    html.layout-phone .map-title-settings-btn {
+      display: none !important;
     }
     html.layout-phone .card-map {
       display: flex;
@@ -199,6 +270,15 @@
       order: 1;
       flex: 1 1 auto;
       min-height: 0;
+    }
+    /* Half-min / stacked planner is desktop-only — never reflow phone */
+    html.layout-phone.planner-left-half-min .container,
+    html.layout-phone.planner-right-half-min .container,
+    html.layout-phone.planner-left-half-min.planner-right-half-min .container {
+      grid-template-columns: none !important;
+    }
+    html.layout-phone .card-planner {
+      display: contents !important;
     }
 
     /* Site links / tagline — compact; mobile only after scroll to page end (#21) */
@@ -278,8 +358,8 @@
     }
     .container {
       display: grid;
-      /* Desktop: equal 50/50 planner | map; steps fit without section scroll (#16) */
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      /* Desktop: planner ~10% narrower, map takes the freed width */
+      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
       gap: 12px;
       align-items: start;
       width: 100%;
@@ -385,6 +465,8 @@
       min-height: 0;
       height: 100%;
       align-items: stretch;
+      /* Planner 10% narrower than map column */
+      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
       /* Whole-page horizontal scroll only if window is tiny (#16) */
       overflow-x: auto;
       overflow-y: hidden;
@@ -406,7 +488,10 @@
       max-height: 100% !important;
       min-height: 0 !important;
       box-sizing: border-box;
-      padding: 6px 10px 8px;
+      /* Title strip + map — minimal chrome */
+      padding: 2px 6px 6px;
+      display: flex;
+      flex-direction: column;
     }
     html.layout-desktop .card-map .map-section-block {
       flex: 1 1 auto;
@@ -515,7 +600,7 @@
       display: contents;
     }
     /* With display:contents, assign order so tracts sit under steps, then map */
-    html.layout-phone .card-planner > .planner-row {
+    html.layout-phone .planner-row {
       order: 1;
       margin: 0 10px;
       width: auto;
@@ -529,8 +614,8 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.4);
       align-self: stretch;
     }
-    html.layout-phone .card-planner > .available-tracts-panel,
-    html.layout-phone .card-planner > #locations-under-steps {
+    html.layout-phone .available-tracts-panel,
+    html.layout-phone #locations-under-steps {
       order: 2;
       margin: 0 10px;
       width: auto;
@@ -553,8 +638,8 @@
       box-sizing: border-box;
       overflow-x: hidden;
     }
-    html.layout-phone .card-planner > #dashboard-container,
-    html.layout-phone .card-planner > .dashboard-under-steps {
+    html.layout-phone #dashboard-container,
+    html.layout-phone .dashboard-under-steps {
       order: 4;
       margin: 0 10px 4px;
       width: auto;
@@ -700,7 +785,13 @@
     }
     .step-section { margin-bottom: 25px; transition: all 0.3s ease; }
     .step-section.locked { opacity: 0.35; pointer-events: none; filter: grayscale(70%); }
-    .step-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      min-height: 28px;
+    }
     .step-num {
       background: var(--border);
       color: var(--muted);
@@ -723,8 +814,65 @@
       padding: 0;
     }
     .active .step-num { background: var(--accent); color: #000; }
-    .step-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
-    .active .step-title { color: #fff; }
+    /*
+     * Section qualifiers — match Available tracts / huntable areas
+     * (accent, 12px, weight 800, uppercase, letter-spacing)
+     */
+    .section-qual,
+    .step-title,
+    .available-tracts-title {
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+      line-height: 1.25;
+    }
+    .step-title { flex: 1 1 auto; min-width: 0; }
+    .active .step-title { color: var(--accent); }
+    /* Shared − / + control (top-right of each section) */
+    .sec-minmax-btn {
+      flex: 0 0 auto;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      margin-left: auto;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--accent);
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+      box-sizing: border-box;
+    }
+    .sec-minmax-btn:hover {
+      border-color: var(--accent);
+      background: var(--panel-light);
+    }
+    html.layout-desktop .sec-minmax-btn { display: inline-flex; }
+    html.layout-phone .sec-minmax-btn { display: none !important; }
+    /* Phone still allows collapsing available tracts */
+    html.layout-phone #sec-min-tracts { display: inline-flex !important; }
+    .step-section.is-minimized { margin-bottom: 0; }
+    .step-section.is-minimized > :not(.step-header) { display: none !important; }
+    .step-section.is-minimized .step-header { margin-bottom: 0; }
+    .wx-section { min-width: 0; }
+    .wx-section-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      min-height: 28px;
+    }
+    .wx-section-header .section-qual { flex: 1 1 auto; min-width: 0; }
+    .wx-section.is-minimized .wx-section-body { display: none !important; }
+    .wx-section.is-minimized .wx-section-header { margin-bottom: 0; }
     /*
      * Desktop planner: steps 1-3 fill the full width above the location list.
      * Proportional columns, equal visual height, square calendar that grows with width.
@@ -956,9 +1104,37 @@
     }
     .planner-wpn-col #step-2-section .step-title,
     .planner-loc-col #step-3-section .step-title {
-      font-size: 11px;
-      letter-spacing: 0.05em;
+      /* inherits .section-qual / .step-title */
       line-height: 1.25;
+    }
+    /*
+     * Desktop only: step 1 panel shell matches steps 2 & 3 so "1 Select Hunt Date"
+     * sits inside the green box and all three boxes share the same height.
+     * Phone keeps title above the calendar card.
+     */
+    html.layout-desktop .planner-cal-col #step-1-section {
+      background: var(--panel-light);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      box-sizing: border-box;
+    }
+    html.layout-desktop .planner-cal-col #step-1-section .step-header {
+      margin-bottom: 12px;
+      flex-shrink: 0;
+    }
+    html.layout-desktop .planner-cal-col #step-1-section .step-title {
+      line-height: 1.25;
+    }
+    /* Flatten nested calendar card — outer step-1 shell is the only green box */
+    html.layout-desktop .planner-cal-col #step-1-section .calendar-container {
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      padding: 0;
+      box-shadow: none;
+      flex: 1 1 auto;
+      min-height: 0;
     }
     .weapon-stack {
       display: flex;
@@ -1101,12 +1277,22 @@
       cursor: pointer;
       text-align: left;
     }
-    .available-tracts-title {
-      font-size: 12px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--accent);
+    .available-tracts-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: rgba(229, 154, 24, 0.1);
+      min-height: 28px;
+      box-sizing: border-box;
+    }
+    .available-tracts-header .available-tracts-title,
+    .available-tracts-header .section-qual {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .available-tracts-toggle {
+      /* legacy full-row toggle — desktop uses header + sec-minmax-btn */
     }
     .available-tracts-caret {
       font-size: 18px;
@@ -1117,8 +1303,12 @@
     .available-tracts-body {
       padding: 8px 10px 10px;
     }
-    .available-tracts-panel.is-minimized .available-tracts-body {
-      display: none;
+    .available-tracts-panel.is-minimized .available-tracts-body,
+    #locations-under-steps.is-minimized .available-tracts-body {
+      display: none !important;
+    }
+    .available-tracts-panel.is-minimized .available-tracts-header {
+      border-radius: 10px;
     }
     .available-tracts-panel .location-list {
       max-height: min(340px, 38vh);
@@ -1221,25 +1411,505 @@
       width: 100%;
       max-width: 100%;
       box-sizing: border-box;
+      padding: 12px;
     }
+    /*
+     * Desktop planner card:
+     *   Left: steps 1 → 2 → 3
+     *   Right: available tracts (flex-fills remaining height) + weather (bottom)
+     *   Columns stretch to equal height; weather sits at bottom of right stack.
+     */
+    html.layout-desktop .card-planner {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.57fr);
+      /* Fill map-column height when short; grow with taller steps side */
+      grid-template-rows: minmax(min-content, 1fr);
+      gap: 10px 12px;
+      align-items: stretch;
+      height: 100% !important;
+      min-height: 0;
+      max-height: 100%;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+    html.layout-desktop .card-planner > .planner-row {
+      grid-column: 1;
+      grid-row: 1;
+      min-width: 0;
+      min-height: min-content;
+      align-self: stretch;
+    }
+    html.layout-desktop .card-planner > .planner-right-col {
+      grid-column: 2;
+      grid-row: 1;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-self: stretch;
+    }
+    /* Tracts: grow to fill space above weather; scroll only when list overflows that space */
+    html.layout-desktop .planner-right-col > .available-tracts-panel,
+    html.layout-desktop .planner-right-col > #locations-under-steps {
+      flex: 1 1 auto;
+      min-height: 0;
+      margin: 0;
+      max-height: none;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    html.layout-desktop .planner-right-col > .available-tracts-panel.is-minimized,
+    html.layout-desktop .planner-right-col > #locations-under-steps.is-minimized {
+      flex: 0 0 auto;
+    }
+    /* Must win over .is-minimized { display:none } only when expanded */
+    html.layout-desktop .planner-right-col .available-tracts-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding-bottom: 6px;
+    }
+    html.layout-desktop .planner-right-col > .available-tracts-panel.is-minimized .available-tracts-body,
+    html.layout-desktop .planner-right-col > #locations-under-steps.is-minimized .available-tracts-body {
+      display: none !important;
+      flex: 0 0 auto;
+      min-height: 0;
+      overflow: hidden;
+      padding: 0;
+    }
+    html.layout-desktop .planner-right-col .location-list {
+      flex: 1 1 auto;
+      min-height: 0;
+      max-height: none !important;
+      overflow-x: hidden;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #3d4a32 rgba(0, 0, 0, 0.25);
+    }
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar { width: 8px; }
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 4px;
+    }
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-thumb {
+      background: #3d4a32;
+      border-radius: 4px;
+      border: 1px solid #28321a;
+    }
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-thumb:hover {
+      background: #4f6140;
+    }
+    html.layout-desktop .planner-right-col .location-list::-webkit-scrollbar-button {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+    html.layout-desktop .planner-right-col > #dashboard-container,
+    html.layout-desktop .planner-right-col > .dashboard-under-steps {
+      flex: 0 0 auto;
+      min-width: 0;
+      margin-top: auto; /* pin weather to bottom of right column when tracts expands */
+    }
+    /*
+     * Half minimized:
+     *  - Right half min: mini bars stack UNDER steps (under Open Tracts), calendar
+     *    stays natural size (does NOT expand). Map column grows wider + taller.
+     *  - Left half min: step bars on top, right stack below, map grows.
+     */
+    /*
+     * Stacked half → planner only as wide as its content (capped);
+     * map claims all remaining width + full column height.
+     */
+    html.layout-desktop.planner-left-half-min .container,
+    html.layout-desktop.planner-right-half-min .container {
+      /* ~25% wider than prior 260px so calendar/info fits in stacked mode */
+      grid-template-columns: minmax(0, min(325px, 30vw)) minmax(0, 1fr) !important;
+      align-items: stretch !important;
+    }
+    html.layout-desktop.planner-left-half-min.planner-right-half-min .container {
+      grid-template-columns: minmax(0, min(200px, 18vw)) minmax(0, 1fr) !important;
+    }
+    html.layout-desktop.planner-left-half-min .card-planner,
+    html.layout-desktop.planner-right-half-min .card-planner {
+      width: 100% !important;
+      max-width: 100% !important;
+      justify-self: stretch;
+      min-width: 0;
+    }
+    html.layout-desktop.planner-left-half-min .card-map,
+    html.layout-desktop.planner-right-half-min .card-map {
+      width: 100% !important;
+      height: 100% !important;
+      max-height: 100% !important;
+      min-height: 0 !important;
+      flex: 1 1 auto;
+    }
+    html.layout-desktop.planner-left-half-min .card-map .map-wrapper,
+    html.layout-desktop.planner-right-half-min .card-map .map-wrapper,
+    html.layout-desktop.planner-left-half-min .card-map #leaflet-map,
+    html.layout-desktop.planner-right-half-min .card-map #leaflet-map {
+      width: 100% !important;
+      height: 100% !important;
+      min-height: 0 !important;
+    }
+    /* Hide date banner when weather sections (solunar + hourly) are minimized */
+    html.layout-desktop.weather-sections-min #current-data-banner {
+      display: none !important;
+    }
+    /*
+     * Right minimized: stack mini bars under Open Tracts (full planner width),
+     * but keep calendar at its normal two-column size so it does not bloat.
+     * Map takes the freed width/height (planner is content-height only).
+     */
+    html.layout-desktop.planner-right-half-min .card-planner {
+      grid-template-columns: minmax(0, 1fr) !important;
+      grid-template-rows: auto auto !important;
+      align-content: start;
+      align-self: start;
+      height: auto !important;
+      max-height: 100%;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+    /* Same width as Hunt Locations / steps column when stacked under it */
+    html.layout-desktop.planner-right-half-min .card-planner > .planner-row,
+    html.layout-desktop.planner-right-half-min .card-planner > .planner-right-col {
+      width: 100% !important;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+    html.layout-desktop.planner-right-half-min .card-planner > .planner-row {
+      grid-column: 1;
+      grid-row: 1;
+      height: auto !important;
+      align-self: start;
+      min-height: 0 !important;
+    }
+    html.layout-desktop.planner-right-half-min .card-planner > .planner-right-col {
+      grid-column: 1;
+      grid-row: 2;
+      height: auto !important;
+      min-height: 0 !important;
+      flex: 0 0 auto;
+      gap: 6px;
+      margin-top: 0;
+      align-self: start;
+    }
+    html.layout-desktop.planner-right-half-min .planner-right-col > .available-tracts-panel,
+    html.layout-desktop.planner-right-half-min .planner-right-col > #locations-under-steps,
+    html.layout-desktop.planner-right-half-min .planner-right-col > #dashboard-container,
+    html.layout-desktop.planner-right-half-min .planner-right-col > .dashboard-under-steps {
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+    /* Keep calendar at natural size — no stretch / no square blow-up */
+    html.layout-desktop.planner-right-half-min .planner-row,
+    html.layout-desktop.planner-right-half-min .planner-cal-col,
+    html.layout-desktop.planner-right-half-min #step-1-section,
+    html.layout-desktop.planner-right-half-min .calendar-container {
+      flex: 0 0 auto !important;
+      height: auto !important;
+    }
+    html.layout-desktop.planner-right-half-min #calendar-grid {
+      flex: 0 0 auto !important;
+      min-height: 0 !important;
+      max-height: 350px !important;
+    }
+    html.layout-desktop.planner-right-half-min .planner-right-col > .available-tracts-panel,
+    html.layout-desktop.planner-right-half-min .planner-right-col > #locations-under-steps,
+    html.layout-desktop.planner-right-half-min .planner-right-col > #dashboard-container,
+    html.layout-desktop.planner-right-half-min .planner-right-col > .dashboard-under-steps {
+      flex: 0 0 auto !important;
+      margin-top: 0 !important;
+    }
+    /* While right is minimized, pack headers at top (no pin-to-bottom dead space) */
+    html.layout-desktop.planner-right-half-min .dashboard-under-steps {
+      margin-top: 0 !important;
+    }
+    html.layout-desktop.planner-left-half-min .card-planner {
+      grid-template-columns: 1fr !important;
+      grid-template-rows: auto auto !important;
+      align-content: start;
+      align-self: start;
+      height: auto !important;
+      max-height: 100%;
+    }
+    html.layout-desktop.planner-left-half-min .card-planner > .planner-row {
+      grid-column: 1;
+      grid-row: 1;
+      height: auto !important;
+      align-self: start;
+    }
+    html.layout-desktop.planner-left-half-min .card-planner > .planner-right-col {
+      grid-column: 1;
+      grid-row: 2;
+      height: auto !important;
+    }
+    html.layout-desktop.planner-left-half-min.planner-right-half-min .card-planner {
+      grid-template-columns: 1fr !important;
+      grid-template-rows: auto auto !important;
+      align-content: start;
+      align-self: start;
+      height: auto !important;
+      max-height: 100%;
+    }
+    html.layout-desktop.planner-left-half-min.planner-right-half-min .card-planner > .planner-row,
+    html.layout-desktop.planner-left-half-min.planner-right-half-min .card-planner > .planner-right-col {
+      grid-column: 1;
+      height: auto !important;
+    }
+    html.layout-desktop.planner-left-half-min.planner-right-half-min .card-planner > .planner-row { grid-row: 1; }
+    html.layout-desktop.planner-left-half-min.planner-right-half-min .card-planner > .planner-right-col { grid-row: 2; }
+    /* Steps 1–3 stack vertically in the left column */
     html.layout-desktop .planner-row {
+      display: flex;
+      flex-direction: column;
       gap: 10px;
       min-width: 0;
       width: 100%;
-      grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.52fr) minmax(0, 1.05fr);
+      margin-bottom: 0;
+    }
+    html.layout-desktop .planner-cal-col,
+    html.layout-desktop .planner-wpn-col,
+    html.layout-desktop .planner-loc-col {
+      grid-area: auto;
+      min-width: 0;
+      max-width: 100%;
+      width: 100%;
     }
     html.layout-desktop .step-section {
       min-width: 0;
       overflow: hidden;
     }
-    html.layout-desktop .planner-cal-col,
-    html.layout-desktop .planner-wpn-col,
-    html.layout-desktop .planner-loc-col {
-      min-width: 0;
-      max-width: 100%;
-    }
     html.layout-desktop .calendar-container {
-      padding: 10px;
+      padding: 8px 8px 6px;
+    }
+    html.layout-desktop .calendar-header {
+      margin-bottom: 6px;
+      gap: 8px;
+    }
+    html.layout-desktop .calendar-header button,
+    html.layout-desktop .calendar-header .cal-nav-btn {
+      padding: 7px 12px;
+      font-size: 13px;
+      transform: none;
+      min-height: 32px;
+    }
+    html.layout-desktop .calendar-grid {
+      gap: 3px;
+      min-height: 0;
+    }
+    html.layout-desktop .cal-day-name {
+      padding: 0;
+      font-size: 10px;
+      line-height: 1.1;
+    }
+    html.layout-desktop .cal-cell {
+      padding: 3px 1px;
+      gap: 1px;
+    }
+    /* Steps 2 & 3: natural height under calendar (not forced equal) */
+    html.layout-desktop .planner-wpn-col #step-2-section,
+    html.layout-desktop .planner-loc-col #step-3-section {
+      min-height: 0 !important;
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible;
+      flex: 0 0 auto;
+    }
+    /* Room for − minimize only when step 3 was top-right; now on row */
+    html.layout-desktop .planner-loc-col #step-3-section .step-header {
+      padding-right: 0;
+    }
+    /* Weapon buttons: one horizontal row, calendar width */
+    html.layout-desktop .weapon-stack {
+      flex-direction: row;
+      flex-wrap: nowrap;
+      gap: 6px;
+      flex: 0 0 auto;
+    }
+    html.layout-desktop .weapon-stack .filter-btn {
+      flex: 1 1 0;
+      width: auto;
+      min-width: 0;
+      min-height: 40px;
+      padding: 8px 4px;
+      font-size: 11px;
+      line-height: 1.2;
+      white-space: normal;
+    }
+    /* Step 3 filters: compact rows under step 2 (only as tall/wide as needed) */
+    html.layout-desktop .planner-loc-col .location-filters-box {
+      gap: 6px;
+    }
+    html.layout-desktop .planner-loc-col .location-filters-box .lf-row {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      margin-top: 0 !important;
+    }
+    html.layout-desktop .planner-loc-col .location-filters-box .lf-row + .lf-row {
+      margin-top: 0 !important;
+    }
+    html.layout-desktop .planner-loc-col .location-filters-box .lf-label {
+      width: auto;
+      min-width: 36px;
+      margin-bottom: 0;
+      font-size: 11px;
+    }
+    html.layout-desktop .planner-loc-col .location-filters-box .lf-seg {
+      flex: 1 1 auto;
+      width: auto;
+      min-width: 0;
+    }
+    html.layout-desktop .planner-loc-col .location-filters-box .lf-seg .filter-btn,
+    html.layout-desktop .planner-loc-col .location-filters-box #land-private {
+      padding: 6px 6px;
+      font-size: 11px;
+      min-height: 0;
+    }
+    html.layout-desktop .planner-loc-col .location-filters-box .lf-within {
+      flex: 1 1 auto;
+      width: auto;
+      min-width: 0;
+    }
+    html.layout-desktop .planner-loc-col .location-filters-box .lf-within select {
+      padding: 5px 6px;
+      font-size: 11px;
+    }
+    html.layout-desktop .planner-loc-col .location-filters-box #dist-status {
+      margin-top: 2px;
+      font-size: 10px;
+    }
+    html.layout-desktop .planner-loc-col .selected-area-distance {
+      margin-top: 6px;
+      padding: 5px 7px;
+      font-size: 11px;
+    }
+    /* Weather: natural height under tracts — no internal scrollbar / dead stretch */
+    html.layout-desktop .dashboard-under-steps {
+      margin-top: 0;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel-light);
+      box-sizing: border-box;
+      overflow: visible;
+      min-height: 0;
+      height: auto !important;
+      max-height: none !important;
+    }
+    html.layout-desktop .dashboard-under-steps #current-data-banner {
+      margin-bottom: 8px;
+      font-size: 12px;
+      padding: 6px 10px;
+    }
+    html.layout-desktop .dashboard-under-steps #db-blank,
+    html.layout-desktop .dashboard-under-steps #db-loading {
+      padding: 18px 10px !important;
+    }
+    html.layout-desktop .dashboard-under-steps #db-blank h3 {
+      font-size: 15px;
+      margin: 0 0 6px;
+    }
+    html.layout-desktop .dashboard-under-steps #db-blank p {
+      font-size: 12.5px;
+      margin: 0;
+      line-height: 1.35;
+    }
+    html.layout-desktop .dashboard-under-steps .dashboard-grid {
+      gap: 7px;
+    }
+    html.layout-desktop .dashboard-under-steps .section-qual,
+    html.layout-desktop .dashboard-under-steps .step-title {
+      /* match Available tracts qualifier */
+      margin-bottom: 0;
+    }
+    html.layout-desktop .dashboard-under-steps .solunar-panel {
+      padding: 8px;
+      gap: 4px;
+    }
+    html.layout-desktop .dashboard-under-steps .solunar-item {
+      font-size: 12px;
+    }
+    html.layout-desktop .dashboard-under-steps .solunar-item strong {
+      font-size: 15px;
+      margin-top: 1px;
+    }
+    html.layout-desktop .dashboard-under-steps .solunar-item[style*="grid-column"] {
+      margin-top: 2px !important;
+      padding: 6px 8px !important;
+      font-size: 12px;
+    }
+    html.layout-desktop .dashboard-under-steps #db-moon-text {
+      font-size: 14px !important;
+    }
+    html.layout-desktop .dashboard-under-steps .water-panel {
+      padding: 8px 10px;
+    }
+    html.layout-desktop .dashboard-under-steps .water-grid {
+      gap: 5px;
+      margin-top: 5px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    html.layout-desktop .dashboard-under-steps .water-card {
+      padding: 6px;
+    }
+    html.layout-desktop .dashboard-under-steps .water-card span {
+      font-size: 11px;
+    }
+    html.layout-desktop .dashboard-under-steps .water-card strong {
+      font-size: 14px;
+    }
+    html.layout-desktop .dashboard-under-steps .weather-alerts-panel {
+      max-height: 120px;
+      padding: 7px 9px;
+    }
+    html.layout-desktop .dashboard-under-steps .high-wind-box {
+      margin: 0;
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+    html.layout-desktop .dashboard-under-steps .hourly-table-container {
+      margin-top: 2px;
+      overflow-x: auto;
+    }
+    html.layout-desktop .dashboard-under-steps .hourly-table {
+      font-size: 13px;
+      min-width: 0;
+      width: 100%;
+      table-layout: fixed;
+    }
+    html.layout-desktop .dashboard-under-steps .hourly-table th {
+      font-size: 11px;
+      padding: 5px 4px;
+    }
+    html.layout-desktop .dashboard-under-steps .hourly-table td {
+      padding: 4px 3px;
+      font-size: 13px;
+    }
+    /* When weather is hidden, steps + tracts stack full width */
+    html.layout-desktop.settings-hide-weather .card-planner {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+    html.layout-desktop.settings-hide-weather .card-planner > .planner-row {
+      grid-column: 1;
+      grid-row: 1;
+      height: auto;
+    }
+    html.layout-desktop.settings-hide-weather .card-planner > .planner-right-col {
+      grid-column: 1;
+      grid-row: 2;
+    }
+    html.layout-phone .planner-right-col {
+      display: contents;
     }
     html.layout-desktop .weapon-btn {
       padding-left: 6px;
@@ -1264,26 +1934,38 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
       gap: 6px;
       flex-shrink: 0;
     }
     .calendar-header button,
     .calendar-header .cal-nav-btn {
-      background: var(--green);
+      background: linear-gradient(180deg, #5d8e3d 0%, var(--green) 55%, #3a5826 100%);
       color: white;
-      border: none;
-      padding: 5px 9px;
-      border-radius: 6px;
+      border: 1px solid #2f4a1f;
+      padding: 6px 11px;
+      border-radius: 7px;
       cursor: pointer;
       font-weight: bold;
-      font-size: 11px;
+      font-size: 12px;
       flex-shrink: 0;
-      /* ~20% smaller than previous 7px/12px/13px chrome */
-      transform: scale(0.9);
-      transform-origin: center;
+      transform: none;
+      box-shadow:
+        0 2px 0 rgba(0, 0, 0, 0.35),
+        0 3px 6px rgba(0, 0, 0, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.22);
     }
-    .calendar-header button:hover { background: var(--green-hover); }
+    .calendar-header button:hover,
+    .calendar-header .cal-nav-btn:hover {
+      background: linear-gradient(180deg, #6aa048 0%, var(--green-hover) 55%, #456a2c 100%);
+    }
+    .calendar-header button:active,
+    .calendar-header .cal-nav-btn:active {
+      transform: translateY(1px);
+      box-shadow:
+        0 1px 0 rgba(0, 0, 0, 0.3),
+        inset 0 2px 3px rgba(0, 0, 0, 0.28);
+    }
     .calendar-header h3,
     #calendar-month-year {
       margin: 0 !important;
@@ -1302,25 +1984,26 @@
       display: grid;
       grid-template-columns: repeat(7, minmax(0, 1fr));
       grid-auto-rows: minmax(0, 1fr);
-      gap: 5px;
+      gap: 4px;
       text-align: center;
       width: 100%;
       height: var(--planner-cal-grid-h, auto);
-      min-height: 280px;
+      min-height: 220px;
     }
     .cal-day-name {
       font-weight: 700;
       color: var(--muted);
       font-size: 11px;
-      padding: 2px 0;
+      padding: 0;
       text-transform: uppercase;
       display: flex;
       align-items: center;
       justify-content: center;
       min-height: 0;
+      line-height: 1.1;
     }
     .cal-cell {
-      padding: 6px 2px;
+      padding: 4px 2px;
       border-radius: 6px;
       cursor: pointer;
       background: var(--panel);
@@ -1331,7 +2014,8 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      gap: 3px;
+      gap: 2px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 2px rgba(0, 0, 0, 0.2);
     }
     .cal-cell:hover { background: var(--border); }
     .cal-cell.selected { background: var(--accent); color: #000; font-weight: bold; transform: scale(1.04); }
@@ -1352,14 +2036,90 @@
     .color-dot-btn { width: 18px; height: 18px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
     .color-dot-btn.selected { border-color: #fff; transform: scale(1.1); }
     .btn-group { display: flex; gap: 8px; }
-    .filter-btn { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel-light); color: var(--ink); cursor: pointer; font-size: 13px; font-weight: 600; text-align: center; }
-    .filter-btn:hover { border-color: var(--muted); }
-    .filter-btn.active { background: var(--green); border-color: var(--green-hover); color: white; }
+    /*
+     * Shared raised button language — depth, same family across the app
+     * (filter chips, tools, minmax, cal nav, secondary actions)
+     */
+    .filter-btn,
+    .sec-minmax-btn,
+    .planner-minmax-btn,
+    .sort-option-btn,
+    .dist-zip-apply,
+    .list-toolbar .filter-btn,
+    button.filter-btn {
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      font-weight: 600;
+      text-align: center;
+      box-shadow:
+        0 2px 0 rgba(0, 0, 0, 0.32),
+        0 3px 7px rgba(0, 0, 0, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.08s ease;
+    }
+    .filter-btn {
+      flex: 1;
+      padding: 10px;
+      background: linear-gradient(180deg, #2a3222 0%, var(--panel-light) 45%, #181e14 100%);
+      color: var(--ink);
+      font-size: 13px;
+    }
+    .filter-btn:hover {
+      border-color: var(--muted);
+      background: linear-gradient(180deg, #323c28 0%, #262e1e 45%, #1c2418 100%);
+    }
+    .filter-btn:active {
+      transform: translateY(1px);
+      box-shadow:
+        0 1px 0 rgba(0, 0, 0, 0.28),
+        inset 0 2px 4px rgba(0, 0, 0, 0.35);
+    }
+    .filter-btn.active {
+      background: linear-gradient(180deg, #5d8e3d 0%, var(--green) 50%, #3a5826 100%);
+      border-color: #2f4a1f;
+      color: #fff;
+      box-shadow:
+        0 2px 0 rgba(0, 0, 0, 0.35),
+        0 3px 6px rgba(0, 0, 0, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    .filter-btn.active:hover {
+      background: linear-gradient(180deg, #6aa048 0%, var(--green-hover) 50%, #456a2c 100%);
+    }
+    .sec-minmax-btn,
+    .planner-minmax-btn {
+      background: linear-gradient(180deg, #2a3222 0%, var(--panel) 50%, #141810 100%);
+      color: var(--accent);
+    }
+    .sec-minmax-btn:hover,
+    .planner-minmax-btn:hover {
+      border-color: var(--accent);
+      background: linear-gradient(180deg, #323c28 0%, var(--panel-light) 50%, #1a2014 100%);
+    }
+    .sec-minmax-btn:active,
+    .planner-minmax-btn:active {
+      transform: translateY(1px);
+      box-shadow:
+        0 1px 0 rgba(0, 0, 0, 0.28),
+        inset 0 2px 3px rgba(0, 0, 0, 0.35);
+    }
+    .dist-zip-apply,
+    .location-filters-box #dist-zip-row .dist-zip-apply,
+    .location-filters-box #dist-zip-row button {
+      background: linear-gradient(180deg, #5d8e3d 0%, var(--green) 50%, #3a5826 100%) !important;
+      border: 1px solid #2f4a1f !important;
+      color: #fff !important;
+      box-shadow:
+        0 2px 0 rgba(0, 0, 0, 0.32),
+        0 2px 5px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
+    }
 
     @media (max-width: 1200px) {
-      html.layout-desktop .planner-row {
-        grid-template-columns: minmax(0, 1.45fr) minmax(118px, 0.48fr) minmax(190px, 1fr);
-        gap: 12px;
+      html.layout-desktop:not(.planner-left-half-min):not(.planner-right-half-min) .card-planner {
+        grid-template-columns: minmax(0, 1.45fr) minmax(0, 1.48fr);
+        gap: 10px;
       }
     }
 
@@ -1796,8 +2556,8 @@
       position: relative;
       z-index: 2;
     }
-    html.layout-phone .card-planner > #dashboard-container,
-    html.layout-phone .card-planner > .dashboard-under-steps {
+    html.layout-phone #dashboard-container,
+    html.layout-phone .dashboard-under-steps {
       position: relative;
       z-index: 2;
     }
@@ -2226,8 +2986,20 @@
     }
     .map-draw-tools .mdt-btn.mdt-icon-btn.active {
       border-color: var(--accent) !important;
-      background: rgba(229, 154, 24, 0.14) !important;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.35) !important;
+      background: rgba(229, 154, 24, 0.18) !important;
+      box-shadow: 0 0 0 0 rgba(229, 154, 24, 0.55) !important;
+      animation: mdtToolPulse 1.15s ease-out infinite !important;
+    }
+    .map-draw-tools #mdt-measure.active,
+    .map-draw-tools #mdt-draw.active {
+      animation: mdtToolPulse 1.15s ease-out infinite !important;
+    }
+    @keyframes mdtToolPulse {
+      0% { box-shadow: 0 0 0 0 rgba(229, 154, 24, 0.7); transform: scale(1); }
+      55% { box-shadow: 0 0 0 9px rgba(229, 154, 24, 0.08); transform: scale(1.05); }
+      100% { box-shadow: 0 0 0 0 rgba(229, 154, 24, 0); transform: scale(1); }
+    }
+    .map-draw-tools .mdt-btn.mdt-icon-btn.active.force-no-anim {
       animation: none;
       outline: none !important;
     }
@@ -3335,24 +4107,214 @@
     }
     /* (cm-line-pane / cm-probe-pane rules above — keep pointer-events:none on panes) */
     
-    /* Pin editor (#18 / 6.4.6): wide enough — no horizontal scrollbar */
+    /* Pin editor (#18 / 6.4.6): wider for round icon circles; sticky Save/Cancel */
     #pin-editor-sheet {
       left: 50% !important;
       right: auto !important;
       transform: translateX(-50%);
-      width: min(340px, calc(100vw - 20px)) !important;
-      max-width: min(340px, calc(100vw - 20px)) !important;
-      min-width: 260px !important;
+      width: min(400px, calc(100vw - 16px)) !important;
+      max-width: min(400px, calc(100vw - 16px)) !important;
+      min-width: 300px !important;
       max-height: min(72vh, 540px);
-      padding: 10px !important;
-      overflow-x: hidden !important;
-      overflow-y: auto !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+      box-sizing: border-box !important;
+      display: none;
+      flex-direction: column;
+    }
+    #pin-editor-sheet.open {
+      display: flex !important;
+    }
+    #pin-editor-sheet .pes-scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      padding: 10px 12px 8px;
+      box-sizing: border-box;
+      scrollbar-width: thin;
+      scrollbar-color: #3a4234 rgba(0,0,0,0.25);
+    }
+    #pin-editor-sheet .pes-actions {
+      flex: 0 0 auto;
+      display: flex;
+      gap: 8px;
+      padding: 8px 12px 10px;
+      border-top: 1px solid var(--border);
+      background: rgba(15, 18, 14, 0.98);
+      box-sizing: border-box;
+    }
+    #pin-editor-sheet .pes-actions .pes-save,
+    #pin-editor-sheet .pes-actions .pes-cancel {
+      flex: 1;
+      padding: 9px 8px !important;
+      font-size: 12px !important;
+      font-weight: 800;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+    }
+    #pin-editor-sheet .pes-actions .pes-save {
+      background: var(--accent);
+      color: #000;
+      border-color: #b87a12;
+    }
+    #pin-editor-sheet .pes-actions .pes-cancel {
+      background: var(--panel-light);
+      color: var(--muted);
+    }
+    /* Picker: icon-in-circle only (disc face, not full teardrop) */
+    #pin-editor-sheet .pin-icon-grid button,
+    #pin-editor-sheet #pin-icon-recent .pin-icon-grid button {
+      width: 48px !important;
+      height: 48px !important;
+      min-width: 48px !important;
+      max-width: 48px !important;
+      min-height: 48px !important;
+      max-height: 48px !important;
+      border-radius: 50% !important;
+      padding: 4px !important;
+      background: #ffffff !important;
+      border: 2px solid #c5c9c0 !important;
+      overflow: hidden !important;
+      aspect-ratio: 1 / 1 !important;
       box-sizing: border-box !important;
     }
+    #pin-editor-sheet .pin-icon-grid button.selected,
+    #pin-editor-sheet #pin-icon-recent .pin-icon-grid button.selected {
+      border-color: var(--accent) !important;
+      box-shadow: 0 0 0 2px rgba(229, 154, 24, 0.45);
+      background: #fffef8 !important;
+    }
+    #pin-editor-sheet .pin-picker-disc {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    #pin-editor-sheet .pin-picker-disc img {
+      width: 88% !important;
+      height: 88% !important;
+      max-width: 36px;
+      max-height: 36px;
+      object-fit: contain;
+      display: block;
+    }
+    /* Map-anchored delete confirmation (replaces window.confirm at popup) */
+    .map-item-confirm {
+      position: fixed;
+      z-index: 100050;
+      min-width: 200px;
+      max-width: min(280px, calc(100vw - 24px));
+      padding: 12px 12px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(15, 18, 14, 0.98);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.55);
+      color: var(--ink);
+      box-sizing: border-box;
+    }
+    .map-item-confirm .mic-msg {
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.35;
+      margin: 0 0 10px;
+      color: #fff;
+    }
+    .map-item-confirm .mic-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .map-item-confirm .mic-actions button {
+      flex: 1;
+      padding: 8px 6px;
+      font-size: 12px;
+      font-weight: 800;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+    }
+    .map-item-confirm .mic-yes {
+      background: var(--danger);
+      color: #fff;
+      border-color: #a32a22;
+    }
+    .map-item-confirm .mic-no {
+      background: var(--panel-light);
+      color: var(--muted);
+    }
     html.layout-phone #pin-editor-sheet {
-      width: min(320px, calc(100vw - 16px)) !important;
-      max-width: min(320px, calc(100vw - 16px)) !important;
+      width: min(360px, calc(100vw - 12px)) !important;
+      max-width: min(360px, calc(100vw - 12px)) !important;
       min-width: 0 !important;
+    }
+    /* Pin note modal — type freely; text stays in #pin-notes-input either way */
+    #pin-note-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 2147483644;
+      background: rgba(0,0,0,0.55);
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+    #pin-note-modal.active {
+      display: flex;
+    }
+    #pin-note-modal .pin-note-card {
+      width: min(420px, 100%);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.55);
+      box-sizing: border-box;
+    }
+    #pin-note-modal .pin-note-card h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+      color: #fff;
+    }
+    #pin-note-modal .pin-note-card textarea {
+      width: 100%;
+      min-height: 120px;
+      box-sizing: border-box;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-light);
+      color: var(--ink);
+      font-size: 13px;
+      resize: vertical;
+      margin-bottom: 10px;
+    }
+    #pin-note-modal .pin-note-actions {
+      display: flex;
+      gap: 8px;
+    }
+    #pin-note-modal .pin-note-actions button {
+      flex: 1;
+      padding: 9px 8px;
+      font-size: 12px;
+      font-weight: 800;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+    }
+    #pin-note-modal .pin-note-done {
+      background: var(--accent);
+      color: #000;
+      border-color: #b87a12;
+    }
+    #pin-note-modal .pin-note-clear {
+      background: var(--panel-light);
+      color: var(--muted);
     }
     #pin-editor-sheet .pin-icon-grid,
     #pin-editor-sheet #pin-icon-recent .pin-icon-grid {
@@ -3430,31 +4392,43 @@
       border-radius: 6px;
     }
     
-    #pin-editor-sheet .pes-actions button {
-      padding: 6px 6px !important;
-      font-size: 11px !important;
-    }
+    /* Save/Cancel sticky bar styles are with #pin-editor-sheet flex layout above */
     #pin-editor-sheet .pes-notes { display: none; }
     #pin-editor-sheet.notes-open .pes-notes { display: block; }
     .pin-zoom-scale { transform-origin: center bottom; }
     
     /* Phone: active tool chrome is top-left (see .tool-active .mdt-tools-panel) */
-    .map-wrapper.draw-mode #leaflet-map { cursor: crosshair; }
-    /* Tool cursors (#17): small custom cursors set by JS; CSS fallback */
+    /* Measure / draw: normal-size plus (crosshair) — not custom oversized icons */
     .map-wrapper.draw-mode.mode-measure #leaflet-map,
     .map-wrapper.draw-mode.mode-measure .leaflet-container,
-    .map-wrapper.draw-mode.mode-measure .leaflet-grab {
-      cursor: var(--cursor-measure, crosshair) !important;
-    }
+    .map-wrapper.draw-mode.mode-measure .leaflet-container.leaflet-grab,
+    .map-wrapper.draw-mode.mode-measure .leaflet-container.leaflet-dragging,
+    .map-wrapper.draw-mode.mode-measure .leaflet-interactive,
+    .map-wrapper.draw-mode.mode-measure .leaflet-overlay-pane,
+    .map-wrapper.draw-mode.mode-measure .leaflet-overlay-pane svg,
+    .map-wrapper.draw-mode.mode-measure .leaflet-overlay-pane canvas,
+    .map-wrapper.draw-mode.mode-measure .leaflet-marker-pane,
+    .map-wrapper.draw-mode.mode-measure .leaflet-map-pane,
+    .map-wrapper.draw-mode.mode-measure .leaflet-tile-pane,
     .map-wrapper.draw-mode.mode-draw #leaflet-map,
     .map-wrapper.draw-mode.mode-draw .leaflet-container,
-    .map-wrapper.draw-mode.mode-draw .leaflet-grab {
-      cursor: var(--cursor-draw, crosshair) !important;
-    }
+    .map-wrapper.draw-mode.mode-draw .leaflet-container.leaflet-grab,
+    .map-wrapper.draw-mode.mode-draw .leaflet-container.leaflet-dragging,
+    .map-wrapper.draw-mode.mode-draw .leaflet-interactive,
+    .map-wrapper.draw-mode.mode-draw .leaflet-overlay-pane,
+    .map-wrapper.draw-mode.mode-draw .leaflet-overlay-pane svg,
+    .map-wrapper.draw-mode.mode-draw .leaflet-overlay-pane canvas,
+    .map-wrapper.draw-mode.mode-draw .leaflet-marker-pane,
+    .map-wrapper.draw-mode.mode-draw .leaflet-map-pane,
+    .map-wrapper.draw-mode.mode-draw .leaflet-tile-pane,
     .map-wrapper.draw-mode.mode-drawline #leaflet-map,
     .map-wrapper.draw-mode.mode-drawline .leaflet-container,
-    .map-wrapper.draw-mode.mode-drawline .leaflet-grab {
-      cursor: var(--cursor-draw, crosshair) !important;
+    .map-wrapper.draw-mode.mode-drawline .leaflet-container.leaflet-grab,
+    .map-wrapper.draw-mode.mode-drawline .leaflet-interactive,
+    .map-wrapper.draw-mode.mode-drawline .leaflet-overlay-pane,
+    .map-wrapper.draw-mode.mode-drawline .leaflet-map-pane,
+    .map-wrapper.draw-mode.mode-drawline .leaflet-tile-pane {
+      cursor: crosshair !important;
     }
     /* Draw-mode close vertices: DOM markers (not Canvas) so clicks always reach the dot */
     .draw-vertex-icon {
@@ -3615,25 +4589,29 @@
       transform: translateX(-50%);
       bottom: calc(var(--mbb-bar-h, 45px) + env(safe-area-inset-bottom, 0px) + 6px);
       z-index: 95;
+      width: min(400px, calc(100vw - 16px));
+      max-width: min(400px, calc(100vw - 16px));
       max-height: min(72vh, 540px);
-      overflow-x: hidden;
-      overflow-y: auto;
+      overflow: hidden;
       background: rgba(15, 18, 14, 0.98);
       border: 1px solid var(--border);
       border-radius: 14px 14px 10px 10px;
       box-shadow: 0 -6px 28px rgba(0,0,0,0.55);
-      padding: 10px 12px 12px;
+      padding: 0;
       pointer-events: auto;
       box-sizing: border-box;
+      flex-direction: column;
     }
-    #pin-editor-sheet.open { display: block; }
+    #pin-editor-sheet.open { display: flex !important; }
     #pin-editor-sheet .pes-head {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      margin-bottom: 8px;
+      margin: 0;
+      padding: 10px 12px 6px;
       cursor: grab;
+      flex: 0 0 auto;
     }
     #pin-editor-sheet .pes-head strong {
       font-size: 13px;
@@ -3996,7 +4974,35 @@
     }
     .shape-save-actions .ss-save { background: var(--accent); color: #000; }
     .shape-save-actions .ss-cancel { background: var(--panel-light); color: var(--muted); border: 1px solid var(--border); }
-    .shape-fill-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink); margin-top: 4px; }
+    .shape-fill-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink); margin-top: 8px; }
+    .shape-color-slots button {
+      flex: 1;
+      padding: 7px 4px;
+      font-size: 11px;
+      font-weight: 800;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-light);
+      color: var(--ink);
+      cursor: pointer;
+    }
+    .shape-color-slots button.is-active {
+      border-color: var(--accent);
+      background: rgba(229, 154, 24, 0.16);
+      color: var(--accent);
+    }
+    /* Idle map: hand grab when panning; pointer on interactive features */
+    .map-wrapper:not(.draw-mode) .leaflet-container {
+      cursor: grab;
+    }
+    .map-wrapper:not(.draw-mode) .leaflet-container.leaflet-drag-target,
+    .map-wrapper:not(.draw-mode) .leaflet-container.leaflet-dragging,
+    .map-wrapper:not(.draw-mode).leaflet-dragging .leaflet-container {
+      cursor: grabbing !important;
+    }
+    .map-wrapper:not(.draw-mode) .leaflet-interactive {
+      cursor: pointer;
+    }
     .shape-fill-row input { cursor: pointer; }
     /* Hover cards for measured lines / custom shapes */
     .measured-path-tooltip {
@@ -4881,8 +5887,20 @@
     }
     .settings-head h3 { margin: 0; font-size: 16px; color: #fff; }
     .settings-head .settings-close {
-      background: none; border: none; color: var(--muted); font-size: 22px;
-      cursor: pointer; line-height: 1; font-weight: 700;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 24px;
+      cursor: pointer;
+      line-height: 1;
+      font-weight: 700;
+      padding: 4px 8px;
+      z-index: 2;
+      position: relative;
+      pointer-events: auto;
+    }
+    .settings-head .settings-close:hover {
+      color: #fff;
     }
     .settings-tabs {
       display: flex;
@@ -5645,8 +6663,16 @@
       line-height: 1.3;
     }
     .hourly-table-container { overflow-x: auto; margin-top: 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-light); }
-    .hourly-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 480px; }
-    .hourly-table th, .hourly-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .hourly-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 480px; table-layout: fixed; }
+    .hourly-table th, .hourly-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      text-align: center;
+      vertical-align: middle;
+    }
+    .hourly-table th:last-child,
+    .hourly-table td:last-child { border-right: none; }
     .hourly-table th { background: rgba(0,0,0,0.2); color: var(--muted); font-size: 11px; text-transform: uppercase; }
     .subsections-box { background: var(--panel-light); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-top: 10px; }
     .subsection-item { background: var(--panel); border: 1px solid var(--border); padding: 8px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
@@ -5800,7 +6826,7 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.45);
       line-height: 1;
     }
-    .current-data-banner { background: rgba(217,65,54,0.15); border: 1px solid var(--danger); color: var(--danger); font-weight: bold; font-size: 13px; padding: 8px 12px; border-radius: 6px; text-align: center; margin-bottom: 10px; display: none; }
+    .current-data-banner { background: rgba(217,65,54,0.15); border: 1px solid var(--danger); color: var(--danger); font-weight: bold; font-size: 13px; padding: 8px 12px; border-radius: 6px; text-align: center; margin-bottom: 10px; display: none; flex-shrink: 0; }
     #regs-modal { display: none; position: fixed; inset: 0; z-index: 100000; background: rgba(0,0,0,0.65); align-items: center; justify-content: center; padding: 16px; }
     #regs-modal.active { display: flex; }
     .regs-modal-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; max-width: 520px; width: 100%; max-height: min(85vh, 720px); overflow: auto; box-shadow: 0 12px 40px rgba(0,0,0,0.55); padding: 18px 18px 16px; color: var(--ink); }
@@ -6133,7 +7159,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.4.9 Beta">V6.4.9 Beta</span>
+      <span class="brand-version" aria-label="Version 6.5 Beta">V6.5 Beta</span>
     </div>
   </header>
 
@@ -6221,18 +7247,13 @@
     <div class="card card-planner">
       <!-- Square calendar (left fixed) + weapons stacked in freed space on the right -->
       <div class="planner-row" id="planner-row">
-        <button type="button" class="planner-minmax-btn" id="planner-minmax-btn" onclick="togglePlannerStepsMin()" title="Minimize steps 1–3" aria-label="Minimize steps 1–3" aria-expanded="true">−</button>
-        <div class="planner-collapsed-strip" id="planner-collapsed-strip" aria-hidden="true">
-          <div class="planner-mini-steps" aria-hidden="true">
-            <div class="step-num" id="planner-mini-1">1</div>
-            <div class="step-num" id="planner-mini-2">2</div>
-            <div class="step-num" id="planner-mini-3">3</div>
-          </div>
-          <span class="planner-mini-label">Steps 1–3</span>
-        </div>
         <div class="planner-cal-col" id="planner-cal-col">
           <div class="step-section active" id="step-1-section">
-            <div class="step-header"><div class="step-num">1</div><span class="step-title">Select Hunt Date</span></div>
+            <div class="step-header">
+              <div class="step-num">1</div>
+              <span class="step-title section-qual">Select Hunt Date</span>
+              <button type="button" class="sec-minmax-btn" id="sec-min-step1" onclick="toggleSectionMin('step1')" title="Minimize Select Hunt Date" aria-label="Minimize Select Hunt Date" aria-expanded="true">−</button>
+            </div>
             <div class="calendar-container" id="calendar-container">
               <div class="calendar-header">
                 <button type="button" class="cal-nav-btn" onclick="changeMonth(-1)">&lt; Prev</button>
@@ -6273,7 +7294,11 @@
 
         <div class="planner-wpn-col">
           <div class="step-section locked" id="step-2-section">
-            <div class="step-header"><div class="step-num">2</div><span class="step-title">Choose Your Weapon</span></div>
+            <div class="step-header">
+              <div class="step-num">2</div>
+              <span class="step-title section-qual">Choose Your Weapon</span>
+              <button type="button" class="sec-minmax-btn" id="sec-min-step2" onclick="toggleSectionMin('step2')" title="Minimize Choose Your Weapon" aria-label="Minimize Choose Your Weapon" aria-expanded="true">−</button>
+            </div>
             <div class="btn-group weapon-stack">
               <button class="filter-btn" id="wpn-either" onclick="setWeapon('Either')">Either weapon</button>
               <button class="filter-btn" id="wpn-archery" onclick="setWeapon('Archery')">Archery</button>
@@ -6284,8 +7309,12 @@
         </div>
 
         <div class="planner-loc-col">
-          <div class="step-section locked" id="step-3-section">
-            <div class="step-header"><div class="step-num">3</div><span class="step-title" id="list-label">Hunt Locations</span></div>
+          <div class="step-section active" id="step-3-section">
+            <div class="step-header">
+              <div class="step-num">3</div>
+              <span class="step-title section-qual" id="list-label">Open Tracts</span>
+              <button type="button" class="sec-minmax-btn" id="sec-min-step3" onclick="toggleSectionMin('step3')" title="Minimize hunt locations filters" aria-label="Minimize hunt locations filters" aria-expanded="true">−</button>
+            </div>
             <!-- Land + distance filters (list stays full-width under steps) -->
             <div class="location-filters-box" id="location-filters-box">
               <div class="lf-row" id="land-btn-group">
@@ -6329,12 +7358,13 @@
         </div>
       </div>
 
-      <!-- Available tracts: full width under steps 1–3 (collapsible, like steps) -->
+      <!-- Right column: available tracts (fills height) + weather (bottom) -->
+      <div class="planner-right-col" id="planner-right-col">
       <div class="available-tracts-panel" id="locations-under-steps">
-        <button type="button" class="available-tracts-toggle" id="available-tracts-toggle" onclick="toggleAvailableTractsMin()" aria-expanded="true" title="Minimize available tracts">
-          <span class="available-tracts-title">Available tracts / huntable areas</span>
-          <span class="available-tracts-caret" id="available-tracts-caret" aria-hidden="true">−</span>
-        </button>
+        <div class="available-tracts-header">
+          <span class="available-tracts-title section-qual">Available tracts / huntable areas</span>
+          <button type="button" class="sec-minmax-btn" id="sec-min-tracts" onclick="toggleSectionMin('tracts')" title="Minimize available tracts" aria-label="Minimize available tracts" aria-expanded="true">−</button>
+        </div>
         <div class="available-tracts-body" id="available-tracts-body">
           <div class="list-toolbar">
             <div class="list-toolbar-left">
@@ -6350,6 +7380,8 @@
       </div>
 
       <div id="dashboard-container" class="dashboard-under-steps">
+      <!-- Date tense banner lives outside #db-content so it stays visible while weather reloads -->
+      <div id="current-data-banner" class="current-data-banner"></div>
       <div id="db-blank" style="text-align:center;padding:120px 0;color:var(--muted);">
         <h3>Step 4: Weather & Water Dashboard</h3>
         <p>Select a date and weapon, then choose a location or use Current Location. Water levels appear only when within 3 miles of a USGS gauge.</p>
@@ -6398,14 +7430,19 @@
           </div>
           <div id="weather-alerts-grid" class="wx-alerts-grid"></div>
         </div>
-        <div>
-          <span class="step-title" style="font-size:11px;">Solunar & Legal Hours</span>
-          <div class="solunar-panel">
-            <div class="solunar-item">Sunrise<strong id="sol-sunrise">--:--</strong></div>
-            <div class="solunar-item">Sunset<strong id="sol-sunset">--:--</strong></div>
-            <div class="solunar-item">Legal Hours<strong id="sol-shooting">--:--</strong></div>
-            <div class="solunar-item" style="grid-column:span 3;background:var(--panel);border:1px solid var(--border);padding:10px;border-radius:6px;margin-top:5px;">
-              Moon: <strong id="db-moon-text" style="display:inline;margin-left:5px;font-size:14px;color:var(--accent);">Unknown</strong>
+        <div class="wx-section" id="wx-solunar-section">
+          <div class="wx-section-header">
+            <span class="section-qual step-title">Solunar &amp; Legal Hours</span>
+            <button type="button" class="sec-minmax-btn" id="sec-min-solunar" onclick="toggleSectionMin('solunar')" title="Minimize Solunar &amp; Legal Hours" aria-label="Minimize Solunar and Legal Hours" aria-expanded="true">−</button>
+          </div>
+          <div class="wx-section-body">
+            <div class="solunar-panel">
+              <div class="solunar-item">Sunrise<strong id="sol-sunrise">--:--</strong></div>
+              <div class="solunar-item">Sunset<strong id="sol-sunset">--:--</strong></div>
+              <div class="solunar-item">Legal Hours<strong id="sol-shooting">--:--</strong></div>
+              <div class="solunar-item" style="grid-column:span 3;background:var(--panel);border:1px solid var(--border);padding:10px;border-radius:6px;margin-top:5px;">
+                Moon: <strong id="db-moon-text" style="display:inline;margin-left:5px;font-size:14px;color:var(--accent);">Unknown</strong>
+              </div>
             </div>
           </div>
         </div>
@@ -6414,28 +7451,35 @@
           <span class="hw-label">High Wind</span>
           <span id="high-wind-detail" class="hw-detail">--</span>
         </div>
-        <!-- #30: current-data banner only above weather, only when current -->
-        <div id="current-data-banner" class="current-data-banner"></div>
-        <div>
-          <span class="step-title" style="font-size:11px;">Hourly Forecast (Daylight)</span>
-          <div class="hourly-table-container">
-            <table class="hourly-table">
-              <thead><tr><th>Hour</th><th>Temp</th><th>Rain%</th><th>Precip</th><th>Wind</th></tr></thead>
-              <tbody id="hourly-rows"></tbody>
-            </table>
+        <div class="wx-section" id="wx-hourly-section">
+          <div class="wx-section-header">
+            <span class="section-qual step-title">Hourly Forecast (Daylight)</span>
+            <button type="button" class="sec-minmax-btn" id="sec-min-hourly" onclick="toggleSectionMin('hourly')" title="Minimize Hourly Forecast" aria-label="Minimize Hourly Forecast" aria-expanded="true">−</button>
+          </div>
+          <div class="wx-section-body">
+            <div class="hourly-table-container">
+              <table class="hourly-table">
+                <thead><tr><th>Hour</th><th>Temp</th><th>Rain%</th><th>Precip</th><th>Wind</th></tr></thead>
+                <tbody id="hourly-rows"></tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
     </div>
-    </div>
+    </div><!-- /.planner-right-col -->
+    </div><!-- /.card-planner -->
 
     <div class="card card-map">
-      <!-- Mobile: map name between available tracts and the map -->
+      <!-- Map name + settings — flush above map (desktop min + phone); hidden in true fullscreen -->
       <div class="map-title-bar" id="map-title-bar" aria-live="polite">
         <span class="map-title-text" id="map-title-mobile">My Map</span>
+        <button type="button" class="map-title-settings-btn" id="map-title-settings-btn" onclick="openSettingsModal()" title="Settings" aria-label="Settings">⚙</button>
       </div>
       <div class="map-section-block">
         <div class="map-wrapper" id="map-wrapper">
+          <!-- Fullscreen only: map name next to zoom controls -->
+          <div class="map-fs-title" id="map-fs-title" aria-hidden="true">My Map</div>
           <!-- Free-standing compass / wind dials — absolute on map; draggable when enlarged -->
           <div class="map-compass-radar" id="map-compass-radar" data-v63="1">
             <div id="map-wind-hud" class="map-wind-hud mode-wind" aria-live="polite">
@@ -6778,11 +7822,14 @@
           <div id="pin-editor-sheet" aria-hidden="true">
             <div class="pes-head" id="pes-drag-head">
               <strong id="pes-title">Add pin</strong>
-              <button type="button" class="pes-close" onclick="closePinEditorSheet()" title="Close" aria-label="Close">&times;</button>
+              <button type="button" class="pes-close" onclick="cancelPinEditorSheet()" title="Cancel" aria-label="Cancel">&times;</button>
             </div>
+            <div class="pes-scroll">
             <div id="pin-icon-recent" style="display:none;margin-bottom:6px;"></div>
             <div id="pin-icon-grid" class="pin-icon-grid"></div>
             <input type="search" id="pin-icon-search" class="pin-icon-search" placeholder="Search pins…" oninput="renderPinIconGrid()" />
+            <button type="button" class="pes-customize-btn" id="pes-note-btn" onclick="openPinNoteModal()">Add note</button>
+            <textarea id="pin-notes-input" class="pes-notes" placeholder="Notes…" style="display:none;" aria-hidden="true"></textarea>
             
             <button type="button" class="pes-customize-btn" id="pes-customize-btn" onclick="togglePinCustomizePanel()">Customize pin</button>
             <div id="pes-customize-panel" style="display:none;">
@@ -6803,39 +7850,38 @@
               </div>
               <div class="pes-preview" id="pes-preview" aria-label="Pin preview"></div>
               <label for="pin-name-input" style="display:block;font-size:10px;font-weight:700;color:var(--muted);margin:6px 0 4px;">Custom name</label>
-              <input type="text" id="pin-name-input" class="toast-form-control" placeholder="Leave blank for default pin name" style="width:100%;box-sizing:border-box;" />
-              <button type="button" class="pes-customize-btn" id="pes-note-btn" onclick="togglePinNotesUi()">Add note</button>
-              <textarea id="pin-notes-input" class="pes-notes" placeholder="Notes…" style="display:none;"></textarea>
+              <input type="text" id="pin-name-input" class="toast-form-control" placeholder="Leave blank for default pin name" style="width:100%;box-sizing:border-box;" oninput="markPinEditorDirty()" />
               <label style="display:flex;align-items:center;gap:6px;margin:6px 0;font-size:11px;font-weight:700;cursor:pointer;">
-                <input type="checkbox" id="pin-hide-chk"> Hide pin
+                <input type="checkbox" id="pin-hide-chk" onchange="markPinEditorDirty()"> Hide pin
               </label>
               <label style="display:block;font-size:10px;font-weight:700;color:var(--muted);margin:4px 0;">Pin size <span id="pin-size-val">100</span>%</label>
-              <input type="range" id="pin-size-slider" min="25" max="150" value="100" oninput="document.getElementById('pin-size-val').textContent=this.value;updatePinEditorPreview();" style="width:100%;" />
+              <input type="range" id="pin-size-slider" min="25" max="150" value="100" oninput="document.getElementById('pin-size-val').textContent=this.value;markPinEditorDirty();updatePinEditorPreview();" style="width:100%;" />
               <div id="pin-ideal-block" style="display:none;margin-top:6px;">
                 <button type="button" class="pes-customize-btn" onclick="togglePinIdealPanel()">Ideal conditions</button>
                 <div id="pin-ideal-panel" style="display:none;font-size:11px;">
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-                    <label>Ideal high °F<input type="number" id="pin-ideal-high" class="toast-form-control" style="width:100%;"></label>
-                    <label>Ideal low °F<input type="number" id="pin-ideal-low" class="toast-form-control" style="width:100%;"></label>
-                    <label style="grid-column:1/-1;">Wind from (°)<input type="number" id="pin-ideal-wind" class="toast-form-control" style="width:100%;" min="0" max="360" placeholder="0=N, 90=E"></label>
-                    <label style="grid-column:1/-1;">Wind tolerance ±°<input type="number" id="pin-ideal-wind-tol" class="toast-form-control" style="width:100%;" min="5" max="90" value="30"></label>
+                    <label>Ideal high °F<input type="number" id="pin-ideal-high" class="toast-form-control" style="width:100%;" oninput="markPinEditorDirty()"></label>
+                    <label>Ideal low °F<input type="number" id="pin-ideal-low" class="toast-form-control" style="width:100%;" oninput="markPinEditorDirty()"></label>
+                    <label style="grid-column:1/-1;">Wind from (°)<input type="number" id="pin-ideal-wind" class="toast-form-control" style="width:100%;" min="0" max="360" placeholder="0=N, 90=E" oninput="markPinEditorDirty()"></label>
+                    <label style="grid-column:1/-1;">Wind tolerance ±°<input type="number" id="pin-ideal-wind-tol" class="toast-form-control" style="width:100%;" min="5" max="90" value="30" oninput="markPinEditorDirty()"></label>
                   </div>
                 </div>
               </div>
               <details class="pes-advanced">
                 <summary>Advanced options</summary>
                 <div class="pes-checks" style="margin-top:6px;">
-                  <label><input type="checkbox" id="pin-as-hunt" onchange="onPinAsHuntStandChange()"> Make this a hunt</label>
-                  <label><input type="checkbox" id="pin-as-stand" onchange="onPinAsHuntStandChange()"> Make this a stand</label>
-                  <label id="pin-save-weather-row" style="display:none;"><input type="checkbox" id="pin-save-weather" checked> Save weather for this day</label>
-                  <label id="pin-list-row" style="display:none;"><input type="checkbox" id="pin-add-to-list"> Add to huntable areas list</label>
-                  <label><input type="checkbox" id="pin-ignore-overlay"> Ignore overlay rules</label>
+                  <label><input type="checkbox" id="pin-as-hunt" onchange="markPinEditorDirty();onPinAsHuntStandChange()"> Make this a hunt</label>
+                  <label><input type="checkbox" id="pin-as-stand" onchange="markPinEditorDirty();onPinAsHuntStandChange()"> Make this a stand</label>
+                  <label id="pin-save-weather-row" style="display:none;"><input type="checkbox" id="pin-save-weather" checked onchange="markPinEditorDirty()"> Save weather for this day</label>
+                  <label id="pin-list-row" style="display:none;"><input type="checkbox" id="pin-add-to-list" onchange="markPinEditorDirty()"> Add to huntable areas list</label>
+                  <label><input type="checkbox" id="pin-ignore-overlay" onchange="markPinEditorDirty()"> Ignore overlay rules</label>
                 </div>
               </details>
             </div>
+            </div><!-- /.pes-scroll -->
             <div class="pes-actions">
               <button type="button" class="pes-save" onclick="savePinFromMap()">Save</button>
-              <button type="button" class="pes-cancel" onclick="closePinEditorSheet()">Cancel</button>
+              <button type="button" class="pes-cancel" onclick="cancelPinEditorSheet()">Cancel</button>
             </div>
           </div>
 
@@ -6859,6 +7905,18 @@
       <a href="https://conservationgis.alabama.gov/dcnr/" target="_blank" rel="noopener">ADCNR GIS</a>
     </div>
   </footer>
+
+  <!-- Pin note editor (opened from Add pin sheet) -->
+  <div id="pin-note-modal" role="dialog" aria-modal="true" aria-labelledby="pin-note-title" onclick="if(event.target===this)closePinNoteModal(true)">
+    <div class="pin-note-card" onclick="event.stopPropagation()">
+      <h3 id="pin-note-title">Pin note</h3>
+      <textarea id="pin-note-modal-text" placeholder="Type a note for this pin…"></textarea>
+      <div class="pin-note-actions">
+        <button type="button" class="pin-note-done" onclick="closePinNoteModal(true)">Done</button>
+        <button type="button" class="pin-note-clear" onclick="clearPinNoteModal()">Clear</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Distance origin: street address lookup -->
   <div id="dist-address-modal" class="app-prompt-modal" hidden style="display:none;" onclick="if(event.target===this)closeDistAddressModal()">
@@ -6927,19 +7985,25 @@
       <div class="ss-meta" id="shape-save-meta">Name this area and choose colors. It will use the deer rules for the land under its center.</div>
       <label for="shape-name-input">Area name</label>
       <input type="text" id="shape-name-input" placeholder="e.g. North ridge stand box" maxlength="80" />
-      <label>Line color</label>
-      <div class="color-picker" id="cp-shape-line" data-input-id="shape-line-color" data-initial="#e59a18"></div>
+      <label>Colors</label>
+      <div class="pes-slot-btns shape-color-slots" style="display:flex;gap:6px;margin:4px 0 8px;">
+        <button type="button" class="is-active" id="shape-slot-line" onclick="setShapeColorSlot('line')">Line</button>
+        <button type="button" id="shape-slot-fill" onclick="setShapeColorSlot('fill')">Fill</button>
+      </div>
+      <div class="color-picker" id="cp-shape" data-input-id="shape-active-color" data-initial="#e59a18"></div>
+      <input type="hidden" id="shape-active-color" value="#e59a18" />
       <input type="hidden" id="shape-line-color" value="#e59a18" />
-      <label>Fill</label>
+      <input type="hidden" id="shape-fill-color" value="#e59a18" />
+      <!-- legacy dual pickers kept for any leftover code -->
+      <div style="display:none;">
+        <div class="color-picker" id="cp-shape-line" data-input-id="shape-line-color" data-initial="#e59a18"></div>
+        <div class="color-picker" id="cp-shape-fill" data-input-id="shape-fill-color" data-initial="#e59a18"></div>
+      </div>
       <div class="shape-fill-row">
         <input type="checkbox" id="shape-fill-enabled" checked />
         <span>Fill inside (same opacity as public-land overlays)</span>
       </div>
-      <div id="shape-fill-color-row">
-        <label style="margin-top:8px;">Fill color</label>
-        <div class="color-picker" id="cp-shape-fill" data-input-id="shape-fill-color" data-initial="#e59a18"></div>
-        <input type="hidden" id="shape-fill-color" value="#e59a18" />
-      </div>
+      <div id="shape-fill-color-row" style="display:none;"></div>
       <label class="shape-permission-row" for="shape-permission-chk">
         <input type="checkbox" id="shape-permission-chk" />
         <span>I have permission to hunt this land <em style="font-weight:500;color:var(--muted);font-style:normal;">(optional — only checked areas appear in Available Hunts)</em></span>
@@ -7024,10 +8088,10 @@
 
   <!-- App settings (gear near Layers) -->
   <div id="settings-modal" onclick="if(event.target===this)closeSettingsModal()">
-    <div class="settings-card" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="settings-card" role="dialog" aria-modal="true" aria-labelledby="settings-title" onclick="event.stopPropagation()">
       <div class="settings-head">
         <h3 id="settings-title">Settings</h3>
-        <button type="button" class="settings-close" onclick="closeSettingsModal()" title="Close">&times;</button>
+        <button type="button" class="settings-close" onclick="event.preventDefault();event.stopPropagation();closeSettingsModal();return false;" title="Close" aria-label="Close settings">&times;</button>
       </div>
       <div class="settings-tabs" role="tablist">
         <button type="button" class="settings-tab active" data-stab="tools" onclick="switchSettingsTab('tools')">Tools</button>
@@ -7134,7 +8198,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.4.9-beta';
+    const APP_VERSION = '6.5-beta';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
@@ -7181,11 +8245,31 @@
         huntListSortMode = _savedSort;
       }
     } catch (eSortInit) {}
-    /** Desktop steps 1–3 collapsed into thin strip */
+    /** Desktop steps 1–3 collapsed into thin strip (legacy key kept for migration) */
     let plannerStepsMinimized = false;
     try {
       plannerStepsMinimized = localStorage.getItem('reg_slayer_planner_steps_min') === '1';
     } catch (eMinInit) {}
+    /** Per-section minimize (desktop): step1/2/3, tracts, solunar, hourly */
+    var sectionMinState = {
+      step1: false, step2: false, step3: false,
+      tracts: false, solunar: false, hourly: false
+    };
+    try {
+      var _secRaw = localStorage.getItem('reg_slayer_section_min_v1');
+      if (_secRaw) {
+        var _secObj = JSON.parse(_secRaw);
+        Object.keys(sectionMinState).forEach(function(k) {
+          if (typeof _secObj[k] === 'boolean') sectionMinState[k] = _secObj[k];
+        });
+      } else {
+        // migrate older single flags
+        if (localStorage.getItem('reg_slayer_tracts_min') === '1') sectionMinState.tracts = true;
+        if (plannerStepsMinimized) {
+          sectionMinState.step1 = sectionMinState.step2 = sectionMinState.step3 = true;
+        }
+      }
+    } catch (eSecInit) {}
     let editingEventId = null, userLat = null, userLng = null;
     let selectedPinColor = '#e59a18', selectedHuntColor = '#e59a18';
     let calendarTargetDate = new Date(), usingCurrentLocation = true, currentLocationObj = null;
@@ -9722,42 +10806,127 @@
     window.closeSortHuntsModal = closeSortHuntsModal;
     window.applyHuntListSort = applyHuntListSort;
 
-    function applyPlannerStepsMinState() {
-      var row = document.getElementById('planner-row');
-      var btn = document.getElementById('planner-minmax-btn');
-      var strip = document.getElementById('planner-collapsed-strip');
-      if (!row || !btn) return;
-      // Phone never stays minimized (layout stacks steps)
-      var min = !!plannerStepsMinimized && !(typeof isPhoneLayout === 'function' && isPhoneLayout());
-      row.classList.toggle('is-minimized', min);
-      btn.textContent = min ? '+' : '−';
-      btn.setAttribute('aria-expanded', min ? 'false' : 'true');
-      btn.setAttribute('title', min ? 'Expand steps 1–3' : 'Minimize steps 1–3');
-      btn.setAttribute('aria-label', min ? 'Expand steps 1–3' : 'Minimize steps 1–3');
-      if (strip) strip.setAttribute('aria-hidden', min ? 'false' : 'true');
-      // Sync mini step dots (yellow active-style is always on for visibility when collapsed)
-      ['1', '2', '3'].forEach(function(n) {
-        var mini = document.getElementById('planner-mini-' + n);
-        var sec = document.getElementById('step-' + n + '-section');
-        if (!mini) return;
-        mini.classList.toggle('active', !!(sec && sec.classList.contains('active')));
-      });
-      if (!min && typeof syncPlannerCalendarSquare === 'function') {
+    function saveSectionMinState() {
+      try { localStorage.setItem('reg_slayer_section_min_v1', JSON.stringify(sectionMinState)); } catch (eS) {}
+      try {
+        localStorage.setItem('reg_slayer_tracts_min', sectionMinState.tracts ? '1' : '0');
+        plannerStepsMinimized = !!(sectionMinState.step1 && sectionMinState.step2 && sectionMinState.step3);
+        localStorage.setItem('reg_slayer_planner_steps_min', plannerStepsMinimized ? '1' : '0');
+      } catch (eL) {}
+    }
+
+    function sectionMinTarget(id) {
+      if (id === 'step1') return document.getElementById('step-1-section');
+      if (id === 'step2') return document.getElementById('step-2-section');
+      if (id === 'step3') return document.getElementById('step-3-section');
+      if (id === 'tracts') return document.getElementById('locations-under-steps');
+      if (id === 'solunar') return document.getElementById('wx-solunar-section');
+      if (id === 'hourly') return document.getElementById('wx-hourly-section');
+      return null;
+    }
+    function sectionMinButton(id) {
+      return document.getElementById('sec-min-' + id);
+    }
+
+    function applyOneSectionMin(id) {
+      var el = sectionMinTarget(id);
+      var btn = sectionMinButton(id);
+      var phone = (typeof isPhoneLayout === 'function' && isPhoneLayout());
+      // Phone: only tracts collapse; other sections stay expanded
+      var min = !!sectionMinState[id];
+      if (phone && id !== 'tracts') min = false;
+      if (el) el.classList.toggle('is-minimized', min);
+      if (btn) {
+        btn.textContent = min ? '+' : '−';
+        btn.setAttribute('aria-expanded', min ? 'false' : 'true');
+        var expandLab = min ? 'Expand' : 'Minimize';
+        btn.setAttribute('title', expandLab + ' section');
+        btn.setAttribute('aria-label', expandLab + ' section');
+      }
+    }
+
+    function updatePlannerHalfMinClasses() {
+      var root = document.documentElement;
+      if (!root || (typeof isPhoneLayout === 'function' && isPhoneLayout())) {
+        if (root) {
+          root.classList.remove('planner-left-half-min', 'planner-right-half-min');
+        }
+        return;
+      }
+      var leftMin = !!(sectionMinState.step1 && sectionMinState.step2 && sectionMinState.step3);
+      /*
+       * Right half reflow only when EVERY right collapsible is min (tracts + solunar + hourly).
+       * Tracts alone must collapse in place — do not stack under Open Tracts.
+       */
+      var rightMin = !!(sectionMinState.tracts && sectionMinState.solunar && sectionMinState.hourly);
+      var weatherMin = !!(sectionMinState.solunar && sectionMinState.hourly);
+      root.classList.toggle('planner-left-half-min', leftMin);
+      root.classList.toggle('planner-right-half-min', rightMin);
+      root.classList.toggle('weather-sections-min', weatherMin);
+      // Hide date banner while weather sections are minimized
+      try {
+        var banner = document.getElementById('current-data-banner');
+        if (weatherMin) {
+          if (banner) banner.style.display = 'none';
+        } else if (typeof updateCurrentDataBanner === 'function') {
+          updateCurrentDataBanner();
+        }
+      } catch (eBan) {}
+      // Map must reclaim width/height after stack reflow
+      try {
+        if (typeof scheduleDesktopMapFit === 'function') scheduleDesktopMapFit();
+        else if (typeof fitDesktopMapHeight === 'function') {
+          requestAnimationFrame(function() {
+            try { fitDesktopMapHeight(); } catch (eF) {}
+            if (typeof map !== 'undefined' && map) {
+              try { map.invalidateSize(false); } catch (eI) {}
+            }
+          });
+        }
+      } catch (eMapGrow) {}
+    }
+
+    function applyAllSectionMinStates() {
+      ['step1', 'step2', 'step3', 'tracts', 'solunar', 'hourly'].forEach(applyOneSectionMin);
+      updatePlannerHalfMinClasses();
+      if (typeof syncPlannerCalendarSquare === 'function') {
         requestAnimationFrame(function() {
           try { syncPlannerCalendarSquare(); } catch (eSq) {}
+          try { if (typeof fitDesktopMapHeight === 'function') fitDesktopMapHeight(); } catch (eFit) {}
         });
+      } else if (typeof fitDesktopMapHeight === 'function') {
+        requestAnimationFrame(function() { try { fitDesktopMapHeight(); } catch (e2) {} });
       }
       if (typeof map !== 'undefined' && map && typeof map.invalidateSize === 'function') {
         setTimeout(function() {
           try { map.invalidateSize({ animate: false }); } catch (eInv) {}
-        }, 80);
+        }, 100);
       }
+    }
+
+    function toggleSectionMin(id) {
+      if (!sectionMinState.hasOwnProperty(id)) return;
+      if (typeof isPhoneLayout === 'function' && isPhoneLayout() && id !== 'tracts') return;
+      sectionMinState[id] = !sectionMinState[id];
+      saveSectionMinState();
+      applyAllSectionMinStates();
+    }
+    window.toggleSectionMin = toggleSectionMin;
+    window.applyAllSectionMinStates = applyAllSectionMinStates;
+
+    /** Legacy whole-steps minimize → toggles all three step sections */
+    function applyPlannerStepsMinState() {
+      if (plannerStepsMinimized) {
+        sectionMinState.step1 = sectionMinState.step2 = sectionMinState.step3 = true;
+      }
+      applyAllSectionMinStates();
     }
     function togglePlannerStepsMin() {
       if (typeof isPhoneLayout === 'function' && isPhoneLayout()) return;
-      plannerStepsMinimized = !plannerStepsMinimized;
-      try { localStorage.setItem('reg_slayer_planner_steps_min', plannerStepsMinimized ? '1' : '0'); } catch (e) {}
-      applyPlannerStepsMinState();
+      var allMin = !!(sectionMinState.step1 && sectionMinState.step2 && sectionMinState.step3);
+      sectionMinState.step1 = sectionMinState.step2 = sectionMinState.step3 = !allMin;
+      saveSectionMinState();
+      applyAllSectionMinStates();
     }
     window.togglePlannerStepsMin = togglePlannerStepsMin;
     window.applyPlannerStepsMinState = applyPlannerStepsMinState;
@@ -13271,10 +14440,34 @@
       }
     })();
 
+    var pinEditorDirty = false;
+    function markPinEditorDirty() {
+      pinEditorDirty = true;
+    }
+    window.markPinEditorDirty = markPinEditorDirty;
+    function pinEditorHasPlaceableContent() {
+      // Editing an existing pin: click-away always saves
+      if (editingPinId) return true;
+      if (selectedPinIconId) return true;
+      var nameEl = document.getElementById('pin-name-input');
+      if (nameEl && nameEl.value && nameEl.value.trim()) return true;
+      if (pinEditorDirty) return true;
+      return false;
+    }
+    function cancelPinEditorSheet() {
+      // Cancel: discard without placing
+      pinEditorDirty = false;
+      selectedPinIconId = null;
+      editingPinId = null;
+      closePinEditorSheet();
+    }
+    window.cancelPinEditorSheet = cancelPinEditorSheet;
+
     function openPinEditorSheet(opts) {
       opts = opts || {};
       var sheet = document.getElementById('pin-editor-sheet');
       if (!sheet) return;
+      pinEditorDirty = false;
       ensureHuntContext();
       if (opts.mode === 'edit' && opts.loc) {
         editingPinId = opts.loc.id;
@@ -13305,10 +14498,19 @@
         }
         var title = document.getElementById('pes-title');
         if (title) title.textContent = 'Edit pin';
+        // Load notes into hidden field (TVA lines kept for save, stripped for display)
+        try {
+          var notesLoad = document.getElementById('pin-notes-input');
+          if (notesLoad) notesLoad.value = opts.loc.notes || '';
+        } catch (eNl) {}
       } else {
         editingPinId = null;
         if (document.getElementById('pin-name-input')) document.getElementById('pin-name-input').value = '';
         if (document.getElementById('pin-notes-input')) document.getElementById('pin-notes-input').value = '';
+        try {
+          var nmt = document.getElementById('pin-note-modal-text');
+          if (nmt) nmt.value = '';
+        } catch (eNm) {}
         selectedPinIconId = null;
         selectedPinColor = '#e59a18';
         selectedPinInnerColor = '#ffffff';
@@ -13329,7 +14531,7 @@
       if (cust) cust.style.display = 'none';
       if (custBtn) custBtn.classList.remove('is-open');
       onPinAsHuntStandChange();
-      if (typeof selectPinColor === 'function') selectPinColor(selectedPinColor);
+      if (typeof selectPinColor === 'function') selectPinColor(selectedPinColor, { silent: true });
       if (typeof renderPinIconGrid === 'function') renderPinIconGrid();
       if (typeof initAllColorPickers === 'function') initAllColorPickers();
       var outer = document.getElementById('pin-outer-color');
@@ -13341,8 +14543,10 @@
       if (inn) inn.value = selectedPinInnerColor;
       if (gly) gly.value = (selectedPinGlyphColor === 'natural') ? '#000000' : selectedPinGlyphColor;
       var cp = document.getElementById('cp-pin');
-      if (cp && typeof setColorPickerValue === 'function') setColorPickerValue(cp, selectedPinColor);
+      if (cp && typeof setColorPickerValue === 'function') setColorPickerValue(cp, selectedPinColor, { silent: true });
+      pinEditorDirty = false; // open/init should not count as customize
       updatePinEditorPreview();
+      try { syncPinNoteButtonLabel(); } catch (eN) {}
       sheet.classList.add('open');
       sheet.setAttribute('aria-hidden', 'false');
       try { wirePinEditorSheetDrag(); } catch (eD) {}
@@ -13360,6 +14564,18 @@
       }
       editingPinId = null;
     }
+    function tryCommitPinEditorOnDismiss() {
+      // Click-away / implicit dismiss: place pin if user chose an icon or customized
+      try {
+        if (pinEditorHasPlaceableContent() && clickLat != null && typeof savePinFromMap === 'function') {
+          savePinFromMap();
+          return true;
+        }
+      } catch (eC) {}
+      cancelPinEditorSheet();
+      return false;
+    }
+    window.tryCommitPinEditorOnDismiss = tryCommitPinEditorOnDismiss;
     function togglePinCustomizePanel() {
       var p = document.getElementById('pes-customize-panel');
       var b = document.getElementById('pes-customize-btn');
@@ -13367,7 +14583,11 @@
       var open = p.style.display === 'none' || !p.style.display;
       p.style.display = open ? 'block' : 'none';
       if (b) b.classList.toggle('is-open', open);
-      if (open) updatePinEditorPreview();
+      if (open) {
+        // Sync picker to current slot + force live preview
+        try { setPinColorSlot(pinColorSlot || 'pin'); } catch (eS) {}
+        updatePinEditorPreview();
+      }
     }
     function togglePinIdealPanel() {
       var p = document.getElementById('pin-ideal-panel');
@@ -13395,7 +14615,17 @@
         iconColor: selectedPinGlyphColor,
         iconId: selectedPinIconId || null
       };
-      box.innerHTML = (typeof buildCustomPinMarkerHtml === 'function') ? buildCustomPinMarkerHtml(loc) : '';
+      var html = (typeof buildCustomPinMarkerHtml === 'function') ? buildCustomPinMarkerHtml(loc) : '';
+      // Apply size slider so preview matches placement scale
+      var scale = 1;
+      try {
+        var psz = document.getElementById('pin-size-slider');
+        if (psz) scale = Math.max(0.25, Math.min(1.5, (parseInt(psz.value, 10) || 100) / 100));
+      } catch (eSz) {}
+      if (scale !== 1 && html) {
+        html = '<div style="transform:scale(' + scale + ');transform-origin:center center;">' + html + '</div>';
+      }
+      box.innerHTML = html;
     }
     function onPinAsHuntStandChange() {
       var asH = document.getElementById('pin-as-hunt');
@@ -13407,18 +14637,53 @@
       if (listRow) listRow.style.display = on ? 'flex' : 'none';
       if (ideal) ideal.style.display = on ? 'block' : 'none';
     }
-    function togglePinNotesUi() {
-      var sheet = document.getElementById('pin-editor-sheet');
+    function syncPinNoteButtonLabel() {
       var ta = document.getElementById('pin-notes-input');
       var btn = document.getElementById('pes-note-btn');
-      if (!ta) return;
-      var open = ta.style.display === 'none' || !ta.style.display;
-      ta.style.display = open ? 'block' : 'none';
-      if (sheet) sheet.classList.toggle('notes-open', open);
-      if (btn) btn.textContent = (ta.value && ta.value.trim()) ? 'Edit note' : (open ? 'Hide note' : 'Add note');
-      if (open) try { ta.focus(); } catch (e) {}
+      if (!btn) return;
+      var has = !!(ta && ta.value && ta.value.trim());
+      btn.textContent = has ? 'Edit note' : 'Add note';
+    }
+    function openPinNoteModal() {
+      var ta = document.getElementById('pin-notes-input');
+      var modal = document.getElementById('pin-note-modal');
+      var area = document.getElementById('pin-note-modal-text');
+      if (!modal || !area) return;
+      area.value = ta ? (ta.value || '') : '';
+      modal.classList.add('active');
+      try {
+        if (modal.parentNode !== document.body) document.body.appendChild(modal);
+      } catch (eM) {}
+      setTimeout(function() { try { area.focus(); } catch (eF) {} }, 30);
+    }
+    function closePinNoteModal(keepText) {
+      var modal = document.getElementById('pin-note-modal');
+      var area = document.getElementById('pin-note-modal-text');
+      var ta = document.getElementById('pin-notes-input');
+      // Always persist typed text into the pin field (even if empty after Clear+Done)
+      if (keepText !== false && area && ta) {
+        ta.value = area.value;
+        markPinEditorDirty();
+      }
+      if (modal) modal.classList.remove('active');
+      syncPinNoteButtonLabel();
+    }
+    function clearPinNoteModal() {
+      var area = document.getElementById('pin-note-modal-text');
+      var ta = document.getElementById('pin-notes-input');
+      if (area) area.value = '';
+      if (ta) ta.value = '';
+      markPinEditorDirty();
+      syncPinNoteButtonLabel();
+    }
+    function togglePinNotesUi() {
+      openPinNoteModal();
     }
     window.togglePinNotesUi = togglePinNotesUi;
+    window.openPinNoteModal = openPinNoteModal;
+    window.closePinNoteModal = closePinNoteModal;
+    window.clearPinNoteModal = clearPinNoteModal;
+    window.syncPinNoteButtonLabel = syncPinNoteButtonLabel;
     var pinsHideAllMode = false;
     function toggleHideAllPins() {
       pinsHideAllMode = !pinsHideAllMode;
@@ -14527,60 +15792,35 @@
     window.wireMapLayersMenu = wireMapLayersMenu;
 
     // ========== V6.4 extras ==========
+    /** Measure/draw use system crosshair (plus); idle map uses grab/pointer via CSS */
     function buildToolCursors() {
-      // Small red-tinted cursors with black outline (~18px, slightly larger than arrow) (#17)
-      function make(src, hotX, hotY, color) {
-        return new Promise(function(resolve) {
-          var img = new Image();
-          img.crossOrigin = 'anonymous';
-          img.onload = function() {
-            try {
-              var s = 20;
-              var c = document.createElement('canvas');
-              c.width = s; c.height = s;
-              var ctx = c.getContext('2d');
-              ctx.imageSmoothingEnabled = true;
-              // black outline
-              ctx.shadowColor = '#000';
-              ctx.shadowBlur = 0;
-              ctx.lineWidth = 2;
-              ctx.drawImage(img, 1, 1, s - 2, s - 2);
-              // recolor to red-ish matching tool buttons
-              var id = ctx.getImageData(0, 0, s, s);
-              var d = id.data;
-              for (var i = 0; i < d.length; i += 4) {
-                if (d[i + 3] < 20) continue;
-                // keep alpha; force toward red tool color
-                var a = d[i + 3] / 255;
-                d[i] = Math.min(255, (color[0] * 0.85 + d[i] * 0.15) | 0);
-                d[i + 1] = Math.min(255, (color[1] * 0.85 + d[i + 1] * 0.15) | 0);
-                d[i + 2] = Math.min(255, (color[2] * 0.85 + d[i + 2] * 0.15) | 0);
-              }
-              ctx.putImageData(id, 0, 0);
-              // stroke outline
-              ctx.globalCompositeOperation = 'source-over';
-              var url = c.toDataURL('image/png');
-              resolve('url(' + JSON.stringify(url) + ') ' + hotX + ' ' + hotY + ', crosshair');
-            } catch (e) {
-              resolve('crosshair');
-            }
-          };
-          img.onerror = function() { resolve('crosshair'); };
-          img.src = src;
-        });
-      }
-      Promise.all([
-        make('icons/tools/measure.png?v=tool3', 8, 8, [220, 38, 38]),
-        make('icons/tools/draw.png?v=tool3', 3, 16, [220, 38, 38])
-      ]).then(function(cursors) {
-        try {
-          document.documentElement.style.setProperty('--cursor-measure', cursors[0]);
-          document.documentElement.style.setProperty('--cursor-draw', cursors[1]);
-        } catch (e) {}
-      });
+      try {
+        document.documentElement.style.setProperty('--cursor-measure', 'crosshair');
+        document.documentElement.style.setProperty('--cursor-draw', 'crosshair');
+      } catch (e) {}
     }
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', buildToolCursors);
-    else buildToolCursors();
+    function applyActiveToolCursor() {
+      var wrap = document.querySelector('.map-wrapper');
+      var mapEl = document.getElementById('leaflet-map');
+      if (!wrap) return;
+      var c = '';
+      if (wrap.classList.contains('mode-measure') ||
+          wrap.classList.contains('mode-draw') ||
+          wrap.classList.contains('mode-drawline')) {
+        c = 'crosshair';
+      }
+      try {
+        if (mapEl) mapEl.style.cursor = c;
+        var lc = document.querySelector('.map-wrapper .leaflet-container');
+        if (lc) lc.style.cursor = c || 'grab';
+        if (typeof map !== 'undefined' && map && map.getContainer) {
+          map.getContainer().style.cursor = c || 'grab';
+        }
+      } catch (eC) {}
+    }
+    window.applyActiveToolCursor = applyActiveToolCursor;
+    window.buildToolCursors = buildToolCursors;
+    buildToolCursors();
 
     function persistCompassModeStyle() {
       try {
@@ -14621,16 +15861,16 @@
       var sheet = document.getElementById('pin-editor-sheet');
       if (!sheet || !sheet.classList.contains('open')) return;
       if (sheet.contains(ev.target)) return;
-      if (ev.target && ev.target.closest && (ev.target.closest('.map-dot-menu') || ev.target.closest('.color-picker') || ev.target.closest('.app-prompt-modal'))) return;
+      if (ev.target && ev.target.closest && (
+        ev.target.closest('.map-dot-menu') ||
+        ev.target.closest('.color-picker') ||
+        ev.target.closest('.app-prompt-modal') ||
+        ev.target.closest('.map-item-confirm')
+      )) return;
       try {
-        var hasIcon = !!selectedPinIconId;
-        var nameEl = document.getElementById('pin-name-input');
-        var hasName = nameEl && nameEl.value && nameEl.value.trim();
-        if ((hasIcon || hasName) && clickLat != null && typeof savePinFromMap === 'function') {
-          savePinFromMap();
-        } else if (typeof closePinEditorSheet === 'function') {
-          closePinEditorSheet();
-        }
+        // Selected pin or any customize → drop; empty sheet click-away → do nothing (close)
+        if (typeof tryCommitPinEditorOnDismiss === 'function') tryCommitPinEditorOnDismiss();
+        else if (typeof closePinEditorSheet === 'function') closePinEditorSheet();
       } catch (e) {
         try { closePinEditorSheet(); } catch (e2) {}
       }
@@ -15955,6 +17195,21 @@
         wrap.classList.toggle('mode-drawline', drawingLine);
         wrap.classList.toggle('tool-chrome-active', active);
       }
+      // Measure icon / draw icon cursor on the map
+      try {
+        if (typeof applyActiveToolCursor === 'function') applyActiveToolCursor();
+        else {
+          var mapEl0 = document.getElementById('leaflet-map');
+          if (mapEl0) mapEl0.style.cursor = active ? 'crosshair' : '';
+        }
+        if (!active) {
+          var mapEl1 = document.getElementById('leaflet-map');
+          var lc1 = document.querySelector('.map-wrapper .leaflet-container');
+          if (mapEl1) mapEl1.style.cursor = '';
+          if (lc1) lc1.style.cursor = '';
+          if (typeof map !== 'undefined' && map && map.getContainer) map.getContainer().style.cursor = '';
+        }
+      } catch (eCur) {}
       var tools = document.getElementById('map-draw-tools');
       if (tools) {
         tools.classList.toggle('tool-active', active);
@@ -17088,6 +18343,27 @@
     }
     window.finishMapDraw = finishMapDraw;
 
+    var shapeColorSlot = 'line'; // line | fill
+    function setShapeColorSlot(slot) {
+      shapeColorSlot = (slot === 'fill') ? 'fill' : 'line';
+      var bL = document.getElementById('shape-slot-line');
+      var bF = document.getElementById('shape-slot-fill');
+      if (bL) bL.classList.toggle('is-active', shapeColorSlot === 'line');
+      if (bF) bF.classList.toggle('is-active', shapeColorSlot === 'fill');
+      var lineH = document.getElementById('shape-line-color');
+      var fillH = document.getElementById('shape-fill-color');
+      var actH = document.getElementById('shape-active-color');
+      var val = shapeColorSlot === 'fill'
+        ? ((fillH && fillH.value) || '#e59a18')
+        : ((lineH && lineH.value) || '#e59a18');
+      if (actH) actH.value = val;
+      var cp = document.getElementById('cp-shape');
+      if (cp && typeof setColorPickerValue === 'function') {
+        setColorPickerValue(cp, val, { silent: true });
+      }
+    }
+    window.setShapeColorSlot = setShapeColorSlot;
+
     function openShapeSaveModal(ring) {
       var c = ringCentroid(ring);
       var landInfo = c ? resolveLandContextAtPoint(c.lat, c.lng) : null;
@@ -17109,22 +18385,50 @@
           : '';
       }
       var fillChk = document.getElementById('shape-fill-enabled');
-      var fillRow = document.getElementById('shape-fill-color-row');
-      if (fillChk && !fillChk._wiredFill) {
-        fillChk._wiredFill = true;
-        fillChk.addEventListener('change', function() {
-          if (fillRow) fillRow.style.opacity = fillChk.checked ? '1' : '0.4';
-        });
-      }
-      if (fillRow && fillChk) fillRow.style.opacity = fillChk.checked ? '1' : '0.4';
       var permChk = document.getElementById('shape-permission-chk');
       if (permChk) permChk.checked = false;
-      // Ensure pickers are mounted and recent customs refreshed
       if (typeof initAllColorPickers === 'function') initAllColorPickers();
-      var lineCp = document.getElementById('cp-shape-line');
-      var fillCp = document.getElementById('cp-shape-fill');
-      if (lineCp && typeof setColorPickerValue === 'function') setColorPickerValue(lineCp, '#e59a18');
-      if (fillCp && typeof setColorPickerValue === 'function') setColorPickerValue(fillCp, '#e59a18');
+      var lineH = document.getElementById('shape-line-color');
+      var fillH = document.getElementById('shape-fill-color');
+      if (lineH) lineH.value = '#e59a18';
+      if (fillH) fillH.value = '#e59a18';
+      shapeColorSlot = 'line';
+      setShapeColorSlot('line');
+      // Route shared picker → line/fill hidden fields
+      var act = document.getElementById('shape-active-color');
+      if (act && !act._shapeSlotWired) {
+        act._shapeSlotWired = true;
+        act.addEventListener('change', function() {
+          var v = act.value;
+          if (!v) return;
+          if (shapeColorSlot === 'fill') {
+            var f = document.getElementById('shape-fill-color');
+            if (f) f.value = v;
+          } else {
+            var l = document.getElementById('shape-line-color');
+            if (l) l.value = v;
+          }
+        });
+      }
+      // Disable fill slot chrome when fill unchecked
+      if (fillChk && !fillChk._wiredFillSlot) {
+        fillChk._wiredFillSlot = true;
+        fillChk.addEventListener('change', function() {
+          var bF = document.getElementById('shape-slot-fill');
+          if (bF) {
+            bF.disabled = !fillChk.checked;
+            bF.style.opacity = fillChk.checked ? '1' : '0.45';
+          }
+          if (!fillChk.checked && shapeColorSlot === 'fill') setShapeColorSlot('line');
+        });
+      }
+      if (fillChk) {
+        var bF0 = document.getElementById('shape-slot-fill');
+        if (bF0) {
+          bF0.disabled = !fillChk.checked;
+          bF0.style.opacity = fillChk.checked ? '1' : '0.45';
+        }
+      }
       showAppPromptModal('shape-save-modal');
       setTimeout(function() { if (nameInp) nameInp.focus(); }, 50);
     }
@@ -18195,12 +19499,13 @@
     }
 
     function deleteMeasuredPath(id) {
-      if (!confirm('Delete this line?')) return;
-      var paths = loadMeasuredPathsFromStorage().filter(function(p) { return String(p.id) !== String(id); });
-      saveMeasuredPathsToStorage(paths);
-      if (map) map.closePopup();
-      drawMeasuredPathsOnMap();
-      if (pathEditId && String(pathEditId) === String(id)) cancelPathEditModal();
+      showMapItemConfirm('Delete this line?', function() {
+        var paths = loadMeasuredPathsFromStorage().filter(function(p) { return String(p.id) !== String(id); });
+        saveMeasuredPathsToStorage(paths);
+        if (map) map.closePopup();
+        drawMeasuredPathsOnMap();
+        if (pathEditId && String(pathEditId) === String(id)) cancelPathEditModal();
+      });
     }
     window.deleteMeasuredPath = deleteMeasuredPath;
 
@@ -18598,19 +19903,20 @@
     window.openCustomAreaRegs = openCustomAreaRegs;
 
     function deleteCustomArea(id) {
-      if (!confirm('Delete this custom hunt area?')) return;
-      var areas = loadCustomAreasFromStorage().filter(function(a) { return String(a.id) !== String(id); });
-      saveCustomAreasToStorage(areas);
-      for (var i = locations.length - 1; i >= 0; i--) {
-        if (locations[i] && String(locations[i].id) === String(id)) locations.splice(i, 1);
-      }
-      if (String(selectedLocationId) === String(id)) {
-        selectedLocationId = null;
-        if (typeof resetDashboard === 'function') resetDashboard();
-      }
-      if (map) map.closePopup();
-      drawCustomAreasOnMap();
-      if (typeof updateAvailableList === 'function' && selectedDate && selectedWeapon) updateAvailableList();
+      showMapItemConfirm('Delete this custom hunt area?', function() {
+        var areas = loadCustomAreasFromStorage().filter(function(a) { return String(a.id) !== String(id); });
+        saveCustomAreasToStorage(areas);
+        for (var i = locations.length - 1; i >= 0; i--) {
+          if (locations[i] && String(locations[i].id) === String(id)) locations.splice(i, 1);
+        }
+        if (String(selectedLocationId) === String(id)) {
+          selectedLocationId = null;
+          if (typeof resetDashboard === 'function') resetDashboard();
+        }
+        if (map) map.closePopup();
+        drawCustomAreasOnMap();
+        if (typeof updateAvailableList === 'function' && selectedDate && selectedWeapon) updateAvailableList();
+      });
     }
     window.deleteCustomArea = deleteCustomArea;
 
@@ -19237,17 +20543,57 @@
       var wheel = root.querySelector('input[type="color"]');
       if (wheel) wheel.value = hex;
       var bind = root.getAttribute('data-bind-var');
-      if (bind === 'selectedPinColor') {
-        selectedPinColor = hex;
-        var outerH = document.getElementById('pin-outer-color');
-        if (outerH) outerH.value = hex;
+      // Shape save: one picker for line/fill slots
+      if (root.id === 'cp-shape') {
+        var sSlot = (typeof shapeColorSlot !== 'undefined') ? shapeColorSlot : 'line';
+        var actH = document.getElementById('shape-active-color');
+        if (actH) actH.value = hex;
+        if (sSlot === 'fill') {
+          var fH = document.getElementById('shape-fill-color');
+          if (fH) fH.value = hex;
+        } else {
+          var lH = document.getElementById('shape-line-color');
+          if (lH) lH.value = hex;
+        }
       }
-      if (bind === 'selectedPinInnerColor') selectedPinInnerColor = hex;
-      if (bind === 'selectedPinGlyphColor') selectedPinGlyphColor = hex;
+      // Pin editor uses one picker for pin/inside/icon slots — route by pinColorSlot
+      if (root.id === 'cp-pin' || bind === 'selectedPinColor') {
+        var slot = (typeof pinColorSlot !== 'undefined') ? pinColorSlot : 'pin';
+        if (slot === 'inside') {
+          selectedPinInnerColor = hex;
+          var innH = document.getElementById('pin-inner-color');
+          if (innH) innH.value = hex;
+        } else if (slot === 'icon') {
+          selectedPinGlyphColor = hex;
+          var glyH = document.getElementById('pin-glyph-color');
+          if (glyH) glyH.value = hex;
+        } else {
+          selectedPinColor = hex;
+          var outerH = document.getElementById('pin-outer-color');
+          if (outerH) outerH.value = hex;
+        }
+        if (!opts.silent) {
+          try { if (typeof markPinEditorDirty === 'function') markPinEditorDirty(); } catch (eD0) {}
+        }
+        try { if (typeof updatePinEditorPreview === 'function') updatePinEditorPreview(); } catch (ePrev0) {}
+      }
+      if (bind === 'selectedPinInnerColor') {
+        selectedPinInnerColor = hex;
+        try { if (typeof updatePinEditorPreview === 'function') updatePinEditorPreview(); } catch (eP1) {}
+      }
+      if (bind === 'selectedPinGlyphColor') {
+        selectedPinGlyphColor = hex;
+        try { if (typeof updatePinEditorPreview === 'function') updatePinEditorPreview(); } catch (eP2) {}
+      }
       if (bind === 'selectedHuntColor') selectedHuntColor = hex;
       // Never allow pin disc and icon to be the same color
-      if (!opts.skipPinDistinct && (bind === 'selectedPinInnerColor' || bind === 'selectedPinGlyphColor')) {
-        applyPinInnerIconDistinct(bind === 'selectedPinInnerColor' ? 'icon' : 'inner');
+      if (!opts.skipPinDistinct && (root.id === 'cp-pin' || bind === 'selectedPinInnerColor' || bind === 'selectedPinGlyphColor')) {
+        var distSlot = (typeof pinColorSlot !== 'undefined' && root.id === 'cp-pin')
+          ? (pinColorSlot === 'inside' ? 'icon' : (pinColorSlot === 'icon' ? 'inner' : null))
+          : (bind === 'selectedPinInnerColor' ? 'icon' : (bind === 'selectedPinGlyphColor' ? 'inner' : null));
+        if (distSlot && typeof applyPinInnerIconDistinct === 'function') {
+          applyPinInnerIconDistinct(distSlot);
+        }
       }
       if (typeof opts.onChange === 'function') opts.onChange(hex);
       // Live compass mode preview while settings open
@@ -19255,6 +20601,12 @@
         try {
           if (typeof liveCompassModePreviewFromUi === 'function') liveCompassModePreviewFromUi();
         } catch (eCm) {}
+      }
+      // Fire change on hidden input so any listeners stay in sync
+      if (input && !opts.silent) {
+        try {
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+        } catch (eFire) {}
       }
     }
 
@@ -19350,7 +20702,7 @@
         setColorPickerValue(root, root.getAttribute('data-value') || initial);
       };
 
-      setColorPickerValue(root, initial);
+      setColorPickerValue(root, initial, { silent: true });
     }
 
     function initAllColorPickers() {
@@ -19361,14 +20713,24 @@
     window.initAllColorPickers = initAllColorPickers;
     window.setColorPickerValue = setColorPickerValue;
 
-    function selectPinColor(c) {
+    function selectPinColor(c, opts) {
+      opts = opts || {};
       selectedPinColor = c;
       var root = document.getElementById('cp-pin');
-      if (root) setColorPickerValue(root, c);
+      // Prefer outer slot when programmatically setting pin body color
+      var prevSlot = (typeof pinColorSlot !== 'undefined') ? pinColorSlot : 'pin';
+      if (opts.forceSlot !== false) {
+        try { pinColorSlot = 'pin'; } catch (eS) {}
+      }
+      if (root) setColorPickerValue(root, c, { silent: !!opts.silent });
+      try { pinColorSlot = prevSlot; } catch (eS2) {}
       var outer = document.getElementById('pin-outer-color');
       if (outer) outer.value = c;
       var hv = document.getElementById('pin-color-value');
       if (hv) hv.value = c;
+      if (!opts.silent) {
+        try { if (typeof updatePinEditorPreview === 'function') updatePinEditorPreview(); } catch (eP) {}
+      }
     }
     function selectHuntColor(c) {
       selectedHuntColor = c;
@@ -19509,22 +20871,22 @@
       );
     }
     
-    /** Mini map-style pin for the add-pin picker (plain + icon schemes). */
+    /**
+     * Picker thumb = inside of the pin only (circle + icon), not the full teardrop,
+     * so icons are easy to read in the Add pin grid.
+     */
     function buildPinPickerThumbHtml(opts) {
       opts = opts || {};
-      var loc = {
-        iconId: opts.iconId || null,
-        color: opts.color || opts.outer || '#e59a18',
-        innerColor: opts.innerColor || opts.inner || '#ffffff',
-        iconColor: (opts.iconColor != null ? opts.iconColor : (opts.glyph != null ? opts.glyph : 'natural'))
-      };
-      var full = (typeof buildCustomPinMarkerHtml === 'function')
-        ? buildCustomPinMarkerHtml(loc)
+      var iconId = opts.iconId || null;
+      var inner = opts.innerColor || opts.inner || '#ffffff';
+      var glyph = (opts.iconColor != null ? opts.iconColor : (opts.glyph != null ? opts.glyph : 'natural'));
+      var iconHtml = iconId
+        ? (typeof pinIconMarkup === 'function' ? pinIconMarkup(iconId, glyph, 32) : '')
         : '';
-      var scale = opts.scale != null ? opts.scale : 0.58;
       return (
-        '<div class="pin-picker-thumb" style="width:43px;height:53px;transform:scale(' + scale +
-        ');transform-origin:center center;pointer-events:none;">' + full + '</div>'
+        '<div class="pin-picker-disc" style="background:' + inner + ';" title="">' +
+          iconHtml +
+        '</div>'
       );
     }
     function pinSchemeForPicker(iconId) {
@@ -19554,6 +20916,8 @@ function togglePinIconPicker() {
     }
     function clearSelectedPinIcon() {
       selectedPinIconId = null;
+      // Choosing plain pin counts as a selection so click-away can place it
+      markPinEditorDirty();
       try {
         var sch = (typeof pinSchemeForPicker === 'function') ? pinSchemeForPicker(null) : null;
         if (sch) {
@@ -19574,6 +20938,7 @@ function togglePinIconPicker() {
     }
     function selectPinIcon(id) {
       selectedPinIconId = id || null;
+      markPinEditorDirty();
       if (id) {
         var icMeta = getPinIconById(id);
         var defOuter = (icMeta && icMeta.defaultColor) ? icMeta.defaultColor : '#1a1a1a';
@@ -19710,10 +21075,30 @@ function togglePinIconPicker() {
     window.setHuntStandType = setHuntStandType;
 
     function savePinFromMap() {
+      // Flush open note modal into the hidden field before reading notes
+      try {
+        var noteModal = document.getElementById('pin-note-modal');
+        var noteArea = document.getElementById('pin-note-modal-text');
+        var notesField = document.getElementById('pin-notes-input');
+        if (noteModal && noteModal.classList.contains('active') && noteArea && notesField) {
+          notesField.value = noteArea.value;
+        } else if (noteArea && notesField && noteArea.value && !notesField.value) {
+          notesField.value = noteArea.value;
+        }
+        if (noteModal) noteModal.classList.remove('active');
+      } catch (eFlushN) {}
       var nameEl = document.getElementById('pin-name-input');
       var notesEl = document.getElementById('pin-notes-input');
       var nameIn = nameEl ? nameEl.value.trim() : '';
-      let notes = notesEl ? notesEl.value.trim() : '';
+      // User note only (TVA appended separately so it can be filtered in the popup)
+      var userNote = notesEl ? String(notesEl.value || '').trim() : '';
+      // Drop any prior auto TVA lines from the field so we don't duplicate
+      if (userNote) {
+        userNote = userNote.split(/\n+/).filter(function(line) {
+          return line && !/^TVA Land:/i.test(line.trim());
+        }).join('\n').trim();
+      }
+      let notes = userNote;
       const detected = detectBoundaryAndZone(clickLat, clickLng);
       const tva = lastClickTva;
       if (tva) {
@@ -19854,6 +21239,7 @@ function togglePinIconPicker() {
       if (notesEl) notesEl.value = '';
       selectedPinIconId = null;
       editingPinId = null;
+      pinEditorDirty = false;
       try { closePinEditorSheet(); } catch (eClose) {}
       try { closeDetectionToast(); } catch (eT) {}
       clearMapDot();
@@ -20050,6 +21436,70 @@ function togglePinIconPicker() {
     }
     window.openEditPin = openEditPin;
 
+    /** Pin popup: Rules / Weather / Offline — same as free map-dot, using pin lat/lng */
+    function handlePinPopupAction(pinId, act) {
+      var loc = locations.find(function(l) { return String(l.id) === String(pinId); });
+      if (!loc || loc.lat == null || loc.lng == null) return false;
+      clickLat = Number(loc.lat);
+      clickLng = Number(loc.lng);
+      try {
+        if (act === 'weather') {
+          ensureHuntContext();
+          // Prefer saved weather when present; always allow dashboard for pin location
+          if (typeof selectSavedPin === 'function' && (loc.isHunt || loc.savedWeather)) {
+            selectSavedPin(pinId);
+          } else {
+            var detected = detectBoundaryAndZone(clickLat, clickLng);
+            selectWeatherAtMapPoint(clickLat, clickLng, detected, loc.tva || null, {
+              skipScroll: false,
+              showOverlay: isMapFullscreen()
+            });
+            if (map) map.closePopup();
+          }
+          return false;
+        }
+        if (act === 'regs') {
+          ensureHuntContext();
+          var stRegs = evaluateMapSpotHuntStatus(clickLat, clickLng);
+          var detectedR = detectBoundaryAndZone(clickLat, clickLng);
+          if (stRegs && stRegs.landKind === 'public' && lastClickPublicLand && lastClickPublicLand.layer) {
+            var plR = lastClickPublicLand;
+            if (plR.cacheId && window.__regsCache && window.__regsCache[plR.cacheId]) {
+              openDeerRegsFromCache(plR.cacheId);
+            } else {
+              var cidR = cachePublicLandRegs(plR.layer, plR.attrs || {}, plR.name);
+              plR.cacheId = cidR;
+              openDeerRegsFromCache(cidR);
+            }
+          } else {
+            openDeerRegsPanel(
+              (stRegs && stRegs.name) || loc.name || ('Pin · Zone ' + ((stRegs && stRegs.zone) || detectedR.zone || 'A')),
+              (stRegs && stRegs.landKind === 'public') ? 'public' : 'private',
+              {
+                zone: (stRegs && stRegs.zone) || detectedR.zone || 'A',
+                owner: (stRegs && stRegs.owner) || '',
+                address: (stRegs && stRegs.address) || '',
+                parcelnumb: (stRegs && stRegs.parcelnumb) || ''
+              }
+            );
+          }
+          if (map) map.closePopup();
+          return false;
+        }
+        if (act === 'offline-save') {
+          // Reuse map-dot offline pack flow at pin coordinates
+          if (typeof handleMapDotAction === 'function') {
+            return handleMapDotAction('offline-save');
+          }
+        }
+      } catch (err) {
+        console.error('handlePinPopupAction', act, err);
+        alert('Something went wrong with that action. Try again.');
+      }
+      return false;
+    }
+    window.handlePinPopupAction = handlePinPopupAction;
+
     function pinIsIdealNow(loc) {
       if (!loc || !loc.idealConditions) return false;
       var idc = loc.idealConditions;
@@ -20129,13 +21579,25 @@ function togglePinIconPicker() {
         var titleLine = showQualifier
           ? (isStandPin ? 'Stand' : (loc.isHunt ? 'Hunt' : 'Pin'))
           : escHtml(loc.name);
-        var notesBlock = (loc.notes && String(loc.notes).trim())
-          ? '<div class="mdm-sub" style="margin-top:4px;white-space:pre-wrap;">' + escHtml(String(loc.notes).trim()) + '</div>'
+        // Hunt status banner (same red/green box as free map-dot)
+        var statusBlock = '';
+        try {
+          if (typeof evaluateMapSpotHuntStatus === 'function' && typeof buildHuntStatusBannerHtml === 'function') {
+            var stPin = evaluateMapSpotHuntStatus(loc.lat, loc.lng);
+            if (stPin) statusBlock = buildHuntStatusBannerHtml(stPin);
+          }
+        } catch (eStP) {}
+        // Notes under name, above who/when (strip auto TVA line)
+        var rawNotes = (loc.notes && String(loc.notes).trim()) ? String(loc.notes).trim() : '';
+        var noteLines = rawNotes
+          ? rawNotes.split(/\n+/).filter(function(line) {
+              return line && !/^TVA Land:/i.test(line.trim());
+            })
+          : [];
+        var notesBlock = noteLines.length
+          ? '<div class="mdm-sub mdm-pin-notes" style="margin-top:5px;margin-bottom:2px;white-space:pre-wrap;color:#e8efe4;font-size:12px;line-height:1.35;">' +
+              escHtml(noteLines.join('\n')) + '</div>'
           : '';
-        var weatherBtn = '';
-        if (loc.isHunt || loc.savedWeather) {
-          weatherBtn = '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.selectSavedPin(\'' + safeId + '\');return false;">Weather</button>';
-        }
         var idealLine = '';
         if (loc.isHunt && loc.idealConditions) {
           idealLine = isIdeal
@@ -20152,25 +21614,38 @@ function togglePinIconPicker() {
               var mm = String(d.getMonth() + 1).padStart(2, '0');
               var yy = String(d.getFullYear()).slice(-2);
               var tm = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-              createdMeta = '<div class="mdm-sub" style="font-size:10px;opacity:0.85;">' +
+              createdMeta = '<div class="mdm-sub mdm-pin-meta" style="font-size:10px;opacity:0.85;margin-top:4px;">' +
                 (loc.ownerName ? escHtml(loc.ownerName) + ' · ' : '') + dd + '-' + mm + '-' + yy + ' ' + tm + '</div>';
             }
+          } else if (loc.ownerName) {
+            createdMeta = '<div class="mdm-sub mdm-pin-meta" style="font-size:10px;opacity:0.85;margin-top:4px;">' +
+              escHtml(loc.ownerName) + '</div>';
           }
         } catch (eMeta) {}
-        var huntHead = loc.isHunt ? '<div class="mdm-title">Hunt</div>' : '';
         var nameTitle = loc.isHunt ? escHtml(loc.name || 'Hunt') : titleLine;
+        var nameBlock = showQualifier && !loc.isHunt
+          ? '<div class="mdm-title">' + titleLine + '</div><div class="mdm-sub">' + escHtml(loc.name || 'Pin') + '</div>'
+          : '<div class="mdm-title">' + nameTitle + '</div>';
+        /*
+         * Pin popup = free-dot options (status + Rules/Weather/Share) +
+         * pin info (name, notes, who/when) + Hide / Edit / Trash at bottom.
+         */
         var popupHtml =
           '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
-            huntHead +
-            (showQualifier && !loc.isHunt
-              ? '<div class="mdm-title">' + titleLine + '</div><div class="mdm-sub">' + escHtml(loc.name || 'Pin') + '</div>'
-              : '<div class="mdm-title">' + nameTitle + '</div>') +
-            idealLine +
-            notesBlock +
-            createdMeta +
-            weatherBtn +
-            '<button type="button" class="mdm-btn share" onclick="event.preventDefault();event.stopPropagation();window.shareSavedPinChooser(\'' + safeId + '\');return false;">Share</button>' +
-            '<div class="mdm-footer-row">' +
+            statusBlock +
+            '<div class="mdm-actions-grid">' +
+              '<button type="button" class="mdm-btn regs" onclick="event.preventDefault();event.stopPropagation();window.handlePinPopupAction(\'' + safeId + '\',\'regs\');return false;">Rules &amp; regs</button>' +
+              '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.handlePinPopupAction(\'' + safeId + '\',\'weather\');return false;">Get weather</button>' +
+              '<button type="button" class="mdm-btn share" onclick="event.preventDefault();event.stopPropagation();window.shareSavedPinChooser(\'' + safeId + '\');return false;">Share</button>' +
+              '<button type="button" class="mdm-btn" style="background:#1a4a5c;" onclick="event.preventDefault();event.stopPropagation();window.handlePinPopupAction(\'' + safeId + '\',\'offline-save\');return false;">Offline map</button>' +
+            '</div>' +
+            '<div class="mdm-pin-info" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08);">' +
+              nameBlock +
+              notesBlock +
+              createdMeta +
+              idealLine +
+            '</div>' +
+            '<div class="mdm-footer-row" style="margin-top:8px;">' +
               '<button type="button" class="mdm-edit-btn" style="flex:1;background:#1a4a5c;" onclick="event.preventDefault();event.stopPropagation();window.togglePinHidden(\'' + safeId + '\');return false;">' + (loc.hidden ? 'Unhide' : 'Hide') + '</button>' +
               '<button type="button" class="mdm-edit-btn" style="flex:1;" onclick="event.preventDefault();event.stopPropagation();window.openEditPin(\'' + safeId + '\');return false;">Edit</button>' +
               '<button type="button" class="mdm-trash-btn" title="Delete" aria-label="Delete" onclick="event.preventDefault();event.stopPropagation();window.deletePin(\'' + safeId + '\');return false;">' +
@@ -20261,40 +21736,137 @@ function togglePinIconPicker() {
         huntMarkerGroup.addLayer(m);
       });
     }
-    function deleteHunt(id) {
-      if (!confirm('Delete this past hunt?')) return;
-      historicalHunts = historicalHunts.filter(function(h) { return String(h.id) !== String(id); });
-      try { localStorage.setItem('alabama_hunt_historical_hunts', JSON.stringify(historicalHunts)); } catch (eH) {}
-      if (map) map.closePopup();
-      drawHuntsOnMap();
+    /**
+     * Confirmation panel at the map popup (or last click) instead of browser confirm().
+     */
+    function showMapItemConfirm(message, onYes, onNo) {
       try {
-        if (typeof window.regSlayerMapDataChanged === 'function') window.regSlayerMapDataChanged();
-        else if (window.RegSlayerCloud && typeof window.RegSlayerCloud.markDirty === 'function') window.RegSlayerCloud.markDirty();
-        if (window.RegSlayerCloud && typeof window.RegSlayerCloud.forcePush === 'function') window.RegSlayerCloud.forcePush();
-      } catch (eCloud) { console.warn('deleteHunt cloud sync', eCloud); }
+        var old = document.getElementById('map-item-confirm');
+        if (old && old.parentNode) old.parentNode.removeChild(old);
+      } catch (eO) {}
+      var el = document.createElement('div');
+      el.id = 'map-item-confirm';
+      el.className = 'map-item-confirm';
+      el.setAttribute('role', 'dialog');
+      el.setAttribute('aria-modal', 'true');
+      el.innerHTML =
+        '<p class="mic-msg"></p>' +
+        '<div class="mic-actions">' +
+          '<button type="button" class="mic-yes">Delete</button>' +
+          '<button type="button" class="mic-no">Cancel</button>' +
+        '</div>';
+      el.querySelector('.mic-msg').textContent = message || 'Delete this item?';
+      document.body.appendChild(el);
+
+      // Position over the open Leaflet popup when possible
+      var left = 0, top = 0, placed = false;
+      try {
+        var pop = document.querySelector('.leaflet-popup');
+        if (pop) {
+          var r = pop.getBoundingClientRect();
+          left = r.left + (r.width / 2) - 110;
+          top = r.top + 8;
+          placed = true;
+          // Hide popup content under confirm but keep position
+          try { if (map) map.closePopup(); } catch (eC) {}
+        }
+      } catch (eP) {}
+      if (!placed) {
+        try {
+          if (map && clickLat != null && clickLng != null) {
+            var pt = map.latLngToContainerPoint([clickLat, clickLng]);
+            var mapEl = document.getElementById('leaflet-map');
+            var mr = mapEl ? mapEl.getBoundingClientRect() : { left: 0, top: 0 };
+            left = mr.left + pt.x - 110;
+            top = mr.top + pt.y - 40;
+            placed = true;
+          }
+        } catch (eM) {}
+      }
+      if (!placed) {
+        left = (window.innerWidth / 2) - 110;
+        top = (window.innerHeight / 2) - 40;
+      }
+      left = Math.max(8, Math.min(left, window.innerWidth - 220));
+      top = Math.max(8, Math.min(top, window.innerHeight - 120));
+      el.style.left = left + 'px';
+      el.style.top = top + 'px';
+
+      function cleanup() {
+        try {
+          if (el && el.parentNode) el.parentNode.removeChild(el);
+        } catch (eR) {}
+        document.removeEventListener('keydown', onKey, true);
+      }
+      function onKey(ev) {
+        if (ev.key === 'Escape') {
+          cleanup();
+          if (typeof onNo === 'function') onNo();
+        }
+      }
+      document.addEventListener('keydown', onKey, true);
+      el.querySelector('.mic-yes').addEventListener('click', function(ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        cleanup();
+        if (typeof onYes === 'function') onYes();
+      });
+      el.querySelector('.mic-no').addEventListener('click', function(ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        cleanup();
+        if (typeof onNo === 'function') onNo();
+      });
+      // Click outside cancels
+      setTimeout(function() {
+        document.addEventListener('click', function outside(ev) {
+          if (el && el.contains(ev.target)) return;
+          document.removeEventListener('click', outside, true);
+          if (document.getElementById('map-item-confirm')) {
+            cleanup();
+            if (typeof onNo === 'function') onNo();
+          }
+        }, true);
+      }, 0);
+    }
+    window.showMapItemConfirm = showMapItemConfirm;
+
+    function deleteHunt(id) {
+      showMapItemConfirm('Delete this past hunt?', function() {
+        historicalHunts = historicalHunts.filter(function(h) { return String(h.id) !== String(id); });
+        try { localStorage.setItem('alabama_hunt_historical_hunts', JSON.stringify(historicalHunts)); } catch (eH) {}
+        if (map) map.closePopup();
+        drawHuntsOnMap();
+        try {
+          if (typeof window.regSlayerMapDataChanged === 'function') window.regSlayerMapDataChanged();
+          else if (window.RegSlayerCloud && typeof window.RegSlayerCloud.markDirty === 'function') window.RegSlayerCloud.markDirty();
+          if (window.RegSlayerCloud && typeof window.RegSlayerCloud.forcePush === 'function') window.RegSlayerCloud.forcePush();
+        } catch (eCloud) { console.warn('deleteHunt cloud sync', eCloud); }
+      });
     }
     window.deleteHunt = deleteHunt;
 
     function deletePin(id) {
-      if (!confirm('Delete this pin?')) return;
-      var idx = locations.findIndex(function(l) { return String(l.id) === String(id); });
-      if (idx !== -1) locations.splice(idx, 1);
-      var pins = [];
-      try { pins = JSON.parse(localStorage.getItem('alabama_hunt_custom_pins') || '[]'); } catch (eP) { pins = []; }
-      if (!Array.isArray(pins)) pins = [];
-      pins = pins.filter(function(p) { return String(p.id) !== String(id); });
-      try { localStorage.setItem('alabama_hunt_custom_pins', JSON.stringify(pins)); } catch (eS) {}
-      if (String(selectedLocationId) === String(id)) { resetDashboard(); selectedLocationId = null; }
-      lastVisibleMarkerKey = '';
-      if (map) map.closePopup();
-      updateAvailableList();
-      drawPinsOnMap();
-      // Push deletion to cloud so refresh / pull does not resurrect the pin
-      try {
-        if (typeof window.regSlayerMapDataChanged === 'function') window.regSlayerMapDataChanged();
-        else if (window.RegSlayerCloud && typeof window.RegSlayerCloud.markDirty === 'function') window.RegSlayerCloud.markDirty();
-        if (window.RegSlayerCloud && typeof window.RegSlayerCloud.forcePush === 'function') window.RegSlayerCloud.forcePush();
-      } catch (eCloud) { console.warn('deletePin cloud sync', eCloud); }
+      showMapItemConfirm('Delete this pin?', function() {
+        var idx = locations.findIndex(function(l) { return String(l.id) === String(id); });
+        if (idx !== -1) locations.splice(idx, 1);
+        var pins = [];
+        try { pins = JSON.parse(localStorage.getItem('alabama_hunt_custom_pins') || '[]'); } catch (eP) { pins = []; }
+        if (!Array.isArray(pins)) pins = [];
+        pins = pins.filter(function(p) { return String(p.id) !== String(id); });
+        try { localStorage.setItem('alabama_hunt_custom_pins', JSON.stringify(pins)); } catch (eS) {}
+        if (String(selectedLocationId) === String(id)) { resetDashboard(); selectedLocationId = null; }
+        lastVisibleMarkerKey = '';
+        if (map) map.closePopup();
+        updateAvailableList();
+        drawPinsOnMap();
+        // Push deletion to cloud so refresh / pull does not resurrect the pin
+        try {
+          if (typeof window.regSlayerMapDataChanged === 'function') window.regSlayerMapDataChanged();
+          else if (window.RegSlayerCloud && typeof window.RegSlayerCloud.markDirty === 'function') window.RegSlayerCloud.markDirty();
+          if (window.RegSlayerCloud && typeof window.RegSlayerCloud.forcePush === 'function') window.RegSlayerCloud.forcePush();
+        } catch (eCloud) { console.warn('deletePin cloud sync', eCloud); }
+      });
     }
     window.deletePin = deletePin;
 
@@ -20713,6 +22285,12 @@ function togglePinIconPicker() {
         document.documentElement.style.removeProperty('--planner-side-height');
         if (wpn) { wpn.style.minHeight = ''; wpn.style.height = ''; wpn.style.maxHeight = ''; wpn.style.width = ''; }
         if (loc) { loc.style.minHeight = ''; loc.style.height = ''; loc.style.maxHeight = ''; loc.style.width = ''; }
+        var dashPhone = document.getElementById('dashboard-container');
+        if (dashPhone) {
+          dashPhone.style.minHeight = '';
+          dashPhone.style.height = '';
+          dashPhone.style.maxHeight = '';
+        }
         fitPhoneMapSize();
         return;
       }
@@ -20724,22 +22302,38 @@ function togglePinIconPicker() {
       var gridW = Math.round(grid.getBoundingClientRect().width);
       if (gridW < 160) return;
       var gridH = gridW; // true square day area
+      // When right half is minimized, do not let the calendar bloat — keep a modest square
+      if (document.documentElement.classList.contains('planner-right-half-min')) {
+        gridH = Math.min(gridW, 325);
+        grid.style.maxHeight = gridH + 'px';
+      } else {
+        grid.style.maxHeight = '';
+      }
       grid.style.height = gridH + 'px';
       document.documentElement.style.setProperty('--planner-cal-grid-h', gridH + 'px');
 
-      // Fixed side panel height (= header + calendar). List scrolls inside step 3.
+      // Desktop: steps stack left; tracts + weather stack right (natural heights — no forced weather stretch).
+      if (wpn) {
+        wpn.style.minHeight = '';
+        wpn.style.height = '';
+        wpn.style.maxHeight = '';
+      }
+      if (loc) {
+        loc.style.minHeight = '';
+        loc.style.height = '';
+        loc.style.maxHeight = '';
+      }
+      var dash = document.getElementById('dashboard-container');
+      if (dash) {
+        dash.style.minHeight = '';
+        dash.style.height = '';
+        dash.style.maxHeight = '';
+      }
       var step1 = document.getElementById('step-1-section');
-      var header = step1 ? step1.querySelector('.step-header') : null;
-      var headerH = header ? header.getBoundingClientRect().height + 12 : 36;
-      var calH = Math.round(cal.getBoundingClientRect().height);
-      var sideH = Math.round(headerH + calH);
+      var sideH = step1
+        ? Math.round(step1.getBoundingClientRect().height)
+        : Math.round(cal.getBoundingClientRect().height);
       document.documentElement.style.setProperty('--planner-side-height', sideH + 'px');
-      [wpn, loc].forEach(function(el) {
-        if (!el) return;
-        el.style.minHeight = sideH + 'px';
-        el.style.height = sideH + 'px';
-        el.style.maxHeight = sideH + 'px';
-      });
     }
     window.syncPlannerCalendarSquare = syncPlannerCalendarSquare;
 
@@ -20792,7 +22386,10 @@ function togglePinIconPicker() {
       renderCalendar(); updateEventsList(); clearEventForm();
       document.getElementById('step-2-section').classList.remove('locked');
       document.getElementById('step-2-section').classList.add('active');
+      // Open Tracts is usable without choosing a weapon (defaults to Either for filters)
+      unlockOpenTractsStep();
       if (typeof updateBottomBarContext === 'function') updateBottomBarContext();
+      if (typeof updateCurrentDataBanner === 'function') updateCurrentDataBanner();
 
       const daysAhead = getDaysFromToday(selectedDate);
       isHistorical = daysAhead < 0;
@@ -20805,19 +22402,20 @@ function togglePinIconPicker() {
           const rule = { weapon: 'General', target: 'Statewide Rules', limit: 'Statewide Limit', notes: 'Check regulations.' };
           selectLocation(currentLocationObj, rule);
         }
-        if (!selectedWeapon) { lockStep3(); return; }
         updateAvailableList();
         refreshPublicLandsOverlayIfOn();
         return;
       }
 
       if (!selectedWeapon) {
-        lockStep3();
+        // Keep Open Tracts interactive; list uses Either until a weapon is picked
         if (currentLocationObj) {
           isShowingCurrentData = (daysAhead === 0);
           const rule = { weapon: 'General', target: 'Statewide Rules', limit: 'Statewide Limit', notes: 'Check regulations.' };
           selectLocation(currentLocationObj, rule);
         } else resetDashboard();
+        updateAvailableList();
+        refreshPublicLandsOverlayIfOn();
         return;
       }
 
@@ -20938,13 +22536,20 @@ function togglePinIconPicker() {
     }
 
     // ========== RULES & LIST ==========
+    function unlockOpenTractsStep() {
+      var s3 = document.getElementById('step-3-section');
+      if (!s3) return;
+      s3.classList.remove('locked');
+      s3.classList.add('active');
+    }
+    window.unlockOpenTractsStep = unlockOpenTractsStep;
+
     function setWeapon(w) {
       selectedWeapon = w;
       document.querySelectorAll('#step-2-section .filter-btn').forEach(function(b) { b.classList.remove('active'); });
       var btn = document.getElementById('wpn-' + w.toLowerCase());
       if (btn) btn.classList.add('active');
-      document.getElementById('step-3-section').classList.remove('locked');
-      document.getElementById('step-3-section').classList.add('active');
+      unlockOpenTractsStep();
       selectedLocationId = null; selectedSubsectionIndex = null;
       lastVisibleMarkerKey = '';
       if (typeof updateBottomBarContext === 'function') updateBottomBarContext();
@@ -20976,18 +22581,21 @@ function togglePinIconPicker() {
       refreshPublicLandsOverlayIfOn();
     }
     function lockStep3() {
-      document.getElementById('step-3-section').classList.add('locked');
-      document.getElementById('step-3-section').classList.remove('active');
-      document.getElementById('location-list').innerHTML = '';
-      document.getElementById('detection-toast').classList.remove('active');
+      // Soft-clear list only — do not grey out Open Tracts (usable without weapon)
+      var list = document.getElementById('location-list');
+      if (list) list.innerHTML = '';
+      var toast = document.getElementById('detection-toast');
+      if (toast) toast.classList.remove('active');
       if (standMarkerGroup) standMarkerGroup.clearLayers();
       lastVisibleMarkerKey = '';
+      unlockOpenTractsStep();
     }
     function resetDashboard() {
       document.getElementById('db-content').style.display = 'none';
       document.getElementById('db-loading').style.display = 'none';
       document.getElementById('db-blank').style.display = 'block';
-      document.getElementById('current-data-banner').style.display = 'none';
+      // Keep past/present/future date banner visible when a hunt date is selected
+      if (typeof updateCurrentDataBanner === 'function') updateCurrentDataBanner();
       setTvaNoteEl('db-tva-note', null);
       try {
         weatherAlertsRequestSeq++;
@@ -21883,8 +23491,10 @@ function togglePinIconPicker() {
     }
 
     function updateAvailableList(skipMap) {
-      if (!selectedDate || !selectedWeapon) return;
-      var open = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand);
+      if (!selectedDate) return;
+      // Weapon optional — treat missing as Either so Open Tracts works without step 2
+      var wpn = selectedWeapon || 'Either';
+      var open = queryOpenSeasons(selectedDate, wpn, selectedLand);
       // Never show "My Location" as a list row
       open = open.filter(function(m) {
         var loc = m.location;
@@ -22224,6 +23834,8 @@ function togglePinIconPicker() {
       var content = document.getElementById('db-content');
       var loading = document.getElementById('db-loading');
       var mapOnly = isMapOnlyMode();
+      // Keep date banner up for the whole fetch (banner is outside #db-content)
+      if (typeof updateCurrentDataBanner === 'function') updateCurrentDataBanner();
       if (!mapOnly) {
         if (blank) blank.style.display = 'none';
         // Map taps: do not collapse an already-open dashboard (hide→loading→show jumps the page).
@@ -22547,48 +24159,77 @@ function togglePinIconPicker() {
       });
     }
 
+    /**
+     * Past / present / future banner above weather.
+     * Lives outside #db-content so it stays visible while a point/location reloads weather.
+     */
+    function updateCurrentDataBanner(dateUsed) {
+      var banner = document.getElementById('current-data-banner');
+      if (!banner) return;
+      try {
+        // When Solunar + Hourly are minimized, hide the date banner entirely
+        if (document.documentElement.classList.contains('weather-sections-min') ||
+            (typeof sectionMinState !== 'undefined' && sectionMinState.solunar && sectionMinState.hourly)) {
+          banner.style.display = 'none';
+          return;
+        }
+        if (!selectedDate) {
+          banner.style.display = 'none';
+          banner.innerText = '';
+          return;
+        }
+        var dayOff = (typeof getDaysFromToday === 'function')
+          ? getDaysFromToday(selectedDate)
+          : 0;
+        var dateLabel = '';
+        try {
+          var dRef = selectedDate;
+          if (dateUsed) {
+            dRef = (typeof dateUsed === 'string')
+              ? new Date(dateUsed + 'T12:00:00')
+              : new Date(dateUsed);
+          }
+          if (dRef && !isNaN(dRef.getTime())) {
+            dateLabel = dRef.toLocaleDateString(undefined, {
+              weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
+            });
+          }
+        } catch (eDl) {}
+        if (dayOff < 0) {
+          banner.innerText = dateLabel
+            ? ('Data displayed is for the past (' + dateLabel + ').')
+            : 'Data displayed is for the past.';
+        } else if (dayOff > 0) {
+          banner.innerText = dateLabel
+            ? ('Data displayed is for ' + dateLabel + ' (future).')
+            : 'Data displayed is for a future date.';
+        } else if (isShowingCurrentData) {
+          banner.innerText = dateLabel
+            ? ('Data displayed is for current time and location (' + dateLabel + ').')
+            : 'Data displayed is for current time and location.';
+        } else {
+          banner.innerText = dateLabel
+            ? ('Data displayed is for ' + dateLabel + ' (today).')
+            : 'Data displayed is for today.';
+        }
+        banner.style.display = 'block';
+      } catch (eBan) {
+        /* keep prior banner text if update fails mid-click */
+      }
+    }
+    window.updateCurrentDataBanner = updateCurrentDataBanner;
+
     function displayDashboard(location, rule, weather, subsection, waterData, dateUsed, lat, lng) {
       document.getElementById('db-loading').style.display = 'none';
       document.getElementById('db-content').style.display = 'block';
 
-      const banner = document.getElementById('current-data-banner');
-      if (banner) {
-        try {
-          var dayOff = (typeof getDaysFromToday === 'function' && selectedDate)
-            ? getDaysFromToday(selectedDate)
-            : 0;
-          var dateLabel = '';
-          try {
-            var dRef = dateUsed ? new Date(dateUsed + 'T12:00:00') : selectedDate;
-            if (dRef && !isNaN(dRef.getTime())) {
-              dateLabel = dRef.toLocaleDateString(undefined, {
-                weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
-              });
-            }
-          } catch (eDl) {}
-          if (dayOff < 0) {
-            banner.innerText = dateLabel
-              ? ('Data displayed is for the past (' + dateLabel + ').')
-              : 'Data displayed is for the past.';
-            banner.style.display = 'block';
-          } else if (dayOff > 0) {
-            banner.innerText = dateLabel
-              ? ('Data displayed is for ' + dateLabel + '.')
-              : 'Data displayed is for a future date.';
-            banner.style.display = 'block';
-          } else if (isShowingCurrentData) {
-            banner.innerText = 'Data displayed is for current time and location.';
-            banner.style.display = 'block';
-          } else if (dateLabel) {
-            banner.innerText = 'Data displayed is for ' + dateLabel + '.';
-            banner.style.display = 'block';
-          } else {
-            banner.style.display = 'none';
-          }
-        } catch (eBan) {
-          banner.style.display = 'none';
-        }
-      }
+      updateCurrentDataBanner(dateUsed);
+      // Re-apply weather section min state after content is shown
+      try {
+        applyOneSectionMin('solunar');
+        applyOneSectionMin('hourly');
+        updatePlannerHalfMinClasses();
+      } catch (eSecWx) {}
 
       if (subsection) {
         document.getElementById('db-title').innerText = location.name + ' - ' + subsection.name;
@@ -22868,30 +24509,13 @@ function togglePinIconPicker() {
     window.updateSelectedAreaDistance = updateSelectedAreaDistance;
 
     function toggleAvailableTractsMin() {
-      var panel = document.getElementById('locations-under-steps');
-      var btn = document.getElementById('available-tracts-toggle');
-      var caret = document.getElementById('available-tracts-caret');
-      if (!panel) return;
-      var min = !panel.classList.contains('is-minimized');
-      panel.classList.toggle('is-minimized', min);
-      if (btn) btn.setAttribute('aria-expanded', min ? 'false' : 'true');
-      if (caret) caret.textContent = min ? '+' : '−';
-      try {
-        localStorage.setItem('reg_slayer_tracts_min', min ? '1' : '0');
-      } catch (eT) {}
+      toggleSectionMin('tracts');
     }
     window.toggleAvailableTractsMin = toggleAvailableTractsMin;
 
     function applyAvailableTractsMinState() {
-      var panel = document.getElementById('locations-under-steps');
-      var btn = document.getElementById('available-tracts-toggle');
-      var caret = document.getElementById('available-tracts-caret');
-      if (!panel) return;
-      var min = false;
-      try { min = localStorage.getItem('reg_slayer_tracts_min') === '1'; } catch (e0) {}
-      panel.classList.toggle('is-minimized', min);
-      if (btn) btn.setAttribute('aria-expanded', min ? 'false' : 'true');
-      if (caret) caret.textContent = min ? '+' : '−';
+      applyOneSectionMin('tracts');
+      updatePlannerHalfMinClasses();
     }
 
     function startStandPlacement(locId, standName) {
@@ -23013,20 +24637,21 @@ function togglePinIconPicker() {
       const loc = locations.find(function(l) { return String(l.id) === String(locId); });
       if (loc && loc.subSections && loc.subSections[index] != null) {
         var standLabel = loc.subSections[index].name || 'this stand';
-        if (!confirm('Delete stand "' + standLabel + '"?')) return;
-        loc.subSections.splice(index, 1);
-        selectedSubsectionIndex = null;
-        saveUserStands();
-        if (map) map.closePopup();
-        const matches = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand);
-        const rule = (matches.find(function(m) { return String(m.location.id) === String(locId); }) || {}).rule ||
-          { weapon: 'General', target: 'State limits', limit: '1/day' };
-        renderSubsections(loc, rule);
-        plotSubsections(loc, rule);
-        // Stay on this area after deleting a stand
-        if (String(selectedLocationId) === String(locId)) {
-          selectLocation(loc, rule);
-        }
+        showMapItemConfirm('Delete stand "' + standLabel + '"?', function() {
+          loc.subSections.splice(index, 1);
+          selectedSubsectionIndex = null;
+          saveUserStands();
+          if (map) map.closePopup();
+          const matches = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand);
+          const rule = (matches.find(function(m) { return String(m.location.id) === String(locId); }) || {}).rule ||
+            { weapon: 'General', target: 'State limits', limit: '1/day' };
+          renderSubsections(loc, rule);
+          plotSubsections(loc, rule);
+          // Stay on this area after deleting a stand
+          if (String(selectedLocationId) === String(locId)) {
+            selectLocation(loc, rule);
+          }
+        });
       }
     }
     window.removeSubsection = removeSubsection;
@@ -23252,20 +24877,40 @@ function togglePinIconPicker() {
       syncSettingsUiFromState();
       try { if (typeof syncPublicLandOpacityUi === 'function') syncPublicLandOpacityUi(); } catch (eOp) {}
       if (tab) switchSettingsTab(tab);
+      modal.removeAttribute('hidden');
       modal.classList.add('active');
       modal.style.zIndex = '2147483640';
+      modal.style.display = 'flex';
+      modal.style.alignItems = 'center';
+      modal.style.justifyContent = 'center';
       modal.setAttribute('aria-hidden', 'false');
     }
     function closeSettingsModal() {
       var modal = document.getElementById('settings-modal');
       if (modal) {
         modal.classList.remove('active');
+        // openSettingsModal sets inline display:flex — must clear or × cannot hide it
+        modal.style.display = 'none';
+        modal.style.zIndex = '';
         modal.setAttribute('aria-hidden', 'true');
+        try { modal.setAttribute('hidden', ''); } catch (eH) {}
       }
-      applyAppSettings({ fromUi: false });
+      try { applyAppSettings({ fromUi: false }); } catch (eA) {}
     }
     window.openSettingsModal = openSettingsModal;
     window.closeSettingsModal = closeSettingsModal;
+    // Escape closes settings
+    if (!window._settingsEscWired) {
+      window._settingsEscWired = true;
+      document.addEventListener('keydown', function(ev) {
+        if (ev.key !== 'Escape') return;
+        var m = document.getElementById('settings-modal');
+        if (m && m.classList.contains('active')) {
+          closeSettingsModal();
+          ev.preventDefault();
+        }
+      });
+    }
 
     function switchSettingsTab(name) {
       document.querySelectorAll('.settings-tab').forEach(function(t) {
@@ -23774,10 +25419,20 @@ function togglePinIconPicker() {
       calendarTargetDate = new Date();
       selectedDate = new Date();
       renderCalendar();
+      // Open Tracts usable immediately (no weapon required)
+      try {
+        unlockOpenTractsStep();
+        document.getElementById('step-2-section').classList.remove('locked');
+        document.getElementById('step-2-section').classList.add('active');
+        if (typeof updateAvailableList === 'function') updateAvailableList();
+      } catch (eUnlock) {}
       if (typeof updateBottomBarContext === 'function') updateBottomBarContext();
       if (typeof updateSortByButtonLabel === 'function') updateSortByButtonLabel();
-      if (typeof applyPlannerStepsMinState === 'function') applyPlannerStepsMinState();
-      if (typeof applyAvailableTractsMinState === 'function') applyAvailableTractsMinState();
+      if (typeof applyAllSectionMinStates === 'function') applyAllSectionMinStates();
+      else {
+        if (typeof applyPlannerStepsMinState === 'function') applyPlannerStepsMinState();
+        if (typeof applyAvailableTractsMinState === 'function') applyAvailableTractsMinState();
+      }
       // Phone: second pass after fonts/layout so calendar + map fill width on launch
       requestAnimationFrame(function() {
         syncPlannerCalendarSquare();
@@ -23965,8 +25620,10 @@ function togglePinIconPicker() {
               } catch (eMaps) {}
               var bn = document.getElementById('brand-map-name');
               var mn = document.getElementById('map-title-mobile');
+              var fs = document.getElementById('map-fs-title');
               if (bn) bn.textContent = mapNm;
               if (mn) mn.textContent = mapNm;
+              if (fs) fs.textContent = mapNm;
               var chip = document.getElementById('auth-user-chip');
               var prof = window.RegSlayerCloud.getProfile && window.RegSlayerCloud.getProfile();
               if (chip) chip.textContent = prof && prof.username
