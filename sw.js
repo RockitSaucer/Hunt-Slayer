@@ -2,7 +2,7 @@
  * Caches app shell for return visits with no signal.
  * Map tiles: cache-first when already stored; network otherwise (then cache).
  */
-const SHELL_CACHE = 'reg-slayer-shell-v85';
+const SHELL_CACHE = 'reg-slayer-shell-v86';
 const TILE_CACHE = 'reg-slayer-tiles-v2';
 const DATA_CACHE = 'reg-slayer-data-v1';
 
@@ -61,7 +61,7 @@ const SHELL_ASSETS = [
   './icons/pins/tent.png',
   './icons/pins/tree.png',
   './icons/pins/truck.png',
-  './icons/pins/walker.png',
+  './icons/pins/dobbs.png',
   // Directional location icons (party / GPS)
   './icons/dir/arrow_head.png',
   './icons/dir/boat.png',
@@ -75,7 +75,7 @@ const SHELL_ASSETS = [
   './icons/dir/shuttle.png',
   './icons/dir/speed_boat.png',
   './icons/dir/truck.png',
-  './icons/dir/walker.png',
+  './icons/dir/dobbs.png',
   './icons/dir/x_wing.png',
   './vendor/leaflet/leaflet.js',
   './vendor/leaflet/leaflet.css',

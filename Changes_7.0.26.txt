@@ -1,0 +1,4 @@
+V7.0.26 Beta (shell v86) — 2026-08-06
+
+Rename icon Walker → Dobbs (pin + directional GPS icon).
+Same art and behavior; display name and file id are now Dobbs / dobbs.png.

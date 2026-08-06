@@ -78,6 +78,12 @@
     "defaultColor": "#1a1a1a"
   },
   {
+    "id": "dobbs",
+    "name": "Dobbs",
+    "src": "icons/pins/dobbs.png",
+    "defaultColor": "#1a1a1a"
+  },
+  {
     "id": "doe",
     "name": "Doe",
     "src": "icons/pins/doe.png",
@@ -165,12 +171,6 @@
     "id": "truck",
     "name": "Truck",
     "src": "icons/pins/truck.png",
-    "defaultColor": "#1a1a1a"
-  },
-  {
-    "id": "walker",
-    "name": "Walker",
-    "src": "icons/pins/walker.png",
     "defaultColor": "#1a1a1a"
   }
 ]

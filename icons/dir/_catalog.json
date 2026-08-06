@@ -42,6 +42,13 @@
     "frontDeg": 0.0
   },
   {
+    "id": "dobbs",
+    "name": "Dobbs",
+    "src": "icons/dir/dobbs.png",
+    "defaultColor": "#1a1a1a",
+    "frontDeg": 90.0
+  },
+  {
     "id": "helicopter",
     "name": "helicopter",
     "src": "icons/dir/helicopter.png",
@@ -82,13 +89,6 @@
     "src": "icons/dir/truck.png",
     "defaultColor": "#1a1a1a",
     "frontDeg": 0.0
-  },
-  {
-    "id": "walker",
-    "name": "Walker",
-    "src": "icons/dir/walker.png",
-    "defaultColor": "#1a1a1a",
-    "frontDeg": 90.0
   },
   {
     "id": "x_wing",
