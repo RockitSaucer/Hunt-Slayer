@@ -806,38 +806,41 @@
       box-sizing: border-box;
       overflow-x: hidden;
     }
+    /* Phone brand bar: 50% taller than prior 64px so logo + sister button are usable */
     html.layout-phone .brand-header {
-      padding: 3px 10px;
+      padding: 4px 10px;
       position: relative;
-      height: 64px;
-      min-height: 64px;
-      max-height: 64px;
+      height: 96px;
+      min-height: 96px;
+      max-height: 96px;
       overflow: hidden;
     }
     html.layout-phone .brand-logo-wrap {
       width: 94vw;
       max-width: 100%;
       height: 100%;
-      padding-right: 36px;
+      padding-right: 100px;
       overflow: hidden;
     }
-    /* Phone: slightly smaller but still stripe-matched-ish; full mark stays in view */
+    /* Taller bar → larger logo (still clipped top/bottom empty PNG margins) */
     html.layout-phone .brand-logo {
       width: auto;
-      height: 100px;
+      height: 150px;
       max-height: none;
       object-fit: contain;
       object-position: center;
     }
-    html.layout-phone .brand-version { font-size: 8px; bottom: 6px; right: 4px; }
+    html.layout-phone .brand-version { font-size: 9px; bottom: 8px; right: 4px; }
     html.layout-phone .brand-sister-link {
       right: 8px;
-      padding: 6px 8px;
-      font-size: 10px;
+      padding: 8px 10px;
+      font-size: 11px;
       letter-spacing: 0.04em;
-      border-radius: 7px;
+      border-radius: 8px;
+      z-index: 5;
+      min-height: 36px;
     }
-    html.layout-phone .brand-logo-wrap { padding-right: 88px; }
+    html.layout-phone .brand-logo-wrap { padding-right: 100px; }
     html.layout-phone .site-footer-inner { gap: 6px 10px; padding-left: 12px; padding-right: 12px; }
     html.layout-phone .site-footer-inner p { font-size: 12px; }
     html.layout-phone #dashboard-container,
@@ -972,22 +975,24 @@
         width: 100%;
       }
       .brand-header {
-        padding: 3px 10px;
+        padding: 4px 10px;
         position: relative;
-        height: 64px;
-        min-height: 64px;
-        max-height: 64px;
+        height: 96px;
+        min-height: 96px;
+        max-height: 96px;
         overflow: hidden;
       }
-      .brand-logo-wrap { width: 94vw; height: 100%; padding-right: 88px; overflow: hidden; }
-      .brand-logo { width: auto; height: 100px; max-height: none; object-fit: contain; object-position: center; }
-      .brand-version { font-size: 8px; bottom: 6px; }
+      .brand-logo-wrap { width: 94vw; height: 100%; padding-right: 100px; overflow: hidden; }
+      .brand-logo { width: auto; height: 150px; max-height: none; object-fit: contain; object-position: center; }
+      .brand-version { font-size: 9px; bottom: 8px; }
       .brand-sister-link {
         right: 8px;
-        padding: 6px 8px;
-        font-size: 10px;
+        padding: 8px 10px;
+        font-size: 11px;
         letter-spacing: 0.04em;
-        border-radius: 7px;
+        border-radius: 8px;
+        z-index: 5;
+        min-height: 36px;
       }
       .site-footer-inner { gap: 6px 10px; padding-left: 12px; padding-right: 12px; }
       .site-footer-inner p { font-size: 12px; }
@@ -9677,7 +9682,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7 Beta">V7 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.1 Beta">V7.0.1 Beta</span>
     </div>
     <a class="brand-sister-link" id="brand-sister-link" href="https://www.regslayer.com" title="Open REG SLAYER (same account)">
       <span class="brand-sister-label">Reg Slayer</span>
@@ -10993,10 +10998,12 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0-beta';
+    const APP_VERSION = '7.0.1-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
+    /** One-shot site default upgrades (Hunt map-max, Reg track off) for older saved prefs. */
+    const SITE_DEFAULTS_MIG_KEY = 'reg_slayer_site_defaults_v701';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
     function defaultAppSettings() {
@@ -11050,7 +11057,9 @@
         if (typeof toolsMerged.enableCompassMode !== 'boolean') toolsMerged.enableCompassMode = false;
         var dialMode = (o.defaults && o.defaults.dialLaunchMode) || d.defaults.dialLaunchMode || 'wind';
         if (dialMode !== 'compass' && dialMode !== 'wind') dialMode = d.defaults.dialLaunchMode || 'wind';
-        return {
+        var displayMerged = Object.assign({}, d.display, o.display || {}, { mapClickDot: mapClickDot });
+
+        var merged = {
           tools: toolsMerged,
           defaults: Object.assign({}, d.defaults, o.defaults || {}, {
             overlays: Object.assign({}, d.defaults.overlays, (o.defaults && o.defaults.overlays) || {}),
@@ -11059,8 +11068,25 @@
             rutMapAlerts: rutMap,
             dialLaunchMode: dialMode
           }),
-          display: Object.assign({}, d.display, o.display || {}, { mapClickDot: mapClickDot })
+          display: displayMerged
         };
+
+        // V7.0.1 one-shot: apply site product defaults over stale pre-split prefs
+        try {
+          var mig = localStorage.getItem(SITE_DEFAULTS_MIG_KEY);
+          if (mig !== '1') {
+            if (SITE_ID === 'hunt') {
+              merged.display.mapFullscreenLaunch = true;
+            }
+            if (SITE_ID === 'reg') {
+              merged.tools.track = false;
+            }
+            localStorage.setItem(SITE_DEFAULTS_MIG_KEY, '1');
+            try { localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(merged)); } catch (eSave) {}
+          }
+        } catch (eMig) {}
+
+        return merged;
       } catch (e) {
         return defaultAppSettings();
       }
@@ -31928,20 +31954,38 @@ function togglePinIconPicker() {
         } catch (eWz1) {}
       });
       // Default overlays + map fullscreen launch from settings (after a tick so map shell exists)
+      function launchMapMaxIfNeeded() {
+        try {
+          var d = appSettings && appSettings.display;
+          if (!d || !d.map) return false;
+          var mapOnly = d.map && !d.planner && !d.weather;
+          if (!(d.mapFullscreenLaunch || mapOnly)) return false;
+          if (typeof toggleMapFullscreen !== 'function') return false;
+          var wrap = document.getElementById('map-wrapper');
+          if (!wrap || wrap.classList.contains('fullscreen')) return !!wrap && wrap.classList.contains('fullscreen');
+          toggleMapFullscreen();
+          return true;
+        } catch (eM) { return false; }
+      }
       setTimeout(function() {
         try {
           if (typeof applyDefaultOverlaysOnLaunch === 'function') applyDefaultOverlaysOnLaunch();
-          var d = appSettings.display;
-          var mapOnly = d.map && !d.planner && !d.weather;
-          if ((d.mapFullscreenLaunch || mapOnly) && d.map && typeof toggleMapFullscreen === 'function') {
-            var wrap = document.getElementById('map-wrapper');
-            if (wrap && !wrap.classList.contains('fullscreen')) {
-              toggleMapFullscreen();
-            }
-          }
+          launchMapMaxIfNeeded();
           applyDisplayVisibility();
         } catch (eSet) { console.warn(eSet); }
       }, 400);
+      // Hunt / map-max: retry after map shell + phone layout settle (mobile was missing Max)
+      [900, 1600, 2800].forEach(function(ms) {
+        setTimeout(function() {
+          try {
+            var wrap = document.getElementById('map-wrapper');
+            var d = appSettings && appSettings.display;
+            if (d && (d.mapFullscreenLaunch || (d.map && !d.planner && !d.weather)) && d.map) {
+              if (wrap && !wrap.classList.contains('fullscreen')) launchMapMaxIfNeeded();
+            }
+          } catch (eR) {}
+        }, ms);
+      });
       // Single browser geolocation request at boot (no in-app primer, no concurrent watch).
       // Settings → Tools → Current Location can hide button + marker.
       function finishGpsBoot() {

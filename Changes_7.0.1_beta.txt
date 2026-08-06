@@ -1,0 +1,7 @@
+V7.0.1 Beta — taller phone banner + enforce site defaults
+========================================================
+
+- Mobile brand header height 64px → 96px (50% taller); larger logo + sister button.
+- Hunt: one-shot migration forces map Max on launch; retries Max after phone layout settles.
+- Reg: one-shot migration forces GPS track tool off (removed from toolbar).
+- SHELL_CACHE = reg-slayer-shell-v61
