@@ -1,0 +1,11 @@
+V7.0.31 Beta (shell v91) — 2026-08-06
+
+Compass line click snap (reliable)
+
+SVG stroke hits failed because cm-line-pane must stay pointer-events:none
+(so the full-map SVG does not steal pin/dot clicks). Opacity-0 hit lines also
+often ignore pointer events.
+
+Fix: map-level geometric test — if a click is within ~30px (40px phone) of the
+heading ray on screen, snap the measuring probe and skip the orange free-dot.
+Also keep a near-invisible fat hit stroke as a secondary path.

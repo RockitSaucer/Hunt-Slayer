@@ -22387,7 +22387,7 @@
 
     /** Snap measuring probe to a map click on the compass line (or near it). */
     function snapCompassProbeToLatLng(latlng) {
-      if (!compassModeEnabled || !latlng || userLat == null || userLng == null) return;
+      if (!compassModeEnabled || !latlng || userLat == null || userLng == null) return false;
       window._cmProbeDistMi = projectDistOnHeading(latlng);
       try {
         localStorage.setItem(cmStorageKey('reg_slayer_cm_probe_mi'), String(window._cmProbeDistMi));
@@ -22396,7 +22396,74 @@
       try {
         updateCompassModeGraphics({ soft: true, skipElev: false });
       } catch (eG) {}
+      return true;
     }
+
+    /** Screen-px distance from point to segment (container coords). */
+    function distPointToSegPx(p, ax, ay, bx, by) {
+      var dx = bx - ax, dy = by - ay;
+      var len2 = dx * dx + dy * dy;
+      if (len2 < 1e-9) {
+        var d0x = p.x - ax, d0y = p.y - ay;
+        return Math.sqrt(d0x * d0x + d0y * d0y);
+      }
+      var t = ((p.x - ax) * dx + (p.y - ay) * dy) / len2;
+      t = Math.max(0, Math.min(1, t));
+      var nx = ax + t * dx, ny = ay + t * dy;
+      var ex = p.x - nx, ey = p.y - ny;
+      return Math.sqrt(ex * ex + ey * ey);
+    }
+
+    /**
+     * True if latlng is near the drawn compass ray in screen pixels.
+     * Used because SVG stroke hit-testing fails when the cm-line pane is
+     * pointer-events:none (required so the full-map SVG does not steal pins).
+     */
+    function isMapClickNearCompassLine(latlng, tolPx) {
+      if (!compassModeEnabled || !map || !latlng || userLat == null || userLng == null) return false;
+      if (typeof L === 'undefined') return false;
+      tolPx = tolPx == null ? 28 : tolPx;
+      try {
+        var heading = getCompassHeadingDeg();
+        var probeMi = window._cmProbeDistMi != null ? window._cmProbeDistMi : 5;
+        probeMi = Math.max(0.02, Math.min(20, probeMi));
+        // Match drawn line length (a bit past the probe)
+        var farMi = Math.max(probeMi + 0.5, probeMi * 1.2, 1);
+        var end = compassModeDestPoint(userLat, userLng, heading, farMi);
+        var p = map.latLngToContainerPoint(latlng);
+        var a = map.latLngToContainerPoint(L.latLng(userLat, userLng));
+        var b = map.latLngToContainerPoint(L.latLng(end.lat, end.lng));
+        return distPointToSegPx(p, a.x, a.y, b.x, b.y) <= tolPx;
+      } catch (eN) {
+        return false;
+      }
+    }
+
+    /**
+     * Map-level click/tap near the compass line → snap probe.
+     * Returns true if handled (caller should skip free map-dot).
+     */
+    function trySnapCompassProbeFromMapClick(e) {
+      if (!compassModeEnabled || !e || !e.latlng) return false;
+      if (window._cmDragging || window._cmZooming) return false;
+      var phone = false;
+      try {
+        phone = (typeof isPhoneLayout === 'function' && isPhoneLayout()) ||
+          (document.documentElement && document.documentElement.classList.contains('layout-phone'));
+      } catch (eP) {}
+      var tol = phone ? 40 : 30;
+      if (!isMapClickNearCompassLine(e.latlng, tol)) return false;
+      try {
+        if (e.originalEvent) {
+          L.DomEvent.stop(e);
+          try { L.DomEvent.preventDefault(e.originalEvent); } catch (e1) {}
+        }
+      } catch (e0) {}
+      snapCompassProbeToLatLng(e.latlng);
+      return true;
+    }
+    window.trySnapCompassProbeFromMapClick = trySnapCompassProbeFromMapClick;
+    window.snapCompassProbeToLatLng = snapCompassProbeToLatLng;
 
     function wireCompassLineClick(layer) {
       if (!layer || layer._cmClickWired) return;
@@ -22411,10 +22478,6 @@
         snapCompassProbeToLatLng(ll);
       }
       layer.on('click', onLineClick);
-      // Mobile: treat a quick tap on the fat hit stroke as click
-      layer.on('mousedown', function(e) {
-        try { if (e && e.originalEvent) L.DomEvent.stopPropagation(e.originalEvent); } catch (e1) {}
-      });
     }
 
     function syncCompassLinePathEvents(layer) {
@@ -22422,6 +22485,7 @@
       try {
         var el = layer.getElement && layer.getElement();
         if (el) {
+          // Nearly invisible but not opacity 0 (some browsers drop hit-tests at 0)
           el.style.pointerEvents = 'stroke';
           el.style.cursor = 'pointer';
         }
@@ -22712,7 +22776,7 @@
         try {
           compassModeHitLineLayer.setLatLngs(lineLatLngs);
           if (!opts.skipStyle) {
-            compassModeHitLineLayer.setStyle({ weight: hitWeight, opacity: 0, fillOpacity: 0 });
+            compassModeHitLineLayer.setStyle({ weight: hitWeight, opacity: 0.02, fillOpacity: 0 });
           }
           syncCompassLinePathEvents(compassModeHitLineLayer);
         } catch (eH) {}
@@ -22723,10 +22787,11 @@
         compassModeHitLineLayer = L.polyline(lineLatLngs, {
           color: '#ffffff',
           weight: hitWeight,
-          opacity: 0,
+          // Not fully transparent — opacity 0 often kills SVG hit-testing
+          opacity: 0.02,
           className: 'compass-mode-line-hit',
           interactive: true,
-          bubblingMouseEvents: false,
+          bubblingMouseEvents: true,
           pane: 'cmLinePane',
           smoothFactor: 0,
           noClip: true
@@ -22891,6 +22956,17 @@
         if (!compassModeEnabled || window._cmDragging || window._cmZooming) return;
         try { updateCompassModeGraphics({ soft: true, skipElev: true, skipStyle: true }); } catch (e) {}
       });
+      // Primary snap path: geometric test on map click (does not rely on SVG stroke hits)
+      if (!map._cmLineSnapWired) {
+        map._cmLineSnapWired = true;
+        map.on('click', function(e) {
+          try {
+            if (typeof trySnapCompassProbeFromMapClick === 'function') {
+              trySnapCompassProbeFromMapClick(e);
+            }
+          } catch (eSnap) {}
+        });
+      }
     }
 
     // Heading updates → refresh line
@@ -23458,6 +23534,10 @@
         if (mapDrawMode) {
           if (mapDrawMode === 'measure' && tempMeasureLayer) clearTempMeasure();
           handleMapDrawToolClick(e.latlng, e);
+          return;
+        }
+        // Compass mode: click near the heading line snaps the measuring probe (before orange dot)
+        if (typeof trySnapCompassProbeFromMapClick === 'function' && trySnapCompassProbeFromMapClick(e)) {
           return;
         }
         // Clear temporary measure on any free map click
