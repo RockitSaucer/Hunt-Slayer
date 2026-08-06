@@ -1,0 +1,10 @@
+V7.0.34 Beta (shell v94)
+
+Fix pin/photo changes not sticking after refresh:
+
+1) Photo delete + re-add: pin editor is photo authority on Save (no re-merge of removed shots).
+   savePinsSplit supports replacePhotoIds so side-store matches the editor list.
+
+2) Pin delete resurrect: tombstone deleted pin ids so shared-map push does not re-import
+   them from cloud; intentional empty pin list can push; forcePush kicks immediate upload;
+   delete uses savePinsLocal + removePhotoIds.

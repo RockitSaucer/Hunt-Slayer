@@ -248,8 +248,13 @@
 
   /**
    * Persist pins without embedding huge base64 in the main pin key (mobile quota safe).
-   * Photos go to PIN_PHOTOS_KEY (+ IndexedDB) and are MERGED with any existing side-store shots
-   * (never replace with empty — that was dropping party photos).
+   * Photos go to PIN_PHOTOS_KEY (+ IndexedDB).
+   *
+   * Default: MERGE incoming photos into the side-store (party-safe).
+   * opts.replacePhotoIds: { [pinId]: true } or [id,…] — that pin's photos become
+   *   exactly the incoming list (supports delete photo + re-add). Empty list clears.
+   * opts.removePhotoIds: pin ids to drop entirely from the photo side-store (pin delete).
+   * opts.prunePhotos: drop side-store entries for pins not in the list.
    */
   function savePinsSplit(pins, opts) {
     opts = opts || {};
@@ -261,20 +266,48 @@
         return false;
       }
     }
+    var replaceIds = {};
+    if (opts.replacePhotos) {
+      list.forEach(function (p) {
+        if (p && p.id != null) replaceIds[String(p.id)] = true;
+      });
+    } else if (opts.replacePhotoIds) {
+      if (Array.isArray(opts.replacePhotoIds)) {
+        opts.replacePhotoIds.forEach(function (id) {
+          if (id != null) replaceIds[String(id)] = true;
+        });
+      } else if (typeof opts.replacePhotoIds === 'object') {
+        Object.keys(opts.replacePhotoIds).forEach(function (k) {
+          if (opts.replacePhotoIds[k]) replaceIds[String(k)] = true;
+        });
+      }
+    }
     var photoMap = loadPinPhotoMap();
     var slim = list.map(function (p) {
       if (!p || typeof p !== 'object') return p;
       var copy = Object.assign({}, p);
       var id = copy.id != null ? String(copy.id) : '';
       var incoming = [].concat(copy.photos || [], copy.notePhotos || []);
-      if (id && incoming.length) {
-        // Merge — do not clobber older photos already in the side store
-        photoMap[id] = mergePinPhotoLists(photoMap[id], incoming);
+      if (id) {
+        if (replaceIds[id]) {
+          // Editor / explicit save is authority for this pin's photo set
+          if (incoming.length) photoMap[id] = mergePinPhotoLists([], incoming);
+          else delete photoMap[id];
+        } else if (incoming.length) {
+          // Merge — do not clobber older photos already in the side store
+          photoMap[id] = mergePinPhotoLists(photoMap[id], incoming);
+        }
       }
       delete copy.photos;
       delete copy.notePhotos;
       return copy;
     });
+    // Explicit pin deletes: drop their side-store photos
+    if (opts.removePhotoIds && opts.removePhotoIds.length) {
+      opts.removePhotoIds.forEach(function (rid) {
+        if (rid != null) delete photoMap[String(rid)];
+      });
+    }
     // Drop photo map entries for removed pins only when explicitly pruning
     if (opts.prunePhotos) {
       var keep = {};
@@ -301,6 +334,28 @@
       } catch (e2) {}
     }
     return okPins;
+  }
+
+  /** Soft tombstones so a dirty push does not re-import a pin the user just deleted. */
+  var DELETED_PINS_KEY = 'reg_slayer_deleted_pin_ids_v1';
+  function loadDeletedPinIds() {
+    var a = loadJson(DELETED_PINS_KEY, []);
+    return Array.isArray(a) ? a.map(String) : [];
+  }
+  function rememberDeletedPinId(id) {
+    if (id == null) return;
+    var sid = String(id);
+    var a = loadDeletedPinIds();
+    if (a.indexOf(sid) < 0) a.push(sid);
+    if (a.length > 300) a = a.slice(-300);
+    saveJson(DELETED_PINS_KEY, a);
+  }
+  function clearDeletedPinIds(ids) {
+    if (!ids || !ids.length) return;
+    var drop = {};
+    ids.forEach(function (id) { drop[String(id)] = true; });
+    var a = loadDeletedPinIds().filter(function (id) { return !drop[id]; });
+    saveJson(DELETED_PINS_KEY, a);
   }
 
   function loadPinsCombined() {
@@ -438,13 +493,18 @@
 
   /**
    * Shared maps (local is dirty / about to push): keep local pins, merge photos
-   * from remote, and import any remote-only pins so party content is not lost.
+   * from remote for pins we still have. Import remote-only pins (party concurrent
+   * adds) unless this device has a tombstone for that pin id (user deleted it).
    */
   function mergeSharedPinPhotos(localState, remoteState) {
     localState = localState && typeof localState === 'object' ? localState : emptyMapState();
     remoteState = remoteState && typeof remoteState === 'object' ? remoteState : {};
     var localPins = Array.isArray(localState.pins) ? localState.pins.slice() : [];
     var remotePins = Array.isArray(remoteState.pins) ? remoteState.pins : [];
+    var deleted = {};
+    try {
+      loadDeletedPinIds().forEach(function (id) { deleted[id] = true; });
+    } catch (eD) {}
     var lById = {};
     localPins.forEach(function (p, idx) {
       if (p && p.id != null) lById[String(p.id)] = idx;
@@ -457,6 +517,9 @@
         if (!lp) return;
         lp.photos = mergePinPhotoLists(lp.photos || lp.notePhotos, rp.photos || rp.notePhotos);
         if ((!lp.notes || !String(lp.notes).trim()) && rp.notes) lp.notes = rp.notes;
+      } else if (deleted[id]) {
+        // User deleted this pin on this device — do not resurrect on push
+        return;
       } else {
         localPins.push(rp);
         lById[id] = localPins.length - 1;
@@ -690,17 +753,22 @@
         }
         localPinCount = (state.pins && state.pins.length) || 0;
         // CRITICAL: never push an empty pin list over a shared map that still has pins
+        // UNLESS the user intentionally deleted the last pin(s) (tombstones present).
         if (localPinCount === 0 && remotePinCount > 0) {
-          console.warn('Aborting shared push that would wipe remote pins');
-          try {
-            // Restore remote pins locally so UI recovers
-            applyMapState(remoteState, { allowEmptyPins: false });
-            refreshMapFromLocalState();
-          } catch (eR) {}
-          dirty = false;
-          try { localStorage.removeItem(DIRTY_KEY); } catch (eD) {}
-          updateSyncBadge('ok');
-          return;
+          var tomb = loadDeletedPinIds();
+          var intentionalEmpty = tomb.length > 0;
+          if (!intentionalEmpty) {
+            console.warn('Aborting shared push that would wipe remote pins');
+            try {
+              applyMapState(remoteState, { allowEmptyPins: false });
+              refreshMapFromLocalState();
+            } catch (eR) {}
+            dirty = false;
+            try { localStorage.removeItem(DIRTY_KEY); } catch (eD) {}
+            updateSyncBadge('ok');
+            return;
+          }
+          // Intentional clear: push empty pin list so refresh does not resurrect
         }
         var nextRev = remoteRev + 1;
         state.meta.revision = nextRev;
@@ -710,6 +778,14 @@
           .eq('id', viewState.sharedMapId);
         if (uErr) throw uErr;
         localRevision = nextRev;
+        // Successful push — clear tombstones for pins no longer on our local list
+        try {
+          var stillLocal = {};
+          (state.pins || []).forEach(function (p) {
+            if (p && p.id != null) stillLocal[String(p.id)] = true;
+          });
+          clearDeletedPinIds(loadDeletedPinIds().filter(function (id) { return !stillLocal[id]; }));
+        } catch (eTomb) {}
       } else if (viewState.privateMapId) {
         var { data: pm, error: pmErr } = await sb
           .from('private_maps')
@@ -729,6 +805,13 @@
           .eq('id', viewState.privateMapId);
         if (pUp) throw pUp;
         localRevision = prev;
+        try {
+          var stillPriv = {};
+          (state.pins || []).forEach(function (p) {
+            if (p && p.id != null) stillPriv[String(p.id)] = true;
+          });
+          clearDeletedPinIds(loadDeletedPinIds().filter(function (id) { return !stillPriv[id]; }));
+        } catch (eT2) {}
       } else {
         var { data: um, error: umErr } = await sb
           .from('user_map_state')
@@ -747,6 +830,13 @@
             updated_at: new Date().toISOString()
           });
         if (upErr) throw upErr;
+        try {
+          var stillPers = {};
+          (state.pins || []).forEach(function (p) {
+            if (p && p.id != null) stillPers[String(p.id)] = true;
+          });
+          clearDeletedPinIds(loadDeletedPinIds().filter(function (id) { return !stillPers[id]; }));
+        } catch (eT3) {}
         localRevision = urev;
       }
       dirty = false;
@@ -2082,8 +2172,11 @@
         var st = collectMapState();
         writeLocalCache(st);
       } catch (e2) {}
+      // Immediate push so refresh does not resurrect deleted pins/photos
       scheduleCloudPush(true);
+      try { pushMapToCloud(); } catch (e3) {}
     },
+    rememberDeletedPinId: rememberDeletedPinId,
     /** Persist pins with photos split (safe on mobile). Prefer this over raw localStorage. */
     savePinsLocal: function (pins, opts) {
       return savePinsSplit(pins, opts || { allowEmpty: false, prunePhotos: false });
