@@ -3586,6 +3586,16 @@
   }
 
   async function openShareToMapFlow(entity, defaultType) {
+    // Close Leaflet popups so the map-picker modal is visible and not covered
+    try {
+      if (typeof map !== 'undefined' && map && typeof map.closePopup === 'function') map.closePopup();
+    } catch (ePop) {}
+    try {
+      document.querySelectorAll('.leaflet-popup').forEach(function (el) {
+        try { el.remove(); } catch (eR) {}
+      });
+    } catch (eLp) {}
+
     var ent = hydrateShareEntity(entity || {});
     // Minimal lat/lng spot with no full pin record
     if ((ent.lat == null || ent.lng == null) && entity && entity.lat != null) {
@@ -3600,7 +3610,14 @@
     ent.lat = Number(ent.lat);
     ent.lng = Number(ent.lng);
     var typ = inferShareType(ent, defaultType || 'pin');
-    var targets = await listAllTargetMaps();
+    var targets;
+    try {
+      targets = await listAllTargetMaps();
+    } catch (eList) {
+      console.warn(eList);
+      alert('Could not load your maps. Sign in and try again.');
+      return;
+    }
     if (!targets.length) {
       alert('No other maps available. Create another private or shared map first.');
       return;
@@ -3612,13 +3629,14 @@
     var optionsHtml = '<option value="">Select a map…</option>' + targets.map(function (t, i) {
       return '<option value="' + i + '">' + esc(t.label || t.name) + '</option>';
     }).join('');
-    // Stack on top of Share location / Share pin chooser when those are open
+    // Stack on top of Share location chooser when that is open
     var shareWrap = showSimpleModal('Share to another map',
       '<p class="settings-hint" style="margin:0 0 6px;">Copies this <strong>' + esc(kindLabel) +
         '</strong> exactly (placement, name, colors, icon, notes, type, size). Original stays on this map.</p>' +
       '<p class="settings-status" style="margin:0 0 8px;">' + nameLine + '</p>' +
       '<label class="settings-hint" for="rs-share-map-select">Choose a map <span style="opacity:0.75;">(most recent first)</span></label>' +
-      '<select class="rs-share-map-select" id="rs-share-map-select">' + optionsHtml + '</select>',
+      '<select class="rs-share-map-select" id="rs-share-map-select" size="' +
+        Math.min(8, Math.max(3, targets.length + 1)) + '">' + optionsHtml + '</select>',
       [{ label: 'Cancel' }],
       { stack: true }
     );

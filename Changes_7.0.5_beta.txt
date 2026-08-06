@@ -1,0 +1,7 @@
+﻿V7.0.5 Beta — fix pin Share to another map map list
+===================================================
+- Pin Share used broken inline onclick (JSON quotes broke the handler)
+- Pin Share now opens the same modal chooser as other flows, then map list
+- Map picker shown as a list box (not collapsed native dropdown)
+- Close Leaflet popup before showing map picker
+- SHELL_CACHE = reg-slayer-shell-v65
