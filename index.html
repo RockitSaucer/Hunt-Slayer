@@ -10371,7 +10371,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.17 Beta">V7.0.17 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.18 Beta">V7.0.18 Beta</span>
     </div>
     <a class="brand-sister-link" id="brand-sister-link" href="https://www.regslayer.com" title="Open REG SLAYER (same account)">
       <span class="brand-sister-label">Reg Slayer</span>
@@ -11757,7 +11757,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.17-beta';
+    const APP_VERSION = '7.0.18-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -20595,6 +20595,11 @@
     var PIN_PHOTO_MAX = 3;
     var _pinPhotoPendingReplace = null; // dataUrl waiting for which slot to replace
     var _pinPhotoInputsWired = false;
+    /** True while camera/gallery is open or photo is compressing — do not auto-save/close editor */
+    var _pinPhotoBusy = false;
+    var _pinPhotoBusyUntil = 0;
+    /** Last pin id we were editing / just saved — used to attach late photos after iOS returns */
+    var _pinPhotoTargetId = null;
     /** Last auto-filled pin name from icon pick (so re-picks can replace until user types a custom name). */
     var pinNameAutoFill = '';
     function markPinEditorDirty() {
@@ -20666,6 +20671,7 @@
       ensureHuntContext();
       if (opts.mode === 'edit' && opts.loc) {
         editingPinId = opts.loc.id;
+        _pinPhotoTargetId = opts.loc.id;
         clickLat = opts.loc.lat;
         clickLng = opts.loc.lng;
         var bare = String(opts.loc.name || '').replace(/\s*\(Pin - .*\)\s*$/, '');
@@ -20722,6 +20728,7 @@
         if (title) title.textContent = 'Edit pin';
       } else {
         editingPinId = null;
+        _pinPhotoTargetId = null;
         pinNameAutoFill = '';
         if (document.getElementById('pin-name-input')) document.getElementById('pin-name-input').value = '';
         if (document.getElementById('pin-notes-input')) document.getElementById('pin-notes-input').value = '';
@@ -20797,6 +20804,10 @@
       editingPinId = null;
     }
     function tryCommitPinEditorOnDismiss() {
+      // Never auto-save while camera/gallery/compress is in flight (iOS returns with a fake click)
+      try {
+        if (typeof isPinPhotoBusy === 'function' && isPinPhotoBusy()) return false;
+      } catch (eB) {}
       // Click-away / implicit dismiss: place pin if user chose an icon or customized
       try {
         if (pinEditorHasPlaceableContent() && clickLat != null && typeof savePinFromMap === 'function') {
@@ -20981,64 +20992,176 @@
       renderPinEditorPhotos();
     }
 
+    function setPinPhotoBusy(on, holdMs) {
+      _pinPhotoBusy = !!on;
+      if (on) {
+        _pinPhotoBusyUntil = Date.now() + (holdMs != null ? holdMs : 120000);
+      } else {
+        _pinPhotoBusyUntil = Date.now() + 800; // brief grace after camera returns
+      }
+    }
+    function isPinPhotoBusy() {
+      if (_pinPhotoBusy) return true;
+      if (_pinPhotoBusyUntil && Date.now() < _pinPhotoBusyUntil) return true;
+      return false;
+    }
+
+    function canvasFromSize(w, h, drawFn) {
+      var maxEdge = 1280;
+      var nw = w, nh = h;
+      if (nw > maxEdge || nh > maxEdge) {
+        if (nw >= nh) { nh = Math.round(nh * maxEdge / nw); nw = maxEdge; }
+        else { nw = Math.round(nw * maxEdge / nh); nh = maxEdge; }
+      }
+      var canvas = document.createElement('canvas');
+      canvas.width = nw;
+      canvas.height = nh;
+      var ctx = canvas.getContext('2d');
+      drawFn(ctx, nw, nh);
+      var quality = 0.72;
+      var dataUrl = canvas.toDataURL('image/jpeg', quality);
+      while (dataUrl.length > 620000 && quality > 0.45) {
+        quality -= 0.08;
+        dataUrl = canvas.toDataURL('image/jpeg', quality);
+      }
+      return dataUrl;
+    }
+
     function compressImageFileToDataUrl(file) {
       return new Promise(function(resolve, reject) {
         if (!file) { reject(new Error('No file')); return; }
         // iOS HEIC / empty type: allow empty type; only reject non-image when type is set
-        if (file.type && file.type.indexOf('image/') !== 0 && file.type !== 'application/octet-stream') {
+        var t = String(file.type || '');
+        if (t && t.indexOf('image/') !== 0 && t !== 'application/octet-stream' && t.indexOf('heic') < 0 && t.indexOf('heif') < 0) {
           reject(new Error('Not an image'));
           return;
         }
-        var reader = new FileReader();
-        reader.onerror = function() { reject(new Error('Could not read file')); };
-        reader.onload = function() {
+
+        function finishOk(dataUrl) {
+          if (dataUrl && String(dataUrl).indexOf('data:') === 0) resolve(dataUrl);
+          else reject(new Error('Empty image data'));
+        }
+
+        // Preferred: createImageBitmap (handles many iOS formats)
+        if (typeof createImageBitmap === 'function') {
+          createImageBitmap(file).then(function(bitmap) {
+            try {
+              var dataUrl = canvasFromSize(bitmap.width, bitmap.height, function(ctx, nw, nh) {
+                ctx.drawImage(bitmap, 0, 0, nw, nh);
+              });
+              try { if (bitmap.close) bitmap.close(); } catch (eCl) {}
+              finishOk(dataUrl);
+            } catch (eBm) {
+              try { if (bitmap.close) bitmap.close(); } catch (eCl2) {}
+              // fall through to object URL
+              readViaObjectUrl();
+            }
+          }).catch(function() { readViaObjectUrl(); });
+          return;
+        }
+
+        function readViaObjectUrl() {
+          var url = '';
+          try { url = URL.createObjectURL(file); } catch (eU) { url = ''; }
+          if (!url) {
+            readViaFileReader();
+            return;
+          }
           var img = new Image();
           img.onload = function() {
             try {
-              var maxEdge = 1280;
-              var w = img.naturalWidth || img.width;
-              var h = img.naturalHeight || img.height;
-              if (!w || !h) { reject(new Error('Bad image')); return; }
-              if (w > maxEdge || h > maxEdge) {
-                if (w >= h) {
-                  h = Math.round(h * maxEdge / w);
-                  w = maxEdge;
-                } else {
-                  w = Math.round(w * maxEdge / h);
-                  h = maxEdge;
-                }
-              }
-              var canvas = document.createElement('canvas');
-              canvas.width = w;
-              canvas.height = h;
-              var ctx = canvas.getContext('2d');
-              ctx.drawImage(img, 0, 0, w, h);
-              var quality = 0.72;
-              var dataUrl = canvas.toDataURL('image/jpeg', quality);
-              // Soft cap ~450KB per photo for localStorage friendliness
-              while (dataUrl.length > 620000 && quality > 0.45) {
-                quality -= 0.08;
-                dataUrl = canvas.toDataURL('image/jpeg', quality);
-              }
-              resolve(dataUrl);
-            } catch (eC) {
-              reject(eC);
+              var dataUrl = canvasFromSize(img.naturalWidth || img.width, img.naturalHeight || img.height, function(ctx, nw, nh) {
+                ctx.drawImage(img, 0, 0, nw, nh);
+              });
+              try { URL.revokeObjectURL(url); } catch (eR) {}
+              finishOk(dataUrl);
+            } catch (eD) {
+              try { URL.revokeObjectURL(url); } catch (eR2) {}
+              readViaFileReader();
             }
           };
           img.onerror = function() {
-            // Fallback: keep original data URL if canvas path fails (e.g. odd HEIC decode)
-            try {
-              if (reader.result && String(reader.result).indexOf('data:image') === 0) {
-                resolve(reader.result);
-                return;
-              }
-            } catch (eF) {}
-            reject(new Error('Could not load image'));
+            try { URL.revokeObjectURL(url); } catch (eR3) {}
+            readViaFileReader();
           };
-          img.src = reader.result;
-        };
-        reader.readAsDataURL(file);
+          img.src = url;
+        }
+
+        function readViaFileReader() {
+          var reader = new FileReader();
+          reader.onerror = function() { reject(new Error('Could not read file')); };
+          reader.onload = function() {
+            var raw = reader.result;
+            var img = new Image();
+            img.onload = function() {
+              try {
+                var dataUrl = canvasFromSize(img.naturalWidth || img.width, img.naturalHeight || img.height, function(ctx, nw, nh) {
+                  ctx.drawImage(img, 0, 0, nw, nh);
+                });
+                finishOk(dataUrl);
+              } catch (eC) {
+                // Last resort: keep original data URL so something still attaches
+                if (raw && String(raw).indexOf('data:') === 0) finishOk(raw);
+                else reject(eC);
+              }
+            };
+            img.onerror = function() {
+              if (raw && String(raw).indexOf('data:') === 0) finishOk(raw);
+              else reject(new Error('Could not load image'));
+            };
+            img.src = raw;
+          };
+          reader.readAsDataURL(file);
+        }
+
+        readViaObjectUrl();
       });
+    }
+
+    /** Write pinEditorPhotos onto a saved pin + localStorage + map redraw */
+    function persistPinPhotosToLocation(pinId, photos) {
+      if (pinId == null) return false;
+      var list = normalizePinPhotos(photos || []);
+      var found = false;
+      try {
+        for (var i = 0; i < locations.length; i++) {
+          if (locations[i] && String(locations[i].id) === String(pinId) && locations[i].isPin) {
+            locations[i].photos = list;
+            found = true;
+            break;
+          }
+        }
+      } catch (eL) {}
+      try {
+        var pins = JSON.parse(localStorage.getItem('alabama_hunt_custom_pins') || '[]');
+        if (!Array.isArray(pins)) pins = [];
+        var idx = pins.findIndex(function(p) { return p && String(p.id) === String(pinId); });
+        if (idx >= 0) {
+          pins[idx].photos = list;
+          found = true;
+        } else if (found) {
+          // location had pin but storage missing — push full loc if possible
+          var loc = locations.find(function(l) { return l && String(l.id) === String(pinId); });
+          if (loc) pins.push(loc);
+        }
+        localStorage.setItem('alabama_hunt_custom_pins', JSON.stringify(pins));
+      } catch (eS) {}
+      try {
+        if (typeof drawPinsOnMap === 'function') drawPinsOnMap();
+      } catch (eD) {}
+      try {
+        if (typeof window.regSlayerMapDataChanged === 'function') window.regSlayerMapDataChanged();
+        else if (window.RegSlayerCloud && typeof window.RegSlayerCloud.markDirty === 'function') window.RegSlayerCloud.markDirty();
+      } catch (eC) {}
+      return found;
+    }
+
+    function ensurePinEditorSheetOpen() {
+      var sheet = document.getElementById('pin-editor-sheet');
+      if (sheet && !sheet.classList.contains('open')) {
+        sheet.classList.add('open');
+        sheet.setAttribute('aria-hidden', 'false');
+      }
     }
 
     function addPinEditorPhotoDataUrl(dataUrl) {
@@ -21049,10 +21172,21 @@
           dataUrl: dataUrl
         });
         markPinEditorDirty();
+        ensurePinEditorSheetOpen();
         renderPinEditorPhotos();
+        // If pin was auto-saved while camera was open, attach photos now
+        var tid = editingPinId || _pinPhotoTargetId;
+        if (tid) {
+          try { persistPinPhotosToLocation(tid, pinEditorPhotos); } catch (eP) {}
+        }
+        try {
+          // Scroll thumbs into view in the sheet
+          var wrap = document.getElementById('pes-photo-thumbs');
+          if (wrap && wrap.scrollIntoView) wrap.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        } catch (eSc) {}
         try {
           if (typeof showAppCopyToast === 'function') {
-            showAppCopyToast('<span class="act">Photo added</span><br>' + pinEditorPhotos.length + ' of ' + PIN_PHOTO_MAX);
+            showAppCopyToast('<span class="act">Photo added</span><br>' + pinEditorPhotos.length + ' of ' + PIN_PHOTO_MAX + ' — Save pin to keep');
           }
         } catch (eT) {}
         return;
@@ -21098,7 +21232,12 @@
         dataUrl: dataUrl
       };
       markPinEditorDirty();
+      ensurePinEditorSheetOpen();
       renderPinEditorPhotos();
+      var tid = editingPinId || _pinPhotoTargetId;
+      if (tid) {
+        try { persistPinPhotosToLocation(tid, pinEditorPhotos); } catch (eP) {}
+      }
       try {
         if (typeof showAppCopyToast === 'function') {
           showAppCopyToast('<span class="act">Photo replaced</span>');
@@ -21110,9 +21249,14 @@
       if (ev) {
         try { ev.preventDefault(); ev.stopPropagation(); } catch (e0) {}
       }
+      // Remember which pin we're attaching to (edit) before camera suspends the page
+      try {
+        _pinPhotoTargetId = editingPinId || _pinPhotoTargetId || null;
+      } catch (eId) {}
       try { wirePinPhotoInputs(); } catch (eW) {}
       // Move file inputs to body so iOS isn't blocked by transformed map wrappers
       try { ensurePinPhotoInputsOnBody(); } catch (eB) {}
+      setPinPhotoBusy(true, 180000);
       if (isPinPhotoPhoneUi()) {
         openPinPhotoSourceModal();
       } else {
@@ -21157,10 +21301,10 @@
     function pickPinPhotoFromGallery() {
       try { wirePinPhotoInputs(); } catch (eW) {}
       try { ensurePinPhotoInputsOnBody(); } catch (eB) {}
+      setPinPhotoBusy(true, 180000);
       var inp = document.getElementById('pin-photo-gallery-input');
       if (!inp) return;
       try { inp.value = ''; } catch (eV) {}
-      // Prefer label activation path; programmatic click as backup
       try {
         if (typeof inp.showPicker === 'function') {
           inp.showPicker();
@@ -21173,6 +21317,7 @@
     function pickPinPhotoFromCamera() {
       try { wirePinPhotoInputs(); } catch (eW) {}
       try { ensurePinPhotoInputsOnBody(); } catch (eB) {}
+      setPinPhotoBusy(true, 180000);
       var inp = document.getElementById('pin-photo-camera-input');
       if (!inp) return;
       try { inp.value = ''; } catch (eV) {}
@@ -21185,16 +21330,30 @@
       try { inp.click(); } catch (eC) {}
     }
 
+    var _pinPhotoLastKey = '';
+    var _pinPhotoLastAt = 0;
     function handlePinPhotoFileInput(ev) {
       var input = ev && ev.target;
-      var file = input && input.files && input.files[0];
+      if (!input || (input.id !== 'pin-photo-gallery-input' && input.id !== 'pin-photo-camera-input')) return;
+      var file = input.files && input.files[0];
       closePinPhotoSourceModal();
-      if (!file) return;
-      // HEIC / empty type on some iOS versions — still try to read
+      if (!file) {
+        // User cancelled — end busy soon
+        setPinPhotoBusy(false);
+        return;
+      }
+      // Dedupe double-firing change (direct + capture listeners)
+      var key = String(file.name || '') + '|' + String(file.size || 0) + '|' + String(file.lastModified || 0);
+      var now = Date.now();
+      if (key && key === _pinPhotoLastKey && (now - _pinPhotoLastAt) < 2500) return;
+      _pinPhotoLastKey = key;
+      _pinPhotoLastAt = now;
+      // Snapshot File immediately (iOS can clear input.files after yield)
+      setPinPhotoBusy(true, 120000);
+      ensurePinEditorSheetOpen();
       compressImageFileToDataUrl(file)
         .then(function(dataUrl) {
           addPinEditorPhotoDataUrl(dataUrl);
-          // After camera capture, user is already back on pin editor (native UI closed)
         })
         .catch(function(err) {
           try {
@@ -21206,33 +21365,62 @@
           } catch (eA) {}
         })
         .then(function() {
+          setPinPhotoBusy(false);
           try { if (input) input.value = ''; } catch (eC) {}
         });
     }
+
+    // After camera/photos app: keep pin editor up and re-assert busy grace
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState !== 'visible') return;
+      if (!isPinPhotoBusy()) return;
+      try { ensurePinEditorSheetOpen(); } catch (eE) {}
+      try { renderPinEditorPhotos(); } catch (eR) {}
+    });
+    window.addEventListener('pageshow', function() {
+      if (!isPinPhotoBusy()) return;
+      try { ensurePinEditorSheetOpen(); } catch (eE) {}
+      try { renderPinEditorPhotos(); } catch (eR) {}
+    });
 
     function wirePinPhotoInputs() {
       var g = document.getElementById('pin-photo-gallery-input');
       var c = document.getElementById('pin-photo-camera-input');
       if (!g && !c) return;
+      // Always (re)bind change — moving nodes or re-open must keep working
+      if (g && !g._rsPhotoChange) {
+        g._rsPhotoChange = true;
+        g.addEventListener('change', handlePinPhotoFileInput);
+      }
+      if (c && !c._rsPhotoChange) {
+        c._rsPhotoChange = true;
+        c.addEventListener('change', handlePinPhotoFileInput);
+      }
       if (!_pinPhotoInputsWired) {
         _pinPhotoInputsWired = true;
-        if (g) g.addEventListener('change', handlePinPhotoFileInput);
-        if (c) c.addEventListener('change', handlePinPhotoFileInput);
+        // Capture-phase document listener: iOS sometimes drops direct handlers after app switch
+        document.addEventListener('change', function(ev) {
+          if (!ev || !ev.target) return;
+          if (ev.target.id === 'pin-photo-gallery-input' || ev.target.id === 'pin-photo-camera-input') {
+            handlePinPhotoFileInput(ev);
+          }
+        }, true);
       }
-      // Labels: close source sheet after starting the native picker
+      // Labels: keep busy while native picker opens
       var gLab = document.getElementById('pin-photo-gallery-label');
       var cLab = document.getElementById('pin-photo-camera-label');
       if (gLab && !gLab._rsWired) {
         gLab._rsWired = true;
         gLab.addEventListener('click', function() {
-          // Let the label activate the file input (iOS-safe), then hide our sheet
-          setTimeout(function() { closePinPhotoSourceModal(); }, 400);
+          setPinPhotoBusy(true, 180000);
+          setTimeout(function() { closePinPhotoSourceModal(); }, 500);
         });
       }
       if (cLab && !cLab._rsWired) {
         cLab._rsWired = true;
         cLab.addEventListener('click', function() {
-          setTimeout(function() { closePinPhotoSourceModal(); }, 400);
+          setPinPhotoBusy(true, 180000);
+          setTimeout(function() { closePinPhotoSourceModal(); }, 500);
         });
       }
     }
@@ -22446,15 +22634,21 @@
     document.addEventListener('click', function(ev) {
       var sheet = document.getElementById('pin-editor-sheet');
       if (!sheet || !sheet.classList.contains('open')) return;
+      // Returning from iOS camera/photos fires a spurious click — never auto-save mid-photo
+      if (typeof isPinPhotoBusy === 'function' && isPinPhotoBusy()) return;
       if (sheet.contains(ev.target)) return;
       // Note modal, delete confirm, and other overlays live outside the sheet —
       // do not treat those clicks as "outside" (that was auto-saving / closing the pin editor).
-      if (ev.target && ev.target.closest && (
+      if (ev.target && (
+        (ev.target.id === 'pin-photo-gallery-input') ||
+        (ev.target.id === 'pin-photo-camera-input') ||
+        (ev.target.closest && (
         ev.target.closest('#pin-note-modal') ||
         ev.target.closest('#pin-photo-source-modal') ||
         ev.target.closest('#pin-photo-replace-modal') ||
         ev.target.closest('#pin-photo-viewer-modal') ||
         ev.target.closest('#pes-photo-row') ||
+        ev.target.closest('.pin-photo-file-input') ||
         ev.target.closest('#map-date-weapon-modal') ||
         ev.target.closest('#rs-creator-notice') ||
         ev.target.closest('#map-switcher-dropdown') ||
@@ -22470,7 +22664,7 @@
         ev.target.closest('.map-item-confirm') ||
         ev.target.closest('#map-item-confirm') ||
         ev.target.closest('#mbb-context')
-      )) return;
+      )))) return;
       try {
         // Selected pin or any customize → drop; empty sheet click-away → do nothing (close)
         if (typeof tryCommitPinEditorOnDismiss === 'function') tryCommitPinEditorOnDismiss();
@@ -28600,6 +28794,8 @@ function togglePinIconPicker() {
         if (psz) pinScale = Math.max(0.25, Math.min(1.5, (parseInt(psz.value, 10) || 100) / 100));
       } catch (eSz) {}
       var pinPhotos = normalizePinPhotos(pinEditorPhotos || []);
+      // Keep target so a photo finishing after Save still attaches
+      _pinPhotoTargetId = pinId;
       var newLoc = {
         id: pinId,
         name: name,
@@ -28720,6 +28916,8 @@ function togglePinIconPicker() {
       selectedPinIconId = null;
       editingPinId = null;
       pinEditorDirty = false;
+      // Keep pinEditorPhotos until sheet fully closes if still busy attaching
+      if (!isPinPhotoBusy()) pinEditorPhotos = [];
       try { closePinEditorSheet(); } catch (eClose) {}
       try { closeDetectionToast(); } catch (eT) {}
       clearMapDot();
