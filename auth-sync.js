@@ -68,17 +68,168 @@
     }
   }
 
+  /** In-memory pin photo map — survives localStorage quota failures on mobile. */
+  var _photoMapMem = null;
+  var PIN_PHOTOS_IDB_NAME = 'reg_slayer_pin_photos_db';
+  var PIN_PHOTOS_IDB_STORE = 'map';
+  var PIN_PHOTOS_IDB_KEY = 'all';
+  var _idbPhotoReady = null;
+  var _idbWriteTimer = null;
+
+  function openPinPhotoIdb() {
+    return new Promise(function (resolve, reject) {
+      if (typeof indexedDB === 'undefined') {
+        resolve(null);
+        return;
+      }
+      try {
+        var req = indexedDB.open(PIN_PHOTOS_IDB_NAME, 1);
+        req.onupgradeneeded = function () {
+          try {
+            var db = req.result;
+            if (!db.objectStoreNames.contains(PIN_PHOTOS_IDB_STORE)) {
+              db.createObjectStore(PIN_PHOTOS_IDB_STORE);
+            }
+          } catch (eU) {}
+        };
+        req.onsuccess = function () { resolve(req.result); };
+        req.onerror = function () { resolve(null); };
+      } catch (e) {
+        resolve(null);
+      }
+    });
+  }
+
+  function readPinPhotosFromIdb() {
+    return openPinPhotoIdb().then(function (db) {
+      if (!db) return null;
+      return new Promise(function (resolve) {
+        try {
+          var tx = db.transaction(PIN_PHOTOS_IDB_STORE, 'readonly');
+          var store = tx.objectStore(PIN_PHOTOS_IDB_STORE);
+          var g = store.get(PIN_PHOTOS_IDB_KEY);
+          g.onsuccess = function () {
+            var v = g.result;
+            resolve(v && typeof v === 'object' ? v : null);
+          };
+          g.onerror = function () { resolve(null); };
+        } catch (eR) {
+          resolve(null);
+        }
+      });
+    });
+  }
+
+  function writePinPhotosToIdb(map) {
+    return openPinPhotoIdb().then(function (db) {
+      if (!db) return false;
+      return new Promise(function (resolve) {
+        try {
+          var tx = db.transaction(PIN_PHOTOS_IDB_STORE, 'readwrite');
+          var store = tx.objectStore(PIN_PHOTOS_IDB_STORE);
+          store.put(map && typeof map === 'object' ? map : {}, PIN_PHOTOS_IDB_KEY);
+          tx.oncomplete = function () { resolve(true); };
+          tx.onerror = function () { resolve(false); };
+        } catch (eW) {
+          resolve(false);
+        }
+      });
+    });
+  }
+
+  function scheduleIdbPhotoFlush() {
+    if (_idbWriteTimer) {
+      try { clearTimeout(_idbWriteTimer); } catch (eT) {}
+    }
+    _idbWriteTimer = setTimeout(function () {
+      _idbWriteTimer = null;
+      try {
+        writePinPhotosToIdb(loadPinPhotoMap()).catch(function () {});
+      } catch (eF) {}
+    }, 200);
+  }
+
+  /** Drop oldest pin photo lists until JSON fits roughly under ~1.2MB. */
+  function prunePhotoMapForQuota(map) {
+    var out = map && typeof map === 'object' ? Object.assign({}, map) : {};
+    function sizeOf(m) {
+      try { return JSON.stringify(m).length; } catch (e) { return 9999999; }
+    }
+    var limit = 1200000;
+    if (sizeOf(out) <= limit) return out;
+    var keys = Object.keys(out);
+    // Prefer keeping pins that still have fewer photos first; drop largest lists
+    keys.sort(function (a, b) {
+      var la = (out[a] && out[a].length) || 0;
+      var lb = (out[b] && out[b].length) || 0;
+      return lb - la;
+    });
+    for (var i = 0; i < keys.length && sizeOf(out) > limit; i++) {
+      var k = keys[i];
+      var arr = out[k];
+      if (!arr || !arr.length) continue;
+      if (arr.length > 1) {
+        out[k] = arr.slice(0, Math.max(1, Math.floor(arr.length / 2)));
+      } else {
+        delete out[k];
+      }
+    }
+    return out;
+  }
+
   function loadPinPhotoMap() {
+    if (_photoMapMem && typeof _photoMapMem === 'object') return _photoMapMem;
     var m = loadJson(PIN_PHOTOS_KEY, {});
-    return m && typeof m === 'object' ? m : {};
+    _photoMapMem = m && typeof m === 'object' ? m : {};
+    return _photoMapMem;
   }
 
   function savePinPhotoMap(map) {
+    _photoMapMem = map && typeof map === 'object' ? map : {};
+    scheduleIdbPhotoFlush();
     try {
-      return saveJson(PIN_PHOTOS_KEY, map && typeof map === 'object' ? map : {});
-    } catch (e) {
-      return false;
-    }
+      if (saveJson(PIN_PHOTOS_KEY, _photoMapMem)) return true;
+    } catch (e0) {}
+    // Mobile quota: prune and retry localStorage; IDB still holds full set
+    try {
+      var pruned = prunePhotoMapForQuota(_photoMapMem);
+      if (saveJson(PIN_PHOTOS_KEY, pruned)) {
+        // Keep full set in memory + IDB even if LS is pruned
+        return true;
+      }
+    } catch (e1) {}
+    console.warn('pin photo localStorage full — using memory + IndexedDB');
+    return false;
+  }
+
+  /**
+   * Boot: merge IndexedDB pin photos into memory/localStorage so phones
+   * that previously failed LS quota still show desktop/cloud photos.
+   */
+  function hydratePinPhotosFromIdb() {
+    if (_idbPhotoReady) return _idbPhotoReady;
+    _idbPhotoReady = readPinPhotosFromIdb().then(function (idbMap) {
+      if (!idbMap || typeof idbMap !== 'object') return false;
+      var cur = loadPinPhotoMap();
+      var changed = false;
+      Object.keys(idbMap).forEach(function (pid) {
+        var merged = mergePinPhotoLists(cur[pid], idbMap[pid]);
+        var before = (cur[pid] && cur[pid].length) || 0;
+        if (merged.length > before) {
+          cur[pid] = merged;
+          changed = true;
+        }
+      });
+      if (changed) {
+        savePinPhotoMap(cur);
+        try { refreshMapFromLocalState(); } catch (eR) {}
+      } else {
+        // Still ensure IDB has latest LS snapshot
+        scheduleIdbPhotoFlush();
+      }
+      return changed;
+    }).catch(function () { return false; });
+    return _idbPhotoReady;
   }
 
   /** Attach separately-stored photos onto pin objects (in memory / for cloud). */
@@ -97,7 +248,7 @@
 
   /**
    * Persist pins without embedding huge base64 in the main pin key (mobile quota safe).
-   * Photos go to PIN_PHOTOS_KEY and are MERGED with any existing side-store shots
+   * Photos go to PIN_PHOTOS_KEY (+ IndexedDB) and are MERGED with any existing side-store shots
    * (never replace with empty — that was dropping party photos).
    */
   function savePinsSplit(pins, opts) {
@@ -134,8 +285,9 @@
         if (!keep[k]) delete photoMap[k];
       });
     }
-    var okPins = saveJson(MAP_KEYS.pins, slim);
+    // Always update memory + IDB first so phone never loses cloud photos mid-quota
     savePinPhotoMap(photoMap);
+    var okPins = saveJson(MAP_KEYS.pins, slim);
     if (!okPins) {
       // Last resort: try even slimmer (no notes)
       try {
@@ -682,6 +834,10 @@
         rev = pmd.map_revision || 0;
         viewState.privateMapName = pmd.name || viewState.privateMapName;
         persistViewState();
+        // Same photo union as shared — phone localStorage/IDB keeps shots cloud may omit
+        try {
+          state = applyRemoteSharedWithPhotoMerge(collectMapState(), state);
+        } catch (eMPriv) {}
       } else {
         var { data: um, error: e2 } = await sb
           .from('user_map_state')
@@ -692,6 +848,9 @@
         if (!um) return;
         state = um.map_state || {};
         rev = um.map_revision || 0;
+        try {
+          state = applyRemoteSharedWithPhotoMerge(collectMapState(), state);
+        } catch (eMPers) {}
       }
       lastPullAt = Date.now();
       var localPinsNow = loadJson(MAP_KEYS.pins, []);
@@ -739,28 +898,45 @@
       });
       localRevision = rev;
       writeLocalCache(state);
+      // Ensure photos landed in memory/IDB even if LS was tight
+      try {
+        var afterPins = Array.isArray(state.pins) ? state.pins : [];
+        var photoMapAfter = loadPinPhotoMap();
+        var photoTouched = false;
+        afterPins.forEach(function (p) {
+          if (!p || p.id == null) return;
+          var incoming = [].concat(p.photos || [], p.notePhotos || []);
+          if (!incoming.length) return;
+          var id = String(p.id);
+          var merged = mergePinPhotoLists(photoMapAfter[id], incoming);
+          if (merged.length > ((photoMapAfter[id] && photoMapAfter[id].length) || 0)) {
+            photoMapAfter[id] = merged;
+            photoTouched = true;
+          }
+        });
+        if (photoTouched) savePinPhotoMap(photoMapAfter);
+      } catch (ePhA) {}
       refreshMapFromLocalState();
       updateAuthChrome();
       // If this device still has pin photos the cloud is missing, push them back up
+      // (shared + private + personal — desktop photos need to re-seed other devices)
       try {
-        if (viewState.mode === 'shared' && viewState.sharedMapId) {
-          var localFull = loadPinsCombined();
-          var remotePins = (state && state.pins) || [];
-          var rBy = {};
-          remotePins.forEach(function (p) {
-            if (p && p.id != null) rBy[String(p.id)] = p;
-          });
-          var cloudMissing = localFull.some(function (lp) {
-            if (!lp || !lp.photos || !lp.photos.length) return false;
-            var rp = rBy[String(lp.id)];
-            var rc = (rp && rp.photos && rp.photos.length) || 0;
-            return lp.photos.length > rc;
-          });
-          if (cloudMissing) {
-            dirty = true;
-            try { localStorage.setItem(DIRTY_KEY, '1'); } catch (eD2) {}
-            scheduleCloudPush(true);
-          }
+        var localFull = loadPinsCombined();
+        var remotePins = (state && state.pins) || [];
+        var rBy = {};
+        remotePins.forEach(function (p) {
+          if (p && p.id != null) rBy[String(p.id)] = p;
+        });
+        var cloudMissing = localFull.some(function (lp) {
+          if (!lp || !lp.photos || !lp.photos.length) return false;
+          var rp = rBy[String(lp.id)];
+          var rc = (rp && rp.photos && rp.photos.length) || 0;
+          return lp.photos.length > rc;
+        });
+        if (cloudMissing) {
+          dirty = true;
+          try { localStorage.setItem(DIRTY_KEY, '1'); } catch (eD2) {}
+          scheduleCloudPush(true);
         }
       } catch (eRep) {}
     } catch (e) {
@@ -1794,6 +1970,8 @@
     restoreDirtyFlag();
     loadViewState();
     try { migrateEmbeddedPinPhotos(); } catch (eMig) {}
+    // Phone: restore pin photos from IndexedDB before first map paint
+    try { await hydratePinPhotosFromIdb(); } catch (eIdb) {}
     await restoreViewPrefsFromCloud();
     // If an invite is pending, skip applying/restoring a different last map first —
     // join will load the shared map. Still snapshot dirty personal work above join.
@@ -1911,6 +2089,21 @@
     },
     loadPinsLocal: loadPinsCombined,
     pullNow: function () { return pullMapFromCloud(true); },
+    /**
+     * Settings → Display "Load map from cloud":
+     * force cloud pull, rehydrate pin photos (LS + IDB), refresh map UI.
+     * Does not hard-reload the page (avoids login/scroll stutter).
+     */
+    forceCloudReload: async function () {
+      try { await hydratePinPhotosFromIdb(); } catch (e0) {}
+      try { migrateEmbeddedPinPhotos(); } catch (e1) {}
+      await pullMapFromCloud(true);
+      try { await hydratePinPhotosFromIdb(); } catch (e2) {}
+      try { refreshMapFromLocalState(); } catch (e3) {}
+      try { updateAuthChrome(); } catch (e4) {}
+      return true;
+    },
+    hydratePinPhotosFromIdb: hydratePinPhotosFromIdb,
     shareCodeToClipboard: shareCodeToClipboard,
     switchToPersonal: switchToPersonal,
     switchToPrivateMap: switchToPrivateMap,

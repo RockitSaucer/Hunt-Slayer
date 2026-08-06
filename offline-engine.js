@@ -465,21 +465,15 @@
   function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return Promise.resolve(null);
 
-    // When a new SW takes control, reload once so mobile gets the new HTML/JS
-    var reloadedKey = 'reg_slayer_sw_reloaded_v1';
-    try {
-      navigator.serviceWorker.addEventListener('controllerchange', function () {
-        try {
-          if (sessionStorage.getItem(reloadedKey) === '1') return;
-          sessionStorage.setItem(reloadedKey, '1');
-        } catch (eS) {}
-        try { window.location.reload(); } catch (eR) {}
-      });
-    } catch (eCc) {}
+    // V7.0.24: do NOT auto-reload on controllerchange.
+    // That hard reload was snapping the page back to top and wiping login fields
+    // ~1s after open (desktop, browser, phone). New shell assets apply on the
+    // next natural navigation / hard refresh; map data uses Settings → Display
+    // "Load map from cloud" instead.
 
     return navigator.serviceWorker
       // Cache-bust query forces mobile browsers to re-check SW script on each deploy bump
-      .register('./sw.js?v=shell83', { scope: './' })
+      .register('./sw.js?v=shell84', { scope: './' })
       .then(function (reg) {
         console.info('[Offline] SW registered', reg.scope);
         // Force update check every launch (critical for iOS/Android home-screen / PWA)
@@ -488,7 +482,7 @@
             reg.update().catch(function () {});
           }
         } catch (eU) {}
-        // If a waiting worker exists, activate it immediately
+        // Activate waiting worker in the background (no page reload)
         try {
           if (reg.waiting) {
             reg.waiting.postMessage({ type: 'SKIP_WAITING' });

@@ -1,0 +1,25 @@
+V7.0.24 Beta (shell v84) — 2026-08-06
+
+1) Kill load stutter / UI snap-back
+   - Removed service worker controllerchange → location.reload().
+   - That hard reload (~1s after open) was resetting scroll to top and wiping
+     login fields on desktop, browser, and phone.
+   - New shell still installs in the background; map data uses the new button
+     (no full page reload).
+
+2) Settings → Display → "Load map from cloud"
+   - New Cloud map data section with force pull for the active map.
+   - Pulls pins + pin photos without reloading the page or clearing login.
+   - Sign-in required; status line + toast feedback.
+
+3) Phone pin photos (match desktop)
+   - Pin photos also stored in IndexedDB when localStorage is full (common on phones).
+   - Boot rehydrates photos from IDB before map paint.
+   - Private + personal maps now merge photos on pull (same as shared).
+   - Desktop re-pushes missing photos for all map types, not only shared.
+   - After cloud pull, photos are forced into memory/IDB even if LS quota fails.
+   - Map refresh prefers RegSlayerCloud.loadPinsLocal (memory rehydrate).
+
+4) Version
+   - APP_VERSION 7.0.24-beta · badge V7.0.24 Beta · SHELL_CACHE reg-slayer-shell-v84
+   - Both Hunt Slayer and Reg Slayer.
