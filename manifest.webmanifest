@@ -1,25 +1,37 @@
 {
   "name": "HUNT SLAYER",
-  "short_name": "HUNT SLAYER",
+  "short_name": "Hunt Slayer",
   "description": "Alabama deer planner — map tools, offline packs, weather, and shared maps.",
-  "start_url": "./index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0d0f0c",
+  "orientation": "any",
+  "background_color": "#0a0c09",
   "theme_color": "#0a0c09",
   "icons": [
     {
-      "src": "./hunt-slayer-logo.png",
+      "src": "./icons/app/hunt-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./hunt-slayer-logo.png",
+      "src": "./icons/app/hunt-512.png",
       "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/app/hunt-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./icons/app/hunt-180.png",
+      "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"
     }
   ]
 }
-

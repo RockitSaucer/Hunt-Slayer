@@ -2,7 +2,7 @@
  * Caches app shell for return visits with no signal.
  * Map tiles: cache-first when already stored; network otherwise (then cache).
  */
-const SHELL_CACHE = 'reg-slayer-shell-v80';
+const SHELL_CACHE = 'reg-slayer-shell-v81';
 const TILE_CACHE = 'reg-slayer-tiles-v2';
 const DATA_CACHE = 'reg-slayer-data-v1';
 
@@ -13,6 +13,15 @@ const SHELL_ASSETS = [
   './hunt-slayer-logo.png',
   './reg-slayer-logo.png',
   './peak-rut-antlers.png',
+  // App / homescreen icons
+  './icons/app/hunt-180.png',
+  './icons/app/hunt-192.png',
+  './icons/app/hunt-512.png',
+  './icons/app/hunt.ico',
+  './icons/app/reg-180.png',
+  './icons/app/reg-192.png',
+  './icons/app/reg-512.png',
+  './icons/app/reg.ico',
   // Peak-rut list skull (Available Hunts badge)
   './offline-engine.js',
   './auth-sync.js',

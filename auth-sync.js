@@ -146,6 +146,91 @@
     return state;
   }
 
+  /** Union pin photo lists by id (and content fingerprint). Max keeps all members' photos. */
+  var PIN_PHOTOS_MAX_SHARED = 12;
+  function mergePinPhotoLists(a, b, maxN) {
+    maxN = maxN != null ? maxN : PIN_PHOTOS_MAX_SHARED;
+    var out = [];
+    var seen = {};
+    function addAll(arr) {
+      if (!arr || !arr.length) return;
+      for (var i = 0; i < arr.length; i++) {
+        var p = arr[i];
+        if (!p) continue;
+        var url = typeof p === 'string' ? p : (p.dataUrl || p.url || p.src || '');
+        if (!url || String(url).indexOf('data:image') !== 0) continue;
+        var id = (typeof p === 'object' && p.id) ? String(p.id) : '';
+        var fp = String(url.length) + ':' + String(url).slice(-96);
+        var key = id || fp;
+        if (seen[key] || seen[fp]) continue;
+        seen[key] = true;
+        seen[fp] = true;
+        out.push(typeof p === 'object' && p.dataUrl
+          ? { id: id || ('ph_' + out.length + '_' + url.length), dataUrl: url }
+          : { id: id || ('ph_' + out.length + '_' + url.length), dataUrl: url });
+        if (out.length >= maxN) break;
+      }
+    }
+    addAll(a);
+    addAll(b);
+    return out;
+  }
+
+  /**
+   * Shared maps (local is dirty / about to push): keep local pins, merge photos
+   * from remote, and import any remote-only pins so party content is not lost.
+   */
+  function mergeSharedPinPhotos(localState, remoteState) {
+    localState = localState && typeof localState === 'object' ? localState : emptyMapState();
+    remoteState = remoteState && typeof remoteState === 'object' ? remoteState : {};
+    var localPins = Array.isArray(localState.pins) ? localState.pins.slice() : [];
+    var remotePins = Array.isArray(remoteState.pins) ? remoteState.pins : [];
+    var lById = {};
+    localPins.forEach(function (p, idx) {
+      if (p && p.id != null) lById[String(p.id)] = idx;
+    });
+    remotePins.forEach(function (rp) {
+      if (!rp || rp.id == null) return;
+      var id = String(rp.id);
+      if (lById[id] != null) {
+        var lp = localPins[lById[id]];
+        if (!lp) return;
+        lp.photos = mergePinPhotoLists(lp.photos || lp.notePhotos, rp.photos || rp.notePhotos);
+        if ((!lp.notes || !String(lp.notes).trim()) && rp.notes) lp.notes = rp.notes;
+      } else {
+        localPins.push(rp);
+        lById[id] = localPins.length - 1;
+      }
+    });
+    localState.pins = localPins;
+    return localState;
+  }
+
+  /**
+   * Shared maps (clean pull): remote pin list is authority (respects deletes),
+   * but photo arrays are unioned with local so concurrent shots are kept.
+   */
+  function applyRemoteSharedWithPhotoMerge(localState, remoteState) {
+    remoteState = remoteState && typeof remoteState === 'object'
+      ? JSON.parse(JSON.stringify(remoteState))
+      : emptyMapState();
+    localState = localState && typeof localState === 'object' ? localState : emptyMapState();
+    var lById = {};
+    (Array.isArray(localState.pins) ? localState.pins : []).forEach(function (p) {
+      if (p && p.id != null) lById[String(p.id)] = p;
+    });
+    var remotePins = Array.isArray(remoteState.pins) ? remoteState.pins : [];
+    remoteState.pins = remotePins.map(function (rp) {
+      if (!rp || rp.id == null) return rp;
+      var lp = lById[String(rp.id)];
+      if (!lp) return rp;
+      var out = Object.assign({}, rp);
+      out.photos = mergePinPhotoLists(lp.photos || lp.notePhotos, rp.photos || rp.notePhotos);
+      return out;
+    });
+    return remoteState;
+  }
+
   function applyMapState(state) {
     if (!state || typeof state !== 'object') state = {};
     saveJson(MAP_KEYS.pins, Array.isArray(state.pins) ? state.pins : []);
@@ -255,8 +340,9 @@
     cloudBusy = true;
     updateSyncBadge('syncing');
     try {
-      // Local is authority when dirty — full replace (no merge).
-      // Merge-by-id was resurrecting deleted pins/areas on push/refresh.
+      // Local is authority when dirty — full replace for most fields.
+      // Shared maps: always merge pin *photos* with latest remote so party
+      // members' pin photos are not wiped by concurrent saves.
       var state = collectMapState();
       writeLocalCache(state);
       if (!state.meta) state.meta = {};
@@ -266,11 +352,20 @@
       if (viewState.mode === 'shared' && viewState.sharedMapId) {
         var { data: cur, error: rErr } = await sb
           .from('shared_maps')
-          .select('map_revision')
+          .select('map_revision, map_state')
           .eq('id', viewState.sharedMapId)
           .maybeSingle();
         if (rErr) throw rErr;
         var remoteRev = (cur && cur.map_revision) || 0;
+        try {
+          state = mergeSharedPinPhotos(state, (cur && cur.map_state) || {});
+          // Write merged pins back to live keys so UI has everyone's photos
+          if (state && Array.isArray(state.pins)) {
+            saveJson(MAP_KEYS.pins, state.pins);
+          }
+        } catch (eMg) {
+          console.warn('shared pin photo merge on push', eMg);
+        }
         var nextRev = remoteRev + 1;
         state.meta.revision = nextRev;
         var { error: uErr } = await sb
@@ -336,8 +431,30 @@
     // Shared maps need quicker pin/emphasize sync; private can stay slower
     var minGap = (viewState.mode === 'shared') ? 2500 : 12000;
     if (!force && Date.now() - lastPullAt < minGap) return;
-    // Never overwrite a local delete/edit that has not uploaded yet
+    // Dirty local: still merge shared pin photos from cloud, then push
     if (isDirty()) {
+      if (viewState.mode === 'shared' && viewState.sharedMapId) {
+        try {
+          var { data: dirtyRemote, error: dErr } = await sb
+            .from('shared_maps')
+            .select('map_state, map_revision, name, code')
+            .eq('id', viewState.sharedMapId)
+            .maybeSingle();
+          if (!dErr && dirtyRemote) {
+            lastPullAt = Date.now();
+            var localDirty = collectMapState();
+            var mergedDirty = mergeSharedPinPhotos(localDirty, dirtyRemote.map_state || {});
+            applyMapState(mergedDirty);
+            writeLocalCache(mergedDirty);
+            refreshMapFromLocalState();
+            if (dirtyRemote.name) viewState.sharedMapName = dirtyRemote.name;
+            if (dirtyRemote.code) viewState.sharedMapCode = dirtyRemote.code;
+            persistViewState();
+          }
+        } catch (eDm) {
+          console.warn('shared photo merge while dirty', eDm);
+        }
+      }
       scheduleCloudPush(true);
       return;
     }
@@ -357,6 +474,10 @@
         viewState.sharedMapName = data.name || viewState.sharedMapName;
         viewState.sharedMapCode = data.code || viewState.sharedMapCode;
         persistViewState();
+        // Clean pull: remote structure + merged photos (keeps concurrent pin shots)
+        try {
+          state = applyRemoteSharedWithPhotoMerge(collectMapState(), state);
+        } catch (eM2) {}
       } else if (viewState.privateMapId) {
         var { data: pmd, error: pe } = await sb
           .from('private_maps')
