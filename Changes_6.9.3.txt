@@ -1,0 +1,18 @@
+V6.9.3 Nice — header link to REG SLAYER
+=======================================
+
+What changed
+------------
+- Brand header (right side): **Reg Slayer** button → https://www.regslayer.com
+  (opens in a new tab). Compact pill on phone; larger on desktop.
+- Extra right padding on logo wrap so the mark does not sit under the button.
+
+Version / cache
+---------------
+- APP_VERSION = 6.9.3-nice
+- Badge: V6.9.3 Nice
+- SHELL_CACHE = reg-slayer-shell-v58
+
+Undo
+----
+- Tag v6.9.2-nice, or remove `.brand-sister-link` markup/CSS and drop shell to v57.

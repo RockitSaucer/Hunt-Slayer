@@ -161,7 +161,7 @@
       width: min(1100px, 96vw);
       max-width: 100%;
       height: 100%;
-      padding-right: 48px;
+      padding-right: 120px;
       box-sizing: border-box;
       margin: 0 auto;
       overflow: hidden;
@@ -191,6 +191,51 @@
       pointer-events: none;
       user-select: none;
       text-shadow: 0 1px 3px rgba(0,0,0,0.85);
+    }
+    /* Sister site — right side of brand header */
+    .brand-sister-link {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(229, 154, 24, 0.55);
+      background: rgba(13, 15, 12, 0.72);
+      color: #f0f4ee;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-decoration: none;
+      text-transform: uppercase;
+      white-space: nowrap;
+      line-height: 1.1;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+    }
+    .brand-sister-link:hover,
+    .brand-sister-link:focus-visible {
+      border-color: var(--accent, #e59a18);
+      background: rgba(72, 106, 47, 0.55);
+      color: #fff;
+      outline: none;
+    }
+    .brand-sister-link:active {
+      transform: translateY(-50%) scale(0.98);
+    }
+    .brand-sister-link .brand-sister-label {
+      color: var(--accent, #e59a18);
+    }
+    .brand-sister-link:hover .brand-sister-label,
+    .brand-sister-link:focus-visible .brand-sister-label {
+      color: #ffc45a;
     }
     /* Brand header map name retired — name lives flush above the map */
     .brand-map-name {
@@ -785,6 +830,14 @@
       object-position: center;
     }
     html.layout-phone .brand-version { font-size: 8px; bottom: 6px; right: 4px; }
+    html.layout-phone .brand-sister-link {
+      right: 8px;
+      padding: 6px 8px;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      border-radius: 7px;
+    }
+    html.layout-phone .brand-logo-wrap { padding-right: 88px; }
     html.layout-phone .site-footer-inner { gap: 6px 10px; padding-left: 12px; padding-right: 12px; }
     html.layout-phone .site-footer-inner p { font-size: 12px; }
     html.layout-phone #dashboard-container,
@@ -926,9 +979,16 @@
         max-height: 64px;
         overflow: hidden;
       }
-      .brand-logo-wrap { width: 94vw; height: 100%; padding-right: 36px; overflow: hidden; }
+      .brand-logo-wrap { width: 94vw; height: 100%; padding-right: 88px; overflow: hidden; }
       .brand-logo { width: auto; height: 100px; max-height: none; object-fit: contain; object-position: center; }
       .brand-version { font-size: 8px; bottom: 6px; }
+      .brand-sister-link {
+        right: 8px;
+        padding: 6px 8px;
+        font-size: 10px;
+        letter-spacing: 0.04em;
+        border-radius: 7px;
+      }
       .site-footer-inner { gap: 6px 10px; padding-left: 12px; padding-right: 12px; }
       .site-footer-inner p { font-size: 12px; }
       #dashboard-container,
@@ -9613,13 +9673,16 @@
   </style>
 </head>
 <body>
-  <!-- Brand header: map name + logo + version badge -->
+  <!-- Brand header: logo + version badge + sister-site link -->
   <header class="brand-header" role="banner">
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 6.9.2 Nice">V6.9.2 Nice</span>
+      <span class="brand-version" aria-label="Version 6.9.3 Nice">V6.9.3 Nice</span>
     </div>
+    <a class="brand-sister-link" href="https://www.regslayer.com" target="_blank" rel="noopener noreferrer" title="Open REG SLAYER">
+      <span class="brand-sister-label">Reg Slayer</span>
+    </a>
   </header>
 
   <!-- Auth gate (Supabase HuntSlayer) -->
@@ -10919,7 +10982,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.9.2-nice';
+    const APP_VERSION = '6.9.3-nice';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
