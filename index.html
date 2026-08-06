@@ -7485,11 +7485,11 @@
       transform: scale(1.08);
     }
 
-    /* Satellite imagery date — on the map only, never over the bottom toolbar */
+    /* Satellite imagery date — bottom-right above toolbar (left is map search) */
     .map-imagery-date {
       position: absolute;
-      left: 8px;
-      right: auto;
+      left: auto;
+      right: 8px;
       /* Sit just above the bottom bar strip (+ home-indicator inset) */
       bottom: calc(var(--mbb-bar-h, 45px) + env(safe-area-inset-bottom, 0px) + 10px);
       /* Below toolbar (z 80) so it can never cover buttons */
@@ -7510,21 +7510,52 @@
       max-width: min(46vw, 200px);
       overflow: hidden;
       text-overflow: ellipsis;
+      text-align: right;
     }
     .map-imagery-date.visible { display: block; }
     .map-wrapper.fullscreen .map-imagery-date {
       bottom: calc(var(--mbb-bar-h, 45px) + env(safe-area-inset-bottom, 0px) + 10px);
-      left: 8px;
-      right: auto;
+      left: auto;
+      right: 8px;
       z-index: 70;
     }
     html.layout-phone .map-imagery-date {
       font-size: 9px;
-      left: 6px;
-      right: auto;
+      left: auto;
+      right: 6px;
       bottom: calc(var(--mbb-bar-h, 36px) + env(safe-area-inset-bottom, 0px) + 8px);
       padding: 2px 6px;
       z-index: 70;
+    }
+    /*
+     * Satellite tiles: no fade-in flash (blank → image). Keep overscaled tiles
+     * crisp while higher-res tiles load. Leaflet's default opacity:0→1 fade
+     * is what makes fast zoom look empty for a beat.
+     */
+    .leaflet-container .basemap-sat-tiles .leaflet-tile,
+    .leaflet-fade-anim .basemap-sat-tiles .leaflet-tile {
+      opacity: 1 !important;
+      transition: none !important;
+      /* Overzoom stays smooth (bilinear) — avoid blocky crisp-edges */
+      image-rendering: auto;
+    }
+    /* Lift Leaflet attribution off the toolbar / search corner */
+    .leaflet-container .leaflet-control-attribution {
+      margin: 0 6px calc(var(--mbb-bar-h, 45px) + env(safe-area-inset-bottom, 0px) + 2px) 0 !important;
+      max-width: min(52vw, 280px);
+      font-size: 9px !important;
+      line-height: 1.2 !important;
+      background: rgba(0, 0, 0, 0.42) !important;
+      color: rgba(255,255,255,0.88) !important;
+      border-radius: 4px;
+      padding: 2px 6px !important;
+    }
+    .leaflet-container .leaflet-control-attribution a {
+      color: rgba(229, 154, 24, 0.95) !important;
+    }
+    .leaflet-bottom.leaflet-right {
+      /* Keep attribution in bottom-right; imagery date sits just above it */
+      z-index: 69;
     }
     .map-layers-menu {
       position: relative;
@@ -10053,7 +10084,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.12 Beta">V7.0.12 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.13 Beta">V7.0.13 Beta</span>
     </div>
     <a class="brand-sister-link" id="brand-sister-link" href="https://www.regslayer.com" title="Open REG SLAYER (same account)">
       <span class="brand-sister-label">Reg Slayer</span>
@@ -11398,7 +11429,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.12-beta';
+    const APP_VERSION = '7.0.13-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -19552,20 +19583,186 @@
       return false;
     }
 
+    /**
+     * Satellite tile performance defaults.
+     * - updateWhenZooming:false keeps overscaled tiles on-screen while zooming
+     *   (avoids blank map when pinching / wheel-zooming fast)
+     * - high keepBuffer holds surrounding tiles so pan/zoom reuses cache
+     * - maxNativeZoom 19 + maxZoom 22: deep overscale, never empty grid
+     * - className basemap-sat-tiles: skip Leaflet fade-in flash (CSS)
+     */
+    function satTileLayerOpts(extra) {
+      var phone = (typeof isPhoneLayout === 'function' && isPhoneLayout());
+      var mz = (typeof window.__REG_SLAYER_MAP_MAX_ZOOM__ === 'number')
+        ? window.__REG_SLAYER_MAP_MAX_ZOOM__
+        : 22;
+      var opts = {
+        maxZoom: mz < 22 ? 22 : mz,
+        maxNativeZoom: 19,
+        minZoom: 1,
+        // Critical: do not tear down / refetch tiles mid-zoom animation
+        updateWhenZooming: false,
+        // Still refresh as you pan (false = update during pan for snappier fill)
+        updateWhenIdle: false,
+        keepBuffer: phone ? 6 : 10,
+        detectRetina: false,
+        // Esri World Imagery blanks if CORS-tainted on some desktop canvas paths
+        crossOrigin: false,
+        className: 'basemap-sat-tiles',
+        // Empty error tile = leave last painted pixel rather than gray hole when possible
+        errorTileUrl: '',
+        attribution: 'Esri World Imagery · Maxar, Earthstar Geographics & GIS User Community'
+      };
+      if (extra && typeof extra === 'object') {
+        for (var k in extra) {
+          if (Object.prototype.hasOwnProperty.call(extra, k)) opts[k] = extra[k];
+        }
+      }
+      opts.crossOrigin = false;
+      opts.updateWhenZooming = false;
+      opts.className = 'basemap-sat-tiles';
+      if (opts.maxZoom < 22) opts.maxZoom = 22;
+      if (opts.maxNativeZoom == null) opts.maxNativeZoom = 19;
+      return opts;
+    }
+
+    /** One automatic re-request for failed satellite tiles (network blip / rate limit). */
+    function wireSatTileRetry(layer) {
+      if (!layer || layer._satRetryWired || typeof layer.on !== 'function') return;
+      layer._satRetryWired = true;
+      layer.on('tileerror', function(ev) {
+        try {
+          var tile = ev && ev.tile;
+          var coords = ev && ev.coords;
+          if (!tile || !coords || tile._satRetried) return;
+          tile._satRetried = true;
+          var src = tile.src || (layer.getTileUrl && layer.getTileUrl(coords));
+          if (!src) return;
+          setTimeout(function() {
+            try {
+              // Bust briefly so a transient CDN miss is re-fetched; SW still caches successes
+              var join = src.indexOf('?') >= 0 ? '&' : '?';
+              tile.src = src + join + 'r=' + Date.now();
+            } catch (eSet) {}
+          }, 350);
+        } catch (eTe) {}
+      });
+    }
+
+    /**
+     * After zoom/pan settles on satellite, warm the SW/browser cache for a ring of
+     * tiles around the view so the next zoom-in is less likely to blank.
+     */
+    var _satPrefetchTimer = null;
+    function prefetchActiveSatelliteRing() {
+      if (typeof activeBasemapKey === 'undefined' || activeBasemapKey !== 'satellite') return;
+      if (!map || typeof L === 'undefined') return;
+      var layer = null;
+      try {
+        if (typeof getActiveSatelliteLayer === 'function') layer = getActiveSatelliteLayer();
+        else if (mapBasemaps) layer = mapBasemaps[satelliteLayerKey(activeSatelliteMode)] || mapBasemaps.sat_newest;
+      } catch (eL) {}
+      if (!layer || typeof layer.getTileUrl !== 'function') return;
+      var z;
+      try { z = map.getZoom(); } catch (eZ) { return; }
+      if (z == null || isNaN(z)) return;
+      // Only prefetch native zoom levels (overzoom reuses z19)
+      var nativeZ = Math.min(
+        Math.max(0, Math.floor(z)),
+        (layer.options && layer.options.maxNativeZoom != null) ? layer.options.maxNativeZoom : 19
+      );
+      var bounds;
+      try { bounds = map.getBounds().pad(0.35); } catch (eB) { return; }
+      if (!bounds) return;
+      var ts = (layer.getTileSize && layer.getTileSize()) || { x: 256, y: 256 };
+      var tileSize = (ts.x || 256);
+      // Convert latlng bounds → tile range at nativeZ
+      function lng2tile(lon, zoom) {
+        return Math.floor((lon + 180) / 360 * Math.pow(2, zoom));
+      }
+      function lat2tile(lat, zoom) {
+        var r = lat * Math.PI / 180;
+        return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * Math.pow(2, zoom));
+      }
+      var x0 = lng2tile(bounds.getWest(), nativeZ);
+      var x1 = lng2tile(bounds.getEast(), nativeZ);
+      var y0 = lat2tile(bounds.getNorth(), nativeZ);
+      var y1 = lat2tile(bounds.getSouth(), nativeZ);
+      if (x1 < x0) { var xt = x0; x0 = x1; x1 = xt; }
+      if (y1 < y0) { var yt = y0; y0 = y1; y1 = yt; }
+      // Cap so we never hammer the network
+      var maxTiles = 48;
+      var count = 0;
+      for (var x = x0; x <= x1 && count < maxTiles; x++) {
+        for (var y = y0; y <= y1 && count < maxTiles; y++) {
+          try {
+            var coords = L.point(x, y);
+            coords.z = nativeZ;
+            var url = layer.getTileUrl(coords);
+            if (!url) continue;
+            // Fire-and-forget Image() warm; SW caches successful GETs
+            var img = new Image();
+            img.decoding = 'async';
+            img.src = url;
+            count++;
+          } catch (eImg) {}
+        }
+      }
+      // Also warm one level deeper (next zoom-in) when not already past native
+      if (nativeZ < ((layer.options && layer.options.maxNativeZoom) || 19) && count < maxTiles) {
+        var z2 = nativeZ + 1;
+        var cx = lng2tile(map.getCenter().lng, z2);
+        var cy = lat2tile(map.getCenter().lat, z2);
+        for (var dx = -2; dx <= 2 && count < maxTiles; dx++) {
+          for (var dy = -2; dy <= 2 && count < maxTiles; dy++) {
+            try {
+              var c2 = L.point(cx + dx, cy + dy);
+              c2.z = z2;
+              var u2 = layer.getTileUrl(c2);
+              if (!u2) continue;
+              var img2 = new Image();
+              img2.decoding = 'async';
+              img2.src = u2;
+              count++;
+            } catch (e2) {}
+          }
+        }
+      }
+    }
+    function scheduleSatTilePrefetch(delayMs) {
+      if (_satPrefetchTimer) clearTimeout(_satPrefetchTimer);
+      _satPrefetchTimer = setTimeout(function() {
+        _satPrefetchTimer = null;
+        try { prefetchActiveSatelliteRing(); } catch (eP) {}
+      }, delayMs != null ? delayMs : 180);
+    }
+
     function makeWaybackTileLayer(release, tilePerf, seasonLabel) {
       if (!release || !release.m) return null;
       var url = 'https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/' +
         release.m + '/{z}/{y}/{x}';
       // crossOrigin off so seasonal imagery does not blank on desktop (same as Default satellite)
-      var opts = Object.assign({
-        maxZoom: (typeof window.__REG_SLAYER_MAP_MAX_ZOOM__ === 'number') ? window.__REG_SLAYER_MAP_MAX_ZOOM__ : 22,
-        maxNativeZoom: 19,
-        attribution: 'Esri World Imagery Wayback · ' + seasonLabel + ' · ' + (release.name || release.m),
-        crossOrigin: false
-      }, tilePerf || {});
+      var base = (typeof satTileLayerOpts === 'function')
+        ? satTileLayerOpts({
+            attribution: 'Esri World Imagery Wayback · ' + seasonLabel + ' · ' + (release.name || release.m)
+          })
+        : {
+            maxZoom: 22,
+            maxNativeZoom: 19,
+            attribution: 'Esri World Imagery Wayback · ' + seasonLabel + ' · ' + (release.name || release.m),
+            crossOrigin: false,
+            updateWhenZooming: false,
+            keepBuffer: 8,
+            className: 'basemap-sat-tiles'
+          };
+      var opts = Object.assign({}, base, tilePerf || {});
+      // Satellite never CORS-taints; never drop tiles mid-zoom; deep overzoom OK
       opts.crossOrigin = false;
-      // Always allow deep overzoom so basemap never blanks
+      opts.updateWhenZooming = false;
+      opts.className = 'basemap-sat-tiles';
       if (opts.maxZoom < 22) opts.maxZoom = 22;
+      if (opts.maxNativeZoom == null || opts.maxNativeZoom > 19) opts.maxNativeZoom = 19;
+      if (opts.keepBuffer == null || opts.keepBuffer < 6) opts.keepBuffer = 8;
       return L.tileLayer(url, opts);
     }
 
@@ -19575,6 +19772,7 @@
         // Swap out old winter layer if it was on the map
         var oldW = mapBasemaps.sat_winter;
         mapBasemaps.sat_winter = waybackSeasonal.winter.layer;
+        try { wireSatTileRetry(mapBasemaps.sat_winter); } catch (eRw) {}
         if (map && oldW && map.hasLayer(oldW)) {
           try { map.removeLayer(oldW); } catch (e0) {}
         }
@@ -19582,6 +19780,7 @@
       if (waybackSeasonal.summer && waybackSeasonal.summer.layer) {
         var oldS = mapBasemaps.sat_summer;
         mapBasemaps.sat_summer = waybackSeasonal.summer.layer;
+        try { wireSatTileRetry(mapBasemaps.sat_summer); } catch (eRs) {}
         if (map && oldS && map.hasLayer(oldS)) {
           try { map.removeLayer(oldS); } catch (e1) {}
         }
@@ -19767,6 +19966,23 @@
       if (lidarRadio) lidarRadio.checked = (key === 'lidar');
       updateSatelliteModeUi();
       try { scheduleImageryDateRefresh(80); } catch (eImgD) {}
+      if (key === 'satellite') {
+        try { scheduleSatTilePrefetch(80); } catch (ePfB) {}
+        // Ensure active sat layer has smooth-zoom opts even if an older layer slipped in
+        try {
+          var satL = addLayer;
+          if (satL && satL.options) {
+            satL.options.updateWhenZooming = false;
+            satL.options.keepBuffer = Math.max(satL.options.keepBuffer || 0, 8);
+            satL.options.maxNativeZoom = satL.options.maxNativeZoom != null ? satL.options.maxNativeZoom : 19;
+            satL.options.maxZoom = Math.max(satL.options.maxZoom || 0, 22);
+            if (!satL.options.className || String(satL.options.className).indexOf('basemap-sat-tiles') < 0) {
+              satL.options.className = ((satL.options.className || '') + ' basemap-sat-tiles').trim();
+            }
+          }
+          wireSatTileRetry(satL);
+        } catch (eSatOpts) {}
+      }
       // Every basemap: deep zoom + overscale past native tiles (never blank map)
       try {
         var mz = (typeof window.__REG_SLAYER_MAP_MAX_ZOOM__ === 'number') ? window.__REG_SLAYER_MAP_MAX_ZOOM__ : 22;
@@ -19985,9 +20201,17 @@
     function wireImageryDateUpdates() {
       if (!map || _imageryDateWired) return;
       _imageryDateWired = true;
-      map.on('moveend', function() { scheduleImageryDateRefresh(320); });
-      map.on('zoomend', function() { scheduleImageryDateRefresh(320); });
+      map.on('moveend', function() {
+        scheduleImageryDateRefresh(320);
+        try { scheduleSatTilePrefetch(220); } catch (ePf0) {}
+      });
+      map.on('zoomend', function() {
+        scheduleImageryDateRefresh(320);
+        // Warm next ring of sat tiles after zoom settles (faster next zoom-in)
+        try { scheduleSatTilePrefetch(120); } catch (ePf1) {}
+      });
       scheduleImageryDateRefresh(100);
+      try { scheduleSatTilePrefetch(400); } catch (ePf2) {}
     }
     window.scheduleImageryDateRefresh = scheduleImageryDateRefresh;
     window.refreshImageryDateLabel = refreshImageryDateLabel;
@@ -21634,23 +21858,28 @@
 
     function initMap() {
       if (typeof L === 'undefined' || map) return;
-      // Shared tile opts: limit work on mobile (no retina 4× tile spam; small buffer; idle updates)
+      // Shared tile opts: limit work on mobile (no retina 4× tile spam)
       var phoneTiles = (typeof isPhoneLayout === 'function' && isPhoneLayout());
-      // Prefer smooth pan: keep more tiles around viewport on desktop; still skip retina 4× spam
+      /*
+       * updateWhenZooming:false = keep current tiles CSS-scaled during zoom
+       * (true caused blank/stutter when zooming satellite too far/fast).
+       * Higher keepBuffer = more surrounding tiles retained for smooth pan.
+       */
       var tilePerf = {
         updateWhenIdle: false,
-        updateWhenZooming: true,
-        keepBuffer: phoneTiles ? 2 : 4,
+        updateWhenZooming: false,
+        keepBuffer: phoneTiles ? 4 : 6,
         detectRetina: false,
         crossOrigin: true
       };
-      // Satellite tiles: leave crossOrigin off — Esri imagery often blanks with CORS-tainted canvas on desktop
-      var tilePerfSat = Object.assign({}, tilePerf, { crossOrigin: false });
+      // Satellite: dedicated opts (no CORS, no mid-zoom reload, big buffer, no fade class)
+      var tilePerfSat = satTileLayerOpts();
       /*
        * Deep zoom: every basemap allows map maxZoom (overscale past maxNativeZoom)
        * so tiles never vanish into a blank grid when zooming in hard.
        */
       var MAP_MAX_ZOOM = 22;
+      window.__REG_SLAYER_MAP_MAX_ZOOM__ = MAP_MAX_ZOOM;
       // USGS topo default — native ~16; overscale to MAP_MAX_ZOOM
       var topo = L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}', Object.assign({
         maxZoom: MAP_MAX_ZOOM,
@@ -21669,19 +21898,33 @@
        * Winter — newest Esri Wayback snapshot dated Dec 1 – Mar 10
        * Summer — newest Esri Wayback snapshot dated May 1 – Aug 1
        * Wayback catalog loads async; winter/summer layers swap in when ready.
+       *
+       * Use services.arcgisonline.com (often faster/CDN-friendly) with same path
+       * as server.arcgisonline.com. maxNativeZoom 19 + maxZoom 22 overscales HD
+       * tiles instead of requesting empty high-z tiles.
        */
-      var satNewest = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', Object.assign({
-        maxZoom: MAP_MAX_ZOOM,
-        maxNativeZoom: 19,
-        attribution: 'Esri World Imagery · Maxar, Earthstar Geographics & GIS User Community'
-      }, tilePerfSat));
+      var satNewest = L.tileLayer(
+        'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        satTileLayerOpts({
+          maxZoom: MAP_MAX_ZOOM,
+          attribution: 'Esri World Imagery · Maxar, Earthstar Geographics & GIS User Community'
+        })
+      );
+      // Soft tile retry: if a tile fails once, try once more after a short delay
+      try { wireSatTileRetry(satNewest); } catch (eRetry0) {}
       // Placeholders until Wayback catalog resolves (same family as Newest)
       var satWinter = satNewest;
       var satSummer = satNewest;
       try {
-        ensureWaybackSeasonalLayers(tilePerf).then(function() {
-          if (waybackSeasonal.winter && waybackSeasonal.winter.layer) satWinter = waybackSeasonal.winter.layer;
-          if (waybackSeasonal.summer && waybackSeasonal.summer.layer) satSummer = waybackSeasonal.summer.layer;
+        ensureWaybackSeasonalLayers(tilePerfSat).then(function() {
+          if (waybackSeasonal.winter && waybackSeasonal.winter.layer) {
+            satWinter = waybackSeasonal.winter.layer;
+            try { wireSatTileRetry(satWinter); } catch (eR1) {}
+          }
+          if (waybackSeasonal.summer && waybackSeasonal.summer.layer) {
+            satSummer = waybackSeasonal.summer.layer;
+            try { wireSatTileRetry(satSummer); } catch (eR2) {}
+          }
         });
       } catch (eWb) {}
 
@@ -21700,7 +21943,7 @@
         minZoom: 4,
         keepBuffer: phoneTiles ? 4 : 8,
         updateWhenIdle: false,
-        updateWhenZooming: true,
+        updateWhenZooming: false,
         crossOrigin: false,
         errorTileUrl: ''
       });
