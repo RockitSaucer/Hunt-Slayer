@@ -5581,7 +5581,8 @@
       width: min(400px, calc(100vw - 16px)) !important;
       max-width: min(400px, calc(100vw - 16px)) !important;
       min-width: 300px !important;
-      max-height: min(72vh, 540px);
+      /* Tall enough to show Notes + Add photo without scrolling past icons */
+      max-height: min(88vh, 720px);
       padding: 0 !important;
       overflow: hidden !important;
       box-sizing: border-box !important;
@@ -5968,6 +5969,14 @@
       width: min(360px, calc(100vw - 12px)) !important;
       max-width: min(360px, calc(100vw - 12px)) !important;
       min-width: 0 !important;
+      max-height: min(90dvh, 92vh) !important;
+    }
+    /* Slightly shorter icon grids so Notes + Add photo sit in view on phone */
+    html.layout-phone #pin-editor-sheet .pin-icon-grid {
+      max-height: min(28vh, 200px);
+    }
+    html.layout-phone #pin-editor-sheet #pin-icon-recent .pin-icon-grid {
+      max-height: none;
     }
     /* Pin note modal — type freely; text stays in #pin-notes-input either way */
     #pin-note-modal {
@@ -6302,7 +6311,7 @@
       z-index: 95;
       width: min(400px, calc(100vw - 16px));
       max-width: min(400px, calc(100vw - 16px));
-      max-height: min(72vh, 540px);
+      max-height: min(88vh, 720px);
       overflow: hidden;
       background: rgba(15, 18, 14, 0.98);
       border: 1px solid var(--border);
@@ -6474,24 +6483,40 @@
       color: var(--muted);
       margin: 0;
     }
-    /* Phone: choose Camera roll vs Camera */
+    /* iOS: display:none file inputs ignore .click() — keep off-screen instead */
+    .pin-photo-file-input {
+      position: fixed !important;
+      left: 0 !important;
+      top: 0 !important;
+      width: 1px !important;
+      height: 1px !important;
+      opacity: 0 !important;
+      overflow: hidden !important;
+      z-index: 2147483645 !important;
+      pointer-events: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: 0 !important;
+    }
+    /* Phone: choose Camera roll vs Camera — above pin sheet / map chrome */
     #pin-photo-source-modal,
     #pin-photo-replace-modal,
     #pin-photo-viewer-modal {
       display: none;
       position: fixed;
       inset: 0;
-      z-index: 240;
+      z-index: 2147483646;
       align-items: flex-end;
       justify-content: center;
       background: rgba(0,0,0,0.55);
       padding: 12px;
       box-sizing: border-box;
+      -webkit-overflow-scrolling: touch;
     }
     #pin-photo-source-modal.active,
     #pin-photo-replace-modal.active,
     #pin-photo-viewer-modal.active {
-      display: flex;
+      display: flex !important;
     }
     #pin-photo-viewer-modal {
       align-items: center;
@@ -6517,16 +6542,23 @@
       width: 100%;
       display: block;
       margin: 0 0 8px;
-      padding: 12px 12px;
+      padding: 14px 12px;
       border-radius: 10px;
       border: 1px solid var(--border);
       background: var(--panel-light, #1a1f16);
       color: #f3f6ef;
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 800;
       font-family: inherit;
       cursor: pointer;
       text-align: center;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: rgba(229, 154, 24, 0.25);
+      touch-action: manipulation;
+    }
+    /* Labels used as buttons (iOS-friendly file pickers) */
+    label.pps-btn {
+      display: block;
     }
     .pin-photo-sheet .pps-btn:hover,
     .pin-photo-sheet .pps-btn:focus-visible {
@@ -10339,7 +10371,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.16 Beta">V7.0.16 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.17 Beta">V7.0.17 Beta</span>
     </div>
     <a class="brand-sister-link" id="brand-sister-link" href="https://www.regslayer.com" title="Open REG SLAYER (same account)">
       <span class="brand-sister-label">Reg Slayer</span>
@@ -11070,9 +11102,9 @@
               </button>
               <p class="pes-photo-count" id="pes-photo-count" hidden></p>
               <div class="pes-photo-thumbs" id="pes-photo-thumbs" aria-label="Pin photos"></div>
-              <!-- Desktop / gallery: no capture. Camera: capture environment (iOS/Android). -->
-              <input type="file" id="pin-photo-gallery-input" accept="image/*" style="display:none" tabindex="-1" aria-hidden="true" />
-              <input type="file" id="pin-photo-camera-input" accept="image/*" capture="environment" style="display:none" tabindex="-1" aria-hidden="true" />
+              <!-- iOS: do NOT use display:none — off-screen class so .click() / labels work -->
+              <input type="file" id="pin-photo-gallery-input" class="pin-photo-file-input" accept="image/*" tabindex="-1" aria-hidden="true" />
+              <input type="file" id="pin-photo-camera-input" class="pin-photo-file-input" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true" />
             </div>
 
             <button type="button" class="pes-customize-btn" id="pes-customize-btn" onclick="togglePinCustomizePanel()">Customize pin</button>
@@ -11161,12 +11193,12 @@
     </div>
   </div>
 
-  <!-- Phone: pick photo source for pin notes -->
+  <!-- Phone: pick photo source for pin notes (labels open file inputs — works on iOS) -->
   <div id="pin-photo-source-modal" role="dialog" aria-modal="true" aria-labelledby="pin-photo-source-title" onclick="if(event.target===this)closePinPhotoSourceModal()">
     <div class="pin-photo-sheet" onclick="event.stopPropagation()">
       <h3 id="pin-photo-source-title">Add photo</h3>
-      <button type="button" class="pps-btn" onclick="pickPinPhotoFromGallery()">From camera roll</button>
-      <button type="button" class="pps-btn" onclick="pickPinPhotoFromCamera()">Camera</button>
+      <label for="pin-photo-gallery-input" class="pps-btn" id="pin-photo-gallery-label">From camera roll</label>
+      <label for="pin-photo-camera-input" class="pps-btn" id="pin-photo-camera-label">Camera</label>
       <button type="button" class="pps-btn secondary" onclick="closePinPhotoSourceModal()">Cancel</button>
     </div>
   </div>
@@ -11725,7 +11757,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.16-beta';
+    const APP_VERSION = '7.0.17-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -20851,12 +20883,21 @@
         if (typeof isPhoneLayout === 'function' && isPhoneLayout()) return true;
       } catch (e0) {}
       try {
-        if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches &&
-            Math.min(window.innerWidth || 999, window.innerHeight || 999) < 900) return true;
+        if (document.documentElement && document.documentElement.classList.contains('layout-phone')) return true;
+      } catch (e0b) {}
+      try {
+        if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return true;
       } catch (e1) {}
       try {
-        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '')) return true;
+        if (window.matchMedia && window.matchMedia('(hover: none)').matches &&
+            Math.min(window.innerWidth || 999, window.innerHeight || 999) < 1024) return true;
+      } catch (e1b) {}
+      try {
+        if (/iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent || '')) return true;
       } catch (e2) {}
+      try {
+        if (navigator.maxTouchPoints > 1 && Math.min(window.innerWidth || 999, window.innerHeight || 999) < 1024) return true;
+      } catch (e3) {}
       return false;
     }
 
@@ -20943,7 +20984,8 @@
     function compressImageFileToDataUrl(file) {
       return new Promise(function(resolve, reject) {
         if (!file) { reject(new Error('No file')); return; }
-        if (file.type && file.type.indexOf('image/') !== 0) {
+        // iOS HEIC / empty type: allow empty type; only reject non-image when type is set
+        if (file.type && file.type.indexOf('image/') !== 0 && file.type !== 'application/octet-stream') {
           reject(new Error('Not an image'));
           return;
         }
@@ -20983,7 +21025,16 @@
               reject(eC);
             }
           };
-          img.onerror = function() { reject(new Error('Could not load image')); };
+          img.onerror = function() {
+            // Fallback: keep original data URL if canvas path fails (e.g. odd HEIC decode)
+            try {
+              if (reader.result && String(reader.result).indexOf('data:image') === 0) {
+                resolve(reader.result);
+                return;
+              }
+            } catch (eF) {}
+            reject(new Error('Could not load image'));
+          };
           img.src = reader.result;
         };
         reader.readAsDataURL(file);
@@ -21055,45 +21106,91 @@
       } catch (eT) {}
     }
 
-    function onPinAddPhotoClick() {
+    function onPinAddPhotoClick(ev) {
+      if (ev) {
+        try { ev.preventDefault(); ev.stopPropagation(); } catch (e0) {}
+      }
       try { wirePinPhotoInputs(); } catch (eW) {}
+      // Move file inputs to body so iOS isn't blocked by transformed map wrappers
+      try { ensurePinPhotoInputsOnBody(); } catch (eB) {}
       if (isPinPhotoPhoneUi()) {
         openPinPhotoSourceModal();
       } else {
-        // Desktop: file explorer
+        // Desktop: open file explorer in this same user-gesture turn
         pickPinPhotoFromGallery();
       }
+      return false;
+    }
+
+    function ensurePinPhotoInputsOnBody() {
+      ['pin-photo-gallery-input', 'pin-photo-camera-input'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el && el.parentNode !== document.body) {
+          try { document.body.appendChild(el); } catch (eM) {}
+        }
+      });
     }
 
     function openPinPhotoSourceModal() {
+      try { ensurePinPhotoInputsOnBody(); } catch (eB) {}
       var modal = document.getElementById('pin-photo-source-modal');
-      if (modal) modal.classList.add('active');
+      if (!modal) {
+        // Fallback if modal missing: open gallery directly
+        pickPinPhotoFromGallery();
+        return;
+      }
+      // Escape any map transform stacking context
+      try {
+        if (modal.parentNode !== document.body) document.body.appendChild(modal);
+      } catch (eA) {}
+      modal.classList.add('active');
+      try { modal.style.display = 'flex'; } catch (eD) {}
     }
     function closePinPhotoSourceModal() {
       var modal = document.getElementById('pin-photo-source-modal');
-      if (modal) modal.classList.remove('active');
+      if (modal) {
+        modal.classList.remove('active');
+        try { modal.style.display = ''; } catch (eD) {}
+      }
     }
 
     function pickPinPhotoFromGallery() {
-      closePinPhotoSourceModal();
+      try { wirePinPhotoInputs(); } catch (eW) {}
+      try { ensurePinPhotoInputsOnBody(); } catch (eB) {}
       var inp = document.getElementById('pin-photo-gallery-input');
       if (!inp) return;
       try { inp.value = ''; } catch (eV) {}
+      // Prefer label activation path; programmatic click as backup
+      try {
+        if (typeof inp.showPicker === 'function') {
+          inp.showPicker();
+          return;
+        }
+      } catch (eSp) {}
       try { inp.click(); } catch (eC) {}
     }
 
     function pickPinPhotoFromCamera() {
-      closePinPhotoSourceModal();
+      try { wirePinPhotoInputs(); } catch (eW) {}
+      try { ensurePinPhotoInputsOnBody(); } catch (eB) {}
       var inp = document.getElementById('pin-photo-camera-input');
       if (!inp) return;
       try { inp.value = ''; } catch (eV) {}
+      try {
+        if (typeof inp.showPicker === 'function') {
+          inp.showPicker();
+          return;
+        }
+      } catch (eSp) {}
       try { inp.click(); } catch (eC) {}
     }
 
     function handlePinPhotoFileInput(ev) {
       var input = ev && ev.target;
       var file = input && input.files && input.files[0];
+      closePinPhotoSourceModal();
       if (!file) return;
+      // HEIC / empty type on some iOS versions — still try to read
       compressImageFileToDataUrl(file)
         .then(function(dataUrl) {
           addPinEditorPhotoDataUrl(dataUrl);
@@ -21114,13 +21211,30 @@
     }
 
     function wirePinPhotoInputs() {
-      if (_pinPhotoInputsWired) return;
       var g = document.getElementById('pin-photo-gallery-input');
       var c = document.getElementById('pin-photo-camera-input');
       if (!g && !c) return;
-      _pinPhotoInputsWired = true;
-      if (g) g.addEventListener('change', handlePinPhotoFileInput);
-      if (c) c.addEventListener('change', handlePinPhotoFileInput);
+      if (!_pinPhotoInputsWired) {
+        _pinPhotoInputsWired = true;
+        if (g) g.addEventListener('change', handlePinPhotoFileInput);
+        if (c) c.addEventListener('change', handlePinPhotoFileInput);
+      }
+      // Labels: close source sheet after starting the native picker
+      var gLab = document.getElementById('pin-photo-gallery-label');
+      var cLab = document.getElementById('pin-photo-camera-label');
+      if (gLab && !gLab._rsWired) {
+        gLab._rsWired = true;
+        gLab.addEventListener('click', function() {
+          // Let the label activate the file input (iOS-safe), then hide our sheet
+          setTimeout(function() { closePinPhotoSourceModal(); }, 400);
+        });
+      }
+      if (cLab && !cLab._rsWired) {
+        cLab._rsWired = true;
+        cLab.addEventListener('click', function() {
+          setTimeout(function() { closePinPhotoSourceModal(); }, 400);
+        });
+      }
     }
 
     function openPinPhotoViewer(dataUrl) {
