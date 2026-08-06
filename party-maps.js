@@ -2255,6 +2255,20 @@
 
   function buildMapSwitcherHtml(pmaps, smaps, vs) {
     var html = '';
+    function row(kind, m, name, cur, showShare) {
+      var line = '<div class="msd-row">' +
+        '<button type="button" class="msd-item' + (cur ? ' is-current' : '') +
+        '" data-kind="' + esc(kind) + '" data-id="' + esc(m.id) + '" role="option" aria-selected="' +
+        (cur ? 'true' : 'false') + '">' + esc(name) + (cur ? ' · viewing' : '') + '</button>';
+      if (showShare) {
+        line += '<button type="button" class="msd-share" data-kind="' + esc(kind) +
+          '" data-id="' + esc(m.id) + '" data-name="' + esc(name) +
+          (m.code != null ? '" data-code="' + esc(String(m.code)) : '') +
+          '" title="Copy map invite">Share</button>';
+      }
+      line += '</div>';
+      return line;
+    }
     html += '<div class="msd-group">Not shared</div>';
     if (!pmaps || !pmaps.length) {
       html += '<div class="msd-empty">No private maps</div>';
@@ -2262,9 +2276,8 @@
       pmaps.forEach(function (m) {
         var name = displayMapName('private', m.id, m.name || 'Private map');
         var cur = isMapSwitcherCurrent(vs, 'private', m.id);
-        html += '<button type="button" class="msd-item' + (cur ? ' is-current' : '') +
-          '" data-kind="private" data-id="' + esc(m.id) + '" role="option" aria-selected="' +
-          (cur ? 'true' : 'false') + '">' + esc(name) + (cur ? ' · viewing' : '') + '</button>';
+        // User-created private maps: Share (same as Settings → creates shared invite)
+        html += row('private', m, name, cur, true);
       });
     }
     html += '<div class="msd-group">Shared</div>';
@@ -2274,22 +2287,26 @@
       smaps.forEach(function (m) {
         var name = displayMapName('shared', m.id, m.name || 'Shared map');
         var cur = isMapSwitcherCurrent(vs, 'shared', m.id);
-        html += '<button type="button" class="msd-item' + (cur ? ' is-current' : '') +
-          '" data-kind="shared" data-id="' + esc(m.id) + '" role="option" aria-selected="' +
-          (cur ? 'true' : 'false') + '">' + esc(name) + (cur ? ' · viewing' : '') + '</button>';
+        // Share only for maps this user created/hosts (invite code)
+        var canShare = m.is_host !== false && (m.is_host === true || m.code != null);
+        html += row('shared', m, name, cur, !!canShare);
       });
     }
     return html;
   }
 
+  function findMapRowInCache(kind, id) {
+    var lists = _mapSwitcherCache || {};
+    var arr = kind === 'shared' ? lists.smaps : lists.pmaps;
+    if (!arr) return null;
+    for (var i = 0; i < arr.length; i++) {
+      if (arr[i] && String(arr[i].id) === String(id)) return arr[i];
+    }
+    return null;
+  }
+
   function wireMapSwitcherItems(dd, vs) {
     if (!dd) return;
-    try {
-      var curBtn = dd.querySelector('.msd-item.is-current');
-      if (curBtn && typeof curBtn.scrollIntoView === 'function') {
-        curBtn.scrollIntoView({ block: 'nearest' });
-      }
-    } catch (eScr) {}
     dd.querySelectorAll('.msd-item').forEach(function (btn) {
       btn.onclick = function (ev) {
         if (ev) { ev.preventDefault(); ev.stopPropagation(); }
@@ -2309,6 +2326,27 @@
             refreshMapsUi();
             try { pullPresence(); } catch (eP) {}
           }).catch(function (e) { alert(e.message || e); });
+        }
+      };
+    });
+    dd.querySelectorAll('.msd-share').forEach(function (btn) {
+      btn.onclick = function (ev) {
+        if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+        var kind = btn.getAttribute('data-kind');
+        var id = btn.getAttribute('data-id');
+        var name = btn.getAttribute('data-name') || 'Map';
+        var code = btn.getAttribute('data-code') || '';
+        var row = findMapRowInCache(kind, id) || {
+          id: id,
+          name: name,
+          code: code || undefined,
+          is_host: true
+        };
+        // Same invite path as Settings → Share
+        if (kind === 'shared') {
+          copyMapInvite(row);
+        } else {
+          sharePrivateMapAsInvite(id, name);
         }
       };
     });
@@ -2332,6 +2370,14 @@
     return _mapSwitcherCache;
   }
 
+  /** Warm the map list so the first name-click is instant */
+  function prefetchMapSwitcherLists() {
+    try {
+      if (_mapSwitcherCache.at && (Date.now() - _mapSwitcherCache.at) < MAP_SWITCHER_CACHE_MS) return;
+      fetchMapSwitcherLists().catch(function () {});
+    } catch (e) {}
+  }
+
   async function openMapSwitcher(anchorEl) {
     var dd = $('map-switcher-dropdown');
     if (!dd) {
@@ -2353,24 +2399,25 @@
       (Date.now() - _mapSwitcherCache.at) < MAP_SWITCHER_CACHE_MS &&
       (_mapSwitcherCache.pmaps || _mapSwitcherCache.smaps);
 
-    /* Paint immediately from cache so open feels snappy */
+    /* Paint + place + open immediately (no double-rAF / no blank flash) */
     if (cacheFresh) {
-      dd.innerHTML = buildMapSwitcherHtml(_mapSwitcherCache.pmaps, _mapSwitcherCache.smaps, vs);
-      wireMapSwitcherItems(dd, vs);
-    } else if (!dd.querySelector('.msd-item')) {
+      var html0 = buildMapSwitcherHtml(_mapSwitcherCache.pmaps, _mapSwitcherCache.smaps, vs);
+      if (dd._rsHtml !== html0) {
+        dd.innerHTML = html0;
+        dd._rsHtml = html0;
+        wireMapSwitcherItems(dd, vs);
+      }
+    } else if (!dd.querySelector('.msd-item') && !dd.querySelector('.msd-row')) {
       dd.innerHTML = '<div class="msd-empty">Loading maps…</div>';
+      dd._rsHtml = '';
     }
 
     if (anchorEl) {
       try { anchorEl.setAttribute('aria-expanded', 'true'); } catch (e) {}
       placeMapSwitcherDropdown(dd, anchorEl);
     }
-    /* Two rAFs: place first, then transition open (smoother pop) */
-    requestAnimationFrame(function () {
-      requestAnimationFrame(function () {
-        dd.classList.add('open');
-      });
-    });
+    // Open on same frame as place — smoother than delayed class toggles
+    dd.classList.add('open');
     setTimeout(function () {
       document.addEventListener('click', _mapSwitcherOutside, true);
     }, 0);
@@ -2382,17 +2429,24 @@
       try { syncViewStateNamesFromLists(lists.pmaps, lists.smaps); } catch (eSn2) {}
       try { updateBrandName(); } catch (eBn2) {}
       vs = C.getViewState && C.getViewState();
-      dd.innerHTML = buildMapSwitcherHtml(lists.pmaps, lists.smaps, vs);
-      wireMapSwitcherItems(dd, vs);
-      if (anchorEl) placeMapSwitcherDropdown(dd, anchorEl);
+      var html1 = buildMapSwitcherHtml(lists.pmaps, lists.smaps, vs);
+      // Only repaint if list changed — avoids flicker mid-open
+      if (html1 !== dd._rsHtml) {
+        dd.innerHTML = html1;
+        dd._rsHtml = html1;
+        wireMapSwitcherItems(dd, vs);
+        if (anchorEl) placeMapSwitcherDropdown(dd, anchorEl);
+      }
     } catch (eFetch) {
-      if (!dd.querySelector('.msd-item')) {
+      if (!dd.querySelector('.msd-item') && !dd.querySelector('.msd-row')) {
         dd.innerHTML = '<div class="msd-empty">Could not load maps</div>';
+        dd._rsHtml = '';
       }
     }
   }
   window.openMapSwitcher = openMapSwitcher;
   window.closeMapSwitcher = closeMapSwitcher;
+  window.prefetchMapSwitcherLists = prefetchMapSwitcherLists;
 
   function shareMapInviteText(mapRow) {
     var code = mapRow && mapRow.code != null ? String(mapRow.code).replace(/\D/g, '').slice(0, 6) : '';
@@ -4299,6 +4353,10 @@
     try { localStorage.removeItem(PRESENCE_KEY); } catch (e) {}
     updateShareLocBtn();
     ensurePartyPullLoop();
+    // Warm map-name dropdown so first click is smooth
+    try {
+      setTimeout(function () { prefetchMapSwitcherLists(); }, 800);
+    } catch (ePf) {}
     setTimeout(function () {
       // Capture map if already created
       try {

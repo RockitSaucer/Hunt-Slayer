@@ -340,8 +340,8 @@
       display: block;
       position: fixed;
       z-index: 2147483645;
-      min-width: 200px;
-      max-width: min(320px, calc(100vw - 16px));
+      min-width: 220px;
+      max-width: min(340px, calc(100vw - 16px));
       max-height: min(50vh, 360px);
       overflow-x: hidden;
       overflow-y: auto;
@@ -353,28 +353,28 @@
       box-sizing: border-box;
       scrollbar-width: thin;
       scrollbar-color: #1a1e16 #0a0c09;
-      /* Smooth open / close — stay in layout tree for transform */
+      /* Snappy open — short fade only (less stutter than scale) */
       opacity: 0;
       visibility: hidden;
       pointer-events: none;
-      transform: translateY(-8px) scale(0.97);
+      transform: translateY(-4px);
       transition:
-        opacity 0.16s ease,
-        transform 0.18s cubic-bezier(0.22, 0.9, 0.28, 1),
-        visibility 0.16s ease;
-      will-change: opacity, transform;
+        opacity 0.1s ease-out,
+        transform 0.12s ease-out,
+        visibility 0.1s ease-out;
+      contain: layout style;
     }
     #map-switcher-dropdown.open-up:not(.open) {
-      transform: translateY(8px) scale(0.97);
+      transform: translateY(4px);
     }
     #map-switcher-dropdown.open {
       opacity: 1;
       visibility: visible;
       pointer-events: auto;
-      transform: translateY(0) scale(1);
+      transform: translateY(0);
     }
     #map-switcher-dropdown.open.open-up {
-      transform: translateY(0) scale(1);
+      transform: translateY(0);
     }
     #map-switcher-dropdown .msd-group {
       font-size: 10px;
@@ -384,11 +384,18 @@
       color: var(--muted);
       padding: 6px 8px 4px;
     }
+    #map-switcher-dropdown .msd-row {
+      display: flex;
+      align-items: stretch;
+      gap: 4px;
+      margin: 2px 0;
+    }
     #map-switcher-dropdown .msd-item {
       display: block;
-      width: 100%;
+      flex: 1 1 auto;
+      min-width: 0;
       text-align: left;
-      margin: 2px 0;
+      margin: 0;
       padding: 9px 10px;
       border-radius: 7px;
       border: 1px solid transparent;
@@ -398,6 +405,9 @@
       font-weight: 700;
       cursor: pointer;
       box-sizing: border-box;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     #map-switcher-dropdown .msd-item:hover {
       background: rgba(229, 154, 24, 0.12);
@@ -407,6 +417,32 @@
       background: rgba(229, 154, 24, 0.18);
       border-color: var(--accent);
       color: #fff;
+    }
+    #map-switcher-dropdown .msd-share {
+      flex: 0 0 auto;
+      align-self: center;
+      margin: 0;
+      padding: 6px 9px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, #2a3222 0%, var(--panel-light, #1e2418) 45%, #141810 100%);
+      color: var(--accent, #e59a18);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      box-shadow:
+        0 1px 0 rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      white-space: nowrap;
+    }
+    #map-switcher-dropdown .msd-share:hover {
+      border-color: var(--accent);
+      background: linear-gradient(180deg, #323c28 0%, #262e1e 45%, #1a2014 100%);
+      color: #ffc45a;
+    }
+    #map-switcher-dropdown .msd-share:active {
+      transform: translateY(1px);
     }
     #map-switcher-dropdown .msd-empty {
       padding: 10px;
@@ -11152,7 +11188,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.10-beta';
+    const APP_VERSION = '7.0.11-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';

@@ -1,0 +1,5 @@
+﻿V7.0.11 Beta — smoother map switcher + Share on created maps
+============================================================
+- Map name dropdown: faster open (no double-rAF, skip redundant repaint, prefetch)
+- Share button next to maps you created (invite copy same as Settings → Share)
+- SHELL_CACHE = reg-slayer-shell-v71
