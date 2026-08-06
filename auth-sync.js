@@ -97,8 +97,8 @@
 
   /**
    * Persist pins without embedding huge base64 in the main pin key (mobile quota safe).
-   * Photos go to PIN_PHOTOS_KEY. Never writes an empty pin list over a non-empty one
-   * unless allowEmpty is true.
+   * Photos go to PIN_PHOTOS_KEY and are MERGED with any existing side-store shots
+   * (never replace with empty — that was dropping party photos).
    */
   function savePinsSplit(pins, opts) {
     opts = opts || {};
@@ -114,14 +114,17 @@
     var slim = list.map(function (p) {
       if (!p || typeof p !== 'object') return p;
       var copy = Object.assign({}, p);
-      if (copy.photos && copy.photos.length) {
-        photoMap[String(copy.id)] = copy.photos;
-        delete copy.photos;
+      var id = copy.id != null ? String(copy.id) : '';
+      var incoming = [].concat(copy.photos || [], copy.notePhotos || []);
+      if (id && incoming.length) {
+        // Merge — do not clobber older photos already in the side store
+        photoMap[id] = mergePinPhotoLists(photoMap[id], incoming);
       }
-      if (copy.notePhotos) delete copy.notePhotos;
+      delete copy.photos;
+      delete copy.notePhotos;
       return copy;
     });
-    // Drop photo map entries for removed pins only when allowEmpty or explicit replace
+    // Drop photo map entries for removed pins only when explicitly pruning
     if (opts.prunePhotos) {
       var keep = {};
       list.forEach(function (p) {
@@ -132,7 +135,7 @@
       });
     }
     var okPins = saveJson(MAP_KEYS.pins, slim);
-    var okPh = savePinPhotoMap(photoMap);
+    savePinPhotoMap(photoMap);
     if (!okPins) {
       // Last resort: try even slimmer (no notes)
       try {
@@ -150,6 +153,18 @@
 
   function loadPinsCombined() {
     return rehydratePinPhotos(loadJson(MAP_KEYS.pins, []));
+  }
+
+  /** One-time / boot: if pins still embed photos, move them into the side store. */
+  function migrateEmbeddedPinPhotos() {
+    try {
+      var pins = loadJson(MAP_KEYS.pins, []);
+      if (!Array.isArray(pins) || !pins.length) return;
+      var has = pins.some(function (p) {
+        return p && ((p.photos && p.photos.length) || (p.notePhotos && p.notePhotos.length));
+      });
+      if (has) savePinsSplit(pins, { allowEmpty: false, prunePhotos: false });
+    } catch (eM) {}
   }
 
   function loadViewState() {
@@ -380,10 +395,39 @@
     }
   }
 
+  /** Cache must not embed multi‑MB base64 photos (blows mobile quota / corrupts cache). */
+  function slimStateForCache(state) {
+    if (!state || typeof state !== 'object') return state;
+    var s = {
+      pins: [],
+      hunts: Array.isArray(state.hunts) ? state.hunts : [],
+      customAreas: Array.isArray(state.customAreas) ? state.customAreas : [],
+      measuredPaths: Array.isArray(state.measuredPaths) ? state.measuredPaths : [],
+      stands: state.stands && typeof state.stands === 'object' ? state.stands : {},
+      hiddenLocs: Array.isArray(state.hiddenLocs) ? state.hiddenLocs : [],
+      meta: state.meta || {}
+    };
+    var photoMap = loadPinPhotoMap();
+    var pins = Array.isArray(state.pins) ? state.pins : [];
+    s.pins = pins.map(function (p) {
+      if (!p || typeof p !== 'object') return p;
+      var c = Object.assign({}, p);
+      if (c.id != null && c.photos && c.photos.length) {
+        photoMap[String(c.id)] = mergePinPhotoLists(photoMap[String(c.id)], c.photos);
+      }
+      delete c.photos;
+      delete c.notePhotos;
+      return c;
+    });
+    savePinPhotoMap(photoMap);
+    return s;
+  }
+
   function writeLocalCache(state) {
     var cache = loadJson(CACHE_KEY, {});
+    var slim = slimStateForCache(state);
     cache[cacheSlotKey()] = {
-      state: state,
+      state: slim,
       savedAt: Date.now(),
       name: viewState.mode === 'shared'
         ? (viewState.sharedMapName || 'Shared map')
@@ -410,7 +454,16 @@
 
   function readLocalCache(slot) {
     var cache = loadJson(CACHE_KEY, {});
-    return cache[slot] || null;
+    var entry = cache[slot] || null;
+    if (entry && entry.state && Array.isArray(entry.state.pins)) {
+      // Reattach side-store photos when reading cache
+      entry = Object.assign({}, entry, {
+        state: Object.assign({}, entry.state, {
+          pins: rehydratePinPhotos(entry.state.pins)
+        })
+      });
+    }
+    return entry;
   }
 
   function markDirty() {
@@ -682,12 +735,34 @@
       // Full replace from cloud (includes deletions). Dirty local already bailed out above.
       applyMapState(state, {
         allowEmptyPins: remotePinCount === 0 && localPinCount === 0,
-        prunePhotos: true
+        prunePhotos: false // never drop side-store photos for pins that still exist
       });
       localRevision = rev;
       writeLocalCache(state);
       refreshMapFromLocalState();
       updateAuthChrome();
+      // If this device still has pin photos the cloud is missing, push them back up
+      try {
+        if (viewState.mode === 'shared' && viewState.sharedMapId) {
+          var localFull = loadPinsCombined();
+          var remotePins = (state && state.pins) || [];
+          var rBy = {};
+          remotePins.forEach(function (p) {
+            if (p && p.id != null) rBy[String(p.id)] = p;
+          });
+          var cloudMissing = localFull.some(function (lp) {
+            if (!lp || !lp.photos || !lp.photos.length) return false;
+            var rp = rBy[String(lp.id)];
+            var rc = (rp && rp.photos && rp.photos.length) || 0;
+            return lp.photos.length > rc;
+          });
+          if (cloudMissing) {
+            dirty = true;
+            try { localStorage.setItem(DIRTY_KEY, '1'); } catch (eD2) {}
+            scheduleCloudPush(true);
+          }
+        }
+      } catch (eRep) {}
     } catch (e) {
       console.warn('Cloud pull skipped', e);
     }
@@ -1718,6 +1793,7 @@
     showAuthGate(false);
     restoreDirtyFlag();
     loadViewState();
+    try { migrateEmbeddedPinPhotos(); } catch (eMig) {}
     await restoreViewPrefsFromCloud();
     // If an invite is pending, skip applying/restoring a different last map first —
     // join will load the shared map. Still snapshot dirty personal work above join.
@@ -1829,6 +1905,12 @@
       } catch (e2) {}
       scheduleCloudPush(true);
     },
+    /** Persist pins with photos split (safe on mobile). Prefer this over raw localStorage. */
+    savePinsLocal: function (pins, opts) {
+      return savePinsSplit(pins, opts || { allowEmpty: false, prunePhotos: false });
+    },
+    loadPinsLocal: loadPinsCombined,
+    pullNow: function () { return pullMapFromCloud(true); },
     shareCodeToClipboard: shareCodeToClipboard,
     switchToPersonal: switchToPersonal,
     switchToPrivateMap: switchToPrivateMap,
