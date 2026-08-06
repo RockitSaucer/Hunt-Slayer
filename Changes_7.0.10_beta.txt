@@ -1,0 +1,7 @@
+﻿V7.0.10 Beta — Hunt opens map Min + stacked planner
+===================================================
+- Hunt Slayer: mapFullscreenLaunch default false (min mode)
+- Hunt Slayer: planner dock-left / stacked default (unchanged first-launch)
+- One-shot v702 migration applies min + stacked for existing Hunt users
+- Early boot no longer forces Max on huntslayer.com
+- SHELL_CACHE = reg-slayer-shell-v70
