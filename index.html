@@ -3958,6 +3958,198 @@
      * Map name chip — bottom center, centered over Current Location.
      * Same 3D look as the old max-mode top-left button.
      */
+    /*
+     * Map search — magnifying glass just above the bottom toolbar.
+     * Open panel sits above the bar (not covering toolbar buttons).
+     */
+    .map-search-chrome {
+      position: absolute;
+      left: 10px;
+      bottom: calc(var(--mbb-bar-h, 45px) + env(safe-area-inset-bottom, 0px) + 8px);
+      z-index: 76;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+      max-width: min(360px, calc(100vw - 20px));
+      pointer-events: none;
+    }
+    .map-search-toggle {
+      pointer-events: auto;
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      min-height: 40px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      border: 1px solid rgba(40, 50, 26, 0.95);
+      background: linear-gradient(180deg, #2a3222 0%, rgba(22, 28, 18, 0.96) 45%, #12160e 100%);
+      color: var(--accent, #e59a18);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+      cursor: pointer;
+      font-family: inherit;
+      -webkit-appearance: none;
+      appearance: none;
+      transition: border-color 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
+    }
+    .map-search-toggle:hover,
+    .map-search-toggle:focus-visible {
+      border-color: rgba(229, 154, 24, 0.75);
+      filter: brightness(1.08);
+      outline: none;
+    }
+    .map-search-toggle[aria-expanded="true"] {
+      border-color: rgba(229, 154, 24, 0.9);
+      box-shadow: 0 0 0 1px rgba(229, 154, 24, 0.35), 0 4px 14px rgba(0,0,0,0.45);
+    }
+    .map-search-toggle svg {
+      width: 22px;
+      height: 22px;
+      display: block;
+    }
+    .map-search-panel {
+      pointer-events: auto;
+      display: none;
+      flex-direction: column;
+      width: min(340px, calc(100vw - 20px));
+      background: rgba(15, 18, 14, 0.98);
+      border: 1px solid var(--border, rgba(141, 156, 132, 0.45));
+      border-radius: 12px;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.55);
+      overflow: hidden;
+    }
+    .map-search-chrome.is-open .map-search-panel {
+      display: flex;
+    }
+    .map-search-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 8px 8px 10px;
+      border-top: 1px solid rgba(141, 156, 132, 0.25);
+    }
+    .map-search-results:empty + .map-search-row,
+    .map-search-panel > .map-search-row:first-child {
+      border-top: none;
+    }
+    .map-search-input {
+      flex: 1 1 auto;
+      min-width: 0;
+      height: 36px;
+      padding: 0 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(141, 156, 132, 0.4);
+      background: #0a0c09;
+      color: #f3f6ef;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      outline: none;
+    }
+    .map-search-input::placeholder {
+      color: rgba(200, 210, 190, 0.45);
+      font-weight: 500;
+    }
+    .map-search-input:focus {
+      border-color: rgba(229, 154, 24, 0.7);
+      box-shadow: 0 0 0 1px rgba(229, 154, 24, 0.25);
+    }
+    .map-search-clear {
+      flex: 0 0 auto;
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: rgba(200, 210, 190, 0.7);
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .map-search-clear:hover {
+      color: #fff;
+      background: rgba(255,255,255,0.06);
+    }
+    .map-search-results {
+      display: none;
+      flex-direction: column;
+      max-height: min(42vh, 280px);
+      overflow-x: hidden;
+      overflow-y: auto;
+      order: -1; /* list stacks above the input row */
+      scrollbar-width: thin;
+      scrollbar-color: #2a3224 #0a0c09;
+    }
+    .map-search-results.has-items {
+      display: flex;
+      border-bottom: 1px solid rgba(141, 156, 132, 0.25);
+    }
+    .map-search-results::-webkit-scrollbar { width: 6px; }
+    .map-search-results::-webkit-scrollbar-track { background: #0a0c09; }
+    .map-search-results::-webkit-scrollbar-thumb { background: #2a3224; border-radius: 4px; }
+    .map-search-results::-webkit-scrollbar-button { display: none; height: 0; width: 0; }
+    .map-search-item {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+      width: 100%;
+      padding: 9px 12px;
+      border: none;
+      border-bottom: 1px solid rgba(141, 156, 132, 0.12);
+      background: transparent;
+      color: #f3f6ef;
+      text-align: left;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .map-search-item:last-child { border-bottom: none; }
+    .map-search-item:hover,
+    .map-search-item:focus-visible,
+    .map-search-item.is-active {
+      background: rgba(229, 154, 24, 0.14);
+      outline: none;
+    }
+    .map-search-item .msi-label {
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.25;
+      color: #f3f6ef;
+    }
+    .map-search-item .msi-sub {
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(200, 210, 190, 0.65);
+      line-height: 1.2;
+    }
+    .map-search-item .msi-kind {
+      color: var(--accent, #e59a18);
+      font-weight: 800;
+      margin-right: 4px;
+    }
+    .map-search-empty,
+    .map-search-status {
+      padding: 10px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(200, 210, 190, 0.6);
+      order: -1;
+    }
+    html.layout-phone .map-search-chrome {
+      left: 8px;
+      max-width: calc(100vw - 16px);
+    }
+    html.layout-phone .map-search-toggle {
+      width: 38px;
+      height: 38px;
+      min-width: 38px;
+      min-height: 38px;
+    }
+
     /* Map-name chip only in max / fullscreen (min mode uses title bar) */
     .map-bottom-map-name,
     button.map-bottom-map-name {
@@ -9861,7 +10053,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.11 Beta">V7.0.11 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.12 Beta">V7.0.12 Beta</span>
     </div>
     <a class="brand-sister-link" id="brand-sister-link" href="https://www.regslayer.com" title="Open REG SLAYER (same account)">
       <span class="brand-sister-label">Reg Slayer</span>
@@ -10253,6 +10445,24 @@
 
           <!-- Map name chip (max-mode 3D look) — centered over Current Location; list opens upward -->
           <button type="button" class="map-bottom-map-name" id="map-bottom-map-name" title="Switch map" aria-label="Map: My Map. Click to switch." aria-haspopup="listbox" aria-expanded="false" onclick="if(window.RegSlayerParty&&window.RegSlayerParty.openMapSwitcher){window.RegSlayerParty.openMapSwitcher(this);}">My Map</button>
+
+          <!-- Map search: magnifier just above toolbar; panel opens above bar (not covering tools) -->
+          <div class="map-search-chrome" id="map-search-chrome">
+            <div class="map-search-panel" id="map-search-panel" role="search" aria-label="Search the map" hidden>
+              <div class="map-search-results" id="map-search-results" role="listbox" aria-label="Search results"></div>
+              <div class="map-search-status" id="map-search-status" hidden></div>
+              <div class="map-search-row">
+                <input type="search" class="map-search-input" id="map-search-input" placeholder="Search pins, places, addresses…" autocomplete="off" enterkeyhint="search" aria-autocomplete="list" aria-controls="map-search-results" />
+                <button type="button" class="map-search-clear" id="map-search-clear" title="Clear" aria-label="Clear search">×</button>
+              </div>
+            </div>
+            <button type="button" class="map-search-toggle" id="map-search-toggle" title="Search map" aria-label="Search map" aria-expanded="false" aria-controls="map-search-panel">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <circle cx="10.5" cy="10.5" r="6.25" fill="none" stroke="currentColor" stroke-width="2"/>
+                <path d="M15.2 15.2 L20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
 
           <!-- Slim bottom bar: [date+tools] | CL (center) | [radar layers settings] -->
           <div class="map-bottom-bar" id="map-bottom-bar">
@@ -11188,7 +11398,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.11-beta';
+    const APP_VERSION = '7.0.12-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -16928,6 +17138,486 @@
         return fromPhoton();
       });
     }
+
+    /* ========== Map search (magnifier above toolbar) ========== */
+    var mapSearchDebounceTimer = null;
+    var mapSearchReqId = 0;
+    var mapSearchHits = [];
+    var mapSearchActiveIdx = -1;
+
+    function isMapSearchOpen() {
+      var chrome = document.getElementById('map-search-chrome');
+      return !!(chrome && chrome.classList.contains('is-open'));
+    }
+
+    function openMapSearch() {
+      var chrome = document.getElementById('map-search-chrome');
+      var panel = document.getElementById('map-search-panel');
+      var toggle = document.getElementById('map-search-toggle');
+      var input = document.getElementById('map-search-input');
+      if (!chrome || !panel) return;
+      chrome.classList.add('is-open');
+      panel.hidden = false;
+      if (toggle) toggle.setAttribute('aria-expanded', 'true');
+      if (input) {
+        try { input.focus(); input.select && input.value && input.select(); } catch (eF) {}
+      }
+    }
+
+    function closeMapSearch(opts) {
+      opts = opts || {};
+      var chrome = document.getElementById('map-search-chrome');
+      var panel = document.getElementById('map-search-panel');
+      var toggle = document.getElementById('map-search-toggle');
+      var input = document.getElementById('map-search-input');
+      var results = document.getElementById('map-search-results');
+      var status = document.getElementById('map-search-status');
+      if (chrome) chrome.classList.remove('is-open');
+      if (panel) panel.hidden = true;
+      if (toggle) toggle.setAttribute('aria-expanded', 'false');
+      if (mapSearchDebounceTimer) {
+        clearTimeout(mapSearchDebounceTimer);
+        mapSearchDebounceTimer = null;
+      }
+      mapSearchReqId++;
+      mapSearchHits = [];
+      mapSearchActiveIdx = -1;
+      if (opts.clearInput && input) input.value = '';
+      if (results) {
+        results.innerHTML = '';
+        results.classList.remove('has-items');
+      }
+      if (status) {
+        status.hidden = true;
+        status.textContent = '';
+      }
+    }
+
+    function toggleMapSearch() {
+      if (isMapSearchOpen()) closeMapSearch();
+      else openMapSearch();
+    }
+
+    function setMapSearchStatus(msg) {
+      var status = document.getElementById('map-search-status');
+      var results = document.getElementById('map-search-results');
+      if (!status) return;
+      if (msg) {
+        status.hidden = false;
+        status.textContent = msg;
+        if (results) {
+          results.innerHTML = '';
+          results.classList.remove('has-items');
+        }
+      } else {
+        status.hidden = true;
+        status.textContent = '';
+      }
+    }
+
+    function mapSearchKindLabel(loc) {
+      if (!loc) return 'Place';
+      if (loc.isPin) return loc.isStand ? 'Stand' : (loc.isHunt ? 'Hunt pin' : 'Pin');
+      if (loc.isCustomArea) return 'Drawn area';
+      if (loc.isStand) return 'Stand';
+      if (loc.isMapSpot) return 'Map spot';
+      if (loc.isPublicLand) return loc.type || 'Public land';
+      return loc.type || 'Place';
+    }
+
+    function collectLocalMapSearchHits(query) {
+      var q = String(query || '').trim().toLowerCase();
+      if (!q || q.length < 1) return [];
+      var out = [];
+      var seen = {};
+
+      function pushHit(hit) {
+        if (!hit || hit.lat == null || hit.lng == null || isNaN(hit.lat) || isNaN(hit.lng)) return;
+        var key = (hit.label || '').toLowerCase() + '|' + Number(hit.lat).toFixed(4) + '|' + Number(hit.lng).toFixed(4);
+        if (seen[key]) return;
+        seen[key] = true;
+        out.push(hit);
+      }
+
+      function nameMatches(name, extra) {
+        var n = String(name || '').toLowerCase();
+        if (n && n.indexOf(q) >= 0) return true;
+        if (extra) {
+          var e = String(extra).toLowerCase();
+          if (e && e.indexOf(q) >= 0) return true;
+        }
+        return false;
+      }
+
+      try {
+        (locations || []).forEach(function(loc) {
+          if (!loc || loc.lat == null || loc.lng == null) return;
+          // Skip pure statewide zone placeholders (no real map target)
+          if (loc.type === 'Statewide' && !loc.isPin && !loc.isCustomArea) return;
+          if (nameMatches(loc.name, (loc.type || '') + ' ' + (loc.notes || '') + ' ' + (loc.unitName || ''))) {
+            pushHit({
+              label: loc.name || 'Unnamed',
+              sub: mapSearchKindLabel(loc),
+              kind: 'local',
+              lat: Number(loc.lat),
+              lng: Number(loc.lng),
+              locId: loc.id,
+              isPin: !!loc.isPin
+            });
+          }
+          // User stands nested under locations
+          var subs = loc.subSections || [];
+          for (var si = 0; si < subs.length; si++) {
+            var st = subs[si];
+            if (!st || st.lat == null || st.lng == null) continue;
+            if (!nameMatches(st.name, loc.name)) continue;
+            pushHit({
+              label: st.name || 'Stand',
+              sub: 'Stand' + (loc.name ? ' · ' + loc.name : ''),
+              kind: 'local',
+              lat: Number(st.lat),
+              lng: Number(st.lng),
+              locId: loc.id
+            });
+          }
+        });
+      } catch (eLoc) {}
+
+      try {
+        var paths = (typeof loadMeasuredPathsFromStorage === 'function')
+          ? loadMeasuredPathsFromStorage()
+          : [];
+        paths.forEach(function(path) {
+          if (!path || !nameMatches(path.name, path.kind)) return;
+          var pts = path.points || path.latlngs || path.coords || [];
+          var lat = path.lat, lng = path.lng;
+          if ((lat == null || lng == null) && pts.length) {
+            var p0 = pts[0];
+            if (Array.isArray(p0)) { lat = p0[0]; lng = p0[1]; }
+            else if (p0) { lat = p0.lat; lng = p0.lng; }
+          }
+          pushHit({
+            label: path.name || (path.kind === 'track' ? 'GPS track' : 'Measured line'),
+            sub: path.kind === 'track' ? 'Track' : 'Measured path',
+            kind: 'local',
+            lat: Number(lat),
+            lng: Number(lng)
+          });
+        });
+      } catch (ePath) {}
+
+      try {
+        (typeof historicalHunts !== 'undefined' ? historicalHunts : []).forEach(function(h) {
+          if (!h || h.lat == null || h.lng == null) return;
+          if (!nameMatches(h.name || h.title || h.notes, 'past hunt')) return;
+          pushHit({
+            label: h.name || h.title || 'Past hunt',
+            sub: 'Past hunt',
+            kind: 'local',
+            lat: Number(h.lat),
+            lng: Number(h.lng)
+          });
+        });
+      } catch (eH) {}
+
+      // Prefer name-starts-with, then shorter labels
+      out.sort(function(a, b) {
+        var al = String(a.label || '').toLowerCase();
+        var bl = String(b.label || '').toLowerCase();
+        var as = al.indexOf(q) === 0 ? 0 : 1;
+        var bs = bl.indexOf(q) === 0 ? 0 : 1;
+        if (as !== bs) return as - bs;
+        return al.length - bl.length;
+      });
+      return out.slice(0, 10);
+    }
+
+    /** Photon typeahead for cities / areas / addresses (biased to map center). */
+    function geocodeMapSearchSuggestions(query) {
+      var q = String(query || '').trim();
+      if (q.length < 2) return Promise.resolve([]);
+      var lat = 32.8, lng = -86.8, zoom = 6;
+      try {
+        if (typeof map !== 'undefined' && map && map.getCenter) {
+          var c = map.getCenter();
+          lat = c.lat;
+          lng = c.lng;
+          zoom = Math.min(12, Math.max(5, map.getZoom ? map.getZoom() : 6));
+        }
+      } catch (eC) {}
+      var url = 'https://photon.komoot.io/api/?q=' + encodeURIComponent(q) +
+        '&limit=8&lang=en&lat=' + lat + '&lon=' + lng + '&zoom=' + zoom;
+      return fetch(url, { referrerPolicy: 'no-referrer' })
+        .then(function(res) { return res.ok ? res.json() : null; })
+        .then(function(data) {
+          var feats = (data && data.features) || [];
+          var out = [];
+          var seen = {};
+          feats.forEach(function(f) {
+            var c = f.geometry && f.geometry.coordinates;
+            if (!c || c.length < 2) return;
+            var flng = parseFloat(c[0]);
+            var flat = parseFloat(c[1]);
+            if (isNaN(flat) || isNaN(flng)) return;
+            var p = f.properties || {};
+            if (p.countrycode && String(p.countrycode).toUpperCase() !== 'US') return;
+            var parts = [];
+            if (p.housenumber && p.street) parts.push(p.housenumber + ' ' + p.street);
+            else if (p.street) parts.push(p.street);
+            else if (p.name) parts.push(p.name);
+            if (p.city || p.town || p.village || p.county) {
+              parts.push(p.city || p.town || p.village || p.county);
+            }
+            if (p.state) parts.push(p.state);
+            if (p.postcode) parts.push(p.postcode);
+            var label = parts.join(', ') || p.name || q;
+            var key = label.toLowerCase() + '|' + flat.toFixed(4) + '|' + flng.toFixed(4);
+            if (seen[key]) return;
+            seen[key] = true;
+            var osmType = p.osm_value || p.type || p.osm_key || 'Place';
+            var typeNice = String(osmType).replace(/_/g, ' ');
+            typeNice = typeNice.charAt(0).toUpperCase() + typeNice.slice(1);
+            out.push({
+              label: label,
+              sub: typeNice,
+              kind: 'geo',
+              lat: flat,
+              lng: flng,
+              source: 'photon'
+            });
+          });
+          return out;
+        })
+        .catch(function() { return []; });
+    }
+
+    function renderMapSearchResults(hits) {
+      var results = document.getElementById('map-search-results');
+      var status = document.getElementById('map-search-status');
+      if (!results) return;
+      mapSearchHits = hits || [];
+      mapSearchActiveIdx = mapSearchHits.length ? 0 : -1;
+      results.innerHTML = '';
+      if (!mapSearchHits.length) {
+        results.classList.remove('has-items');
+        return;
+      }
+      if (status) {
+        status.hidden = true;
+        status.textContent = '';
+      }
+      results.classList.add('has-items');
+      mapSearchHits.forEach(function(hit, idx) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'map-search-item' + (idx === mapSearchActiveIdx ? ' is-active' : '');
+        btn.setAttribute('role', 'option');
+        btn.setAttribute('data-msi-idx', String(idx));
+        var kind = hit.kind === 'geo' ? 'Map' : (hit.sub || 'Place');
+        var esc = (typeof escHtml === 'function') ? escHtml : function(s) {
+          return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+        };
+        btn.innerHTML =
+          '<span class="msi-label">' + esc(hit.label || 'Result') + '</span>' +
+          '<span class="msi-sub"><span class="msi-kind">' + esc(kind) + '</span>' +
+          (hit.kind === 'geo' && hit.sub ? esc(hit.sub) : (hit.kind !== 'geo' && hit.sub && hit.sub !== kind ? esc(hit.sub) : '')) +
+          '</span>';
+        btn.addEventListener('click', function(ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          selectMapSearchResult(hit);
+        });
+        results.appendChild(btn);
+      });
+    }
+
+    function highlightMapSearchActive() {
+      var results = document.getElementById('map-search-results');
+      if (!results) return;
+      var items = results.querySelectorAll('.map-search-item');
+      for (var i = 0; i < items.length; i++) {
+        if (i === mapSearchActiveIdx) items[i].classList.add('is-active');
+        else items[i].classList.remove('is-active');
+      }
+      if (mapSearchActiveIdx >= 0 && items[mapSearchActiveIdx]) {
+        try { items[mapSearchActiveIdx].scrollIntoView({ block: 'nearest' }); } catch (eS) {}
+      }
+    }
+
+    function runMapSearch(query) {
+      var q = String(query || '').trim();
+      var req = ++mapSearchReqId;
+      if (!q) {
+        mapSearchHits = [];
+        mapSearchActiveIdx = -1;
+        var results = document.getElementById('map-search-results');
+        if (results) {
+          results.innerHTML = '';
+          results.classList.remove('has-items');
+        }
+        setMapSearchStatus('');
+        return;
+      }
+      var local = collectLocalMapSearchHits(q);
+      // Show local immediately
+      if (req === mapSearchReqId) {
+        if (local.length) {
+          renderMapSearchResults(local);
+          setMapSearchStatus('');
+        } else {
+          setMapSearchStatus('Searching…');
+        }
+      }
+      // Merge geocode suggestions
+      geocodeMapSearchSuggestions(q).then(function(geoHits) {
+        if (req !== mapSearchReqId) return;
+        var combined = local.slice();
+        var seen = {};
+        combined.forEach(function(h) {
+          seen[(h.label || '').toLowerCase() + '|' + Number(h.lat).toFixed(3) + '|' + Number(h.lng).toFixed(3)] = true;
+        });
+        (geoHits || []).forEach(function(h) {
+          var key = (h.label || '').toLowerCase() + '|' + Number(h.lat).toFixed(3) + '|' + Number(h.lng).toFixed(3);
+          if (seen[key]) return;
+          seen[key] = true;
+          combined.push(h);
+        });
+        if (!combined.length) {
+          setMapSearchStatus('No matches — try another place or address.');
+          renderMapSearchResults([]);
+          return;
+        }
+        renderMapSearchResults(combined.slice(0, 14));
+      }).catch(function() {
+        if (req !== mapSearchReqId) return;
+        if (local.length) renderMapSearchResults(local);
+        else setMapSearchStatus('No matches — try another place or address.');
+      });
+    }
+
+    function selectMapSearchResult(hit) {
+      if (!hit || hit.lat == null || hit.lng == null) return;
+      var lat = Number(hit.lat);
+      var lng = Number(hit.lng);
+      if (isNaN(lat) || isNaN(lng)) return;
+      closeMapSearch({ clearInput: true });
+      function place() {
+        try {
+          if (typeof map !== 'undefined' && map) {
+            var z = map.getZoom ? map.getZoom() : 10;
+            var targetZ = hit.kind === 'geo' ? Math.max(z, 13) : Math.max(z, 14);
+            if (z < targetZ) map.setView([lat, lng], targetZ, { animate: true });
+            else map.panTo([lat, lng], { animate: true });
+          }
+        } catch (ePan) {}
+        try {
+          if (typeof placeOrMoveMapDot === 'function' && typeof L !== 'undefined') {
+            // Temporary orange pin — stays until free map click moves it, or user saves via pin menu
+            placeOrMoveMapDot(L.latLng(lat, lng), { skipWeather: false, openMenu: false });
+          }
+        } catch (eDot) {}
+      }
+      if (typeof ensureMap === 'function') {
+        ensureMap().then(function() { place(); }).catch(function() { place(); });
+      } else {
+        place();
+      }
+    }
+
+    function wireMapSearchUi() {
+      var chrome = document.getElementById('map-search-chrome');
+      var toggle = document.getElementById('map-search-toggle');
+      var input = document.getElementById('map-search-input');
+      var clearBtn = document.getElementById('map-search-clear');
+      if (!toggle || !input || toggle._mapSearchWired) return;
+      toggle._mapSearchWired = true;
+
+      toggle.addEventListener('click', function(ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        toggleMapSearch();
+      });
+
+      clearBtn && clearBtn.addEventListener('click', function(ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        input.value = '';
+        mapSearchHits = [];
+        mapSearchActiveIdx = -1;
+        var results = document.getElementById('map-search-results');
+        if (results) {
+          results.innerHTML = '';
+          results.classList.remove('has-items');
+        }
+        setMapSearchStatus('');
+        try { input.focus(); } catch (eF) {}
+      });
+
+      input.addEventListener('input', function() {
+        var q = input.value;
+        if (mapSearchDebounceTimer) clearTimeout(mapSearchDebounceTimer);
+        mapSearchDebounceTimer = setTimeout(function() {
+          mapSearchDebounceTimer = null;
+          runMapSearch(q);
+        }, 280);
+      });
+
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          closeMapSearch({ clearInput: true });
+          return;
+        }
+        if (e.key === 'ArrowDown') {
+          if (!mapSearchHits.length) return;
+          e.preventDefault();
+          mapSearchActiveIdx = (mapSearchActiveIdx + 1) % mapSearchHits.length;
+          highlightMapSearchActive();
+          return;
+        }
+        if (e.key === 'ArrowUp') {
+          if (!mapSearchHits.length) return;
+          e.preventDefault();
+          mapSearchActiveIdx = (mapSearchActiveIdx - 1 + mapSearchHits.length) % mapSearchHits.length;
+          highlightMapSearchActive();
+          return;
+        }
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (mapSearchActiveIdx >= 0 && mapSearchHits[mapSearchActiveIdx]) {
+            selectMapSearchResult(mapSearchHits[mapSearchActiveIdx]);
+          } else if (mapSearchHits.length) {
+            selectMapSearchResult(mapSearchHits[0]);
+          } else {
+            runMapSearch(input.value);
+          }
+        }
+      });
+
+      // Click outside closes the panel (pin stays on map)
+      document.addEventListener('click', function(ev) {
+        if (!isMapSearchOpen()) return;
+        if (chrome && chrome.contains(ev.target)) return;
+        closeMapSearch();
+      }, true);
+
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && isMapSearchOpen()) {
+          closeMapSearch({ clearInput: true });
+        }
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', wireMapSearchUi);
+    } else {
+      wireMapSearchUi();
+    }
+    window.openMapSearch = openMapSearch;
+    window.closeMapSearch = closeMapSearch;
+    window.toggleMapSearch = toggleMapSearch;
 
     function confirmDistAddressModal() {
       // Suggest phase: confirm selected suggestion
