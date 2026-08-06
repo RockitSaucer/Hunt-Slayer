@@ -14,6 +14,12 @@
   var HIDDEN_MEMBERS_KEY = 'reg_slayer_hidden_party_content_v1';
   var MAP_ALIAS_KEY = 'reg_slayer_map_alias_v1';
   var PARTY_PREFS_LOCAL_KEY = 'reg_slayer_party_prefs_local_v1';
+  /**
+   * Share-location preference survives idle auto-pause.
+   * want=true keeps the toolbar toggle on; active GPS may pause after 1h
+   * without viewing the map, then resume when the map is opened again.
+   */
+  var SHARE_PREF_KEY = 'reg_slayer_share_loc_pref_v2';
   /** Directional icons for party/GPS (from icons/dir — location icons pipeline). */
   var DIR_ICON_CATALOG = [
     { id: 'arrow_head', name: 'Arrow head', src: 'icons/dir/arrow_head.png', frontDeg: 0 },
@@ -37,15 +43,22 @@
   var HEARTBEAT_MS = 5000; // always push at least this often while sharing
   var HEADING_PUSH_DEG = 8; // re-push when facing turns this many degrees
   var HEADING_PUSH_MS = 1200; // min interval for heading-only updates
-  var MAX_SHARE_MS = 60 * 60 * 1000;
+  /** Auto-pause live GPS if the user has not viewed the map for this long */
+  var SHARE_IDLE_MS = 60 * 60 * 1000;
   var PULL_MS = 3000; // peer visibility poll (mobile + desktop)
 
   var presenceTimer = null;
   var presenceWatch = null;
   var headingOrientHandler = null;
   var headingWatchOn = false;
+  /** Actively broadcasting GPS to the party */
   var sharing = false;
+  /** User wants share-location on (toolbar stays toggled; may outlive active GPS) */
+  var shareWanted = false;
   var shareStartedAt = 0;
+  /** Last time the user viewed the map / app (resets idle timer) */
+  var lastMapViewAt = Date.now();
+  var shareMapViewWired = false;
   var lastSent = { lat: null, lng: null, heading: null, at: 0 };
   var lastFacingHeading = null; // device compass / GPS course
   var lastHeadingPushAt = 0;
@@ -1503,15 +1516,119 @@
     partyMarkers = {};
   }
 
+  function currentSharedMapId() {
+    try {
+      var vs = C.getViewState && C.getViewState();
+      if (vs && vs.mode === 'shared' && vs.sharedMapId) return vs.sharedMapId;
+    } catch (e) {}
+    return null;
+  }
+
+  function readSharePref() {
+    try {
+      var raw = localStorage.getItem(SHARE_PREF_KEY) || localStorage.getItem(PRESENCE_KEY);
+      if (!raw) return null;
+      var o = JSON.parse(raw);
+      if (!o || typeof o !== 'object') return null;
+      return o;
+    } catch (e) { return null; }
+  }
+
+  function persistSharePref() {
+    try {
+      var payload = {
+        want: !!shareWanted,
+        on: !!shareWanted, // legacy readers
+        active: !!sharing,
+        started: shareStartedAt || Date.now(),
+        lastView: lastMapViewAt || Date.now(),
+        mapId: currentSharedMapId() || null
+      };
+      localStorage.setItem(SHARE_PREF_KEY, JSON.stringify(payload));
+      // Keep legacy key in sync for older code paths
+      if (shareWanted) localStorage.setItem(PRESENCE_KEY, JSON.stringify(payload));
+      else localStorage.removeItem(PRESENCE_KEY);
+    } catch (e) {}
+  }
+
+  function clearSharePref() {
+    shareWanted = false;
+    try { localStorage.removeItem(SHARE_PREF_KEY); } catch (e0) {}
+    try { localStorage.removeItem(PRESENCE_KEY); } catch (e1) {}
+  }
+
+  /** Reset idle timer; resume live share if toggle is still on after auto-pause. */
+  function markMapViewed(opts) {
+    opts = opts || {};
+    lastMapViewAt = Date.now();
+    if (shareWanted) persistSharePref();
+    // Resume GPS broadcast if user left the toggle on after idle pause
+    if (shareWanted && !sharing && !opts.skipResume) {
+      var mapId = currentSharedMapId();
+      if (mapId && getUser()) {
+        try { startSharing({ silent: true, resume: true }); } catch (eR) {}
+      }
+    }
+  }
+
+  /**
+   * Auto-pause after 1 hour without the map/app being open (visible).
+   * While the page is visible the idle clock stays fresh. Background / closed
+   * for ≥1h → pause GPS but keep the toolbar toggle preference on.
+   */
+  function checkShareIdleTimeout() {
+    if (!sharing || !shareWanted) return false;
+    try {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        lastMapViewAt = Date.now();
+        return false;
+      }
+    } catch (eV) {}
+    var idleFor = Date.now() - (lastMapViewAt || 0);
+    if (idleFor >= SHARE_IDLE_MS) {
+      stopSharing('idle');
+      return true;
+    }
+    return false;
+  }
+
+  function hookMapForShareView(m) {
+    if (!m || m._rsShareViewHooked) return;
+    m._rsShareViewHooked = true;
+    try {
+      m.on('movestart zoomstart click dragstart', function () {
+        markMapViewed({ skipResume: false });
+      });
+    } catch (eM) {}
+  }
+
+  function wireShareMapViewTracking() {
+    if (shareMapViewWired) return;
+    shareMapViewWired = true;
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') {
+        markMapViewed();
+      } else if (shareWanted || sharing) {
+        // Start idle clock from the moment they leave the map/app
+        lastMapViewAt = Date.now();
+        persistSharePref();
+      }
+    });
+    window.addEventListener('pageshow', function () { markMapViewed(); });
+    window.addEventListener('focus', function () { markMapViewed(); });
+    try {
+      var m0 = getMap();
+      if (m0) hookMapForShareView(m0);
+    } catch (e0) {}
+  }
+
   async function pushPresence(lat, lng, heading, force) {
     var vs = C.getViewState && C.getViewState();
     var sb = getSb();
     var user = getUser();
     if (!sharing || !vs || vs.mode !== 'shared' || !vs.sharedMapId || !sb || !user) return false;
-    if (Date.now() - shareStartedAt > MAX_SHARE_MS) {
-      stopSharing('auto');
-      return false;
-    }
+    // Auto-pause after 1h without viewing the map (preference stays on)
+    if (checkShareIdleTimeout()) return false;
     // Always resolve best facing heading (never wipe with null on heartbeat)
     var hdg = resolveFacingHeading(heading);
     if (hdg == null && lastSent.heading != null) hdg = lastSent.heading;
@@ -1634,18 +1751,28 @@
     }
   }
 
-  function startSharing() {
+  function startSharing(opts) {
+    opts = opts || {};
+    var silent = !!opts.silent;
+    var resume = !!opts.resume;
     var vs = C.getViewState && C.getViewState();
     if (!vs || vs.mode !== 'shared' || !vs.sharedMapId) {
-      alert('Share location only works on a shared map. Open a shared map first (Settings → My Maps → View).');
+      if (!silent) {
+        alert('Share location only works on a shared map. Open a shared map first (Settings → My Maps → View).');
+      }
       return;
     }
     if (!navigator.geolocation) {
-      alert('Geolocation not available on this device.');
+      if (!silent) alert('Geolocation not available on this device.');
       return;
     }
     if (!getSb() || !getUser()) {
-      alert('Sign in required to share location with your party.');
+      if (!silent) alert('Sign in required to share location with your party.');
+      return;
+    }
+    // Already actively broadcasting
+    if (sharing && resume) {
+      markMapViewed({ skipResume: true });
       return;
     }
     // Ensure map reference for peers who pull while we share
@@ -1654,20 +1781,19 @@
       try { window.map = m; } catch (eM) {}
     }
 
+    shareWanted = true;
     sharing = true;
-    shareStartedAt = Date.now();
+    shareStartedAt = shareStartedAt || Date.now();
+    if (!resume) shareStartedAt = Date.now();
+    lastMapViewAt = Date.now();
     lastSent = { lat: null, lng: null, heading: null, at: 0 };
     lastHeadingPushAt = 0;
-    try {
-      localStorage.setItem(PRESENCE_KEY, JSON.stringify({
-        on: true,
-        started: shareStartedAt,
-        mapId: vs.sharedMapId
-      }));
-    } catch (e) {}
+    persistSharePref();
     updateShareLocBtn();
+    wireShareMapViewTracking();
 
     // iOS: compass permission must be requested from this user tap
+    // (resume from background may skip permission prompt if already granted)
     requestOrientationPermissionIfNeeded().then(function (ok) {
       startPartyHeadingWatch();
       // Also ask main app compass stack if available
@@ -1680,7 +1806,7 @@
           startDeviceHeadingWatch();
         }
       } catch (eH) {}
-      if (!ok) {
+      if (!ok && !silent) {
         try {
           if (window.showAppCopyToast) {
             showAppCopyToast('<span class="act">Compass optional</span><br>Location will still share; facing may use GPS course.');
@@ -1713,14 +1839,11 @@
       } catch (e3) {}
     }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 });
 
-    // Heartbeat with heading preserved + peer pull
+    // Heartbeat: idle check + peer pull + presence push
     if (presenceTimer) clearInterval(presenceTimer);
     presenceTimer = setInterval(function () {
       if (!sharing) return;
-      if (Date.now() - shareStartedAt > MAX_SHARE_MS) {
-        stopSharing('auto');
-        return;
-      }
+      if (checkShareIdleTimeout()) return;
       pullPresence();
       if (lastSent.lat != null) {
         var h = resolveFacingHeading(lastSent.heading);
@@ -1732,29 +1855,54 @@
     navigator.geolocation.getCurrentPosition(function (pos) {
       var h0 = resolveFacingHeading(pos.coords.heading);
       pushPresence(pos.coords.latitude, pos.coords.longitude, h0, true).then(function (ok) {
-        if (ok !== false && window.showAppCopyToast) {
+        if (ok !== false && window.showAppCopyToast && !silent) {
           showAppCopyToast('<span class="act">Sharing location</span><br>Party can see your position and facing direction.');
+        } else if (ok !== false && window.showAppCopyToast && resume) {
+          showAppCopyToast('<span class="act">Sharing location</span><br>Resumed — you viewed the map.');
         }
       });
     }, function (err) {
       console.warn(err);
-      alert('Could not get your location. Check location permission and try again.');
-      stopSharing();
+      if (!silent) {
+        alert('Could not get your location. Check location permission and try again.');
+        stopSharing('user');
+      } else {
+        // Resume failed (permission) — keep toggle wanted for next open
+        sharing = false;
+        updateShareLocBtn();
+        persistSharePref();
+      }
     }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
 
     pullPresence();
   }
 
+  /**
+   * Stop live GPS broadcast.
+   * reason:
+   *  - 'idle' / 'auto': pause after 1h without map view — keep toggle ON in background
+   *  - 'user' / other: full off — clear preference
+   */
   async function stopSharing(reason) {
+    var wasSharing = sharing;
     sharing = false;
-    try { localStorage.removeItem(PRESENCE_KEY); } catch (e) {}
     if (presenceWatch != null) {
       try { navigator.geolocation.clearWatch(presenceWatch); } catch (e2) {}
       presenceWatch = null;
     }
     if (presenceTimer) { clearInterval(presenceTimer); presenceTimer = null; }
     stopPartyHeadingWatch();
+
+    var idlePause = (reason === 'idle' || reason === 'auto');
+    if (idlePause) {
+      // Keep shareWanted + pref so toolbar stays on and we can auto-resume
+      shareWanted = true;
+      persistSharePref();
+    } else {
+      clearSharePref();
+    }
     updateShareLocBtn();
+
     var vs = C.getViewState && C.getViewState();
     var sb = getSb();
     var user = getUser();
@@ -1769,11 +1917,14 @@
         if (res.error) console.warn('stop share presence', res.error);
       } catch (e3) {}
     }
-    if (reason === 'auto') {
+    if (idlePause) {
       try {
-        showAppCopyToast && showAppCopyToast('<span class="act">Location sharing ended</span><br>Auto-off after 1 hour.');
+        showAppCopyToast && showAppCopyToast(
+          '<span class="act">Location sharing paused</span><br>' +
+          'Auto-off after 1 hour away from the map. Toggle stays on — opens again when you view the map.'
+        );
       } catch (e4) {}
-    } else {
+    } else if (wasSharing || reason === 'user') {
       try {
         showAppCopyToast && showAppCopyToast('<span class="act">Stopped sharing location</span>');
       } catch (e5) {}
@@ -1781,22 +1932,40 @@
   }
 
   function toggleSharing() {
-    if (sharing) stopSharing();
+    // If toggle is on (active or idle-paused), user tap turns preference fully off
+    if (shareWanted || sharing) stopSharing('user');
     else startSharing();
   }
 
   function updateShareLocBtn() {
     var btn = $('share-loc-btn');
     if (!btn) return;
-    // Restart pulse animation cleanly when turning on
+    // Button stays toggled when user wants sharing (even if idle-paused)
+    var on = !!(shareWanted || sharing);
     btn.classList.remove('is-sharing');
-    if (sharing) {
+    if (on && sharing) {
       // force reflow so animation restarts
       void btn.offsetWidth;
       btn.classList.add('is-sharing');
+    } else if (on && !sharing) {
+      // Wanted but paused: pressed look without strong pulse
+      btn.classList.add('is-sharing');
+      btn.classList.add('is-share-paused');
+    } else {
+      btn.classList.remove('is-share-paused');
     }
-    btn.setAttribute('aria-pressed', sharing ? 'true' : 'false');
-    btn.title = sharing ? 'Sharing location with party (tap to stop)' : 'Share current location with party';
+    if (sharing) btn.classList.remove('is-share-paused');
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    if (sharing) {
+      btn.title = 'Sharing location with party (tap to stop)';
+      btn.setAttribute('data-mbb-tip', 'Sharing location');
+    } else if (shareWanted) {
+      btn.title = 'Share on (paused after 1h away) — open map to resume, or tap to turn off';
+      btn.setAttribute('data-mbb-tip', 'Share paused — open map');
+    } else {
+      btn.title = 'Share current location with party';
+      btn.setAttribute('data-mbb-tip', 'Share location');
+    }
   }
 
   // ---- List maps / UI ----
@@ -4329,12 +4498,18 @@
     // Extra pull when tab becomes visible (mobile backgrounding)
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible') {
-        setTimeout(function () { pullPresence(); }, 200);
+        setTimeout(function () {
+          pullPresence();
+          try { markMapViewed(); } catch (eMv) {}
+        }, 200);
       }
     });
     // pageshow (bfcache restore on iOS)
     window.addEventListener('pageshow', function () {
-      setTimeout(function () { pullPresence(); }, 300);
+      setTimeout(function () {
+        pullPresence();
+        try { markMapViewed(); } catch (eMv2) {}
+      }, 300);
     });
   }
 
@@ -4343,9 +4518,19 @@
     wireExtraSettings();
     installGpsColor();
     installDrawFilters();
-    // Share location is OFF by default — do not auto-resume previous session
+    wireShareMapViewTracking();
+    // Restore share preference (toggle stays on in background after idle pause)
     sharing = false;
-    try { localStorage.removeItem(PRESENCE_KEY); } catch (e) {}
+    shareWanted = false;
+    try {
+      var pref = readSharePref();
+      if (pref && (pref.want || pref.on)) {
+        shareWanted = true;
+        if (pref.started) shareStartedAt = Number(pref.started) || Date.now();
+        if (pref.lastView) lastMapViewAt = Number(pref.lastView) || Date.now();
+        // Prefer stale lastView for idle calc until user opens the map
+      }
+    } catch (ePref) {}
     updateShareLocBtn();
     ensurePartyPullLoop();
     // Warm map-name dropdown so first click is smooth
@@ -4360,34 +4545,49 @@
       } catch (e0) {}
       refreshMapsUi();
       pullPresence();
+      // Opening the app / map counts as a view → reset idle + resume if toggle still on
+      try { markMapViewed(); } catch (eMv) {}
     }, 500);
     // Retry after map typically mounts
     [1200, 2500, 5000].forEach(function (ms) {
       setTimeout(function () {
         try {
           var m = getMap();
-          if (m) window.map = m;
+          if (m) {
+            window.map = m;
+            hookMapForShareView(m);
+          }
         } catch (e1) {}
         pullPresence();
       }, ms);
     });
   }
 
-  // When main app finishes ensureMap, re-pull party markers
-  var _origEnsureMap = window.ensureMap;
-  if (typeof _origEnsureMap === 'function' && !_origEnsureMap._rsPartyHook) {
+  // When main app finishes ensureMap, re-pull party markers + track map view
+  function installEnsureMapPartyHook() {
+    var _origEnsureMap = window.ensureMap;
+    if (typeof _origEnsureMap !== 'function' || _origEnsureMap._rsPartyHook) return;
     window.ensureMap = function () {
       return _origEnsureMap.apply(this, arguments).then(function (m) {
         try {
           if (m) window.map = m;
           else if (getMap()) window.map = getMap();
         } catch (e) {}
-        setTimeout(function () { pullPresence(); }, 50);
+        try { hookMapForShareView(m || getMap()); } catch (eH) {}
+        setTimeout(function () {
+          pullPresence();
+          try { markMapViewed(); } catch (eMv) {}
+        }, 50);
         return m;
       });
     };
     window.ensureMap._rsPartyHook = true;
   }
+  installEnsureMapPartyHook();
+  // ensureMap is defined later in index.html — retry until wired
+  [0, 500, 1500, 4000].forEach(function (ms) {
+    setTimeout(installEnsureMapPartyHook, ms);
+  });
 
   if (C.authReady && C.authReady.then) {
     C.authReady.then(onReady).catch(onReady);
@@ -4415,6 +4615,8 @@
     createPrivateMap: createPrivateMap,
     switchToPrivate: switchToPrivate,
     isSharing: function () { return sharing; },
+    isShareWanted: function () { return shareWanted; },
+    markMapViewed: markMapViewed,
     stampOwner: stampOwner,
     pullPresence: pullPresence,
     onDeviceHeading: onDeviceHeading,
