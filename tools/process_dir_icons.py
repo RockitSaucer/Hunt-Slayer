@@ -38,6 +38,7 @@ FRONT_OVERRIDES: dict[str, float] = {
     "shuttle": 0,
     "speed_boat": 0,
     "truck": 0,
+    "walker": 90,         # side profile walking right = front faces east
     "x_wing": 0,          # nose up
 }
 

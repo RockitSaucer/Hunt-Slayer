@@ -84,6 +84,13 @@
     "frontDeg": 0.0
   },
   {
+    "id": "walker",
+    "name": "Walker",
+    "src": "icons/dir/walker.png",
+    "defaultColor": "#1a1a1a",
+    "frontDeg": 90.0
+  },
+  {
     "id": "x_wing",
     "name": "x wing",
     "src": "icons/dir/x_wing.png",

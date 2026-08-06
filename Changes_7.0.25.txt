@@ -1,0 +1,20 @@
+V7.0.25 Beta (shell v85) — 2026-08-06
+
+New icon: Walker (walking person silhouette)
+
+1) Map pin icon
+   - Source: button icons/Layers naked/Walker.jpg
+   - Processed via process_pin_icons.py → icons/pins/walker.png
+   - PIN_ICON_CATALOG entry: Walker, default body #1a1a1a, white disc, natural glyph
+   - Selectable in pin editor like all other pin icons
+
+2) Custom user directional icon (GPS / party)
+   - Source: button icons/location icons/Walker.jpg
+   - Processed via process_dir_icons.py → icons/dir/walker.png
+   - DIR_ICON_CATALOG entry: Walker, frontDeg 90 (profile faces right)
+   - Rotates with heading so the walker faces travel direction
+   - Available in the same directional icon picker as car/boat/etc.
+
+3) Version
+   - APP_VERSION 7.0.25-beta · badge V7.0.25 Beta · SHELL_CACHE reg-slayer-shell-v85
+   - Both Hunt Slayer and Reg Slayer

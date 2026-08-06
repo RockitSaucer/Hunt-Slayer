@@ -166,5 +166,11 @@
     "name": "Truck",
     "src": "icons/pins/truck.png",
     "defaultColor": "#1a1a1a"
+  },
+  {
+    "id": "walker",
+    "name": "Walker",
+    "src": "icons/pins/walker.png",
+    "defaultColor": "#1a1a1a"
   }
 ]

@@ -35,9 +35,11 @@
     { id: 'shuttle', name: 'Shuttle', src: 'icons/dir/shuttle.png', frontDeg: 0 },
     { id: 'speed_boat', name: 'Speed Boat', src: 'icons/dir/speed_boat.png', frontDeg: 0 },
     { id: 'truck', name: 'Truck', src: 'icons/dir/truck.png', frontDeg: 0 },
+    // Side profile walks right — frontDeg 90 so heading rotation faces travel direction
+    { id: 'walker', name: 'Walker', src: 'icons/dir/walker.png', frontDeg: 90 },
     { id: 'x_wing', name: 'X-wing', src: 'icons/dir/x_wing.png', frontDeg: 0 }
   ];
-  var DIR_ICON_BUST = 'dir2';
+  var DIR_ICON_BUST = 'dir3';
   var MOVE_M = 8; // meters = "moving"
   var MOVE_MS = 4000; // min interval when moving
   var HEARTBEAT_MS = 5000; // always push at least this often while sharing

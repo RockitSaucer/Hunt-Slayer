@@ -473,7 +473,7 @@
 
     return navigator.serviceWorker
       // Cache-bust query forces mobile browsers to re-check SW script on each deploy bump
-      .register('./sw.js?v=shell84', { scope: './' })
+      .register('./sw.js?v=shell85', { scope: './' })
       .then(function (reg) {
         console.info('[Offline] SW registered', reg.scope);
         // Force update check every launch (critical for iOS/Android home-screen / PWA)
