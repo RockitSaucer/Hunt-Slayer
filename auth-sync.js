@@ -637,6 +637,68 @@
     return currentAppOrigin() + '/?join=' + c;
   }
 
+  /** Pending join from /?join=###### — survives login/signup (localStorage + sessionStorage). */
+  var PENDING_JOIN_KEY = 'reg_slayer_pending_join';
+  var PENDING_JOIN_TS_KEY = 'reg_slayer_pending_join_ts';
+  var PENDING_JOIN_MAX_MS = 7 * 24 * 60 * 60 * 1000;
+
+  function storePendingJoin(code) {
+    var c = String(code || '').replace(/\D/g, '').slice(0, 6);
+    if (c.length !== 6) return '';
+    try { sessionStorage.setItem(PENDING_JOIN_KEY, c); } catch (e0) {}
+    try { localStorage.setItem(PENDING_JOIN_KEY, c); } catch (e1) {}
+    try { localStorage.setItem(PENDING_JOIN_TS_KEY, String(Date.now())); } catch (e2) {}
+    return c;
+  }
+  function readPendingJoin() {
+    var code = '';
+    try { code = sessionStorage.getItem(PENDING_JOIN_KEY) || ''; } catch (e0) {}
+    if (!code) {
+      try { code = localStorage.getItem(PENDING_JOIN_KEY) || ''; } catch (e1) {}
+    }
+    code = String(code || '').replace(/\D/g, '').slice(0, 6);
+    if (code.length !== 6) return '';
+    try {
+      var ts = parseInt(localStorage.getItem(PENDING_JOIN_TS_KEY) || '0', 10);
+      if (ts && (Date.now() - ts) > PENDING_JOIN_MAX_MS) {
+        clearPendingJoin();
+        return '';
+      }
+    } catch (e2) {}
+    return code;
+  }
+  function clearPendingJoin() {
+    try { sessionStorage.removeItem(PENDING_JOIN_KEY); } catch (e0) {}
+    try { localStorage.removeItem(PENDING_JOIN_KEY); } catch (e1) {}
+    try { localStorage.removeItem(PENDING_JOIN_TS_KEY); } catch (e2) {}
+  }
+  function updatePendingJoinAuthHint() {
+    var code = readPendingJoin();
+    var el = document.getElementById('auth-pending-join');
+    if (!code) {
+      if (el) {
+        el.hidden = true;
+        el.textContent = '';
+      }
+      return;
+    }
+    if (!el) {
+      var gate = document.getElementById('auth-gate');
+      var card = gate && gate.querySelector('.auth-card');
+      var err = document.getElementById('auth-error');
+      el = document.createElement('p');
+      el.id = 'auth-pending-join';
+      el.className = 'auth-sub';
+      el.setAttribute('role', 'status');
+      el.style.cssText = 'margin-top:6px;padding:8px 10px;border-radius:8px;background:rgba(229,154,24,0.12);border:1px solid rgba(229,154,24,0.35);color:#f3f6ef;font-weight:600;';
+      if (card && err && err.parentNode === card) card.insertBefore(el, err);
+      else if (card) card.insertBefore(el, card.firstChild && card.firstChild.nextSibling);
+      else return;
+    }
+    el.hidden = false;
+    el.innerHTML = 'Invite ready — after you sign in or create an account, <strong>this map opens automatically</strong>. You do not need to enter the code.';
+  }
+
   /** Base64url helpers for sister-site SSO handoff (tokens in URL hash only). */
   function b64urlEncode(str) {
     try {
@@ -1297,25 +1359,67 @@
       var code = u.searchParams.get('join') || u.searchParams.get('map') || '';
       code = String(code).replace(/\D/g, '').slice(0, 6);
       if (code.length === 6) {
-        try { sessionStorage.setItem('reg_slayer_pending_join', code); } catch (eS) {}
+        storePendingJoin(code);
         u.searchParams.delete('join');
         u.searchParams.delete('map');
         var clean = u.pathname + (u.search || '') + (u.hash || '');
         if (window.history && history.replaceState) history.replaceState({}, '', clean || '/');
       }
     } catch (e) {}
+    try { updatePendingJoinAuthHint(); } catch (eH) {}
   }
 
+  /**
+   * After sign-in / sign-up: join the map from the invite link automatically.
+   * Does not require typing the 6-digit code again. Keeps the pending code until
+   * join succeeds (so a failed attempt can retry on next auth).
+   */
   async function consumePendingJoin() {
-    var code = '';
-    try { code = sessionStorage.getItem('reg_slayer_pending_join') || ''; } catch (e) {}
-    if (!code || code.length !== 6) return;
-    try { sessionStorage.removeItem('reg_slayer_pending_join'); } catch (e2) {}
+    var code = readPendingJoin();
+    if (!code || code.length !== 6) return null;
+    if (!sessionUser) return null;
     try {
-      await joinSharedMap(code);
-      alert('Joined shared map: ' + (viewState.sharedMapName || code));
+      var data = await joinSharedMap(code);
+      clearPendingJoin();
+      try { updatePendingJoinAuthHint(); } catch (eH) {}
+      try {
+        if (typeof window.showAppCopyToast === 'function') {
+          window.showAppCopyToast(
+            '<span class="act">Opened shared map</span><br>' +
+            (viewState.sharedMapName || (data && data.name) || ('Code ' + code))
+          );
+        } else {
+          alert('Opened shared map: ' + (viewState.sharedMapName || code));
+        }
+      } catch (eT) {
+        try { alert('Opened shared map: ' + (viewState.sharedMapName || code)); } catch (eA) {}
+      }
+      try { updateAuthChrome(); } catch (eC) {}
+      try {
+        if (window.RegSlayerParty && typeof window.RegSlayerParty.recordMapVisit === 'function' && viewState.sharedMapId) {
+          window.RegSlayerParty.recordMapVisit('shared', viewState.sharedMapId);
+        }
+      } catch (eV) {}
+      return data;
     } catch (err) {
-      alert('Could not join map ' + code + ': ' + (err.message || err));
+      // Keep pending code so user can retry without re-pasting the link
+      var msg = (err && err.message) ? err.message : String(err || 'Join failed');
+      // Already a member / invalid code: if already on that map, clear pending
+      var already = /already|member|joined/i.test(msg);
+      if (already) {
+        clearPendingJoin();
+        try { updatePendingJoinAuthHint(); } catch (eH2) {}
+      }
+      try {
+        if (typeof window.showAppCopyToast === 'function') {
+          window.showAppCopyToast('<span class="act">Could not open invite</span><br>' + msg);
+        } else {
+          alert('Could not join map ' + code + ': ' + msg);
+        }
+      } catch (eT2) {
+        try { alert('Could not join map ' + code + ': ' + msg); } catch (eA2) {}
+      }
+      return null;
     }
   }
 
@@ -1323,8 +1427,8 @@
     var c = String(code || '').replace(/\D/g, '').slice(0, 6);
     var link = inviteJoinUrl(c);
     var nameLine = mapName ? ('Map: ' + mapName + '\n') : '';
-    return 'Join my HuntSlayer map!\n' + nameLine + 'Code: ' + c + '\n' + link +
-      '\n(Works on regslayer.com and huntslayer.com — same account)';
+    // Keep invite short: name + code + deep link (auto-opens map after login)
+    return 'Join my map!\n' + nameLine + 'Code: ' + c + '\n' + link;
   }
 
   async function onAuthed(fromLogin) {
@@ -1332,23 +1436,38 @@
     restoreDirtyFlag();
     loadViewState();
     await restoreViewPrefsFromCloud();
+    // If an invite is pending, skip applying/restoring a different last map first —
+    // join will load the shared map. Still snapshot dirty personal work above join.
+    var pendingJoin = readPendingJoin();
     // Apply last local cache for active map immediately (offline-first feel)
-    var slot = cacheSlotKey();
-    var cached = readLocalCache(slot);
-    if (cached && cached.state) {
-      applyMapState(cached.state);
-      if (cached.state.meta && cached.state.meta.revision) {
-        localRevision = cached.state.meta.revision;
+    // unless we are about to switch into an invite map.
+    if (!pendingJoin) {
+      var slot = cacheSlotKey();
+      var cached = readLocalCache(slot);
+      if (cached && cached.state) {
+        applyMapState(cached.state);
+        if (cached.state.meta && cached.state.meta.revision) {
+          localRevision = cached.state.meta.revision;
+        }
+        refreshMapFromLocalState();
       }
-      refreshMapFromLocalState();
     }
     // Upload pending local deletes/edits BEFORE any cloud pull (prevents resurrect)
     if (isDirty()) {
       try { await pushMapToCloud(); } catch (eP) { console.warn(eP); }
     }
-    await pullMapFromCloud(true);
-    if (isDirty()) scheduleCloudPush(true);
+    if (!pendingJoin) {
+      await pullMapFromCloud(true);
+      if (isDirty()) scheduleCloudPush(true);
+    }
+    // Auto-open shared map from invite link (no re-entry of code)
     await consumePendingJoin();
+    // If join failed or none pending, ensure current view is loaded
+    if (pendingJoin && readPendingJoin()) {
+      try { await pullMapFromCloud(true); } catch (ePull) {}
+    } else if (pendingJoin) {
+      // join succeeded — pull already done inside joinSharedMap
+    }
     updateAuthChrome();
     startPullLoop();
     try {

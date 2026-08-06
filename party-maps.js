@@ -1973,10 +1973,7 @@
         {
           label: 'Share this map',
           onClick: function () {
-            var text = 'Join my HuntSlayer map!\nMap: ' + (mapRow.name || '') + '\nCode: ' + mapRow.code +
-              '\n' + ((window.RegSlayerCloud && window.RegSlayerCloud.inviteJoinUrl)
-                ? window.RegSlayerCloud.inviteJoinUrl(mapRow.code)
-                : ((window.location && window.location.origin) || 'https://regslayer.com') + '/?join=' + mapRow.code);
+            var text = shareMapInviteText(mapRow);
             if (navigator.clipboard && navigator.clipboard.writeText) {
               navigator.clipboard.writeText(text).then(function () {
                 alert('Copied:\n' + text);
@@ -2461,9 +2458,7 @@
     var link = (window.RegSlayerCloud && typeof window.RegSlayerCloud.inviteJoinUrl === 'function')
       ? window.RegSlayerCloud.inviteJoinUrl(code)
       : (((window.location && window.location.origin) || 'https://regslayer.com') + '/?join=' + code);
-    return 'Join my HuntSlayer map!\nMap: ' + name + '\nCode: ' + code +
-      '\n' + link +
-      '\n(Works on regslayer.com and huntslayer.com — same account)';
+    return 'Join my map!\nMap: ' + name + '\nCode: ' + code + '\n' + link;
   }
 
   /** Clipboard that works on mobile Safari inside Settings (not only HTTPS clipboard API). */
