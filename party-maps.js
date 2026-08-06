@@ -1851,7 +1851,9 @@
       if (e.target === wrap) wrap.remove();
     };
     var card = document.createElement('div');
-    card.className = 'rs-simple-card' + (opts.compact ? ' rs-compact-edit' : '');
+    card.className = 'rs-simple-card' +
+      (opts.compact ? ' rs-compact-edit' : '') +
+      (opts.cardClass ? (' ' + opts.cardClass) : '');
     card.onclick = function (e) { e.stopPropagation(); };
     var actId = 'rs-simple-actions-' + Math.floor(Math.random() * 1e9);
     card.innerHTML = '<h3>' + esc(title) + '</h3><div class="rs-simple-body">' + bodyHtml +
@@ -3373,8 +3375,7 @@
         out.push({
           kind: 'private',
           id: m.id,
-          name: (m.name || 'Private map'),
-          label: (m.name || 'Private map') + ' (private)'
+          name: String(m.name || 'My Map').trim() || 'My Map'
         });
       });
     } catch (e) {}
@@ -3385,9 +3386,8 @@
         out.push({
           kind: 'shared',
           id: m.id,
-          name: m.name || 'Shared map',
-          code: m.code,
-          label: (m.name || 'Shared map') + (m.code ? (' · ' + m.code) : '') + ' (shared)'
+          name: String(m.name || 'Shared map').trim() || 'Shared map',
+          code: m.code
         });
       });
     } catch (e2) {}
@@ -3399,12 +3399,12 @@
       if ((vs.mode === 'private' || vs.mode === 'personal') && m.kind === 'private' && m.id === vs.privateMapId) return false;
       return true;
     });
-    // Sort by last visited (most recent first), then name
+    // Sort by last visited (most recent first), then name only
     out.sort(function (a, b) {
       var ra = mapVisitIndex(a.kind, a.id);
       var rb = mapVisitIndex(b.kind, b.id);
       if (ra !== rb) return ra - rb;
-      return String(a.label || a.name || '').localeCompare(String(b.label || b.name || ''));
+      return String(a.name || '').localeCompare(String(b.name || ''));
     });
     return out;
   }
@@ -3622,62 +3622,60 @@
       alert('No other maps available. Create another private or shared map first.');
       return;
     }
-    var kindLabel = typ === 'area' ? 'area' : (ent.isStand ? 'stand pin' : (ent.isHunt ? 'hunt pin' : 'pin'));
-    var nameLine = esc(ent.name || 'Unnamed') +
-      (ent.color ? ' · color ' + esc(ent.color) : '') +
-      (ent.iconId ? ' · icon ' + esc(ent.iconId) : '');
-    var optionsHtml = '<option value="">Select a map…</option>' + targets.map(function (t, i) {
-      return '<option value="' + i + '">' + esc(t.label || t.name) + '</option>';
-    }).join('');
-    // Stack on top of Share location chooser when that is open
-    var shareWrap = showSimpleModal('Share to another map',
-      '<p class="settings-hint" style="margin:0 0 6px;">Copies this <strong>' + esc(kindLabel) +
-        '</strong> exactly (placement, name, colors, icon, notes, type, size). Original stays on this map.</p>' +
-      '<p class="settings-status" style="margin:0 0 8px;">' + nameLine + '</p>' +
-      '<label class="settings-hint" for="rs-share-map-select">Choose a map <span style="opacity:0.75;">(most recent first)</span></label>' +
-      '<select class="rs-share-map-select" id="rs-share-map-select" size="' +
-        Math.min(8, Math.max(3, targets.length + 1)) + '">' + optionsHtml + '</select>',
-      [{ label: 'Cancel' }],
-      { stack: true }
-    );
+    // Clean list of map name buttons only (map-dot menu aesthetic)
+    var listHtml = '<div class="rs-select-map-list" id="rs-select-map-list">' +
+      targets.map(function (t, i) {
+        return '<button type="button" class="rs-select-map-btn" data-idx="' + i + '">' +
+          esc(t.name || 'Map') + '</button>';
+      }).join('') +
+      '</div>';
+    var shareWrap = showSimpleModal('Select Map', listHtml, [{ label: 'Cancel' }], {
+      stack: true,
+      cardClass: 'rs-select-map-card'
+    });
     setTimeout(function () {
-      var sel = (shareWrap && shareWrap.querySelector)
-        ? shareWrap.querySelector('#rs-share-map-select')
-        : document.getElementById('rs-share-map-select');
-      if (!sel) return;
-      function doShare(idx) {
-        var t = targets[idx];
-        if (!t) return;
-        sel.disabled = true;
-        copyEntityToMap(ent, typ, t).then(function () {
-          try {
-            if (shareWrap && shareWrap.parentNode) shareWrap.remove();
-          } catch (eS) {}
-          try {
-            document.querySelectorAll('.rs-simple-modal').forEach(function (m) {
-              try { m.remove(); } catch (e2) {}
-            });
-          } catch (eM) {}
-          try {
-            if (window.showAppCopyToast) {
-              showAppCopyToast('<span class="act">Shared to map</span><br>' + esc(t.label || t.name));
-            } else {
-              alert('Saved to: ' + (t.label || t.name));
+      var list = (shareWrap && shareWrap.querySelector)
+        ? shareWrap.querySelector('#rs-select-map-list')
+        : document.getElementById('rs-select-map-list');
+      if (!list) return;
+      list.querySelectorAll('.rs-select-map-btn').forEach(function (btn) {
+        btn.onclick = function (ev) {
+          if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+          var idx = parseInt(btn.getAttribute('data-idx'), 10);
+          var t = targets[idx];
+          if (!t) return;
+          btn.disabled = true;
+          var prevLabel = btn.textContent;
+          btn.textContent = 'Sharing…';
+          list.querySelectorAll('.rs-select-map-btn').forEach(function (b) {
+            if (b !== btn) b.disabled = true;
+          });
+          copyEntityToMap(ent, typ, t).then(function () {
+            try {
+              if (shareWrap && shareWrap.parentNode) shareWrap.remove();
+            } catch (eS) {}
+            try {
+              document.querySelectorAll('.rs-simple-modal').forEach(function (m) {
+                try { m.remove(); } catch (e2) {}
+              });
+            } catch (eM) {}
+            try {
+              if (window.showAppCopyToast) {
+                showAppCopyToast('<span class="act">Shared to map</span><br>' + esc(t.name));
+              } else {
+                alert('Saved to: ' + t.name);
+              }
+            } catch (eT) {
+              alert('Saved to: ' + t.name);
             }
-          } catch (eT) {
-            alert('Saved to: ' + (t.label || t.name));
-          }
-        }).catch(function (e) {
-          sel.disabled = false;
-          sel.value = '';
-          alert(e.message || String(e));
-        });
-      }
-      sel.onchange = function () {
-        var idx = parseInt(sel.value, 10);
-        if (isNaN(idx) || idx < 0) return;
-        doShare(idx);
-      };
+          }).catch(function (e) {
+            btn.disabled = false;
+            btn.textContent = prevLabel || t.name;
+            list.querySelectorAll('.rs-select-map-btn').forEach(function (b) { b.disabled = false; });
+            alert(e.message || String(e));
+          });
+        };
+      });
     }, 30);
   }
 

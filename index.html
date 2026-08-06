@@ -45,6 +45,31 @@
       root.classList.add(phone ? 'layout-phone' : 'layout-desktop');
       root.setAttribute('data-layout', phone ? 'phone' : 'desktop');
       window.__REG_SLAYER_IS_PHONE__ = phone;
+      // Pre-apply Max-on-launch before first paint (avoids min→max flash)
+      try {
+        var wantMax = false;
+        var raw = localStorage.getItem('reg_slayer_app_settings_v1');
+        if (raw) {
+          var o = JSON.parse(raw);
+          if (o && o.display && o.display.mapFullscreenLaunch === true) wantMax = true;
+          if (o && o.display && o.display.mapFullscreenLaunch === false) wantMax = false;
+        } else {
+          // No saved settings: Hunt site defaults to Max (SITE_ID not set yet — infer from host)
+          var host = (location.hostname || '').toLowerCase();
+          wantMax = host.indexOf('huntslayer') !== -1 || host.indexOf('localhost') !== -1 || host === '';
+        }
+        // One-shot migration may force Hunt max
+        try {
+          if (localStorage.getItem('reg_slayer_site_defaults_v701') !== '1') {
+            var host2 = (location.hostname || '').toLowerCase();
+            if (host2.indexOf('huntslayer') !== -1) wantMax = true;
+          }
+        } catch (eM) {}
+        if (wantMax) {
+          root.classList.add('map-is-fullscreen', 'map-boot-max-pending');
+          window.__RS_BOOT_MAP_MAX__ = true;
+        }
+      } catch (eFs) {}
     })();
   </script>
   <!-- Leaflet loaded on demand when Step 3 / map is first needed (faster first paint) -->
@@ -394,67 +419,67 @@
       color: var(--muted);
     }
     /* Share-to-map list inside simple modal */
-    .rs-share-map-list {
+    /* Select Map picker — same raised button language as map-dot menus */
+    .rs-select-map-list {
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      max-height: min(40vh, 280px);
+      gap: 8px;
+      max-height: min(50vh, 320px);
       overflow-y: auto;
-      margin: 4px 0 8px;
+      margin: 0;
+      padding: 0;
       scrollbar-width: thin;
+      scrollbar-color: #2a3224 #0a0c09;
     }
-    .rs-share-map-list button {
+    .rs-select-map-list::-webkit-scrollbar { width: 6px; background: #0a0c09; }
+    .rs-select-map-list::-webkit-scrollbar-thumb { background: #2a3224; border-radius: 4px; }
+    .rs-select-map-list .rs-select-map-btn {
       width: 100%;
-      text-align: left;
-      padding: 10px 12px;
+      box-sizing: border-box;
+      text-align: center;
+      padding: 11px 12px;
+      min-height: 42px;
       border-radius: 8px;
       border: 1px solid var(--border);
       background: linear-gradient(180deg, #2a3222 0%, var(--panel-light) 45%, #181e14 100%);
       color: #e8efe4;
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 700;
       cursor: pointer;
+      box-shadow:
+        0 2px 0 rgba(0, 0, 0, 0.32),
+        0 3px 7px rgba(0, 0, 0, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
     }
-    .rs-share-map-list button:hover {
+    .rs-select-map-list .rs-select-map-btn:hover {
       border-color: var(--accent);
       background: linear-gradient(180deg, #323c28 0%, #262e1e 45%, #1c2418 100%);
     }
-    .rs-share-map-list .rs-share-kind {
-      display: block;
-      font-size: 10px;
-      font-weight: 600;
-      color: var(--muted);
-      margin-top: 2px;
+    .rs-select-map-list .rs-select-map-btn:active {
+      transform: translateY(1px);
+      box-shadow:
+        0 1px 0 rgba(0, 0, 0, 0.28),
+        inset 0 2px 4px rgba(0, 0, 0, 0.35);
     }
-    .rs-share-map-select {
-      width: 100%;
-      box-sizing: border-box;
-      margin: 6px 0 10px;
-      padding: 8px 10px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: #161a12;
-      color: #e8efe4;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      /* size attr makes it a visible list box (not a collapsed native dropdown) */
-      min-height: 120px;
-      max-height: min(40vh, 260px);
+    .rs-select-map-list .rs-select-map-btn:disabled {
+      opacity: 0.65;
+      cursor: wait;
     }
-    .rs-share-map-select:focus {
-      outline: none;
-      border-color: var(--accent);
+    .rs-simple-card.rs-select-map-card {
+      width: min(300px, 92vw);
+      padding: 14px 12px 12px;
     }
-    .rs-share-map-select option {
-      background: #161a12;
-      color: #e8efe4;
-      padding: 8px 6px;
+    .rs-simple-card.rs-select-map-card h3 {
+      margin: 0 0 12px;
+      text-align: center;
+      font-size: 14px;
+      letter-spacing: 0.02em;
     }
-    .rs-share-map-select option:checked,
-    .rs-share-map-select option:hover {
-      background: #2a3224;
-      color: #fff;
+    .rs-simple-card.rs-select-map-card .rs-simple-body {
+      margin-bottom: 0;
+    }
+    .rs-simple-card.rs-select-map-card .rs-simple-actions {
+      margin-top: 10px;
     }
     .map-title-settings-btn {
       flex: 0 0 auto;
@@ -3518,6 +3543,21 @@
     html.layout-phone .dashboard-under-steps {
       position: relative;
       z-index: 2;
+    }
+    /*
+     * Boot Max-on-launch: hide planner chrome before map reparents to fullscreen,
+     * so the user never sees a flash of min layout.
+     */
+    html.map-boot-max-pending .brand-header,
+    html.map-boot-max-pending .card-planner,
+    html.map-boot-max-pending .site-footer,
+    html.map-boot-max-pending .dashboard-under-steps,
+    html.map-boot-max-pending #dashboard-container {
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+    html.map-boot-max-pending .card-map {
+      opacity: 1;
     }
     /* True fullscreen: covers entire viewport including brand banner (wrapper is reparented to body) */
     .map-wrapper.fullscreen {
@@ -9790,7 +9830,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.5 Beta">V7.0.5 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.6 Beta">V7.0.6 Beta</span>
     </div>
     <a class="brand-sister-link" id="brand-sister-link" href="https://www.regslayer.com" title="Open REG SLAYER (same account)">
       <span class="brand-sister-label">Reg Slayer</span>
@@ -11117,7 +11157,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.5-beta';
+    const APP_VERSION = '7.0.6-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -31011,15 +31051,49 @@ function togglePinIconPicker() {
       }
     })();
 
-    function toggleMapFullscreen() {
+    /** Boot Max-on-launch coordination (prevents re-max after user hits Min) */
+    var mapFsBoot = {
+      want: !!(typeof window !== 'undefined' && window.__RS_BOOT_MAP_MAX__),
+      done: false,
+      userTouched: false
+    };
+
+    function clearMapBootMaxPending() {
+      try {
+        document.documentElement.classList.remove('map-boot-max-pending');
+      } catch (e) {}
+    }
+
+    function toggleMapFullscreen(opts) {
+      opts = opts || {};
+      // User-driven Min/Max cancels any pending boot auto-max retries
+      if (!opts.fromBoot) {
+        mapFsBoot.userTouched = true;
+        mapFsBoot.done = true;
+        clearMapBootMaxPending();
+      }
       ensureMap().then(function() {
         var w = document.getElementById('map-wrapper') || document.querySelector('.map-wrapper');
         if (!w) return;
         var full = !w.classList.contains('fullscreen');
+        // Boot path: only enter max, never toggle off
+        if (opts.fromBoot) {
+          if (mapFsBoot.userTouched) return;
+          if (w.classList.contains('fullscreen')) {
+            mapFsBoot.done = true;
+            clearMapBootMaxPending();
+            return;
+          }
+          full = true;
+        }
         if (full) {
           enterMapTrueFullscreen(w);
         } else {
           exitMapTrueFullscreen(w);
+        }
+        if (opts.fromBoot) {
+          mapFsBoot.done = true;
+          clearMapBootMaxPending();
         }
         document.getElementById('map-maximize-btn').style.display = full ? 'none' : 'block';
         document.getElementById('map-minimize-btn').style.display = full ? 'block' : 'none';
@@ -32155,39 +32229,53 @@ function togglePinIconPicker() {
           if (typeof loadWmaZoneGeometries === 'function') loadWmaZoneGeometries();
         } catch (eWz1) {}
       });
-      // Default overlays + map fullscreen launch from settings (after a tick so map shell exists)
+      // Default overlays + map fullscreen launch (smooth Max — no re-max after user Min)
       function launchMapMaxIfNeeded() {
         try {
+          if (mapFsBoot.userTouched || mapFsBoot.done) return false;
           var d = appSettings && appSettings.display;
-          if (!d || !d.map) return false;
+          if (!d || !d.map) {
+            clearMapBootMaxPending();
+            return false;
+          }
           var mapOnly = d.map && !d.planner && !d.weather;
-          if (!(d.mapFullscreenLaunch || mapOnly)) return false;
+          var want = !!(d.mapFullscreenLaunch || mapOnly || window.__RS_BOOT_MAP_MAX__);
+          if (!want) {
+            clearMapBootMaxPending();
+            return false;
+          }
           if (typeof toggleMapFullscreen !== 'function') return false;
           var wrap = document.getElementById('map-wrapper');
-          if (!wrap || wrap.classList.contains('fullscreen')) return !!wrap && wrap.classList.contains('fullscreen');
-          toggleMapFullscreen();
+          if (wrap && wrap.classList.contains('fullscreen')) {
+            mapFsBoot.done = true;
+            clearMapBootMaxPending();
+            return true;
+          }
+          toggleMapFullscreen({ fromBoot: true });
           return true;
         } catch (eM) { return false; }
       }
+      // One early pass + one short fallback only (no multi-second re-max loop)
       setTimeout(function() {
         try {
           if (typeof applyDefaultOverlaysOnLaunch === 'function') applyDefaultOverlaysOnLaunch();
           launchMapMaxIfNeeded();
           applyDisplayVisibility();
         } catch (eSet) { console.warn(eSet); }
-      }, 400);
-      // Hunt / map-max: retry after map shell + phone layout settle (mobile was missing Max)
-      [900, 1600, 2800].forEach(function(ms) {
-        setTimeout(function() {
-          try {
-            var wrap = document.getElementById('map-wrapper');
-            var d = appSettings && appSettings.display;
-            if (d && (d.mapFullscreenLaunch || (d.map && !d.planner && !d.weather)) && d.map) {
-              if (wrap && !wrap.classList.contains('fullscreen')) launchMapMaxIfNeeded();
-            }
-          } catch (eR) {}
-        }, ms);
-      });
+      }, 120);
+      setTimeout(function() {
+        try {
+          if (!mapFsBoot.userTouched && !mapFsBoot.done) launchMapMaxIfNeeded();
+          else clearMapBootMaxPending();
+        } catch (eR) {}
+      }, 500);
+      // Safety: never leave boot-pending chrome hidden forever
+      setTimeout(function() {
+        try {
+          mapFsBoot.done = true;
+          clearMapBootMaxPending();
+        } catch (eS) {}
+      }, 2500);
       // Single browser geolocation request at boot (no in-app primer, no concurrent watch).
       // Settings → Tools → Current Location can hide button + marker.
       function finishGpsBoot() {

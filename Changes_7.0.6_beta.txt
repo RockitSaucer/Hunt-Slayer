@@ -1,0 +1,5 @@
+﻿V7.0.6 Beta — Select Map UI polish + smooth Max-on-launch
+========================================================
+- Select Map modal: title only, map name buttons (map-dot style), no private/shared tags
+- Boot Max: pre-apply before paint, no min flash; user Min cancels auto re-max retries
+- SHELL_CACHE = reg-slayer-shell-v66
