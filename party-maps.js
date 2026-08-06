@@ -1962,6 +1962,7 @@
     // Use original snapshot/cache path via internal hooks we expose
     if (typeof C._switchToPrivate === 'function') {
       await C._switchToPrivate(mapId);
+      try { recordMapVisit('private', mapId); } catch (eV) {}
       // Always refresh chrome labels after switch (mobile title + max-mode chip)
       try { updateBrandName(); } catch (eBn) {}
       try { refreshMapsUi(); } catch (eRu) {}
@@ -3325,25 +3326,87 @@
   }
 
   // ---- Share entity to another map ----
+  var MAP_VISIT_KEY = 'reg_slayer_map_visit_order_v1';
+
+  /** Record map open so share-to-map dropdown can sort by last visited. */
+  function recordMapVisit(kind, id) {
+    if (!kind || !id) return;
+    var list = [];
+    try { list = JSON.parse(localStorage.getItem(MAP_VISIT_KEY) || '[]'); } catch (e) { list = []; }
+    if (!Array.isArray(list)) list = [];
+    var kid = String(kind);
+    var mid = String(id);
+    list = list.filter(function (x) {
+      return !(x && String(x.kind) === kid && String(x.id) === mid);
+    });
+    list.unshift({ kind: kid, id: mid, t: Date.now() });
+    if (list.length > 50) list = list.slice(0, 50);
+    try { localStorage.setItem(MAP_VISIT_KEY, JSON.stringify(list)); } catch (e2) {}
+  }
+
+  function mapVisitIndex(kind, id) {
+    try {
+      var list = JSON.parse(localStorage.getItem(MAP_VISIT_KEY) || '[]');
+      if (!Array.isArray(list)) return 9999;
+      var kid = String(kind), mid = String(id);
+      for (var i = 0; i < list.length; i++) {
+        if (list[i] && String(list[i].kind) === kid && String(list[i].id) === mid) return i;
+      }
+    } catch (e) {}
+    return 9999;
+  }
+
+  function recordVisitFromViewState() {
+    try {
+      var vs = C.getViewState && C.getViewState();
+      if (!vs) return;
+      if (vs.mode === 'shared' && vs.sharedMapId) recordMapVisit('shared', vs.sharedMapId);
+      else if (vs.privateMapId) recordMapVisit('private', vs.privateMapId);
+    } catch (e) {}
+  }
+
   async function listAllTargetMaps() {
     var out = [];
     try {
       var p = await listPrivateMaps();
-      p.forEach(function (m) { out.push({ kind: 'private', id: m.id, name: m.name + ' (private)' }); });
+      p.forEach(function (m) {
+        out.push({
+          kind: 'private',
+          id: m.id,
+          name: (m.name || 'Private map'),
+          label: (m.name || 'Private map') + ' (private)'
+        });
+      });
     } catch (e) {}
     try {
       var sb = window.__rsSb;
       var r = await sb.rpc('list_my_shared_maps');
-      (r.data || []).forEach(function (m) { out.push({ kind: 'shared', id: m.id, name: m.name + ' · ' + m.code, code: m.code }); });
+      (r.data || []).forEach(function (m) {
+        out.push({
+          kind: 'shared',
+          id: m.id,
+          name: m.name || 'Shared map',
+          code: m.code,
+          label: (m.name || 'Shared map') + (m.code ? (' · ' + m.code) : '') + ' (shared)'
+        });
+      });
     } catch (e2) {}
     var vs = C.getViewState && C.getViewState();
-    // exclude current
-    return out.filter(function (m) {
+    // exclude current map
+    out = out.filter(function (m) {
       if (!vs) return true;
       if (vs.mode === 'shared' && m.kind === 'shared' && m.id === vs.sharedMapId) return false;
       if ((vs.mode === 'private' || vs.mode === 'personal') && m.kind === 'private' && m.id === vs.privateMapId) return false;
       return true;
     });
+    // Sort by last visited (most recent first), then name
+    out.sort(function (a, b) {
+      var ra = mapVisitIndex(a.kind, a.id);
+      var rb = mapVisitIndex(b.kind, b.id);
+      if (ra !== rb) return ra - rb;
+      return String(a.label || a.name || '').localeCompare(String(b.label || b.name || ''));
+    });
+    return out;
   }
 
   async function getMapStateRow(kind, id) {
@@ -3476,6 +3539,14 @@
     var hydrated = hydrateShareEntity(entity);
     var typ = entityType || inferShareType(hydrated, 'pin');
     var copy = cloneEntityExact(hydrated, typ);
+    // Exact placement — never drop/re-round coordinates
+    if (hydrated.lat != null && hydrated.lng != null) {
+      copy.lat = Number(hydrated.lat);
+      copy.lng = Number(hydrated.lng);
+    }
+    if (!isFinite(copy.lat) || !isFinite(copy.lng)) {
+      throw new Error('Pin is missing coordinates and cannot be shared.');
+    }
 
     // Map pins (including hunt/stand pins): full object into pins[]
     if (typ === 'pin' || (typ === 'stand' && copy.isPin) || (typ === 'hunt' && copy.isPin)) {
@@ -3497,6 +3568,20 @@
     state.meta.revision = rev;
     state.meta.savedAt = new Date().toISOString();
     await putMapStateRow(target.kind, target.id, state, rev);
+    // Keep local offline cache for that map in sync so switch shows the shared pin
+    try {
+      var CACHE_KEY = 'reg_slayer_map_cache_v1';
+      var cache = {};
+      try { cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}') || {}; } catch (eC) { cache = {}; }
+      var slot = (target.kind === 'shared' ? 'shared:' : 'private:') + target.id;
+      cache[slot] = {
+        state: state,
+        savedAt: Date.now(),
+        name: target.name || target.label || 'Map',
+        code: target.code || null
+      };
+      localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+    } catch (eCache) {}
     return copy;
   }
 
@@ -3508,10 +3593,12 @@
       ent.lng = entity.lng;
       if (!ent.name && entity.name) ent.name = entity.name;
     }
-    if (ent.lat == null || ent.lng == null) {
+    if (ent.lat == null || ent.lng == null || !isFinite(Number(ent.lat)) || !isFinite(Number(ent.lng))) {
       alert('Location not available to share.');
       return;
     }
+    ent.lat = Number(ent.lat);
+    ent.lng = Number(ent.lng);
     var typ = inferShareType(ent, defaultType || 'pin');
     var targets = await listAllTargetMaps();
     if (!targets.length) {
@@ -3522,62 +3609,57 @@
     var nameLine = esc(ent.name || 'Unnamed') +
       (ent.color ? ' · color ' + esc(ent.color) : '') +
       (ent.iconId ? ' · icon ' + esc(ent.iconId) : '');
-    var listHtml = targets.map(function (t, i) {
-      var kind = t.kind === 'shared' ? 'Shared map' : 'Private map';
-      return '<button type="button" class="rs-share-map-btn" data-idx="' + i + '">' +
-        esc(t.name) +
-        '<span class="rs-share-kind">' + esc(kind) + '</span></button>';
+    var optionsHtml = '<option value="">Select a map…</option>' + targets.map(function (t, i) {
+      return '<option value="' + i + '">' + esc(t.label || t.name) + '</option>';
     }).join('');
     // Stack on top of Share location / Share pin chooser when those are open
     var shareWrap = showSimpleModal('Share to another map',
       '<p class="settings-hint" style="margin:0 0 6px;">Copies this <strong>' + esc(kindLabel) +
-        '</strong> exactly (name, colors, icon, notes, type, size, and other details). Original stays on this map.</p>' +
+        '</strong> exactly (placement, name, colors, icon, notes, type, size). Original stays on this map.</p>' +
       '<p class="settings-status" style="margin:0 0 8px;">' + nameLine + '</p>' +
-      '<label class="settings-hint">Choose a map</label>' +
-      '<div class="rs-share-map-list" id="rs-share-map-list">' + listHtml + '</div>',
+      '<label class="settings-hint" for="rs-share-map-select">Choose a map <span style="opacity:0.75;">(most recent first)</span></label>' +
+      '<select class="rs-share-map-select" id="rs-share-map-select">' + optionsHtml + '</select>',
       [{ label: 'Cancel' }],
       { stack: true }
     );
     setTimeout(function () {
-      var list = (shareWrap && shareWrap.querySelector)
-        ? shareWrap.querySelector('.rs-share-map-list')
-        : document.getElementById('rs-share-map-list');
-      if (!list) return;
-      list.querySelectorAll('.rs-share-map-btn').forEach(function (btn) {
-        btn.onclick = function (ev) {
-          if (ev) { ev.preventDefault(); ev.stopPropagation(); }
-          var idx = parseInt(btn.getAttribute('data-idx'), 10);
-          var t = targets[idx];
-          if (!t) return;
-          btn.disabled = true;
-          btn.textContent = 'Saving…';
-          copyEntityToMap(ent, typ, t).then(function () {
-            // Close stacked map picker + any parent share chooser
-            try {
-              if (shareWrap && shareWrap.parentNode) shareWrap.remove();
-            } catch (eS) {}
-            try {
-              document.querySelectorAll('.rs-simple-modal').forEach(function (m) {
-                try { m.remove(); } catch (e2) {}
-              });
-            } catch (eM) {}
-            try {
-              if (window.showAppCopyToast) {
-                showAppCopyToast('<span class="act">Shared to map</span><br>' + esc(t.name));
-              } else {
-                alert('Saved to: ' + t.name);
-              }
-            } catch (eT) {
-              alert('Saved to: ' + t.name);
+      var sel = (shareWrap && shareWrap.querySelector)
+        ? shareWrap.querySelector('#rs-share-map-select')
+        : document.getElementById('rs-share-map-select');
+      if (!sel) return;
+      function doShare(idx) {
+        var t = targets[idx];
+        if (!t) return;
+        sel.disabled = true;
+        copyEntityToMap(ent, typ, t).then(function () {
+          try {
+            if (shareWrap && shareWrap.parentNode) shareWrap.remove();
+          } catch (eS) {}
+          try {
+            document.querySelectorAll('.rs-simple-modal').forEach(function (m) {
+              try { m.remove(); } catch (e2) {}
+            });
+          } catch (eM) {}
+          try {
+            if (window.showAppCopyToast) {
+              showAppCopyToast('<span class="act">Shared to map</span><br>' + esc(t.label || t.name));
+            } else {
+              alert('Saved to: ' + (t.label || t.name));
             }
-          }).catch(function (e) {
-            btn.disabled = false;
-            btn.innerHTML = esc(t.name) + '<span class="rs-share-kind">' +
-              esc(t.kind === 'shared' ? 'Shared map' : 'Private map') + '</span>';
-            alert(e.message || String(e));
-          });
-        };
-      });
+          } catch (eT) {
+            alert('Saved to: ' + (t.label || t.name));
+          }
+        }).catch(function (e) {
+          sel.disabled = false;
+          sel.value = '';
+          alert(e.message || String(e));
+        });
+      }
+      sel.onchange = function () {
+        var idx = parseInt(sel.value, 10);
+        if (isNaN(idx) || idx < 0) return;
+        doShare(idx);
+      };
     }, 30);
   }
 
@@ -4079,7 +4161,9 @@
     stampOwner: stampOwner,
     pullPresence: pullPresence,
     onDeviceHeading: onDeviceHeading,
-    copyEntityToMap: copyEntityToMap
+    copyEntityToMap: copyEntityToMap,
+    recordMapVisit: recordMapVisit,
+    recordVisitFromViewState: recordVisitFromViewState
   };
 
   // Multi-map on create pin: inject checkboxes after save forms appear — hook savePinFromMap

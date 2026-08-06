@@ -1,0 +1,6 @@
+﻿V7.0.4 Beta — share-to-map dropdown + pin position stability
+===========================================================
+- Share to another map: dropdown of maps ordered by last visited; selecting shares full pin clone
+- Pin tip anchored fixed; scale/highlight no longer shifts lat/lng
+- Edit pin keeps original coordinates (never moves on save)
+- SHELL_CACHE = reg-slayer-shell-v64

@@ -426,6 +426,27 @@
       color: var(--muted);
       margin-top: 2px;
     }
+    .rs-share-map-select {
+      width: 100%;
+      box-sizing: border-box;
+      margin: 6px 0 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #161a12;
+      color: #e8efe4;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .rs-share-map-select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .rs-share-map-select option {
+      background: #161a12;
+      color: #e8efe4;
+    }
     .map-title-settings-btn {
       flex: 0 0 auto;
       width: 30px;
@@ -6208,6 +6229,8 @@
     .pin-ideal-pulse {
       animation: pinIdealPulse 1.2s ease-in-out infinite;
       filter: drop-shadow(0 0 6px #facc15) drop-shadow(0 0 12px rgba(250, 204, 21, 0.55));
+      /* Tip stays fixed on lat/lng — never scale from center */
+      transform-origin: center bottom;
     }
     @keyframes pinIdealPulse {
       0%, 100% { filter: drop-shadow(0 0 4px #facc15) drop-shadow(0 0 8px rgba(250, 204, 21, 0.4)); transform: scale(1); }
@@ -6228,6 +6251,17 @@
         filter: drop-shadow(0 0 14px #fde047) drop-shadow(0 0 28px rgba(250, 204, 21, 1)) drop-shadow(0 0 44px rgba(253, 224, 71, 0.75));
         transform: scale(1.18);
       }
+    }
+    .pin-zoom-scale {
+      transform-origin: center bottom;
+      width: 43px;
+      height: 53px;
+    }
+    /* Leaflet icon box — tip is always bottom-center of fixed 43×53 pin */
+    .rs-pin-marker-icon {
+      background: transparent !important;
+      border: none !important;
+      overflow: visible !important;
     }
     .mdm-footer-row {
       display: flex;
@@ -9747,7 +9781,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.3 Beta">V7.0.3 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.4 Beta">V7.0.4 Beta</span>
     </div>
     <a class="brand-sister-link" id="brand-sister-link" href="https://www.regslayer.com" title="Open REG SLAYER (same account)">
       <span class="brand-sister-label">Reg Slayer</span>
@@ -11074,7 +11108,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.3-beta';
+    const APP_VERSION = '7.0.4-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -26426,9 +26460,31 @@ function togglePinIconPicker() {
         }).join('\n').trim();
       }
       let notes = userNote;
-      const detected = detectBoundaryAndZone(clickLat, clickLng);
-      const tva = lastClickTva;
-      if (tva) {
+      var isEdit = !!editingPinId;
+      var pinId = isEdit ? editingPinId : ('pin_' + Date.now());
+      // Coordinates: never move a pin on edit (keep original lat/lng)
+      var pinLat = clickLat, pinLng = clickLng;
+      var prevPinLoc = null;
+      if (isEdit) {
+        try {
+          prevPinLoc = locations.find(function(l) { return String(l.id) === String(editingPinId); }) || null;
+          if (prevPinLoc && prevPinLoc.lat != null && prevPinLoc.lng != null &&
+              isFinite(Number(prevPinLoc.lat)) && isFinite(Number(prevPinLoc.lng))) {
+            pinLat = Number(prevPinLoc.lat);
+            pinLng = Number(prevPinLoc.lng);
+          }
+        } catch (eCoord) {}
+      }
+      pinLat = Number(pinLat);
+      pinLng = Number(pinLng);
+      if (!isFinite(pinLat) || !isFinite(pinLng)) {
+        alert('Pin location is missing. Tap the map to place the pin again.');
+        return;
+      }
+      const detected = detectBoundaryAndZone(pinLat, pinLng);
+      // On edit: keep existing TVA note block; don't attach a different spot's TVA from a later map click
+      const tva = isEdit ? (prevPinLoc && prevPinLoc.tva ? prevPinLoc.tva : null) : lastClickTva;
+      if (tva && !isEdit) {
         var tvaLine = 'TVA Land: ' + tva.reservoir + ' (' + tva.recType + ')' + (tva.restricted ? ' - ' + tva.restricted : '');
         notes = notes ? (notes + '\n' + tvaLine) : tvaLine;
       }
@@ -26443,8 +26499,6 @@ function togglePinIconPicker() {
         defaultName = (icN && icN.name) ? icN.name : selectedPinIconId.replace(/_/g, ' ');
       }
       var name = nameIn || defaultName;
-      var isEdit = !!editingPinId;
-      var pinId = isEdit ? editingPinId : ('pin_' + Date.now());
       // Capture exactly what the user customized (preview source of truth)
       var pinBodyColor = (typeof normalizeHexColor === 'function'
         ? normalizeHexColor(selectedPinColor)
@@ -26480,8 +26534,8 @@ function togglePinIconPicker() {
         name: name,
         type: tva ? 'TVA Pin' : 'Custom Pin',
         zone: detected.zone,
-        lat: clickLat,
-        lng: clickLng,
+        lat: pinLat,
+        lng: pinLng,
         color: pinBodyColor,
         innerColor: discColor,
         iconColor: iconColorFinal,
@@ -26895,21 +26949,25 @@ function togglePinIconPicker() {
         var isIdeal = !!loc.isHunt && pinIsIdealNow(loc);
         var scale = (loc.pinScale != null && !loc.hidden) ? Number(loc.pinScale) : 1;
         if (isNaN(scale) || scale <= 0) scale = 1;
-        // Zoom-based shrink when zoomed out (#18)
+        // Zoom-based shrink when zoomed out (#18) — applied via CSS only (tip fixed)
         var z = map.getZoom ? map.getZoom() : 12;
         var zoomScale = z < 10 ? 0.72 : (z < 12 ? 0.85 : 1);
         var s = scale * zoomScale;
         var pinHtml;
+        // Fixed pin geometry: tip is always bottom-center of 43×53 box → lat/lng never drifts
+        var PIN_W = 43, PIN_H = 53;
+        var TIP_AX = PIN_W / 2, TIP_AY = PIN_H - 2;
+        var iconW = PIN_W, iconH = PIN_H, anchorX = TIP_AX, anchorY = TIP_AY;
         if (loc.hidden && !loc._tempReveal) {
-          // Hidden = outer/inner color dot (#18)
+          // Hidden = outer/inner color dot (#18) — center-anchored
           var oc = loc.color || '#e59a18';
           var ic = loc.innerColor || '#ffffff';
           pinHtml = '<div style="width:14px;height:14px;border-radius:50%;background:' + ic +
             ';border:3px solid ' + oc + ';box-shadow:0 1px 4px rgba(0,0,0,0.45);"></div>';
           if (loc.emphasized) {
-            pinHtml = '<div class="pin-emphasize-pulse">' + pinHtml + '</div>';
+            pinHtml = '<div class="pin-emphasize-pulse" style="transform-origin:center center;">' + pinHtml + '</div>';
           }
-          s = 1;
+          iconW = 18; iconH = 18; anchorX = 9; anchorY = 9;
         } else {
           pinHtml = (typeof buildCustomPinMarkerHtml === 'function')
             ? buildCustomPinMarkerHtml(loc)
@@ -26920,19 +26978,23 @@ function togglePinIconPicker() {
           } else if (isIdeal) {
             pinHtml = '<div class="pin-ideal-pulse">' + pinHtml + '</div>';
           }
+          // Scale from tip (bottom center) — never change Leaflet iconSize/anchor with scale
           if (s !== 1) {
-            pinHtml = '<div class="pin-zoom-scale" style="transform:scale(' + s + ')">' + pinHtml + '</div>';
+            pinHtml = '<div class="pin-zoom-scale" style="transform:scale(' + s + ');transform-origin:50% 100%;">' + pinHtml + '</div>';
           }
         }
-        var baseW = loc.hidden && !loc._tempReveal ? 18 : 43;
-        var baseH = loc.hidden && !loc._tempReveal ? 18 : 53;
-        var m = L.marker([loc.lat, loc.lng], {
+        var la = Number(loc.lat), lo = Number(loc.lng);
+        if (!isFinite(la) || !isFinite(lo)) return;
+        var m = L.marker([la, lo], {
           icon: L.divIcon({
-            className: '',
+            className: 'rs-pin-marker-icon',
             html: pinHtml,
-            iconSize: [baseW * s, baseH * s],
-            iconAnchor: [(baseW * s) / 2, baseH * s - 3]
-          })
+            iconSize: [iconW, iconH],
+            iconAnchor: [anchorX, anchorY]
+          }),
+          // Prevent accidental drag shifting stored coordinates
+          draggable: false,
+          keyboard: false
         });
         var safeId = escJsStr(loc.id);
         var showQualifier = !loc.name || String(loc.name).toLowerCase() === 'pin';

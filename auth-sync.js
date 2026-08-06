@@ -914,6 +914,11 @@
     await pullMapFromCloud(true);
     refreshMapFromLocalState();
     updateAuthChrome();
+    try {
+      if (window.RegSlayerParty && typeof window.RegSlayerParty.recordMapVisit === 'function' && viewState.privateMapId) {
+        window.RegSlayerParty.recordMapVisit('private', viewState.privateMapId);
+      }
+    } catch (eV) {}
   }
 
   async function switchToPrivateMap(mapId) {
@@ -939,6 +944,11 @@
     await pullMapFromCloud(true);
     refreshMapFromLocalState();
     updateAuthChrome();
+    try {
+      if (window.RegSlayerParty && typeof window.RegSlayerParty.recordMapVisit === 'function') {
+        window.RegSlayerParty.recordMapVisit('private', data.id);
+      }
+    } catch (eV) {}
   }
 
   async function switchToShared(mapId) {
@@ -961,6 +971,11 @@
     refreshMapFromLocalState();
     updateAuthChrome();
     try { startSharedMapLiveSync(); } catch (eLive) {}
+    try {
+      if (window.RegSlayerParty && typeof window.RegSlayerParty.recordMapVisit === 'function') {
+        window.RegSlayerParty.recordMapVisit('shared', data.id);
+      }
+    } catch (eV) {}
   }
 
   async function snapshotCurrentToCache() {
@@ -1336,6 +1351,11 @@
     await consumePendingJoin();
     updateAuthChrome();
     startPullLoop();
+    try {
+      if (window.RegSlayerParty && typeof window.RegSlayerParty.recordVisitFromViewState === 'function') {
+        window.RegSlayerParty.recordVisitFromViewState();
+      }
+    } catch (eVis) {}
     if (authReadyResolve) { authReadyResolve(); authReadyResolve = null; }
   }
 
