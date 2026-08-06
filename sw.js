@@ -2,7 +2,7 @@
  * Caches app shell for return visits with no signal.
  * Map tiles: cache-first when already stored; network otherwise (then cache).
  */
-const SHELL_CACHE = 'reg-slayer-shell-v78';
+const SHELL_CACHE = 'reg-slayer-shell-v79';
 const TILE_CACHE = 'reg-slayer-tiles-v2';
 const DATA_CACHE = 'reg-slayer-data-v1';
 
@@ -134,39 +134,83 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+function isShellHtmlRequest(req, url) {
+  if (req.mode === 'navigate') return true;
+  try {
+    const u = new URL(url);
+    const p = u.pathname || '';
+    if (p === '/' || p.endsWith('/') || p.endsWith('.html')) return true;
+  } catch (e) {}
+  return false;
+}
+
+/** Core app files that must update on mobile as soon as a new deploy is online */
+function isShellAppScript(url) {
+  try {
+    const u = new URL(url);
+    const p = u.pathname || '';
+    return (
+      p.endsWith('/index.html') ||
+      p.endsWith('/offline-engine.js') ||
+      p.endsWith('/auth-sync.js') ||
+      p.endsWith('/party-maps.js') ||
+      p.endsWith('/wma-zones-data.js') ||
+      p.endsWith('/sw.js') ||
+      p.endsWith('/manifest.webmanifest')
+    );
+  } catch (e) {
+    return false;
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
 
   const url = req.url;
 
-  // App shell / same-origin: cache-first, then network
+  // App shell / same-origin
   if (url.startsWith(self.registration.scope)) {
-    event.respondWith(
-      caches.match(req).then((cached) => {
-        if (cached) {
-          // Background refresh for HTML so online users get updates
-          if (req.mode === 'navigate' || url.endsWith('.html') || url.endsWith('/')) {
-            fetch(req)
-              .then((res) => {
-                if (res && res.ok) {
-                  const copy = res.clone();
-                  caches.open(SHELL_CACHE).then((c) => c.put(req, copy));
-                }
-              })
-              .catch(() => {});
-          }
-          return cached;
-        }
-        return fetch(req)
+    /*
+     * HTML + core JS: NETWORK-FIRST when online.
+     * Cache-first left phones stuck on old deploys (desktop CDN looked new;
+     * mobile SW kept serving reg-slayer-shell-vN index forever).
+     * Offline still falls back to shell cache.
+     */
+    if (isShellHtmlRequest(req, url) || isShellAppScript(url)) {
+      event.respondWith(
+        fetch(req)
           .then((res) => {
             if (res && res.ok) {
               const copy = res.clone();
-              caches.open(SHELL_CACHE).then((c) => c.put(req, copy));
+              caches.open(SHELL_CACHE).then((c) => c.put(req, copy)).catch(() => {});
             }
             return res;
           })
-          .catch(() => caches.match('./index.html'));
+          .catch(() =>
+            caches.match(req).then((cached) => {
+              if (cached) return cached;
+              if (isShellHtmlRequest(req, url)) return caches.match('./index.html');
+              return Response.error();
+            })
+          )
+      );
+      return;
+    }
+
+    // Other same-origin assets (icons, vendor): cache-first, revalidate in background
+    event.respondWith(
+      caches.match(req).then((cached) => {
+        const net = fetch(req)
+          .then((res) => {
+            if (res && res.ok) {
+              const copy = res.clone();
+              caches.open(SHELL_CACHE).then((c) => c.put(req, copy)).catch(() => {});
+            }
+            return res;
+          })
+          .catch(() => cached || Response.error());
+        return cached || net;
       })
     );
     return;

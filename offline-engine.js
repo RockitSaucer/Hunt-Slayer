@@ -464,10 +464,60 @@
 
   function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return Promise.resolve(null);
+
+    // When a new SW takes control, reload once so mobile gets the new HTML/JS
+    var reloadedKey = 'reg_slayer_sw_reloaded_v1';
+    try {
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        try {
+          if (sessionStorage.getItem(reloadedKey) === '1') return;
+          sessionStorage.setItem(reloadedKey, '1');
+        } catch (eS) {}
+        try { window.location.reload(); } catch (eR) {}
+      });
+    } catch (eCc) {}
+
     return navigator.serviceWorker
-      .register('./sw.js', { scope: './' })
+      // Cache-bust query forces mobile browsers to re-check SW script on each deploy bump
+      .register('./sw.js?v=shell79', { scope: './' })
       .then(function (reg) {
         console.info('[Offline] SW registered', reg.scope);
+        // Force update check every launch (critical for iOS/Android home-screen / PWA)
+        try {
+          if (reg && typeof reg.update === 'function') {
+            reg.update().catch(function () {});
+          }
+        } catch (eU) {}
+        // If a waiting worker exists, activate it immediately
+        try {
+          if (reg.waiting) {
+            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }
+        } catch (eW) {}
+        try {
+          reg.addEventListener('updatefound', function () {
+            var nw = reg.installing;
+            if (!nw) return;
+            nw.addEventListener('statechange', function () {
+              if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+                try { nw.postMessage({ type: 'SKIP_WAITING' }); } catch (eM) {}
+              }
+            });
+          });
+        } catch (eUf) {}
+        // Periodic update checks while the tab is open (mobile often freezes SW checks)
+        try {
+          setInterval(function () {
+            try { if (reg.update) reg.update(); } catch (eI) {}
+          }, 5 * 60 * 1000);
+        } catch (eInt) {}
+        try {
+          document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'visible' && reg.update) {
+              reg.update().catch(function () {});
+            }
+          });
+        } catch (eVis) {}
         return reg;
       })
       .catch(function (err) {
