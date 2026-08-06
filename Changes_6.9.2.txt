@@ -1,0 +1,22 @@
+V6.9.2 Nice — HUNT SLAYER brand logo
+====================================
+
+What changed
+------------
+- Header brand logo is now **HUNT SLAYER** (same look as REG SLAYER: shield,
+  diagonal green stripes, white HUNT + orange SLAYER, tagline KNOW BEFORE YOU GO).
+- New asset: `hunt-slayer-logo.png` (precached in service worker).
+- Page title, meta description, auth gate title, and PWA manifest name/icons
+  point at HUNT SLAYER for this site.
+- Kept `reg-slayer-logo.png` in the shell for now (legacy / dual-brand later).
+
+Version / cache
+---------------
+- APP_VERSION = 6.9.2-nice
+- Badge: V6.9.2 Nice
+- SHELL_CACHE = reg-slayer-shell-v57
+
+Undo
+----
+- Revert to tag v6.9.1-nice (or restore logo src to reg-slayer-logo.png and
+  drop SHELL_CACHE back to v56).

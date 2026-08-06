@@ -6,11 +6,11 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>REG SLAYER - Know Before You Go</title>
+  <title>HUNT SLAYER - Know Before You Go</title>
   <meta name="theme-color" content="#0a0c09">
-  <meta name="description" content="REG SLAYER: Alabama deer planner with map tools, offline packs, weather, and shared maps.">
+  <meta name="description" content="HUNT SLAYER: Alabama deer planner with map tools, offline packs, weather, and shared maps.">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="apple-touch-icon" href="./reg-slayer-logo.png">
+  <link rel="apple-touch-icon" href="./hunt-slayer-logo.png">
   <!-- Offline engine (map packs, weather disk cache, SW registration) -->
   <script src="./offline-engine.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -9617,15 +9617,15 @@
   <header class="brand-header" role="banner">
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
-      <img class="brand-logo" src="reg-slayer-logo.png" alt="REG SLAYER - Know Before You Go" width="1100" height="240" />
-      <span class="brand-version" aria-label="Version 6.9 Nice">V6.9 Nice</span>
+      <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
+      <span class="brand-version" aria-label="Version 6.9.2 Nice">V6.9.2 Nice</span>
     </div>
   </header>
 
   <!-- Auth gate (Supabase HuntSlayer) -->
   <div id="auth-gate" aria-hidden="true">
     <div class="auth-card" role="dialog" aria-modal="true" aria-labelledby="auth-title">
-      <h2 id="auth-title">REG SLAYER</h2>
+      <h2 id="auth-title">HUNT SLAYER</h2>
       <p class="auth-sub">Sign in to sync maps across devices and share live location with your hunting party.</p>
       <p class="auth-sub" style="margin-top:-4px;font-size:11px;opacity:0.9;">One account works on <strong>regslayer.com</strong> and <strong>huntslayer.com</strong> — same username and password on both.</p>
       <p id="auth-error" role="alert"></p>
@@ -10919,7 +10919,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '6.9.1-nice';
+    const APP_VERSION = '6.9.2-nice';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
 
     /** User preferences (tools, defaults, display) — persisted localStorage */
