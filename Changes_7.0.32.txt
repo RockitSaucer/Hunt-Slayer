@@ -1,0 +1,20 @@
+V7.0.32 Beta (shell v92) — Phase A efficiency (no feature/settings changes)
+
+Invisible savings only — same UI, settings, and features.
+
+Local / network / battery
+1) Party presence heartbeat 5s → 8s (move/heading pushes still prompt)
+2) Party peer poll 3s → 5s
+3) Shared map backup pull 4s → 7s; personal pull 30s → 45s
+4) Hard-pause GPS watch + presence net work while tab/app hidden; silent resume on focus (share toggle unchanged)
+5) Share GPS maximumAge 2s → 4s (still high accuracy)
+6) SW update check 5 min → 15 min, only when visible
+7) Compass elev network ~1/s (was ~3/s); Open-Meteo first, EPQS only on failure
+8) Fewer elev neighbor prefetches
+
+Storage
+9) Tile cache soft cap ~2500 entries with opportunistic LRU trim
+10) Radar tiles + RainViewer API: network-only (not written to long-lived caches)
+11) Pin photo JPEG: max edge 1024, quality ~0.65, smaller byte cap (same attach UI / max count)
+
+Not changed: default basemap, settings UI, share idle 1h rule, photo max count, any user-facing toggles.

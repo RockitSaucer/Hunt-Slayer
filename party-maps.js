@@ -42,13 +42,14 @@
   ];
   var DIR_ICON_BUST = 'dir5';
   var MOVE_M = 8; // meters = "moving"
-  var MOVE_MS = 4000; // min interval when moving
-  var HEARTBEAT_MS = 5000; // always push at least this often while sharing
+  var MOVE_MS = 4000; // min interval when moving (unchanged — still snappy when walking)
+  // Phase A efficiency: slightly less radio when standing still (move/heading still push promptly)
+  var HEARTBEAT_MS = 8000; // idle presence upsert while sharing
   var HEADING_PUSH_DEG = 8; // re-push when facing turns this many degrees
   var HEADING_PUSH_MS = 1200; // min interval for heading-only updates
   /** Auto-pause live GPS if the user has not viewed the map for this long */
   var SHARE_IDLE_MS = 60 * 60 * 1000;
-  var PULL_MS = 3000; // peer visibility poll (mobile + desktop)
+  var PULL_MS = 5000; // peer visibility poll (was 3s; still near-live for party)
 
   var presenceTimer = null;
   var presenceWatch = null;
@@ -1611,10 +1612,14 @@
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible') {
         markMapViewed();
+        // Resume GPS hardware if share is still on (no feature change — silent resume)
+        try { resumeShareGpsWatchIfNeeded(); } catch (eR) {}
       } else if (shareWanted || sharing) {
         // Start idle clock from the moment they leave the map/app
         lastMapViewAt = Date.now();
         persistSharePref();
+        // Hard pause GPS radio while backgrounded (toggle / shareWanted unchanged)
+        try { pauseShareGpsWatch(); } catch (eP) {}
       }
     });
     window.addEventListener('pageshow', function () { markMapViewed(); });
@@ -1625,11 +1630,65 @@
     } catch (e0) {}
   }
 
+  /** Stop GPS watch only (share toggle / shareWanted stay as-is). */
+  function pauseShareGpsWatch() {
+    if (presenceWatch != null) {
+      try { navigator.geolocation.clearWatch(presenceWatch); } catch (e2) {}
+      presenceWatch = null;
+    }
+  }
+
+  function startShareGpsWatch() {
+    if (!navigator.geolocation) return;
+    pauseShareGpsWatch();
+    presenceWatch = navigator.geolocation.watchPosition(function (pos) {
+      try {
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      } catch (eH) {}
+      if (!sharing) return;
+      var lat = pos.coords.latitude, lng = pos.coords.longitude;
+      // GPS course when moving; otherwise device compass
+      var gpsH = pos.coords.heading;
+      var speed = pos.coords.speed; // m/s
+      var heading = null;
+      if (gpsH != null && !isNaN(gpsH) && speed != null && speed > 0.8) {
+        heading = gpsH; // course over ground while walking/driving
+      } else {
+        heading = resolveFacingHeading(gpsH);
+      }
+      pushPresence(lat, lng, heading, false);
+    }, function (err) {
+      console.warn('share location GPS error', err);
+      try {
+        if (window.showAppCopyToast) {
+          showAppCopyToast('<span class="act">Location error</span><br>Allow location access to share with party.');
+        }
+      } catch (e3) {}
+    }, {
+      enableHighAccuracy: true,
+      // Slightly higher maxAge reduces GPS wakeups; still fresh for hunting pace
+      maximumAge: 4000,
+      timeout: 15000
+    });
+  }
+
+  function resumeShareGpsWatchIfNeeded() {
+    if (!sharing || !shareWanted) return;
+    if (presenceWatch != null) return;
+    try {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+    } catch (eV) {}
+    startShareGpsWatch();
+  }
+
   async function pushPresence(lat, lng, heading, force) {
     var vs = C.getViewState && C.getViewState();
     var sb = getSb();
     var user = getUser();
     if (!sharing || !vs || vs.mode !== 'shared' || !vs.sharedMapId || !sb || !user) return false;
+    try {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden' && !force) return false;
+    } catch (eVis) {}
     // Auto-pause after 1h without viewing the map (preference stays on)
     if (checkShareIdleTimeout()) return false;
     // Always resolve best facing heading (never wipe with null on heartbeat)
@@ -1818,34 +1877,16 @@
       }
     });
 
-    if (presenceWatch != null) {
-      try { navigator.geolocation.clearWatch(presenceWatch); } catch (e2) {}
-    }
-    presenceWatch = navigator.geolocation.watchPosition(function (pos) {
-      var lat = pos.coords.latitude, lng = pos.coords.longitude;
-      // GPS course when moving; otherwise device compass
-      var gpsH = pos.coords.heading;
-      var speed = pos.coords.speed; // m/s
-      var heading = null;
-      if (gpsH != null && !isNaN(gpsH) && speed != null && speed > 0.8) {
-        heading = gpsH; // course over ground while walking/driving
-      } else {
-        heading = resolveFacingHeading(gpsH);
-      }
-      pushPresence(lat, lng, heading, false);
-    }, function (err) {
-      console.warn('share location GPS error', err);
-      try {
-        if (window.showAppCopyToast) {
-          showAppCopyToast('<span class="act">Location error</span><br>Allow location access to share with party.');
-        }
-      } catch (e3) {}
-    }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 });
+    startShareGpsWatch();
 
     // Heartbeat: idle check + peer pull + presence push
     if (presenceTimer) clearInterval(presenceTimer);
     presenceTimer = setInterval(function () {
       if (!sharing) return;
+      // No network/GPS work while tab/app is in background
+      try {
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      } catch (eVis) {}
       if (checkShareIdleTimeout()) return;
       pullPresence();
       if (lastSent.lat != null) {

@@ -10393,7 +10393,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.31 Beta">V7.0.31 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.32 Beta">V7.0.32 Beta</span>
     </div>
     <a class="brand-sister-link" id="brand-sister-link" href="https://www.regslayer.com" title="Open REG SLAYER (same account)">
       <span class="brand-sister-label">Reg Slayer</span>
@@ -11791,7 +11791,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.31-beta';
+    const APP_VERSION = '7.0.32-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -21054,7 +21054,8 @@
     }
 
     function canvasFromSize(w, h, drawFn) {
-      var maxEdge = 1280;
+      // Phase A: slightly tighter encode (same photo feature; smaller local + cloud payload)
+      var maxEdge = 1024;
       var nw = w, nh = h;
       if (nw > maxEdge || nh > maxEdge) {
         if (nw >= nh) { nh = Math.round(nh * maxEdge / nw); nw = maxEdge; }
@@ -21065,10 +21066,10 @@
       canvas.height = nh;
       var ctx = canvas.getContext('2d');
       drawFn(ctx, nw, nh);
-      var quality = 0.72;
+      var quality = 0.65;
       var dataUrl = canvas.toDataURL('image/jpeg', quality);
-      while (dataUrl.length > 620000 && quality > 0.45) {
-        quality -= 0.08;
+      while (dataUrl.length > 450000 && quality > 0.42) {
+        quality -= 0.07;
         dataUrl = canvas.toDataURL('image/jpeg', quality);
       }
       return dataUrl;
@@ -22137,18 +22138,17 @@
       if (cached != null) return Promise.resolve(cached);
       var key = elevCacheKey(lat, lng);
       if (window._cmElevInflight[key]) return window._cmElevInflight[key];
-      // Race Open-Meteo (fast) + EPQS (backup) — first good feet wins
-      var p = firstFiniteElev([
-        fetchElevFtOpenMeteo(lat, lng),
-        fetchElevFtEpqs(lat, lng)
-      ]).then(function(ft) {
-        elevCacheSet(lat, lng, ft);
-        delete window._cmElevInflight[key];
-        return ft;
-      }).catch(function(e) {
-        delete window._cmElevInflight[key];
-        throw e;
-      });
+      // Open-Meteo first (usually fast); EPQS only if OM fails — half the elev network
+      var p = fetchElevFtOpenMeteo(lat, lng)
+        .catch(function () { return fetchElevFtEpqs(lat, lng); })
+        .then(function(ft) {
+          elevCacheSet(lat, lng, ft);
+          delete window._cmElevInflight[key];
+          return ft;
+        }).catch(function(e) {
+          delete window._cmElevInflight[key];
+          throw e;
+        });
       window._cmElevInflight[key] = p;
       return p;
     }
@@ -22224,7 +22224,8 @@
     /** Warm cache a few degrees left/right so spin stays snappy. */
     function prefetchCompassElevNeighbors(heading, probeMi) {
       if (userLat == null || userLng == null) return;
-      [-15, -8, 8, 15].forEach(function(d) {
+      // Phase A: fewer prefetches (still warms left/right for spin)
+      [-12, 12].forEach(function(d) {
         try {
           var pt = compassModeDestPoint(userLat, userLng, heading + d, probeMi);
           if (elevCacheGet(pt.lat, pt.lng) != null) return;
@@ -22326,7 +22327,8 @@
       }
 
       var now = Date.now();
-      var minInterval = 300; // ~3 elev samples/sec max while spinning
+      // Phase A: ~1 sample/sec while spinning (still updates on turn; less DEM traffic)
+      var minInterval = 1000;
       var lastStart = window._cmElevLastStartAt || 0;
       var elapsed = now - lastStart;
 

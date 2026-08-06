@@ -473,7 +473,7 @@
 
     return navigator.serviceWorker
       // Cache-bust query forces mobile browsers to re-check SW script on each deploy bump
-      .register('./sw.js?v=shell91', { scope: './' })
+      .register('./sw.js?v=shell92', { scope: './' })
       .then(function (reg) {
         console.info('[Offline] SW registered', reg.scope);
         // Force update check every launch (critical for iOS/Android home-screen / PWA)
@@ -500,10 +500,14 @@
           });
         } catch (eUf) {}
         // Periodic update checks while the tab is open (mobile often freezes SW checks)
+        // Phase A: 15 min (was 5) and only when tab is visible
         try {
           setInterval(function () {
-            try { if (reg.update) reg.update(); } catch (eI) {}
-          }, 5 * 60 * 1000);
+            try {
+              if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+              if (reg.update) reg.update();
+            } catch (eI) {}
+          }, 15 * 60 * 1000);
         } catch (eInt) {}
         try {
           document.addEventListener('visibilitychange', function () {

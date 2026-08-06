@@ -1024,13 +1024,14 @@
       sharedMapChannel = null;
     }
 
-    // Fast poll backup so emphasize still lands if Realtime is off (every 4s on shared maps)
+    // Fast poll backup so emphasize still lands if Realtime is off
+    // (was 4s; 7s still near-live, less radio when Realtime is healthy)
     sharedMapFastPoll = setInterval(function () {
       if (document.visibilityState === 'hidden') return;
       if (!isOnline() || isDirty()) return;
       if (viewState.mode !== 'shared' || !viewState.sharedMapId) return;
       pullMapFromCloud(false);
-    }, 4000);
+    }, 7000);
   }
 
   async function persistViewPrefsCloud() {
@@ -1881,9 +1882,9 @@
     pullTimer = setInterval(function () {
       if (document.visibilityState === 'hidden') return;
       if (!isOnline() || isDirty()) return;
-      // Shared maps use startSharedMapLiveSync (4s + realtime); keep slow poll as fallback
+      // Shared maps use startSharedMapLiveSync (realtime + 7s poll); keep slow poll as fallback
       runWhenIdle(function () { pullMapFromCloud(false); });
-    }, 30000);
+    }, 45000);
     try { startSharedMapLiveSync(); } catch (eLive) {}
   }
 

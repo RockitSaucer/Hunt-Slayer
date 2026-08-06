@@ -2,9 +2,11 @@
  * Caches app shell for return visits with no signal.
  * Map tiles: cache-first when already stored; network otherwise (then cache).
  */
-const SHELL_CACHE = 'reg-slayer-shell-v91';
+const SHELL_CACHE = 'reg-slayer-shell-v92';
 const TILE_CACHE = 'reg-slayer-tiles-v2';
 const DATA_CACHE = 'reg-slayer-data-v1';
+/** Soft cap on cached map tiles (~18KB avg → ~45MB). Oldest entries dropped first. */
+const TILE_CACHE_MAX_ENTRIES = 2500;
 
 const SHELL_ASSETS = [
   './',
@@ -86,21 +88,48 @@ const SHELL_ASSETS = [
   './vendor/leaflet/layers-2x.png'
 ];
 
+function isRadarTileUrl(url) {
+  try {
+    return new URL(url).hostname.includes('tilecache.rainviewer.com');
+  } catch (e) {
+    return false;
+  }
+}
+
 function isTileUrl(url) {
   try {
     const u = new URL(url);
     const h = u.hostname;
+    // Radar frames: network-only (do not fill disk with ephemeral frames)
+    if (h.includes('tilecache.rainviewer.com')) return false;
     if (h.includes('basemap.nationalmap.gov')) return true;
     if (h.includes('basemaps.cartocdn.com')) return true;
     if (h.includes('arcgisonline.com') && u.pathname.includes('/tile/')) return true;
     if (h.includes('wayback.maptiles.arcgis.com') && u.pathname.includes('/tile/')) return true;
     if (h.includes('tiles.regrid.com')) return true;
-    if (h.includes('tilecache.rainviewer.com')) return true;
     if (h.includes('tile.openstreetmap.org')) return true;
     return false;
   } catch (e) {
     return false;
   }
+}
+
+/** Drop oldest tile entries when over budget (Cache API key order ≈ insert order). */
+function trimTileCache(cache) {
+  return cache.keys().then((keys) => {
+    const over = keys.length - TILE_CACHE_MAX_ENTRIES;
+    if (over <= 0) return;
+    // Delete in batches to avoid blocking
+    const drop = keys.slice(0, over);
+    return Promise.all(drop.map((k) => cache.delete(k).catch(() => {})));
+  }).catch(() => {});
+}
+
+function putTileAndTrim(cache, req, res) {
+  return cache.put(req, res).then(() => {
+    // Opportunistic trim (every put is fine; delete is cheap when under cap)
+    if (Math.random() < 0.08) return trimTileCache(cache);
+  }).catch(() => {});
 }
 
 function isApiUrl(url) {
@@ -227,7 +256,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Map tiles: cache-first (supports offline packs + browsed tiles)
+  // Radar tiles: network-only (short-lived frames — do not bloat TILE_CACHE)
+  if (isRadarTileUrl(url)) {
+    event.respondWith(
+      fetch(req).catch(() => Response.error())
+    );
+    return;
+  }
+
+  // Map tiles: cache-first (supports offline packs + browsed tiles), with soft size cap
   if (isTileUrl(url)) {
     event.respondWith(
       caches.open(TILE_CACHE).then((cache) =>
@@ -237,7 +274,7 @@ self.addEventListener('fetch', (event) => {
             .then((res) => {
               if (res && res.ok) {
                 try {
-                  cache.put(req, res.clone());
+                  putTileAndTrim(cache, req, res.clone());
                 } catch (e) {}
               }
               return res;
@@ -250,13 +287,17 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Weather / GIS APIs: network-first, fall back to cache
+  // (skip caching large radar API JSON lists if any)
   if (isApiUrl(url)) {
     event.respondWith(
       fetch(req)
         .then((res) => {
           if (res && res.ok) {
             const copy = res.clone();
-            caches.open(DATA_CACHE).then((c) => c.put(req, copy)).catch(() => {});
+            // RainViewer frame lists change constantly — do not fill DATA_CACHE
+            if (!url.includes('api.rainviewer.com')) {
+              caches.open(DATA_CACHE).then((c) => c.put(req, copy)).catch(() => {});
+            }
           }
           return res;
         })
@@ -277,6 +318,11 @@ self.addEventListener('message', (event) => {
         let fail = 0;
         for (const u of data.urls) {
           try {
+            // Never precache radar frames
+            if (isRadarTileUrl(u)) {
+              fail++;
+              continue;
+            }
             const res = await fetch(u, { mode: 'cors', credentials: 'omit' });
             if (res && res.ok) {
               await cache.put(u, res.clone());
@@ -297,6 +343,7 @@ self.addEventListener('message', (event) => {
             });
           }
         }
+        try { await trimTileCache(cache); } catch (eT) {}
         if (event.source) {
           event.source.postMessage({
             type: 'PRECACHE_DONE',
