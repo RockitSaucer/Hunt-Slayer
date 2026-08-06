@@ -1,0 +1,5 @@
+V7.0.33 Beta (shell v93)
+
+1) Pin photos: max 2 per pin (was higher/9 in code; UI said 3).
+2) Map weather "More details" opens bottom-right (same corner as compact weather).
+3) Wind section + hourly table use orange FROM arrows (same as planner hourly forecast).

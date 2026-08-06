@@ -8614,11 +8614,14 @@
       bottom: auto;
       right: auto;
     }
+    /* More-details panel: same anchor as compact weather (bottom-right above toolbar) */
     .map-weather-details {
       position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
+      bottom: calc(var(--mbb-h, 40px) + 10px);
+      right: 12px;
+      left: auto;
+      top: auto;
+      transform: none;
       z-index: 96; /* above compact weather + toolbar */
       background: var(--panel);
       border: 1px solid var(--border);
@@ -8632,6 +8635,8 @@
       user-select: none;
     }
     .map-weather-details.is-dragged {
+      bottom: auto;
+      right: auto;
       transform: none;
     }
     html.layout-phone .map-weather-overlay {
@@ -8644,6 +8649,21 @@
       width: min(300px, calc(100% - 20px));
       padding: 11px;
       max-height: min(70vh, 480px);
+      bottom: calc(var(--mbb-h, 36px) + 8px);
+      right: 10px;
+    }
+    /* Wind line in map weather details — reuse hourly orange FROM arrows */
+    .mwd-wind-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      margin-top: 2px;
+    }
+    .mwd-wind-row .hourly-wind {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
     }
     .mwo-head {
       display: flex;
@@ -10393,7 +10413,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.32 Beta">V7.0.32 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.33 Beta">V7.0.33 Beta</span>
     </div>
     <a class="brand-sister-link" id="brand-sister-link" href="https://www.regslayer.com" title="Open REG SLAYER (same account)">
       <span class="brand-sister-label">Reg Slayer</span>
@@ -11114,7 +11134,7 @@
             <div id="pin-icon-grid" class="pin-icon-grid"></div>
             <!-- Notes bar (was search position): bold "Notes" until focused -->
             <input type="text" id="pin-notes-input" class="pes-notes-bar" placeholder="Notes" autocomplete="off" aria-label="Notes" oninput="markPinEditorDirty()" />
-            <!-- Photos under notes (max 3) -->
+            <!-- Photos under notes (max 2) -->
             <div class="pes-photo-row" id="pes-photo-row">
               <button type="button" class="pes-add-photo-btn" id="pes-add-photo-btn" onclick="onPinAddPhotoClick()" aria-label="Add photo">
                 <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -11225,11 +11245,11 @@
     </div>
   </div>
 
-  <!-- 4th photo: choose which of 3 to replace -->
+  <!-- Extra photo: choose which existing shot to replace -->
   <div id="pin-photo-replace-modal" role="dialog" aria-modal="true" aria-labelledby="pin-photo-replace-title" onclick="if(event.target===this)closePinPhotoReplaceModal()">
     <div class="pin-photo-sheet" onclick="event.stopPropagation()">
       <h3 id="pin-photo-replace-title">Replace which photo?</h3>
-      <p style="margin:0 0 10px;font-size:12px;color:var(--muted);text-align:center;font-weight:600;">Limit 9 photos per pin (shared with your party). Tap one to replace it.</p>
+      <p style="margin:0 0 10px;font-size:12px;color:var(--muted);text-align:center;font-weight:600;">Limit 2 photos per pin (shared with your party). Tap one to replace it.</p>
       <div class="pin-photo-replace-grid" id="pin-photo-replace-grid"></div>
       <button type="button" class="pps-btn secondary" onclick="closePinPhotoReplaceModal()">Cancel</button>
     </div>
@@ -11791,7 +11811,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.32-beta';
+    const APP_VERSION = '7.0.33-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -20628,7 +20648,7 @@
     var pinEditorDirty = false;
     /** In-editor pin photos: { id, dataUrl } — compressed JPEG data URLs (shared maps merge party shots) */
     var pinEditorPhotos = [];
-    var PIN_PHOTO_MAX = 9;
+    var PIN_PHOTO_MAX = 2;
     var _pinPhotoPendingReplace = null; // dataUrl waiting for which slot to replace
     var _pinPhotoInputsWired = false;
     /** True while camera/gallery is open or photo is compressing — do not auto-save/close editor */
@@ -20728,7 +20748,7 @@
             return line && !/^TVA Land:/i.test(line.trim());
           }).join('\n').trim();
         }
-        // Load pin photos (max 3)
+        // Load pin photos (max 2)
         try {
           pinEditorPhotos = normalizePinPhotos(opts.loc.photos || opts.loc.notePhotos || []);
         } catch (ePhL) { pinEditorPhotos = []; }
@@ -20924,7 +20944,7 @@
       return;
     }
 
-    /* ========== Pin note photos (max 3) ========== */
+    /* ========== Pin note photos (max 2) ========== */
     function isPinPhotoPhoneUi() {
       try {
         if (typeof isPhoneLayout === 'function' && isPhoneLayout()) return true;
@@ -34651,6 +34671,11 @@ function togglePinIconPicker() {
     function closeMapWeatherDetails() {
       var el = document.getElementById('map-weather-details');
       if (el) el.style.display = 'none';
+      // Bring back compact weather in the same corner if a spot is still selected
+      try {
+        var compact = document.getElementById('map-weather-overlay');
+        if (compact && lastMapWeatherPayload) compact.style.display = 'block';
+      } catch (eR) {}
     }
     window.closeMapWeatherPopup = closeMapWeatherPopup;
     window.closeMapWeatherDetails = closeMapWeatherDetails;
@@ -34720,13 +34745,20 @@ function togglePinIconPicker() {
       var p = lastMapWeatherPayload;
       if (title) title.textContent = p.title || 'Weather details';
       body.innerHTML = p.detailsHtml || p.compactHtml || '';
-      // Fresh open centered (unless user already dragged this session)
+      // Stay bottom-right (same corner as compact weather) unless user already dragged
       if (!box.classList.contains('is-dragged')) {
-        box.style.left = '50%';
-        box.style.top = '50%';
-        box.style.transform = 'translate(-50%, -50%)';
+        box.style.left = '';
+        box.style.top = '';
+        box.style.right = '12px';
+        box.style.bottom = '';
+        box.style.transform = 'none';
       }
       box.style.display = 'block';
+      // Compact panel sits under details; hide it while details is open
+      try {
+        var compact = document.getElementById('map-weather-overlay');
+        if (compact) compact.style.display = 'none';
+      } catch (eC) {}
       wireMapWeatherDetailsDrag();
     }
     window.expandMapWeatherDetails = expandMapWeatherDetails;
@@ -34760,6 +34792,9 @@ function togglePinIconPicker() {
 
       var name = (location && location.name) || 'Map spot';
       if (title) title.textContent = name;
+      var windCell = (typeof hourlyWindCellHtml === 'function')
+        ? hourlyWindCellHtml(wspd, wdir)
+        : (Math.round(wspd || 0) + ' mph ' + getCardinal(wdir || 0));
       var compact =
         '<div style="font-weight:bold;color:var(--accent);margin-bottom:6px;">' +
         formatTemp(tempNow) + ' · Wind ' + Math.round(wspd || 0) + ' mph ' + getCardinal(wdir || 0) +
@@ -34778,17 +34813,22 @@ function togglePinIconPicker() {
             : ((weather.hourly.precipitation_probability_mean && weather.hourly.precipitation_probability_mean[h] != null)
               ? Math.round(weather.hourly.precipitation_probability_mean[h])
               : '—');
+          var hWind = (typeof hourlyWindCellHtml === 'function')
+            ? hourlyWindCellHtml(weather.hourly.wind_speed_10m[h], weather.hourly.wind_direction_10m && weather.hourly.wind_direction_10m[h])
+            : (Math.round(weather.hourly.wind_speed_10m[h] || 0) + '');
           hourlyRows += '<tr>' +
             '<td style="border-right:1px solid rgba(255,255,255,0.12);padding:2px 3px;text-align:center;">' + t.toLocaleTimeString('en-US', { hour: 'numeric' }) + '</td>' +
             '<td style="border-right:1px solid rgba(255,255,255,0.12);padding:2px 3px;text-align:center;">' + formatTemp(weather.hourly.temperature_2m[h]) + '</td>' +
             '<td style="border-right:1px solid rgba(255,255,255,0.12);padding:2px 3px;text-align:center;">' + (rainPct === '—' ? '—' : rainPct + '%') + '</td>' +
-            '<td style="padding:2px 3px;text-align:center;">' + Math.round(weather.hourly.wind_speed_10m[h] || 0) + '</td></tr>';
+            '<td class="hourly-wind-td" style="padding:2px 3px;text-align:center;">' + hWind + '</td></tr>';
         }
       }
       var thStyle = 'border-right:1px solid rgba(255,255,255,0.18);padding:2px 2px;font-size:10px;font-weight:700;text-align:center;white-space:nowrap;';
       var details =
-        '<div style="margin-bottom:8px;"><strong>Wind</strong><br>' + Math.round(wspd || 0) +
-        ' mph from ' + getCardinal(wdir || 0) + ' · Scent → ' + getCardinal(((wdir || 0) + 180) % 360) + '</div>' +
+        '<div style="margin-bottom:8px;"><strong>Wind</strong>' +
+        '<div class="mwd-wind-row">' + windCell +
+        '<span style="color:var(--muted);font-size:11px;">from ' + getCardinal(wdir || 0) +
+        ' · Scent → ' + getCardinal(((wdir || 0) + 180) % 360) + '</span></div></div>' +
         '<div style="margin-bottom:8px;"><strong>Sun &amp; moon</strong><br>Sunrise ' + (sun.sunrise || '--') +
         ' · Sunset ' + (sun.sunset || '--') + '<br>Moon: ' + (moon.phase || '—') +
         (moon.illumination != null ? ' (' + moon.illumination + '% lit)' : '') + '</div>' +
