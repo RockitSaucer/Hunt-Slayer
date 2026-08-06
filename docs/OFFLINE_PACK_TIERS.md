@@ -1,40 +1,27 @@
-# Offline map pack product tiers
+# Offline map packs
 
-Concrete product options for downloading basemap tiles to the device so more of the map works without signal.
+## Spot packs (map pin / orange dot → **Offline map**)
 
-Pins, stands, shapes, and hunt logs already stay on-device separately. These tiers only cover **map image tiles**.
+| Option | Radius | Zooms | Typical size |
+|--------|--------|-------|--------------|
+| **2 miles** | 2 mi | 10–15 | ~1–10 MB |
+| **5 miles** | 5 mi | 10–15 | ~15–40 MB topo · ~40–80 MB sat |
+| **10 miles** | 10 mi | 10–15 | ~25–60 MB topo · ~50–120 MB sat |
 
-## Tiers
+Flow: choose radius → confirm popup shows estimated MB → Download.
 
-| Tier | Best for | Coverage | Zooms | Basemaps | Typical size |
-|------|----------|----------|-------|----------|--------------|
-| **Standard** | Property, stands, small lease | **5 mi** around a point | 10–15 | Topo, sat, street, LiDAR | **~15–40 MB** topo · **~40–80 MB** sat |
-| **Extended** | Large lease / club / multi-stand | **10 mi** around a point | 10–15 | Topo, sat, street, LiDAR | **~25–60 MB** topo · **~50–120 MB** sat |
-| **Statewide overview** | Navigating Alabama without detail | **Whole state** | 10–12 | **Topo only** | **~80–200 MB** |
+Uses the basemap currently selected on the map (topo / sat / street / LiDAR).
 
-## Recommended kits
+## Statewide (Settings → Display → Offline maps)
 
-1. **Day hunt kit (~50–150 MB)**  
-   1–3 × Standard (topo) on main properties. Optional 1 sat Standard where you need aerial.
+| Option | Coverage | Zooms | Size |
+|--------|----------|-------|------|
+| **Statewide overview** | All of Alabama | 10–12 | ~80–200 MB topo only |
 
-2. **Club / multi-spot kit (~200–500 MB)**  
-   1 Extended (topo) on HQ + Standard packs on outlying stands + optional Statewide overview.
+Not stand-level detail. Download on Wi‑Fi. Spot packs (2/5/10 mi) add detail where you hunt.
 
-3. **Travel / scouting kit (~150–400 MB)**  
-   Statewide overview (topo) + Standard packs as you pin new spots (download on Wi‑Fi).
+## Notes
 
-## What is still online-only
-
-Weather, radar, property lines (parcels), live elevation DEM, party share location, first-time cloud pin/photo sync.
-
-## How to download (in app)
-
-**Settings → Display → Offline maps**
-
-1. Choose pack size (Standard / Extended / Statewide).  
-2. Choose basemap (sat disabled for Statewide).  
-3. **Download around GPS** or **Download map center**.  
-
-Or map pin menu → **Offline map** (uses the selected tier).
-
-Use Wi‑Fi for Extended / Statewide. Clearing tiles does not delete pins.
+- Pins, stands, shapes already stay on-device without a tile pack.
+- Weather / radar / parcels still need network when used live.
+- **Clear offline map tiles** removes tile images only, not pins.

@@ -1,0 +1,13 @@
+V7.0.36 Beta (shell v96) — Offline map radius chooser
+
+Map pin / orange dot → Offline map:
+  • 2 miles (original size)
+  • 5 miles
+  • 10 miles
+Then confirm popup with estimated download size (MB / tiles).
+
+Settings → Display → Offline maps:
+  • Statewide overview (Alabama topo z10–12) with size confirm
+  • Spot packs still via pin Offline map
+
+Desktop www/ re-synced from _push_hunt_slayer.

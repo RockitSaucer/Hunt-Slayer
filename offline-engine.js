@@ -17,13 +17,26 @@
   var WATER_DISK_TTL_MS = 24 * 60 * 60 * 1000;
 
   /**
-   * Product tiers for offline map packs (concrete sizes for Alabama hunting).
-   * Sizes are estimates; actual MB varies by basemap density and server tiles.
+   * Offline pack options.
+   * Pin/map "Offline map" uses mi2 / mi5 / mi10.
+   * Settings → Cloud & offline hosts statewide overview only.
    */
   var OFFLINE_TIERS = {
-    standard: {
-      id: 'standard',
-      name: 'Standard',
+    mi2: {
+      id: 'mi2',
+      name: '2 miles',
+      tagline: 'Current default · tight around a spot',
+      mode: 'circle',
+      radiusMi: 2,
+      zMin: 10,
+      zMax: 15,
+      allowSat: true,
+      sizeHint: '~1–10 MB',
+      blurb: '2 miles around a pin or GPS (original offline pack size).'
+    },
+    mi5: {
+      id: 'mi5',
+      name: '5 miles',
       tagline: 'Hunt property / stands',
       mode: 'circle',
       radiusMi: 5,
@@ -31,19 +44,19 @@
       zMax: 15,
       allowSat: true,
       sizeHint: '~15–40 MB topo · ~40–80 MB sat',
-      blurb: '5 miles around a spot, zooms 10–15. Everyday offline pack for a farm, stand cluster, or small lease.'
+      blurb: '5 miles around a spot, zooms 10–15.'
     },
-    extended: {
-      id: 'extended',
-      name: 'Extended',
-      tagline: 'Lease / club / multi-stand',
+    mi10: {
+      id: 'mi10',
+      name: '10 miles',
+      tagline: 'Lease / multi-stand',
       mode: 'circle',
       radiusMi: 10,
       zMin: 10,
       zMax: 15,
       allowSat: true,
       sizeHint: '~25–60 MB topo · ~50–120 MB sat',
-      blurb: '10 miles around a spot, zooms 10–15. Better for large leases and driving between stands offline.'
+      blurb: '10 miles around a spot, zooms 10–15.'
     },
     overview: {
       id: 'overview',
@@ -55,9 +68,14 @@
       zMax: 12,
       allowSat: false,
       sizeHint: '~80–200 MB (topo only)',
-      blurb: 'Coarse statewide Alabama coverage for navigation. Not stand-level detail — add Standard packs on hunt areas.'
-    }
+      blurb: 'Coarse statewide Alabama for navigation. Not stand-level — use 2/5/10 mi packs on hunt spots.'
+    },
+    // Back-compat aliases
+    standard: null,
+    extended: null
   };
+  OFFLINE_TIERS.standard = OFFLINE_TIERS.mi5;
+  OFFLINE_TIERS.extended = OFFLINE_TIERS.mi10;
   // Alabama rough bounds for overview packs
   var AL_BOUNDS = { south: 30.15, north: 35.02, west: -88.52, east: -84.85 };
 
@@ -227,19 +245,25 @@
   }
 
   function getTier(tierId) {
-    return OFFLINE_TIERS[tierId] || OFFLINE_TIERS.standard;
+    var t = OFFLINE_TIERS[tierId];
+    if (t) return t;
+    return OFFLINE_TIERS.mi2;
   }
 
   function getSelectedTierId() {
     try {
       var t = localStorage.getItem(OFFLINE_TIER_KEY);
-      if (t && OFFLINE_TIERS[t]) return t;
+      if (t === 'standard') t = 'mi5';
+      if (t === 'extended') t = 'mi10';
+      if (t && OFFLINE_TIERS[t] && t !== 'standard' && t !== 'extended') return t;
     } catch (e) {}
-    return 'standard';
+    return 'mi2';
   }
 
   function setSelectedTierId(tierId) {
-    if (!OFFLINE_TIERS[tierId]) tierId = 'standard';
+    if (tierId === 'standard') tierId = 'mi5';
+    if (tierId === 'extended') tierId = 'mi10';
+    if (!OFFLINE_TIERS[tierId] || tierId === 'standard' || tierId === 'extended') tierId = 'mi2';
     try { localStorage.setItem(OFFLINE_TIER_KEY, tierId); } catch (e) {}
     return tierId;
   }
@@ -614,7 +638,7 @@
 
     return navigator.serviceWorker
       // Cache-bust query forces mobile browsers to re-check SW script on each deploy bump
-      .register('./sw.js?v=shell95', { scope: './' })
+      .register('./sw.js?v=shell96', { scope: './' })
       .then(function (reg) {
         console.info('[Offline] SW registered', reg.scope);
         // Force update check every launch (critical for iOS/Android home-screen / PWA)
