@@ -1,0 +1,10 @@
+V7.0.28 Beta (shell v88) — 2026-08-06
+
+Compass mode elevation speed
+
+1) Elev Δ now updates while heading changes (was skipped on every heading tick → felt stuck/slow).
+2) Debounced refresh (~80ms) after turn so DEM is not hammered mid-spin.
+3) Instant HUD paint when probe point is already in the elev cache.
+4) Race Open-Meteo (fast) + USGS EPQS (backup); first good feet wins.
+5) Multi-point Open-Meteo for me+probe in one request when both need network.
+6) In-memory elev cache + inflight dedupe for repeated probe points.

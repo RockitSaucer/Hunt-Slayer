@@ -10386,7 +10386,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.27 Beta">V7.0.27 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.28 Beta">V7.0.28 Beta</span>
     </div>
     <a class="brand-sister-link" id="brand-sister-link" href="https://www.regslayer.com" title="Open REG SLAYER (same account)">
       <span class="brand-sister-label">Reg Slayer</span>
@@ -11784,7 +11784,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.26-beta';
+    const APP_VERSION = '7.0.28-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -22047,8 +22047,64 @@
       }
     }
 
-    function fetchElevFtAt(lat, lng) {
-      // USGS EPQS — reliable for Alabama (returns feet)
+    /** ~11 m grid — enough for compass probe elev without thrashing the DEM. */
+    function elevCacheKey(lat, lng) {
+      return Number(lat).toFixed(4) + ',' + Number(lng).toFixed(4);
+    }
+    if (!window._cmElevCache) window._cmElevCache = {};
+    if (!window._cmElevInflight) window._cmElevInflight = {};
+
+    function elevCacheGet(lat, lng) {
+      var k = elevCacheKey(lat, lng);
+      var v = window._cmElevCache[k];
+      return (v != null && !isNaN(v)) ? v : null;
+    }
+    function elevCacheSet(lat, lng, ft) {
+      if (ft == null || isNaN(ft)) return;
+      window._cmElevCache[elevCacheKey(lat, lng)] = ft;
+    }
+
+    /** First promise that yields a finite number (no Promise.any — wider mobile support). */
+    function firstFiniteElev(promises) {
+      return new Promise(function(resolve, reject) {
+        var left = promises.length;
+        var lastErr = null;
+        if (!left) {
+          reject(new Error('no elev sources'));
+          return;
+        }
+        promises.forEach(function(p) {
+          Promise.resolve(p).then(function(v) {
+            var n = typeof v === 'number' ? v : parseFloat(v);
+            if (n != null && !isNaN(n) && isFinite(n)) {
+              resolve(n);
+              return;
+            }
+            lastErr = new Error('bad elev');
+            if (--left === 0) reject(lastErr);
+          }).catch(function(e) {
+            lastErr = e;
+            if (--left === 0) reject(lastErr || e);
+          });
+        });
+      });
+    }
+
+    function fetchElevFtOpenMeteo(lat, lng) {
+      var url = 'https://api.open-meteo.com/v1/elevation?latitude=' +
+        encodeURIComponent(lat) + '&longitude=' + encodeURIComponent(lng);
+      return fetch(url, { mode: 'cors' }).then(function(r) {
+        if (!r.ok) throw new Error('om ' + r.status);
+        return r.json();
+      }).then(function(data) {
+        var m = data && data.elevation && data.elevation[0];
+        if (m == null || isNaN(m)) throw new Error('om nodata');
+        return Number(m) * 3.28084;
+      });
+    }
+
+    function fetchElevFtEpqs(lat, lng) {
+      // USGS EPQS — accurate CONUS feet, but often slower than Open-Meteo
       var url = 'https://epqs.nationalmap.gov/v1/json?x=' + encodeURIComponent(lng) +
         '&y=' + encodeURIComponent(lat) + '&units=Feet&wkid=4326&includeDate=false';
       return fetch(url, { mode: 'cors' }).then(function(r) {
@@ -22063,7 +22119,54 @@
       });
     }
 
+    function fetchElevFtAt(lat, lng) {
+      var cached = elevCacheGet(lat, lng);
+      if (cached != null) return Promise.resolve(cached);
+      var key = elevCacheKey(lat, lng);
+      if (window._cmElevInflight[key]) return window._cmElevInflight[key];
+      // Race Open-Meteo (fast) + EPQS (backup) — first good feet wins
+      var p = firstFiniteElev([
+        fetchElevFtOpenMeteo(lat, lng),
+        fetchElevFtEpqs(lat, lng)
+      ]).then(function(ft) {
+        elevCacheSet(lat, lng, ft);
+        delete window._cmElevInflight[key];
+        return ft;
+      }).catch(function(e) {
+        delete window._cmElevInflight[key];
+        throw e;
+      });
+      window._cmElevInflight[key] = p;
+      return p;
+    }
+
+    function firstElevPair(promises) {
+      return new Promise(function(resolve, reject) {
+        var left = promises.length;
+        var lastErr = null;
+        if (!left) {
+          reject(new Error('no elev pair'));
+          return;
+        }
+        promises.forEach(function(p) {
+          Promise.resolve(p).then(function(v) {
+            if (v && v.meFt != null && v.thereFt != null &&
+                !isNaN(v.meFt) && !isNaN(v.thereFt)) {
+              resolve(v);
+              return;
+            }
+            lastErr = new Error('bad pair');
+            if (--left === 0) reject(lastErr);
+          }).catch(function(e) {
+            lastErr = e;
+            if (--left === 0) reject(lastErr || e);
+          });
+        });
+      });
+    }
+
     function fetchCompassElevDelta(pt, distMi) {
+      if (!pt || userLat == null || userLng == null) return;
       var reqId = (window._cmElevReq = (window._cmElevReq || 0) + 1);
       var myAltM = (typeof window._lastGpsAltitudeM === 'number' && !isNaN(window._lastGpsAltitudeM))
         ? window._lastGpsAltitudeM
@@ -22082,36 +22185,93 @@
         updateCompassModeHudLabel(distMi, txt);
       }
 
-      // Always query elevation under the probe; me = GPS alt or DEM under me
-      var pThere = fetchElevFtAt(pt.lat, pt.lng);
-      var pMe = myAltFt != null
-        ? Promise.resolve(myAltFt)
-        : fetchElevFtAt(userLat, userLng);
+      // Instant paint from cache when both points known
+      var thHit = elevCacheGet(pt.lat, pt.lng);
+      var meHit = myAltFt != null ? myAltFt : elevCacheGet(userLat, userLng);
+      if (meHit != null && thHit != null) {
+        finish(meHit, thHit);
+        return;
+      }
 
-      Promise.all([pMe, pThere]).then(function(pair) {
-        finish(pair[0], pair[1]);
-      }).catch(function() {
-        // Fallback: Open-Meteo single-point (meters)
+      var thCached = elevCacheGet(pt.lat, pt.lng);
+      var meCached = myAltFt != null ? myAltFt : elevCacheGet(userLat, userLng);
+
+      var jobs = [];
+      // Multi-point Open-Meteo when both need network
+      if (meCached == null && thCached == null) {
         var url = 'https://api.open-meteo.com/v1/elevation?latitude=' +
-          userLat + '&longitude=' + userLng;
-        var url2 = 'https://api.open-meteo.com/v1/elevation?latitude=' +
-          pt.lat + '&longitude=' + pt.lng;
-        Promise.all([
-          fetch(url).then(function(r) { return r.json(); }),
-          fetch(url2).then(function(r) { return r.json(); })
-        ]).then(function(arr) {
-          var meM = arr[0] && arr[0].elevation && arr[0].elevation[0];
-          var thM = arr[1] && arr[1].elevation && arr[1].elevation[0];
-          if (myAltM != null) meM = myAltM;
-          if (meM == null || thM == null) {
-            updateCompassModeHudLabel(distMi, '—');
-            return;
-          }
-          finish(meM * 3.28084, thM * 3.28084);
-        }).catch(function() {
-          if (reqId === window._cmElevReq) updateCompassModeHudLabel(distMi, '—');
-        });
+          encodeURIComponent(userLat) + ',' + encodeURIComponent(pt.lat) +
+          '&longitude=' + encodeURIComponent(userLng) + ',' + encodeURIComponent(pt.lng);
+        jobs.push(fetch(url, { mode: 'cors' }).then(function(r) {
+          if (!r.ok) throw new Error('om pair');
+          return r.json();
+        }).then(function(data) {
+          var elev = data && data.elevation;
+          if (!elev || elev.length < 2 || elev[0] == null || elev[1] == null) throw new Error('om pair');
+          var meFt = Number(elev[0]) * 3.28084;
+          var thFt = Number(elev[1]) * 3.28084;
+          elevCacheSet(userLat, userLng, meFt);
+          elevCacheSet(pt.lat, pt.lng, thFt);
+          return { meFt: meFt, thereFt: thFt };
+        }));
+      }
+      // Per-point race (Open-Meteo + EPQS, cached)
+      jobs.push(Promise.all([
+        meCached != null ? Promise.resolve(meCached) : fetchElevFtAt(userLat, userLng),
+        thCached != null ? Promise.resolve(thCached) : fetchElevFtAt(pt.lat, pt.lng)
+      ]).then(function(pair) {
+        return { meFt: pair[0], thereFt: pair[1] };
+      }));
+
+      firstElevPair(jobs).then(function(pair) {
+        finish(pair.meFt, pair.thereFt);
+      }).catch(function() {
+        if (reqId === window._cmElevReq) updateCompassModeHudLabel(distMi, '—');
       });
+    }
+
+    /**
+     * Heading changes skip full elev work in the hot path; debounce a fetch so
+     * Elev Δ tracks the probe without hammering the DEM while spinning.
+     */
+    function scheduleCompassElevRefresh() {
+      if (!compassModeEnabled || window._cmDragging) return;
+      if (userLat == null || userLng == null) return;
+      if (window._cmElevDebounceTimer) {
+        try { clearTimeout(window._cmElevDebounceTimer); } catch (eT) {}
+      }
+      // If probe point already cached, update HUD immediately (no wait)
+      try {
+        var heading0 = getCompassHeadingDeg();
+        var probeMi0 = window._cmProbeDistMi != null ? window._cmProbeDistMi : 5;
+        probeMi0 = Math.max(0.02, Math.min(20, probeMi0));
+        var pt0 = compassModeDestPoint(userLat, userLng, heading0, probeMi0);
+        var th0 = elevCacheGet(pt0.lat, pt0.lng);
+        var me0 = (typeof window._lastGpsAltitudeM === 'number' && !isNaN(window._lastGpsAltitudeM))
+          ? window._lastGpsAltitudeM * 3.28084
+          : elevCacheGet(userLat, userLng);
+        if (th0 != null && me0 != null) {
+          var txt0 = formatElevDeltaFt(th0 - me0);
+          window._cmLastElevTxt = txt0;
+          updateCompassModeHudLabel(probeMi0, txt0);
+          return;
+        }
+      } catch (eC) {}
+      window._cmElevDebounceTimer = setTimeout(function() {
+        window._cmElevDebounceTimer = null;
+        if (!compassModeEnabled || window._cmDragging) return;
+        if (userLat == null || userLng == null) return;
+        try {
+          var heading = getCompassHeadingDeg();
+          var probeMi = window._cmProbeDistMi != null ? window._cmProbeDistMi : 5;
+          probeMi = Math.max(0.02, Math.min(20, probeMi));
+          var pt = compassModeDestPoint(userLat, userLng, heading, probeMi);
+          var locKey = elevCacheKey(pt.lat, pt.lng) + '|' + elevCacheKey(userLat, userLng);
+          // Still re-fetch if only a short time since same key — cache handles speed
+          window._cmElevLastLocKey = locKey;
+          fetchCompassElevDelta(pt, probeMi);
+        } catch (eF) {}
+      }, 80);
     }
 
     function projectDistOnHeading(latlng) {
@@ -22488,9 +22648,14 @@
 
       // HUD on triangle
       var lastElev = window._cmLastElevTxt || '…';
-      updateCompassModeHudLabel(probeMi, opts.skipElev ? lastElev : lastElev);
-      if (!opts.skipElev && !opts.skipHudElevFetch && !window._cmDragging) {
+      updateCompassModeHudLabel(probeMi, lastElev);
+      if (opts.skipHudElevFetch || window._cmDragging) return;
+      if (!opts.skipElev) {
+        // Immediate elev (mode on, probe placed, drag end)
         fetchCompassElevDelta(pt, probeMi);
+      } else {
+        // Heading / soft ticks: debounced + cache so Elev Δ keeps up without lag
+        scheduleCompassElevRefresh();
       }
     }
 
@@ -22540,6 +22705,7 @@
             orig.apply(this, arguments);
             if (compassModeEnabled) {
               try { updateCompassModeGraphics({ soft: true, skipElev: true }); } catch (e) {}
+              try { scheduleCompassElevRefresh(); } catch (eE) {}
             }
           };
           applyHeadingToUi._cmHooked = true;
@@ -27873,6 +28039,7 @@
           try {
             updateCompassModeGraphics({ soft: true, skipElev: true, skipStyle: true });
           } catch (eG) {}
+          try { scheduleCompassElevRefresh(); } catch (eE) {}
         }
       } catch (eU) {}
     }
