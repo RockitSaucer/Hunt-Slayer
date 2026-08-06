@@ -1,0 +1,10 @@
+V7.0.27 Beta (shell v87) — 2026-08-06
+
+1) Dobbs directional facing
+   - frontDeg set to 0 with upright art (head at top).
+   - Head leads with device heading, same model as the default arrow tip.
+   - Previous frontDeg 90 laid the figure on its side.
+
+2) Thinner black outline on directional icons (~40%)
+   - Custom dir SVG dilate outline radius reduced (1.35/1.2/1.05 → 0.81/0.72/0.63).
+   - Default triangle stroke-width 1.5 → 0.9 (GPS + party).

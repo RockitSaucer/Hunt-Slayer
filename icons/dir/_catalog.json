@@ -46,7 +46,7 @@
     "name": "Dobbs",
     "src": "icons/dir/dobbs.png",
     "defaultColor": "#1a1a1a",
-    "frontDeg": 90.0
+    "frontDeg": 0.0
   },
   {
     "id": "helicopter",

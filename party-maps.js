@@ -35,11 +35,12 @@
     { id: 'shuttle', name: 'Shuttle', src: 'icons/dir/shuttle.png', frontDeg: 0 },
     { id: 'speed_boat', name: 'Speed Boat', src: 'icons/dir/speed_boat.png', frontDeg: 0 },
     { id: 'truck', name: 'Truck', src: 'icons/dir/truck.png', frontDeg: 0 },
-    // Side profile walks right — frontDeg 90 so heading rotation faces travel direction
-    { id: 'dobbs', name: 'Dobbs', src: 'icons/dir/dobbs.png', frontDeg: 90 },
+    // Upright profile (head at top). frontDeg 0 = head leads with device heading
+    // (same model as default arrow tip). Do not use 90 — that laid the figure on its side.
+    { id: 'dobbs', name: 'Dobbs', src: 'icons/dir/dobbs.png', frontDeg: 0 },
     { id: 'x_wing', name: 'X-wing', src: 'icons/dir/x_wing.png', frontDeg: 0 }
   ];
-  var DIR_ICON_BUST = 'dir4';
+  var DIR_ICON_BUST = 'dir5';
   var MOVE_M = 8; // meters = "moving"
   var MOVE_MS = 4000; // min interval when moving
   var HEARTBEAT_MS = 5000; // always push at least this often while sharing
@@ -323,8 +324,8 @@
     hex = normalizeDirHex(hex);
     _dirGlyphFilterSeq += 1;
     var fid = 'dgf' + _dirGlyphFilterSeq + '_' + String(iconId || 'x').replace(/[^a-z0-9_-]/gi, '');
-    // Outline thickness scales slightly with size (~1.2–1.6px look)
-    var outlineR = s >= 36 ? 1.35 : (s >= 28 ? 1.2 : 1.05);
+    // Outline thickness scales with size; ~40% thinner so silhouettes stay sharp
+    var outlineR = s >= 36 ? 0.81 : (s >= 28 ? 0.72 : 0.63);
     var src = String(img)
       .replace(/&/g, '&amp;')
       .replace(/"/g, '&quot;')
@@ -386,7 +387,7 @@
         'px;transform:rotate(' + rot.toFixed(1) + 'deg);transform-origin:center center;will-change:transform;">' +
         '<svg viewBox="0 0 24 32" width="' + w + '" height="' + h + '" style="display:block;">' +
           '<path d="M12 1.5 L22.5 29.5 L12 23.2 L1.5 29.5 Z" fill="' + c +
-            '" stroke="#000" stroke-width="1.5" stroke-linejoin="round"/>' +
+            '" stroke="#000" stroke-width="0.9" stroke-linejoin="round"/>' +
         '</svg>' +
       '</div>'
     );
@@ -499,7 +500,7 @@
         '<svg class="dir-default-map-arrow" viewBox="0 0 24 32" width="' + aw + '" height="' + ah +
           '" aria-hidden="true" style="display:block;">' +
           '<path d="M12 1.5 L22.5 29.5 L12 23.2 L1.5 29.5 Z" fill="' + c +
-            '" stroke="#000" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' +
+            '" stroke="#000" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round"/>' +
           '<path d="M12 6.5 L17.2 24.5 L12 20.5 L6.8 24.5 Z" fill="' + c + '" opacity="0.35"/>' +
         '</svg>';
     }
@@ -540,7 +541,7 @@
     var defaultArrowSvg =
       '<svg class="dir-default-map-arrow" viewBox="0 0 24 32" width="28" height="36" aria-hidden="true" style="display:block;">' +
         '<path d="M12 1.5 L22.5 29.5 L12 23.2 L1.5 29.5 Z" fill="' + c +
-          '" stroke="#000" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' +
+          '" stroke="#000" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round"/>' +
         '<path d="M12 6.5 L17.2 24.5 L12 20.5 L6.8 24.5 Z" fill="' + c + '" opacity="0.35"/>' +
       '</svg>';
     html += '<button type="button" class="dir-icon-cell' + (defSel ? ' selected' : '') +
@@ -806,7 +807,7 @@
         '<svg viewBox="0 0 24 32" width="' + aw + '" height="' + ah +
           '" aria-hidden="true" style="display:block;">' +
           '<path d="M12 1.5 L22.5 29.5 L12 23.2 L1.5 29.5 Z" fill="' + c +
-            '" stroke="#000" stroke-width="1.5" stroke-linejoin="round"/>' +
+            '" stroke="#000" stroke-width="0.9" stroke-linejoin="round"/>' +
         '</svg>';
     }
     var pct = Math.round(sc * 100);
@@ -3313,7 +3314,7 @@
               '<svg viewBox="0 0 24 32" width="' + aw + '" height="' + ah +
                 '" aria-hidden="true" style="display:block;">' +
                 '<path d="M12 1.5 L22.5 29.5 L12 23.2 L1.5 29.5 Z" fill="' +
-                normalizeDirHex(col) + '" stroke="#000" stroke-width="1.5" stroke-linejoin="round"/>' +
+                normalizeDirHex(col) + '" stroke="#000" stroke-width="0.9" stroke-linejoin="round"/>' +
               '</svg>';
           }
           return '<button type="button" class="smm-member settings-subbtn" data-uid="' + esc(m.user_id) + '">' +
