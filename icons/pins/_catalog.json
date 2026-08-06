@@ -30,15 +30,21 @@
     "defaultColor": "#1a1a1a"
   },
   {
-    "id": "bow_stand",
-    "name": "Bow Stand",
-    "src": "icons/pins/bow_stand.png",
+    "id": "boat_ramp",
+    "name": "Boat Ramp",
+    "src": "icons/pins/boat_ramp.png",
     "defaultColor": "#1a1a1a"
   },
   {
     "id": "bow",
     "name": "Bow",
     "src": "icons/pins/bow.png",
+    "defaultColor": "#1a1a1a"
+  },
+  {
+    "id": "bow_stand",
+    "name": "Bow Stand",
+    "src": "icons/pins/bow_stand.png",
     "defaultColor": "#1a1a1a"
   },
   {
@@ -90,6 +96,12 @@
     "defaultColor": "#1a1a1a"
   },
   {
+    "id": "house",
+    "name": "House",
+    "src": "icons/pins/house.png",
+    "defaultColor": "#1a1a1a"
+  },
+  {
     "id": "muzzleloader",
     "name": "Muzzleloader",
     "src": "icons/pins/muzzleloader.png",
@@ -102,15 +114,15 @@
     "defaultColor": "#1a1a1a"
   },
   {
-    "id": "rifle_stand",
-    "name": "Rifle Stand",
-    "src": "icons/pins/rifle_stand.png",
-    "defaultColor": "#1a1a1a"
-  },
-  {
     "id": "rifle",
     "name": "Rifle",
     "src": "icons/pins/rifle.png",
+    "defaultColor": "#1a1a1a"
+  },
+  {
+    "id": "rifle_stand",
+    "name": "Rifle Stand",
+    "src": "icons/pins/rifle_stand.png",
     "defaultColor": "#1a1a1a"
   },
   {

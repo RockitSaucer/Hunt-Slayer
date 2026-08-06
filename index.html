@@ -1127,6 +1127,16 @@
     .step-section.is-minimized { margin-bottom: 0; }
     .step-section.is-minimized > :not(.step-header) { display: none !important; }
     .step-section.is-minimized .step-header { margin-bottom: 0; }
+    /* Phone: force-collapse step bodies (some child displays override desktop rules) */
+    html.layout-phone .step-section.is-minimized > :not(.step-header) {
+      display: none !important;
+      visibility: hidden !important;
+      height: 0 !important;
+      max-height: 0 !important;
+      overflow: hidden !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
     .wx-section { min-width: 0; }
     .wx-section-header {
       display: flex;
@@ -1138,6 +1148,15 @@
     .wx-section-header .section-qual { flex: 1 1 auto; min-width: 0; }
     .wx-section.is-minimized .wx-section-body { display: none !important; }
     .wx-section.is-minimized .wx-section-header { margin-bottom: 0; }
+    html.layout-phone .wx-section.is-minimized .wx-section-body {
+      display: none !important;
+      visibility: hidden !important;
+      height: 0 !important;
+      max-height: 0 !important;
+      overflow: hidden !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
     /*
      * Steps 1–3 row (desktop stacks them vertically in the left column).
      * Phone also stacks. Base grid kept as fallback before layout class applies.
@@ -8549,7 +8568,7 @@
       width: 100%;
       border-collapse: collapse;
       font-size: 13px;
-      min-width: 480px;
+      min-width: 0;
       table-layout: fixed;
     }
     .hourly-table thead th {
@@ -8559,7 +8578,7 @@
       background: #141a12;
     }
     .hourly-table th, .hourly-table td {
-      padding: 10px 12px;
+      padding: 8px 6px;
       border-bottom: 1px solid var(--border);
       border-right: 1px solid var(--border);
       text-align: center;
@@ -8567,7 +8586,7 @@
     }
     .hourly-table th:last-child,
     .hourly-table td:last-child { border-right: none; }
-    .hourly-table th { background: rgba(0,0,0,0.35); color: var(--muted); font-size: 11px; text-transform: uppercase; }
+    .hourly-table th { background: rgba(0,0,0,0.35); color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.02em; }
     .hourly-table tr.hourly-night td {
       background: rgba(0, 0, 0, 0.22);
       color: #a8b39c;
@@ -8580,22 +8599,23 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 7px;
+      gap: 4px;
       white-space: nowrap;
-      line-height: 1.2;
+      line-height: 1.15;
       vertical-align: middle;
     }
     .hourly-wind-spd {
       font-variant-numeric: tabular-nums;
       flex: 0 0 auto;
-      min-width: 3.2em;
+      min-width: 0;
       text-align: left;
+      font-size: 0.95em;
     }
     .hourly-wind-arrow-wrap {
       position: relative;
-      flex: 0 0 18px;
-      width: 18px;
-      height: 18px;
+      flex: 0 0 14px;
+      width: 14px;
+      height: 14px;
       display: inline-block;
       overflow: visible;
     }
@@ -8607,21 +8627,66 @@
       width: 0;
       height: 0;
       margin: 0;
-      border-left: 5px solid transparent;
-      border-right: 5px solid transparent;
-      border-bottom: 14px solid var(--accent);
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-bottom: 11px solid var(--accent);
       border-radius: 0;
       background: none;
       transform-origin: 50% 70%;
-      margin-left: -5px;
-      margin-top: -11px;
+      margin-left: -4px;
+      margin-top: -9px;
       filter: drop-shadow(0 0 2px rgba(229, 154, 24, 0.75));
       pointer-events: none;
     }
     .hourly-table td.hourly-wind-td {
-      padding-left: 6px;
-      padding-right: 6px;
-      min-width: 5.5em;
+      padding-left: 3px;
+      padding-right: 3px;
+      min-width: 0;
+    }
+    /* Phone: fit all 5 columns (incl. wind) without horizontal scroll */
+    html.layout-phone .hourly-table-container {
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+    html.layout-phone .hourly-table {
+      min-width: 0 !important;
+      width: 100% !important;
+      font-size: 11px;
+      table-layout: fixed;
+    }
+    html.layout-phone .hourly-table th,
+    html.layout-phone .hourly-table td {
+      padding: 6px 2px;
+      font-size: 11px;
+    }
+    html.layout-phone .hourly-table th {
+      font-size: 9px;
+      padding: 5px 1px;
+    }
+    html.layout-phone .hourly-table th:nth-child(1),
+    html.layout-phone .hourly-table td:nth-child(1) { width: 16%; }
+    html.layout-phone .hourly-table th:nth-child(2),
+    html.layout-phone .hourly-table td:nth-child(2) { width: 15%; }
+    html.layout-phone .hourly-table th:nth-child(3),
+    html.layout-phone .hourly-table td:nth-child(3) { width: 16%; }
+    html.layout-phone .hourly-table th:nth-child(4),
+    html.layout-phone .hourly-table td:nth-child(4) { width: 18%; }
+    html.layout-phone .hourly-table th:nth-child(5),
+    html.layout-phone .hourly-table td:nth-child(5) { width: 35%; }
+    html.layout-phone .hourly-wind { gap: 3px; }
+    html.layout-phone .hourly-wind-spd { font-size: 10px; min-width: 0; }
+    html.layout-phone .hourly-wind-arrow-wrap { flex: 0 0 12px; width: 12px; height: 12px; }
+    html.layout-phone .hourly-wind-arrow {
+      border-left-width: 3px;
+      border-right-width: 3px;
+      border-bottom-width: 9px;
+      margin-left: -3px;
+      margin-top: -7px;
+    }
+    html.layout-phone .hourly-table td.hourly-wind-td {
+      padding-left: 1px;
+      padding-right: 1px;
+      min-width: 0;
     }
     /* Rules & regs card: dark scrollbar, no buttons (inherits app-wide rules) */
     .regs-modal-card {
@@ -9682,7 +9747,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.2 Beta">V7.0.2 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.3 Beta">V7.0.3 Beta</span>
     </div>
     <a class="brand-sister-link" id="brand-sister-link" href="https://www.regslayer.com" title="Open REG SLAYER (same account)">
       <span class="brand-sister-label">Reg Slayer</span>
@@ -10868,6 +10933,17 @@
 
           <section class="settings-section">
             <div class="settings-section-head">
+              <h4 class="settings-section-title">Map on launch</h4>
+              <button type="button" class="settings-info-btn" data-title="Map on launch" data-info="When checked, the map opens maximized (Max) when the app starts on phone and desktop. Same setting as Display → Open map full screen on launch." aria-label="About Map on launch" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+            <div class="settings-row">
+              <label class="settings-row-main" for="set-def-map-fs"><input type="checkbox" id="set-def-map-fs" onchange="onSettingsMapFsLaunchChange()"><span class="sr-text">Open map in Max on launch</span></label>
+              <button type="button" class="settings-info-btn" data-title="Open map in Max on launch" data-info="Start with the map maximized. Uncheck to open with the normal planner + map layout. Your choice is saved for next time." aria-label="About open map Max" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+          </section>
+
+          <section class="settings-section">
+            <div class="settings-section-head">
               <h4 class="settings-section-title">Hunt list</h4>
               <button type="button" class="settings-info-btn" data-title="Hunt list defaults" data-info="Controls which special hunt types appear in Available tracts / huntable areas." aria-label="About Hunt list defaults" onclick="return showSettingsInfo(this,event)">i</button>
             </div>
@@ -10956,7 +11032,7 @@
               <button type="button" class="settings-info-btn" data-title="Map" data-info="The Alabama map card. Turning this off hides the map until you re-enable it." aria-label="About Map" onclick="return showSettingsInfo(this,event)">i</button>
             </div>
             <div class="settings-row" style="padding-left:18px;">
-              <label class="settings-row-main" for="set-disp-map-fs"><input type="checkbox" id="set-disp-map-fs" onchange="onSettingsDisplayChange()"><span class="sr-text">Open map full screen on launch</span></label>
+              <label class="settings-row-main" for="set-disp-map-fs"><input type="checkbox" id="set-disp-map-fs" onchange="onSettingsMapFsLaunchChange()"><span class="sr-text">Open map in Max on launch</span></label>
               <button type="button" class="settings-info-btn" data-title="Full screen on launch" data-info="Open the map maximized when the app starts. Also used when only Map is enabled (map-only mode)." aria-label="About full screen on launch" onclick="return showSettingsInfo(this,event)">i</button>
             </div>
           </section>
@@ -10998,7 +11074,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.2-beta';
+    const APP_VERSION = '7.0.3-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -14535,7 +14611,7 @@
 
     function toggleSectionMin(id) {
       if (!sectionMinState.hasOwnProperty(id)) return;
-      if (typeof isPhoneLayout === 'function' && isPhoneLayout() && id !== 'tracts') return;
+      // Phone + desktop: all sections min/max (steps, weather, tracts)
       sectionMinState[id] = !sectionMinState[id];
       saveSectionMinState();
       applyAllSectionMinStates();
@@ -25862,6 +25938,7 @@
       { id: 'beaver_dam', name: 'Beaver Dam', src: 'icons/pins/beaver_dam.png', defaultColor: '#1a1a1a' },
       { id: 'blood', name: 'Blood', src: 'icons/pins/blood.png', defaultColor: '#e43844' },
       { id: 'boat', name: 'Boat', src: 'icons/pins/boat.png', defaultColor: '#1a1a1a' },
+      { id: 'boat_ramp', name: 'Boat Ramp', src: 'icons/pins/boat_ramp.png', defaultColor: '#1a1a1a' },
       { id: 'bow', name: 'Bow', src: 'icons/pins/bow.png', defaultColor: '#1a1a1a' },
       { id: 'bow_stand', name: 'Bow Stand', src: 'icons/pins/bow_stand.png', defaultColor: '#1a1a1a' },
       { id: 'bridge', name: 'Bridge', src: 'icons/pins/bridge.png', defaultColor: '#1a1a1a' },
@@ -25872,6 +25949,7 @@
       { id: 'doe', name: 'Doe', src: 'icons/pins/doe.png', defaultColor: '#1a1a1a' },
       { id: 'feeder', name: 'Feeder', src: 'icons/pins/feeder.png', defaultColor: '#1a1a1a' },
       { id: 'food', name: 'Food', src: 'icons/pins/food.png', defaultColor: '#1a1a1a' },
+      { id: 'house', name: 'House', src: 'icons/pins/house.png', defaultColor: '#1a1a1a' },
       { id: 'muzzleloader', name: 'Muzzleloader', src: 'icons/pins/muzzleloader.png', defaultColor: '#1a1a1a' },
       { id: 'prints', name: 'Prints', src: 'icons/pins/prints.png', defaultColor: '#1a1a1a' },
       { id: 'rifle', name: 'Rifle', src: 'icons/pins/rifle.png', defaultColor: '#1a1a1a' },
@@ -31176,6 +31254,7 @@ function togglePinIconPicker() {
       set('set-disp-weather', d.weather);
       set('set-disp-map', d.map);
       set('set-disp-map-fs', d.mapFullscreenLaunch);
+      set('set-def-map-fs', d.mapFullscreenLaunch);
       // Map click dot style
       try {
         var mds = getMapClickDotStyle();
@@ -31229,7 +31308,10 @@ function togglePinIconPicker() {
       appSettings.display.planner = g('set-disp-planner');
       appSettings.display.weather = g('set-disp-weather');
       appSettings.display.map = g('set-disp-map');
-      appSettings.display.mapFullscreenLaunch = g('set-disp-map-fs');
+      // Map Max on launch — prefer whichever checkbox is present (Defaults and Display stay in sync)
+      var mapFsEl = document.getElementById('set-def-map-fs') || document.getElementById('set-disp-map-fs');
+      if (mapFsEl) appSettings.display.mapFullscreenLaunch = !!mapFsEl.checked;
+      else appSettings.display.mapFullscreenLaunch = g('set-disp-map-fs');
       // Map click dot
       if (!appSettings.display.mapClickDot) appSettings.display.mapClickDot = { color: '#e59a18', size: 16 };
       var colEl = document.getElementById('set-map-dot-color');
@@ -31276,6 +31358,21 @@ function togglePinIconPicker() {
     window.saveAppSettingsFromUi = saveAppSettingsFromUi;
     window.onSettingsToolsChange = saveAppSettingsFromUi;
     window.onSettingsDisplayChange = saveAppSettingsFromUi;
+    /** Keep Defaults + Display "Max on launch" checkboxes in sync */
+    window.onSettingsMapFsLaunchChange = function() {
+      try {
+        var a = document.getElementById('set-def-map-fs');
+        var b = document.getElementById('set-disp-map-fs');
+        var src = document.activeElement;
+        var val = false;
+        if (src && (src.id === 'set-def-map-fs' || src.id === 'set-disp-map-fs')) val = !!src.checked;
+        else if (a) val = !!a.checked;
+        else if (b) val = !!b.checked;
+        if (a) a.checked = val;
+        if (b) b.checked = val;
+      } catch (eSync) {}
+      saveAppSettingsFromUi();
+    };
     window.onSettingsMapDotChange = function() {
       // Preview size/color labels immediately, then persist
       try {

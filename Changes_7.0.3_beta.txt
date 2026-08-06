@@ -1,0 +1,7 @@
+﻿V7.0.3 Beta — Defaults Max-on-launch, new pins, phone min, hourly wind fit
+=========================================================================
+- Settings → Defaults: "Open map in Max on launch" (synced with Display)
+- New pin icons: Boat Ramp, House (processed like existing pins)
+- Phone section min buttons actually toggle (removed tracts-only early return)
+- Hourly forecast on phone: tighter columns so Wind fits without side-scroll
+- SHELL_CACHE = reg-slayer-shell-v63
