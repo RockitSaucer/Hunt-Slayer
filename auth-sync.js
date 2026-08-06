@@ -57,8 +57,99 @@
     } catch (e) { return fallback; }
   }
 
+  /** @returns {boolean} true if written */
   function saveJson(key, val) {
-    try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
+    try {
+      localStorage.setItem(key, JSON.stringify(val));
+      return true;
+    } catch (e) {
+      console.warn('localStorage write failed', key, e && e.name);
+      return false;
+    }
+  }
+
+  function loadPinPhotoMap() {
+    var m = loadJson(PIN_PHOTOS_KEY, {});
+    return m && typeof m === 'object' ? m : {};
+  }
+
+  function savePinPhotoMap(map) {
+    try {
+      return saveJson(PIN_PHOTOS_KEY, map && typeof map === 'object' ? map : {});
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /** Attach separately-stored photos onto pin objects (in memory / for cloud). */
+  function rehydratePinPhotos(pins) {
+    var photoMap = loadPinPhotoMap();
+    if (!Array.isArray(pins)) return [];
+    return pins.map(function (p) {
+      if (!p || p.id == null) return p;
+      var extra = photoMap[String(p.id)];
+      if (!extra || !extra.length) return p;
+      var out = Object.assign({}, p);
+      out.photos = mergePinPhotoLists(out.photos || out.notePhotos, extra);
+      return out;
+    });
+  }
+
+  /**
+   * Persist pins without embedding huge base64 in the main pin key (mobile quota safe).
+   * Photos go to PIN_PHOTOS_KEY. Never writes an empty pin list over a non-empty one
+   * unless allowEmpty is true.
+   */
+  function savePinsSplit(pins, opts) {
+    opts = opts || {};
+    var list = Array.isArray(pins) ? pins : [];
+    if (!list.length && !opts.allowEmpty) {
+      var existing = loadJson(MAP_KEYS.pins, []);
+      if (Array.isArray(existing) && existing.length) {
+        console.warn('Refusing to overwrite pins with empty list');
+        return false;
+      }
+    }
+    var photoMap = loadPinPhotoMap();
+    var slim = list.map(function (p) {
+      if (!p || typeof p !== 'object') return p;
+      var copy = Object.assign({}, p);
+      if (copy.photos && copy.photos.length) {
+        photoMap[String(copy.id)] = copy.photos;
+        delete copy.photos;
+      }
+      if (copy.notePhotos) delete copy.notePhotos;
+      return copy;
+    });
+    // Drop photo map entries for removed pins only when allowEmpty or explicit replace
+    if (opts.prunePhotos) {
+      var keep = {};
+      list.forEach(function (p) {
+        if (p && p.id != null) keep[String(p.id)] = true;
+      });
+      Object.keys(photoMap).forEach(function (k) {
+        if (!keep[k]) delete photoMap[k];
+      });
+    }
+    var okPins = saveJson(MAP_KEYS.pins, slim);
+    var okPh = savePinPhotoMap(photoMap);
+    if (!okPins) {
+      // Last resort: try even slimmer (no notes)
+      try {
+        var slim2 = slim.map(function (p) {
+          if (!p) return p;
+          var c = Object.assign({}, p);
+          if (c.notes && String(c.notes).length > 500) c.notes = String(c.notes).slice(0, 500);
+          return c;
+        });
+        okPins = saveJson(MAP_KEYS.pins, slim2);
+      } catch (e2) {}
+    }
+    return okPins;
+  }
+
+  function loadPinsCombined() {
+    return rehydratePinPhotos(loadJson(MAP_KEYS.pins, []));
   }
 
   function loadViewState() {
@@ -105,6 +196,8 @@
     stands: 'alabama_hunt_user_stands_v1',
     hiddenLocs: 'alabama_hunt_hidden_locations_v1'
   };
+  /** Pin photos stored separately so mobile localStorage quota cannot wipe the pin list */
+  var PIN_PHOTOS_KEY = 'alabama_hunt_pin_photos_v1';
 
   function emptyMapState() {
     return {
@@ -135,7 +228,7 @@
 
   function collectMapState() {
     var state = {
-      pins: loadJson(MAP_KEYS.pins, []),
+      pins: loadPinsCombined(),
       hunts: loadJson(MAP_KEYS.hunts, []),
       customAreas: loadJson(MAP_KEYS.customAreas, []),
       measuredPaths: loadJson(MAP_KEYS.measuredPaths, []),
@@ -209,18 +302,17 @@
   /**
    * Shared maps (clean pull): remote pin list is authority (respects deletes),
    * but photo arrays are unioned with local so concurrent shots are kept.
+   * Avoids deep-cloning multi‑MB base64 photo payloads (crashes mobile).
    */
   function applyRemoteSharedWithPhotoMerge(localState, remoteState) {
-    remoteState = remoteState && typeof remoteState === 'object'
-      ? JSON.parse(JSON.stringify(remoteState))
-      : emptyMapState();
+    if (!remoteState || typeof remoteState !== 'object') remoteState = emptyMapState();
     localState = localState && typeof localState === 'object' ? localState : emptyMapState();
     var lById = {};
     (Array.isArray(localState.pins) ? localState.pins : []).forEach(function (p) {
       if (p && p.id != null) lById[String(p.id)] = p;
     });
     var remotePins = Array.isArray(remoteState.pins) ? remoteState.pins : [];
-    remoteState.pins = remotePins.map(function (rp) {
+    var mergedPins = remotePins.map(function (rp) {
       if (!rp || rp.id == null) return rp;
       var lp = lById[String(rp.id)];
       if (!lp) return rp;
@@ -228,18 +320,40 @@
       out.photos = mergePinPhotoLists(lp.photos || lp.notePhotos, rp.photos || rp.notePhotos);
       return out;
     });
-    return remoteState;
+    // Shallow copy remote state fields without cloning photo bytes twice
+    var outState = {
+      pins: mergedPins,
+      hunts: Array.isArray(remoteState.hunts) ? remoteState.hunts : [],
+      customAreas: Array.isArray(remoteState.customAreas) ? remoteState.customAreas : [],
+      measuredPaths: Array.isArray(remoteState.measuredPaths) ? remoteState.measuredPaths : [],
+      stands: remoteState.stands && typeof remoteState.stands === 'object' ? remoteState.stands : {},
+      hiddenLocs: Array.isArray(remoteState.hiddenLocs) ? remoteState.hiddenLocs : [],
+      meta: remoteState.meta || {}
+    };
+    return outState;
   }
 
-  function applyMapState(state) {
+  function applyMapState(state, opts) {
+    opts = opts || {};
     if (!state || typeof state !== 'object') state = {};
-    saveJson(MAP_KEYS.pins, Array.isArray(state.pins) ? state.pins : []);
+    var pinsIn = Array.isArray(state.pins) ? state.pins : [];
+    // Never blank out an existing pin list with an empty apply unless forced
+    if (!pinsIn.length && !opts.allowEmptyPins) {
+      var had = loadJson(MAP_KEYS.pins, []);
+      if (Array.isArray(had) && had.length) {
+        console.warn('applyMapState: keeping existing pins (refused empty overwrite)');
+        pinsIn = rehydratePinPhotos(had);
+      }
+    }
+    savePinsSplit(pinsIn, { allowEmpty: !!opts.allowEmptyPins, prunePhotos: !!opts.prunePhotos });
     saveJson(MAP_KEYS.hunts, Array.isArray(state.hunts) ? state.hunts : []);
     saveJson(MAP_KEYS.customAreas, Array.isArray(state.customAreas) ? state.customAreas : []);
     saveJson(MAP_KEYS.measuredPaths, Array.isArray(state.measuredPaths) ? state.measuredPaths : []);
     saveJson(MAP_KEYS.stands, state.stands && typeof state.stands === 'object' ? state.stands : {});
     saveJson(MAP_KEYS.hiddenLocs, Array.isArray(state.hiddenLocs) ? state.hiddenLocs : []);
-    localRevision = (state.meta && state.meta.revision) || 0;
+    if (state.meta && state.meta.revision != null) {
+      localRevision = state.meta.revision || 0;
+    }
   }
 
   function cacheSlotKey() {
@@ -256,10 +370,10 @@
   function applyLiveKeysFromCurrentSlot() {
     var cached = readLocalCache(cacheSlotKey());
     if (cached && cached.state) {
-      applyMapState(cached.state);
+      applyMapState(cached.state, { allowEmptyPins: true, prunePhotos: false });
       localRevision = (cached.state.meta && cached.state.meta.revision) || 0;
     } else {
-      applyMapState(emptyMapState());
+      applyMapState(emptyMapState(), { allowEmptyPins: true, prunePhotos: true });
       localRevision = 0;
       // Seed an empty cache entry so later collect/push never re-imports another map
       try { writeLocalCache(emptyMapState()); } catch (eW) {}
@@ -357,14 +471,31 @@
           .maybeSingle();
         if (rErr) throw rErr;
         var remoteRev = (cur && cur.map_revision) || 0;
+        var remoteState = (cur && cur.map_state) || {};
+        var remotePinCount = (remoteState.pins && remoteState.pins.length) || 0;
+        var localPinCount = (state.pins && state.pins.length) || 0;
         try {
-          state = mergeSharedPinPhotos(state, (cur && cur.map_state) || {});
-          // Write merged pins back to live keys so UI has everyone's photos
+          state = mergeSharedPinPhotos(state, remoteState);
+          // Write merged pins back (split photos for mobile quota)
           if (state && Array.isArray(state.pins)) {
-            saveJson(MAP_KEYS.pins, state.pins);
+            savePinsSplit(state.pins, { allowEmpty: false, prunePhotos: false });
           }
         } catch (eMg) {
           console.warn('shared pin photo merge on push', eMg);
+        }
+        localPinCount = (state.pins && state.pins.length) || 0;
+        // CRITICAL: never push an empty pin list over a shared map that still has pins
+        if (localPinCount === 0 && remotePinCount > 0) {
+          console.warn('Aborting shared push that would wipe remote pins');
+          try {
+            // Restore remote pins locally so UI recovers
+            applyMapState(remoteState, { allowEmptyPins: false });
+            refreshMapFromLocalState();
+          } catch (eR) {}
+          dirty = false;
+          try { localStorage.removeItem(DIRTY_KEY); } catch (eD) {}
+          updateSyncBadge('ok');
+          return;
         }
         var nextRev = remoteRev + 1;
         state.meta.revision = nextRev;
@@ -443,8 +574,16 @@
           if (!dErr && dirtyRemote) {
             lastPullAt = Date.now();
             var localDirty = collectMapState();
-            var mergedDirty = mergeSharedPinPhotos(localDirty, dirtyRemote.map_state || {});
-            applyMapState(mergedDirty);
+            var remoteDirtyState = dirtyRemote.map_state || {};
+            // If local pins empty but remote has pins, prefer remote structure + photos
+            var mergedDirty;
+            if ((!localDirty.pins || !localDirty.pins.length) &&
+                remoteDirtyState.pins && remoteDirtyState.pins.length) {
+              mergedDirty = applyRemoteSharedWithPhotoMerge(localDirty, remoteDirtyState);
+            } else {
+              mergedDirty = mergeSharedPinPhotos(localDirty, remoteDirtyState);
+            }
+            applyMapState(mergedDirty, { allowEmptyPins: false });
             writeLocalCache(mergedDirty);
             refreshMapFromLocalState();
             if (dirtyRemote.name) viewState.sharedMapName = dirtyRemote.name;
@@ -502,7 +641,13 @@
         rev = um.map_revision || 0;
       }
       lastPullAt = Date.now();
-      if (rev && rev === localRevision && !force) return;
+      var localPinsNow = loadJson(MAP_KEYS.pins, []);
+      var localPinCount = Array.isArray(localPinsNow) ? localPinsNow.length : 0;
+      var remotePinCount = (state && Array.isArray(state.pins)) ? state.pins.length : 0;
+      // Same revision but local pins missing (quota/corrupt) → still re-apply remote
+      if (rev && rev === localRevision && !force) {
+        if (!(localPinCount === 0 && remotePinCount > 0)) return;
+      }
 
       // If remote is empty but local still has data (and not dirty), seed cloud only when
       // the data belongs to THIS map's cache slot — never import leftovers from another map.
@@ -519,7 +664,7 @@
       }
       if (remoteEmpty && localHas && !rev && !slotOwnsData) {
         // Live keys still hold another map's pins — wipe them for this empty map
-        applyMapState(state || emptyMapState());
+        applyMapState(state || emptyMapState(), { allowEmptyPins: true, prunePhotos: true });
         localRevision = 0;
         writeLocalCache(emptyMapState());
         refreshMapFromLocalState();
@@ -527,8 +672,18 @@
         return;
       }
 
+      // Never apply a truly empty pin set over existing local pins when remote also
+      // reports empty but revision is non-zero (likely truncated/corrupt payload).
+      if (remotePinCount === 0 && localPinCount > 0 && rev > 0) {
+        console.warn('Remote pins empty at rev', rev, '— keeping local pins');
+        return;
+      }
+
       // Full replace from cloud (includes deletions). Dirty local already bailed out above.
-      applyMapState(state);
+      applyMapState(state, {
+        allowEmptyPins: remotePinCount === 0 && localPinCount === 0,
+        prunePhotos: true
+      });
       localRevision = rev;
       writeLocalCache(state);
       refreshMapFromLocalState();
@@ -592,7 +747,14 @@
               var rev = row.map_revision || 0;
               if (rev && rev === localRevision) return;
               var state = row.map_state || {};
-              applyMapState(state);
+              var rPins = (state.pins && state.pins.length) || 0;
+              var lPins = (loadJson(MAP_KEYS.pins, []) || []).length;
+              // Never apply an empty pin wipe from realtime if we still have pins
+              if (rPins === 0 && lPins > 0) return;
+              try {
+                state = applyRemoteSharedWithPhotoMerge(collectMapState(), state);
+              } catch (eM) {}
+              applyMapState(state, { allowEmptyPins: rPins === 0 && lPins === 0, prunePhotos: false });
               localRevision = rev;
               writeLocalCache(state);
               lastPullAt = Date.now();
@@ -1029,7 +1191,7 @@
     // New shared maps start empty — content only arrives when users add it (or share later)
     dirty = false;
     try { localStorage.removeItem(DIRTY_KEY); } catch (eD) {}
-    applyMapState(emptyMapState());
+    applyMapState(emptyMapState(), { allowEmptyPins: true, prunePhotos: true });
     localRevision = 0;
     writeLocalCache(emptyMapState());
     refreshMapFromLocalState();
