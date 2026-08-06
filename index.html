@@ -10413,7 +10413,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.34 Beta">V7.0.34 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.35 Beta">V7.0.35 Beta</span>
     </div>
     <a class="brand-sister-link" id="brand-sister-link" href="https://www.regslayer.com" title="Open REG SLAYER (same account)">
       <span class="brand-sister-label">Reg Slayer</span>
@@ -11795,10 +11795,50 @@
           <section class="settings-section">
             <div class="settings-section-head">
               <h4 class="settings-section-title">Offline maps</h4>
-              <button type="button" class="settings-info-btn" data-title="Offline maps" data-info="Map packs, custom draw areas, pins, stands, and public lands stay on this device. This is not a native app install. Clearing tiles only removes cached map images — not your pins, stands, areas, or hunt logs." aria-label="About Offline maps" onclick="return showSettingsInfo(this,event)">i</button>
+              <button type="button" class="settings-info-btn" data-title="Offline maps" data-info="Download map tiles to this device so you can pan/zoom without signal. Pins and shapes already stay on-device. Choose a pack size, then download around GPS, map center, or a map pin (Offline map on the pin menu)." aria-label="About Offline maps" onclick="return showSettingsInfo(this,event)">i</button>
             </div>
             <p class="settings-status" id="offline-packs-summary">Offline status…</p>
-            <button type="button" class="settings-subbtn" onclick="window.refreshOfflinePacksSummary && window.refreshOfflinePacksSummary()">Refresh offline status</button>
+
+            <p style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;margin:10px 0 6px;">Pack size</p>
+            <div class="settings-row" style="flex-direction:column;align-items:stretch;gap:8px;">
+              <label class="settings-row-main" style="align-items:flex-start;gap:8px;">
+                <input type="radio" name="set-offline-tier" id="set-offline-tier-standard" value="standard" checked onchange="onOfflineTierChange()">
+                <span class="sr-text"><strong>Standard</strong> — hunt property / stands<br>
+                  <span style="font-weight:600;color:var(--muted);font-size:11px;">5 mi · zoom 10–15 · ~15–40 MB topo · ~40–80 MB sat</span></span>
+              </label>
+              <label class="settings-row-main" style="align-items:flex-start;gap:8px;">
+                <input type="radio" name="set-offline-tier" id="set-offline-tier-extended" value="extended" onchange="onOfflineTierChange()">
+                <span class="sr-text"><strong>Extended</strong> — lease / club / multi-stand<br>
+                  <span style="font-weight:600;color:var(--muted);font-size:11px;">10 mi · zoom 10–15 · ~25–60 MB topo · ~50–120 MB sat</span></span>
+              </label>
+              <label class="settings-row-main" style="align-items:flex-start;gap:8px;">
+                <input type="radio" name="set-offline-tier" id="set-offline-tier-overview" value="overview" onchange="onOfflineTierChange()">
+                <span class="sr-text"><strong>Statewide overview</strong> — Alabama at a glance<br>
+                  <span style="font-weight:600;color:var(--muted);font-size:11px;">Whole state · zoom 10–12 · topo only · ~80–200 MB · not stand-level</span></span>
+              </label>
+            </div>
+            <p class="settings-status" id="offline-tier-estimate" style="margin-top:6px;">Select a pack to see estimated size.</p>
+
+            <div class="settings-row" id="offline-basemap-row" style="margin-top:8px;align-items:center;gap:8px;flex-wrap:wrap;">
+              <label class="settings-row-main" for="set-offline-basemap" style="flex:1 1 160px;">
+                <span class="sr-text">Basemap for download</span>
+                <select id="set-offline-basemap" onchange="onOfflineTierChange()" style="margin-top:4px;width:100%;max-width:220px;background:var(--panel);color:var(--ink);border:1px solid var(--border);border-radius:6px;padding:6px 8px;">
+                  <option value="topo">USGS Topography</option>
+                  <option value="satellite">Satellite</option>
+                  <option value="street">Roads &amp; waterways</option>
+                  <option value="lidar">LiDAR hillshade</option>
+                </select>
+              </label>
+              <button type="button" class="settings-info-btn" data-title="Basemap for download" data-info="Tiles saved match this layer. Statewide overview is topo-only (satellite would be multi‑GB). Online basemap choice is separate." aria-label="About basemap download" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+
+            <div class="settings-action-row" style="margin-top:10px;flex-wrap:wrap;gap:6px;">
+              <button type="button" class="settings-subbtn" onclick="window.downloadOfflinePackAroundGps && window.downloadOfflinePackAroundGps()">Download around GPS</button>
+              <button type="button" class="settings-subbtn" onclick="window.downloadOfflinePackAroundMapCenter && window.downloadOfflinePackAroundMapCenter()">Download map center</button>
+            </div>
+            <p style="font-size:11px;color:var(--muted);margin:6px 0 0;line-height:1.4;">Or open a map pin → <strong>Offline map</strong> to pack that spot. Use Wi‑Fi for Extended / Statewide.</p>
+
+            <button type="button" class="settings-subbtn" style="margin-top:10px;" onclick="window.refreshOfflinePacksSummary && window.refreshOfflinePacksSummary()">Refresh offline status</button>
             <div class="settings-action-row" style="margin-top:6px;">
               <button type="button" class="settings-subbtn" style="border-color:#8a3030;color:#f0a0a0;" onclick="window.clearOfflineMapPacks && window.clearOfflineMapPacks()">Clear offline map tiles</button>
               <button type="button" class="settings-info-btn" data-title="Clear offline map tiles" data-info="Deletes cached map images only. Pins, stands, custom areas, and hunt logs are not deleted." aria-label="About clear offline tiles" onclick="return showSettingsInfo(this,event)">i</button>
@@ -11811,7 +11851,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.34-beta';
+    const APP_VERSION = '7.0.35-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -24370,13 +24410,97 @@
     }
     window.showOfflineMapConfirm = showOfflineMapConfirm;
 
+    function getOfflineTierIdFromUi() {
+      try {
+        if (window.RegSlayerOffline && typeof RegSlayerOffline.getSelectedTierId === 'function') {
+          return RegSlayerOffline.getSelectedTierId();
+        }
+      } catch (e) {}
+      var el = document.querySelector('input[name="set-offline-tier"]:checked');
+      return (el && el.value) || 'standard';
+    }
+
+    function getOfflineBasemapFromUi() {
+      var sel = document.getElementById('set-offline-basemap');
+      if (sel && sel.value) return sel.value;
+      if (typeof activeBasemapKey === 'string' && activeBasemapKey) return activeBasemapKey;
+      return 'topo';
+    }
+
+    function syncOfflineTierUiFromStorage() {
+      if (!window.RegSlayerOffline) return;
+      var tid = RegSlayerOffline.getSelectedTierId ? RegSlayerOffline.getSelectedTierId() : 'standard';
+      var radio = document.getElementById('set-offline-tier-' + tid);
+      if (radio) radio.checked = true;
+      var tier = RegSlayerOffline.getTier ? RegSlayerOffline.getTier(tid) : null;
+      var bmRow = document.getElementById('offline-basemap-row');
+      var bmSel = document.getElementById('set-offline-basemap');
+      if (bmSel && !bmSel._initBm) {
+        bmSel._initBm = true;
+        try {
+          if (typeof activeBasemapKey === 'string' && activeBasemapKey) bmSel.value = activeBasemapKey;
+        } catch (eB) {}
+      }
+      if (tier && !tier.allowSat && bmSel) {
+        if (bmSel.value === 'satellite' || bmSel.value === 'lidar') bmSel.value = 'topo';
+        try {
+          Array.prototype.forEach.call(bmSel.options, function(opt) {
+            if (opt.value === 'satellite' || opt.value === 'lidar') opt.disabled = true;
+            else opt.disabled = false;
+          });
+        } catch (eO) {}
+      } else if (bmSel) {
+        try {
+          Array.prototype.forEach.call(bmSel.options, function(opt) { opt.disabled = false; });
+        } catch (eO2) {}
+      }
+      updateOfflineTierEstimateLine();
+    }
+
+    function updateOfflineTierEstimateLine() {
+      var el = document.getElementById('offline-tier-estimate');
+      if (!el || !window.RegSlayerOffline || !RegSlayerOffline.estimatePack) return;
+      var tid = getOfflineTierIdFromUi();
+      var bm = getOfflineBasemapFromUi();
+      var lat = (typeof userLat === 'number' && !isNaN(userLat)) ? userLat : 32.6;
+      var lng = (typeof userLng === 'number' && !isNaN(userLng)) ? userLng : -86.8;
+      try {
+        if (map && map.getCenter) {
+          var c = map.getCenter();
+          if (c) { lat = c.lat; lng = c.lng; }
+        }
+      } catch (eC) {}
+      var est = RegSlayerOffline.estimatePack(lat, lng, bm, tid);
+      var tier = RegSlayerOffline.getTier(tid);
+      var where = (tier && tier.mode === 'alabama_bbox')
+        ? 'Alabama (statewide)'
+        : ((tier && tier.radiusMi) ? (tier.radiusMi + ' mi around map/GPS') : 'selected spot');
+      el.textContent =
+        (tier ? tier.name : tid) + ' · ' + bm + ' · ' + where +
+        ' · ~' + est.tileCount + ' tiles · ~' + est.approxMb + ' MB estimated';
+    }
+
+    function onOfflineTierChange() {
+      var el = document.querySelector('input[name="set-offline-tier"]:checked');
+      var tid = (el && el.value) || 'standard';
+      if (window.RegSlayerOffline && RegSlayerOffline.setSelectedTierId) {
+        RegSlayerOffline.setSelectedTierId(tid);
+      }
+      syncOfflineTierUiFromStorage();
+    }
+    window.onOfflineTierChange = onOfflineTierChange;
+
     /**
-     * Download basemap tiles for a 2-mile radius.
-     * Uses current basemap; works best on topo / street / lidar.
+     * Download basemap tiles using the selected product tier (Standard / Extended / Overview).
      */
     function saveOfflineMapAround(lat, lng, opts) {
       opts = opts || {};
-      if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) {
+      var tierId = opts.tierId || getOfflineTierIdFromUi();
+      var tier = (window.RegSlayerOffline && RegSlayerOffline.getTier)
+        ? RegSlayerOffline.getTier(tierId)
+        : { id: tierId, name: tierId, radiusMi: 5, mode: 'circle' };
+      var isOverview = tier.mode === 'alabama_bbox';
+      if (!isOverview && (lat == null || lng == null || isNaN(lat) || isNaN(lng))) {
         if (typeof showAppCopyToast === 'function') {
           showAppCopyToast('<span class="act">Offline map</span><br>No location to save offline.');
         }
@@ -24394,30 +24518,38 @@
         }
         return Promise.resolve(null);
       }
-      var basemap = (typeof activeBasemapKey === 'string' && activeBasemapKey) ? activeBasemapKey : 'topo';
-      var est = RegSlayerOffline.estimatePack(lat, lng, basemap);
-      var label = opts.label || 'Map spot';
+      var basemap = opts.basemap || getOfflineBasemapFromUi();
+      if (isOverview && (basemap === 'satellite' || basemap === 'lidar')) basemap = 'topo';
+      var est = RegSlayerOffline.estimatePack(lat || 32.6, lng || -86.8, basemap, tierId);
+      var label = opts.label || (isOverview ? 'Alabama overview' : 'Map spot');
+      var coverLine = isOverview
+        ? 'Coverage: <strong>Statewide Alabama</strong> (zoom ' + est.zMin + '–' + est.zMax + ')'
+        : ('Radius: <strong>' + escHtml(String(est.radiusMi || tier.radiusMi || 5)) + ' miles</strong> · zoom ' +
+          est.zMin + '–' + est.zMax);
       var detail =
-        '<strong style="color:var(--accent);">Around: ' + escHtml(label) + '</strong><br>' +
-        'Radius: <strong>2 miles</strong><br>' +
+        '<strong style="color:var(--accent);">Pack: ' + escHtml(tier.name || tierId) + '</strong><br>' +
+        'Around: <strong>' + escHtml(label) + '</strong><br>' +
+        coverLine + '<br>' +
         'Basemap: <strong>' + escHtml(basemap) + '</strong><br>' +
-        'About <strong>' + escHtml(String(est.tileCount)) + ' tiles</strong> (~' + escHtml(String(est.approxMb)) + ' MB)<br><br>' +
-        'Needs good signal while downloading. Online use is unchanged.';
+        'About <strong>' + escHtml(String(est.tileCount)) + ' tiles</strong> (~' + escHtml(String(est.approxMb)) + ' MB)<br>' +
+        '<span style="color:var(--muted);font-size:11px;">' + escHtml(tier.sizeHint || '') + '</span><br><br>' +
+        'Needs good signal (Wi‑Fi recommended for Extended / Statewide). Online use is unchanged.';
 
       return showOfflineMapConfirm(detail).then(function(ok) {
         if (!ok) return null;
 
         if (typeof showAppCopyToast === 'function') {
-          showAppCopyToast('<span class="act">Downloading offline map…</span><br>2 mi · ' + escHtml(label));
+          showAppCopyToast('<span class="act">Downloading offline map…</span><br>' +
+            escHtml(tier.name || '') + ' · ' + escHtml(label));
         }
         if (map) try { map.closePopup(); } catch (eC) {}
 
         return RegSlayerOffline.saveOfflineAround(lat, lng, {
           label: label,
           basemap: basemap,
+          tierId: tierId,
           source: opts.source || 'pin',
           sourceId: opts.sourceId || null,
-          radiusMi: 2,
           onProgress: function(p) {
             if (window.RegSlayerOffline) {
               RegSlayerOffline.updateOfflineBanner(
@@ -24427,7 +24559,7 @@
           }
         }).then(function(pack) {
           var msg = pack && pack.status === 'ready'
-            ? ('Offline map ready · ' + (pack.ok || 0) + ' tiles · 2 mi around ' + label)
+            ? ('Offline map ready · ' + (pack.ok || 0) + ' tiles · ' + (pack.tierName || tier.name) + ' · ' + label)
             : ('Offline map finished with issues · ok ' + (pack && pack.ok) + ' / fail ' + (pack && pack.fail));
           if (typeof showAppCopyToast === 'function') {
             showAppCopyToast('<span class="act">Offline map</span><br>' + escHtml(msg));
@@ -24446,6 +24578,52 @@
       });
     }
     window.saveOfflineMapAround = saveOfflineMapAround;
+
+    window.downloadOfflinePackAroundGps = function() {
+      var lat = (typeof userLat === 'number' && !isNaN(userLat)) ? userLat : null;
+      var lng = (typeof userLng === 'number' && !isNaN(userLng)) ? userLng : null;
+      if (lat == null || lng == null) {
+        if (typeof showAppCopyToast === 'function') {
+          showAppCopyToast('<span class="act">Offline map</span><br>Turn on location or wait for GPS fix first.');
+        }
+        return;
+      }
+      return saveOfflineMapAround(lat, lng, {
+        label: 'My GPS',
+        source: 'settings-gps',
+        basemap: getOfflineBasemapFromUi(),
+        tierId: getOfflineTierIdFromUi()
+      });
+    };
+
+    window.downloadOfflinePackAroundMapCenter = function() {
+      var tierId = getOfflineTierIdFromUi();
+      var tier = (window.RegSlayerOffline && RegSlayerOffline.getTier)
+        ? RegSlayerOffline.getTier(tierId)
+        : null;
+      if (tier && tier.mode === 'alabama_bbox') {
+        return saveOfflineMapAround(32.6, -86.8, {
+          label: 'Alabama overview',
+          source: 'settings-overview',
+          basemap: 'topo',
+          tierId: 'overview'
+        });
+      }
+      var lat = 32.6, lng = -86.8;
+      try {
+        if (map && map.getCenter) {
+          var c = map.getCenter();
+          if (c) { lat = c.lat; lng = c.lng; }
+        }
+      } catch (eM) {}
+      return saveOfflineMapAround(lat, lng, {
+        label: 'Map center',
+        source: 'settings-center',
+        basemap: getOfflineBasemapFromUi(),
+        tierId: tierId
+      });
+    };
+
     window.saveOfflineMapForCustomArea = function(areaId) {
       var areas = typeof loadCustomAreasFromStorage === 'function' ? loadCustomAreasFromStorage() : [];
       var area = null;
@@ -35108,12 +35286,22 @@ function togglePinIconPicker() {
       try { pins = JSON.parse(localStorage.getItem('alabama_hunt_custom_pins') || '[]'); } catch (eP) {}
       var ready = packs.filter(function(p) { return p.status === 'ready'; }).length;
       var down = packs.filter(function(p) { return p.status === 'downloading'; }).length;
+      var tierBits = packs.filter(function(p) { return p.status === 'ready' && p.tierName; })
+        .map(function(p) { return p.tierName; });
+      var tierNote = '';
+      if (tierBits.length) {
+        var uniq = [];
+        tierBits.forEach(function(t) { if (uniq.indexOf(t) < 0) uniq.push(t); });
+        tierNote = ' · Tiers: ' + uniq.join(', ');
+      }
       el.textContent =
         'Connection: ' + (navigator.onLine ? 'online' : 'OFFLINE') +
         ' · Offline map packs: ' + ready + ' ready' + (down ? (', ' + down + ' downloading') : '') +
+        tierNote +
         ' · Custom draw areas on device: ' + areas.length +
         ' · Pins on device: ' + pins.length +
         ' · Public lands cache + shape data stay in browser storage (not cookies).';
+      try { updateOfflineTierEstimateLine(); } catch (eE) {}
     };
     window.clearOfflineMapPacks = function() {
       if (!confirm('Clear all downloaded offline map tiles from this browser?\n\nPins, stands, custom areas, and hunt history are NOT deleted.')) return;
@@ -35133,6 +35321,7 @@ function togglePinIconPicker() {
       window.openSettingsModal = function(tab) {
         _openSettingsModalOrig(tab);
         setTimeout(function() {
+          try { syncOfflineTierUiFromStorage(); } catch (eTier) {}
           window.refreshOfflinePacksSummary();
           try {
             if (window.RegSlayerCloud && window.RegSlayerCloud.getViewState) {

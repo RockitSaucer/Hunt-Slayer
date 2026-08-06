@@ -7,13 +7,59 @@
   'use strict';
 
   var OFFLINE_PACKS_KEY = 'reg_slayer_offline_packs_v1';
+  var OFFLINE_TIER_KEY = 'reg_slayer_offline_tier_v1';
   var WEATHER_DISK_KEY = 'reg_slayer_weather_disk_v1';
   var WATER_DISK_KEY = 'reg_slayer_water_disk_v1';
-  var RADIUS_MI = 2;
+  var RADIUS_MI = 2; // legacy default (Standard tier supersedes for new downloads)
   var ZOOM_MIN = 10;
   var ZOOM_MAX = 15;
   var WEATHER_DISK_TTL_MS = 7 * 24 * 60 * 60 * 1000; // keep last weather up to 7 days
   var WATER_DISK_TTL_MS = 24 * 60 * 60 * 1000;
+
+  /**
+   * Product tiers for offline map packs (concrete sizes for Alabama hunting).
+   * Sizes are estimates; actual MB varies by basemap density and server tiles.
+   */
+  var OFFLINE_TIERS = {
+    standard: {
+      id: 'standard',
+      name: 'Standard',
+      tagline: 'Hunt property / stands',
+      mode: 'circle',
+      radiusMi: 5,
+      zMin: 10,
+      zMax: 15,
+      allowSat: true,
+      sizeHint: '~15–40 MB topo · ~40–80 MB sat',
+      blurb: '5 miles around a spot, zooms 10–15. Everyday offline pack for a farm, stand cluster, or small lease.'
+    },
+    extended: {
+      id: 'extended',
+      name: 'Extended',
+      tagline: 'Lease / club / multi-stand',
+      mode: 'circle',
+      radiusMi: 10,
+      zMin: 10,
+      zMax: 15,
+      allowSat: true,
+      sizeHint: '~25–60 MB topo · ~50–120 MB sat',
+      blurb: '10 miles around a spot, zooms 10–15. Better for large leases and driving between stands offline.'
+    },
+    overview: {
+      id: 'overview',
+      name: 'Statewide overview',
+      tagline: 'Alabama at a glance',
+      mode: 'alabama_bbox',
+      radiusMi: null,
+      zMin: 10,
+      zMax: 12,
+      allowSat: false,
+      sizeHint: '~80–200 MB (topo only)',
+      blurb: 'Coarse statewide Alabama coverage for navigation. Not stand-level detail — add Standard packs on hunt areas.'
+    }
+  };
+  // Alabama rough bounds for overview packs
+  var AL_BOUNDS = { south: 30.15, north: 35.02, west: -88.52, east: -84.85 };
 
   var TILE_TEMPLATES = {
     topo: {
@@ -94,19 +140,40 @@
    * Build tile URL list for a circle of radiusMi around lat/lng.
    * For each zoom, use the bounding box of the circle (simple, reliable).
    */
-  function listTileUrls(lat, lng, radiusMi, basemapKey, zMin, zMax) {
+  function listTileUrls(lat, lng, radiusMi, basemapKey, zMin, zMax, listOpts) {
     basemapKey = basemapKey || 'topo';
     zMin = zMin != null ? zMin : ZOOM_MIN;
     zMax = zMax != null ? zMax : ZOOM_MAX;
+    listOpts = listOpts || {};
     var tmpl = TILE_TEMPLATES[basemapKey] || TILE_TEMPLATES.topo;
+    // Street template lists 2 CDN hosts — only use first pattern to avoid double-download
+    var patterns = tmpl.urls && tmpl.urls.length
+      ? (basemapKey === 'street' ? [tmpl.urls[0]] : tmpl.urls.slice(0, 1))
+      : [];
     var dLat = milesToDegLat(radiusMi);
     var dLng = milesToDegLng(radiusMi, lat);
     var south = lat - dLat;
     var north = lat + dLat;
     var west = lng - dLng;
     var east = lng + dLng;
+    return listTileUrlsForBbox(south, north, west, east, basemapKey, zMin, zMax, listOpts, patterns);
+  }
+
+  function listTileUrlsForBbox(south, north, west, east, basemapKey, zMin, zMax, listOpts, patternsOpt) {
+    basemapKey = basemapKey || 'topo';
+    zMin = zMin != null ? zMin : ZOOM_MIN;
+    zMax = zMax != null ? zMax : ZOOM_MAX;
+    listOpts = listOpts || {};
+    var tmpl = TILE_TEMPLATES[basemapKey] || TILE_TEMPLATES.topo;
+    var patterns = patternsOpt;
+    if (!patterns || !patterns.length) {
+      patterns = tmpl.urls && tmpl.urls.length
+        ? (basemapKey === 'street' ? [tmpl.urls[0]] : tmpl.urls.slice(0, 1))
+        : [];
+    }
     var urls = [];
     var seen = {};
+    var maxSide = listOpts.noCap ? 500 : (listOpts.maxSide != null ? listOpts.maxSide : 48);
 
     for (var z = zMin; z <= zMax; z++) {
       var nw = lonLatToTile(west, north, z);
@@ -115,8 +182,6 @@
       var x1 = Math.max(nw.x, se.x);
       var y0 = Math.min(nw.y, se.y);
       var y1 = Math.max(nw.y, se.y);
-      // safety cap per zoom
-      var maxSide = 48;
       if (x1 - x0 > maxSide) {
         var mx = Math.floor((x0 + x1) / 2);
         x0 = mx - Math.floor(maxSide / 2);
@@ -129,8 +194,7 @@
       }
       for (var x = x0; x <= x1; x++) {
         for (var y = y0; y <= y1; y++) {
-          tmpl.urls.forEach(function (pattern) {
-            // USGS/Esri: {z}/{y}/{x}  CARTO: {z}/{x}/{y}
+          patterns.forEach(function (pattern) {
             var u = pattern
               .replace('{z}', String(z))
               .replace('{x}', String(x))
@@ -146,11 +210,72 @@
     return urls;
   }
 
-  function estimatePack(lat, lng, basemapKey) {
-    var urls = listTileUrls(lat, lng, RADIUS_MI, basemapKey, ZOOM_MIN, ZOOM_MAX);
-    // rough ~18 KB avg tile
-    var mb = (urls.length * 18) / 1024;
-    return { tileCount: urls.length, approxMb: Math.max(0.1, Math.round(mb * 10) / 10) };
+  function listAlabamaOverviewUrls(basemapKey, zMin, zMax) {
+    basemapKey = basemapKey === 'satellite' ? 'topo' : (basemapKey || 'topo');
+    zMin = zMin != null ? zMin : 10;
+    zMax = zMax != null ? zMax : 12;
+    return listTileUrlsForBbox(
+      AL_BOUNDS.south,
+      AL_BOUNDS.north,
+      AL_BOUNDS.west,
+      AL_BOUNDS.east,
+      basemapKey,
+      zMin,
+      zMax,
+      { noCap: true }
+    );
+  }
+
+  function getTier(tierId) {
+    return OFFLINE_TIERS[tierId] || OFFLINE_TIERS.standard;
+  }
+
+  function getSelectedTierId() {
+    try {
+      var t = localStorage.getItem(OFFLINE_TIER_KEY);
+      if (t && OFFLINE_TIERS[t]) return t;
+    } catch (e) {}
+    return 'standard';
+  }
+
+  function setSelectedTierId(tierId) {
+    if (!OFFLINE_TIERS[tierId]) tierId = 'standard';
+    try { localStorage.setItem(OFFLINE_TIER_KEY, tierId); } catch (e) {}
+    return tierId;
+  }
+
+  function kbPerTile(basemapKey) {
+    if (basemapKey === 'satellite') return 35;
+    if (basemapKey === 'lidar') return 22;
+    return 18;
+  }
+
+  function estimatePack(lat, lng, basemapKey, tierId) {
+    var tier = getTier(tierId || getSelectedTierId());
+    basemapKey = basemapKey || getActiveBasemapKey();
+    if (tier.mode === 'alabama_bbox' || !tier.allowSat) {
+      if (basemapKey === 'satellite') basemapKey = 'topo';
+    }
+    var urls;
+    if (tier.mode === 'alabama_bbox') {
+      urls = listAlabamaOverviewUrls(basemapKey, tier.zMin, tier.zMax);
+    } else {
+      var r = tier.radiusMi != null ? tier.radiusMi : RADIUS_MI;
+      urls = listTileUrls(lat, lng, r, basemapKey, tier.zMin, tier.zMax);
+    }
+    var mb = (urls.length * kbPerTile(basemapKey)) / 1024;
+    return {
+      tileCount: urls.length,
+      approxMb: Math.max(0.1, Math.round(mb * 10) / 10),
+      tierId: tier.id,
+      tierName: tier.name,
+      radiusMi: tier.radiusMi,
+      zMin: tier.zMin,
+      zMax: tier.zMax,
+      basemap: basemapKey,
+      sizeHint: tier.sizeHint,
+      mode: tier.mode
+    };
   }
 
   function getPacks() {
@@ -172,22 +297,34 @@
   }
 
   /**
-   * Download tiles for 2 mi around a point. Progress via onProgress({ok,fail,total,pct}).
+   * Download tiles for a product tier around a point (or statewide overview).
+   * Progress via onProgress({ok,fail,total,pct}).
    */
   function saveOfflineAround(lat, lng, opts) {
     opts = opts || {};
+    var tier = getTier(opts.tierId || getSelectedTierId());
     var basemap = opts.basemap || getActiveBasemapKey();
-    if (basemap === 'satellite') basemap = 'satellite';
+    if (tier.mode === 'alabama_bbox' || !tier.allowSat) {
+      if (basemap === 'satellite' || basemap === 'lidar') basemap = 'topo';
+    }
     var label = opts.label || ('Offline ' + Number(lat).toFixed(4) + ', ' + Number(lng).toFixed(4));
-    var source = opts.source || 'pin'; // pin | custom-area | stand
+    if (tier.mode === 'alabama_bbox') {
+      label = opts.label || 'Alabama statewide overview';
+      lat = lat != null && !isNaN(lat) ? lat : (AL_BOUNDS.south + AL_BOUNDS.north) / 2;
+      lng = lng != null && !isNaN(lng) ? lng : (AL_BOUNDS.west + AL_BOUNDS.east) / 2;
+    }
+    var source = opts.source || 'pin'; // pin | custom-area | stand | settings
     var sourceId = opts.sourceId || null;
-    var radiusMi = opts.radiusMi != null ? opts.radiusMi : RADIUS_MI;
+    var radiusMi = opts.radiusMi != null ? opts.radiusMi : (tier.radiusMi != null ? tier.radiusMi : RADIUS_MI);
 
     if (!navigator.onLine) {
       return Promise.reject(new Error('Need a network connection to download map tiles.'));
     }
 
-    var urls = listTileUrls(lat, lng, radiusMi, basemap, ZOOM_MIN, ZOOM_MAX);
+    var urls =
+      tier.mode === 'alabama_bbox'
+        ? listAlabamaOverviewUrls(basemap, tier.zMin, tier.zMax)
+        : listTileUrls(lat, lng, radiusMi, basemap, tier.zMin, tier.zMax);
     var packId =
       'pack_' +
       Date.now().toString(36) +
@@ -200,6 +337,10 @@
       lng: lng,
       radiusMi: radiusMi,
       basemap: basemap,
+      tierId: tier.id,
+      tierName: tier.name,
+      zMin: tier.zMin,
+      zMax: tier.zMax,
       label: label,
       source: source,
       sourceId: sourceId,
@@ -473,7 +614,7 @@
 
     return navigator.serviceWorker
       // Cache-bust query forces mobile browsers to re-check SW script on each deploy bump
-      .register('./sw.js?v=shell94', { scope: './' })
+      .register('./sw.js?v=shell95', { scope: './' })
       .then(function (reg) {
         console.info('[Offline] SW registered', reg.scope);
         // Force update check every launch (critical for iOS/Android home-screen / PWA)
@@ -529,7 +670,12 @@
     RADIUS_MI: RADIUS_MI,
     ZOOM_MIN: ZOOM_MIN,
     ZOOM_MAX: ZOOM_MAX,
+    OFFLINE_TIERS: OFFLINE_TIERS,
+    getTier: getTier,
+    getSelectedTierId: getSelectedTierId,
+    setSelectedTierId: setSelectedTierId,
     listTileUrls: listTileUrls,
+    listAlabamaOverviewUrls: listAlabamaOverviewUrls,
     estimatePack: estimatePack,
     saveOfflineAround: saveOfflineAround,
     getPacks: getPacks,

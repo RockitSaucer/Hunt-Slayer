@@ -1,0 +1,10 @@
+V7.0.35 Beta (shell v95) — Offline pack product tiers
+
+Concrete offline download options (Settings ? Display ? Offline maps):
+
+1) Standard — 5 mi · z10–15 · ~15–40 MB topo / ~40–80 MB sat
+2) Extended — 10 mi · z10–15 · ~25–60 MB topo / ~50–120 MB sat
+3) Statewide overview — Alabama · z10–12 · topo only · ~80–200 MB
+
+Download around GPS, map center, or map pin ? Offline map.
+See docs/OFFLINE_PACK_TIERS.md for kit recommendations.
