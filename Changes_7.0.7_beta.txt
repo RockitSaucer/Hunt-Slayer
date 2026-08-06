@@ -1,0 +1,5 @@
+﻿V7.0.7 Beta — single share popup (in-place options)
+==================================================
+- Share flow reuses one modal: Share options → Select Map (no stacking)
+- Back returns to Share options in the same popup
+- SHELL_CACHE = reg-slayer-shell-v67

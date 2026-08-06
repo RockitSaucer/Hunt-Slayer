@@ -1826,57 +1826,25 @@
   }
 
   /**
-   * @param {object} [opts]
-   * @param {boolean} [opts.stack] — keep existing modals; open this one on top (higher z-index)
-   * @param {string} [opts.id] — element id (default rs-simple-modal; stacked get unique ids)
+   * Wire action buttons into a modal actions container.
+   * Handlers run before close so form fields still exist.
    */
-  function showSimpleModal(title, bodyHtml, buttons, opts) {
-    opts = opts || {};
-    var stack = !!opts.stack;
-    if (!stack) {
-      try {
-        var existing = $('rs-simple-modal');
-        if (existing) existing.remove();
-        // Also clear any leftover stacked layers when opening a fresh root modal
-        document.querySelectorAll('.rs-simple-modal.rs-simple-modal-stack').forEach(function (el) {
-          try { el.remove(); } catch (eR) {}
-        });
-      } catch (e0) {}
-    }
-    var wrap = document.createElement('div');
-    wrap.id = opts.id || (stack ? ('rs-simple-modal-stack-' + Date.now()) : 'rs-simple-modal');
-    wrap.className = 'rs-simple-modal active' + (stack ? ' rs-simple-modal-stack' : '');
-    wrap.setAttribute('data-rs-stack', stack ? '1' : '0');
-    wrap.onclick = function (e) {
-      if (e.target === wrap) wrap.remove();
-    };
-    var card = document.createElement('div');
-    card.className = 'rs-simple-card' +
-      (opts.compact ? ' rs-compact-edit' : '') +
-      (opts.cardClass ? (' ' + opts.cardClass) : '');
-    card.onclick = function (e) { e.stopPropagation(); };
-    var actId = 'rs-simple-actions-' + Math.floor(Math.random() * 1e9);
-    card.innerHTML = '<h3>' + esc(title) + '</h3><div class="rs-simple-body">' + bodyHtml +
-      '</div><div class="rs-simple-actions" id="' + actId + '"></div>';
-    wrap.appendChild(card);
-    document.body.appendChild(wrap);
-    var act = card.querySelector('#' + actId) || card.querySelector('.rs-simple-actions');
+  function wireSimpleModalActions(wrap, act, buttons) {
+    if (!act) return;
+    act.innerHTML = '';
     (buttons || []).forEach(function (b) {
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'settings-subbtn' + (b.primary ? ' rs-btn-primary' : '');
       btn.textContent = b.label;
       btn.onclick = function () {
-        // Run handler BEFORE removing modal so form fields still exist
-        // (Edit friend Save was wiping direction_icon_id by reading after remove).
         var err = null;
         if (b.onClick) {
           try {
             var ret = b.onClick();
-            // If Save returns a promise, wait then close
             if (ret && typeof ret.then === 'function') {
               ret.then(function () {
-                if (b.close !== false && wrap.parentNode) wrap.remove();
+                if (b.close !== false && wrap && wrap.parentNode) wrap.remove();
               }).catch(function (e) {
                 err = e;
                 alert((e && e.message) || String(e));
@@ -1889,11 +1857,103 @@
             return;
           }
         }
-        if (!err && b.close !== false) wrap.remove();
+        if (!err && b.close !== false && wrap && wrap.parentNode) wrap.remove();
       };
       act.appendChild(btn);
     });
+  }
+
+  /**
+   * Update an existing simple modal in place (same position — no stack, no recreate).
+   */
+  function updateSimpleModal(wrap, title, bodyHtml, buttons, opts) {
+    opts = opts || {};
+    if (!wrap) return null;
+    wrap.classList.add('active');
+    wrap.classList.remove('rs-simple-modal-stack');
+    wrap.setAttribute('data-rs-stack', '0');
+    var card = wrap.querySelector('.rs-simple-card');
+    if (!card) {
+      card = document.createElement('div');
+      card.className = 'rs-simple-card';
+      wrap.appendChild(card);
+    }
+    card.className = 'rs-simple-card' +
+      (opts.compact ? ' rs-compact-edit' : '') +
+      (opts.cardClass ? (' ' + opts.cardClass) : '');
+    card.onclick = function (e) { e.stopPropagation(); };
+    var h3 = card.querySelector('h3');
+    var body = card.querySelector('.rs-simple-body');
+    var act = card.querySelector('.rs-simple-actions');
+    if (!h3 || !body || !act) {
+      card.innerHTML = '<h3></h3><div class="rs-simple-body"></div><div class="rs-simple-actions"></div>';
+      h3 = card.querySelector('h3');
+      body = card.querySelector('.rs-simple-body');
+      act = card.querySelector('.rs-simple-actions');
+    }
+    if (h3) h3.textContent = title || '';
+    if (body) body.innerHTML = bodyHtml || '';
+    wireSimpleModalActions(wrap, act, buttons);
     return wrap;
+  }
+
+  /**
+   * @param {object} [opts]
+   * @param {boolean} [opts.stack] — deprecated for share flow; prefer reuse in place
+   * @param {boolean} [opts.reuse] — update existing #rs-simple-modal content (default true)
+   * @param {string} [opts.id] — element id (default rs-simple-modal)
+   * @param {string} [opts.cardClass] — extra class on card
+   */
+  function showSimpleModal(title, bodyHtml, buttons, opts) {
+    opts = opts || {};
+    var reuse = opts.reuse !== false && !opts.stack;
+    var modalId = opts.id || 'rs-simple-modal';
+
+    // Clear leftover stacked layers — we no longer stack share steps
+    try {
+      document.querySelectorAll('.rs-simple-modal.rs-simple-modal-stack').forEach(function (el) {
+        try { el.remove(); } catch (eR) {}
+      });
+    } catch (e0) {}
+
+    if (reuse) {
+      var existing = $(modalId) || document.getElementById('rs-simple-modal');
+      if (existing) {
+        return updateSimpleModal(existing, title, bodyHtml, buttons, opts);
+      }
+    } else if (!opts.stack) {
+      try {
+        var old = $(modalId);
+        if (old) old.remove();
+      } catch (e1) {}
+    }
+
+    var wrap = document.createElement('div');
+    wrap.id = modalId;
+    wrap.className = 'rs-simple-modal active';
+    wrap.setAttribute('data-rs-stack', '0');
+    wrap.onclick = function (e) {
+      if (e.target === wrap) wrap.remove();
+    };
+    var card = document.createElement('div');
+    card.className = 'rs-simple-card' +
+      (opts.compact ? ' rs-compact-edit' : '') +
+      (opts.cardClass ? (' ' + opts.cardClass) : '');
+    card.onclick = function (e) { e.stopPropagation(); };
+    card.innerHTML = '<h3>' + esc(title) + '</h3><div class="rs-simple-body">' + bodyHtml +
+      '</div><div class="rs-simple-actions"></div>';
+    wrap.appendChild(card);
+    document.body.appendChild(wrap);
+    wireSimpleModalActions(wrap, card.querySelector('.rs-simple-actions'), buttons);
+    return wrap;
+  }
+
+  function closeSimpleModal() {
+    try {
+      document.querySelectorAll('.rs-simple-modal').forEach(function (m) {
+        try { m.remove(); } catch (e) {}
+      });
+    } catch (e2) {}
   }
 
   async function openSharedMapActions(mapRow) {
@@ -3585,8 +3645,42 @@
     return copy;
   }
 
-  async function openShareToMapFlow(entity, defaultType) {
-    // Close Leaflet popups so the map-picker modal is visible and not covered
+  /** In-progress share session so Select Map can stay in the same popup */
+  var shareFlowCtx = null;
+
+  function renderShareChooserInModal(ctx) {
+    ctx = ctx || shareFlowCtx || {};
+    var label = ctx.label || 'This spot';
+    showSimpleModal('Share', '', [
+      {
+        label: 'Share to another map',
+        primary: true,
+        close: false,
+        onClick: function () {
+          openShareToMapFlow(ctx.entity || { lat: ctx.lat, lng: ctx.lng, name: label }, ctx.defaultType || 'pin', {
+            fromChooser: true
+          });
+        }
+      },
+      {
+        label: 'Copy location',
+        close: true,
+        onClick: function () {
+          if (typeof shareLocationLink === 'function') shareLocationLink(ctx.lat, ctx.lng, label);
+          else if (typeof googleMapsShareUrl === 'function') {
+            var u = googleMapsShareUrl(ctx.lat, ctx.lng);
+            if (navigator.clipboard) navigator.clipboard.writeText(u);
+            else window.prompt('Copy:', u);
+          }
+        }
+      },
+      { label: 'Cancel', close: true }
+    ], { reuse: true, cardClass: 'rs-select-map-card' });
+  }
+
+  async function openShareToMapFlow(entity, defaultType, opts) {
+    opts = opts || {};
+    // Close Leaflet popups so the picker is not covered (keep our simple modal)
     try {
       if (typeof map !== 'undefined' && map && typeof map.closePopup === 'function') map.closePopup();
     } catch (ePop) {}
@@ -3610,29 +3704,70 @@
     ent.lat = Number(ent.lat);
     ent.lng = Number(ent.lng);
     var typ = inferShareType(ent, defaultType || 'pin');
+
+    // Remember chooser context so Cancel can go back in the same popup
+    shareFlowCtx = {
+      lat: ent.lat,
+      lng: ent.lng,
+      label: ent.name || (entity && entity.name) || 'Pin',
+      entity: ent,
+      defaultType: typ,
+      fromChooser: !!opts.fromChooser
+    };
+
+    // Show loading state in the same modal (or open it)
+    showSimpleModal('Select Map',
+      '<p class="settings-hint" style="text-align:center;margin:8px 0;">Loading maps…</p>',
+      [{ label: 'Cancel', close: true }],
+      { reuse: true, cardClass: 'rs-select-map-card' }
+    );
+
     var targets;
     try {
       targets = await listAllTargetMaps();
     } catch (eList) {
       console.warn(eList);
-      alert('Could not load your maps. Sign in and try again.');
+      showSimpleModal('Select Map',
+        '<p class="settings-hint" style="text-align:center;">Could not load your maps.</p>',
+        [
+          shareFlowCtx.fromChooser
+            ? { label: 'Back', close: false, onClick: function () { renderShareChooserInModal(shareFlowCtx); } }
+            : { label: 'Close', close: true }
+        ],
+        { reuse: true, cardClass: 'rs-select-map-card' }
+      );
       return;
     }
     if (!targets.length) {
-      alert('No other maps available. Create another private or shared map first.');
+      showSimpleModal('Select Map',
+        '<p class="settings-hint" style="text-align:center;">No other maps yet. Create one in Settings → My Maps.</p>',
+        [
+          shareFlowCtx.fromChooser
+            ? { label: 'Back', close: false, onClick: function () { renderShareChooserInModal(shareFlowCtx); } }
+            : { label: 'Close', close: true }
+        ],
+        { reuse: true, cardClass: 'rs-select-map-card' }
+      );
       return;
     }
-    // Clean list of map name buttons only (map-dot menu aesthetic)
+
     var listHtml = '<div class="rs-select-map-list" id="rs-select-map-list">' +
       targets.map(function (t, i) {
         return '<button type="button" class="rs-select-map-btn" data-idx="' + i + '">' +
           esc(t.name || 'Map') + '</button>';
       }).join('') +
       '</div>';
-    var shareWrap = showSimpleModal('Select Map', listHtml, [{ label: 'Cancel' }], {
-      stack: true,
+
+    var footerBtns = shareFlowCtx.fromChooser
+      ? [{ label: 'Back', close: false, onClick: function () { renderShareChooserInModal(shareFlowCtx); } }]
+      : [{ label: 'Cancel', close: true }];
+
+    // Same popup, new options — does not move or stack
+    var shareWrap = showSimpleModal('Select Map', listHtml, footerBtns, {
+      reuse: true,
       cardClass: 'rs-select-map-card'
     });
+
     setTimeout(function () {
       var list = (shareWrap && shareWrap.querySelector)
         ? shareWrap.querySelector('#rs-select-map-list')
@@ -3651,14 +3786,7 @@
             if (b !== btn) b.disabled = true;
           });
           copyEntityToMap(ent, typ, t).then(function () {
-            try {
-              if (shareWrap && shareWrap.parentNode) shareWrap.remove();
-            } catch (eS) {}
-            try {
-              document.querySelectorAll('.rs-simple-modal').forEach(function (m) {
-                try { m.remove(); } catch (e2) {}
-              });
-            } catch (eM) {}
+            closeSimpleModal();
             try {
               if (window.showAppCopyToast) {
                 showAppCopyToast('<span class="act">Shared to map</span><br>' + esc(t.name));
@@ -3676,73 +3804,68 @@
           });
         };
       });
-    }, 30);
+    }, 20);
   }
 
   function openShareLocationChooser(lat, lng, label, entity) {
-    showSimpleModal('Share location',
-      '<p class="settings-hint">' + esc(label || 'This spot') + '</p>',
-      [
-        {
-          label: 'Share to another map',
-          primary: true,
-          close: false, // keep this chooser under the map list popup
-          onClick: function () {
-            openShareToMapFlow(entity || { lat: lat, lng: lng, name: label || 'Spot' }, 'pin');
-          }
-        },
-        {
-          label: 'Copy location',
-          onClick: function () {
-            if (typeof shareLocationLink === 'function') shareLocationLink(lat, lng, label);
-            else if (typeof googleMapsShareUrl === 'function') {
-              var u = googleMapsShareUrl(lat, lng);
-              if (navigator.clipboard) navigator.clipboard.writeText(u);
-              else window.prompt('Copy:', u);
-            }
-          }
-        },
-        { label: 'Cancel' }
-      ]
-    );
+    shareFlowCtx = {
+      lat: lat,
+      lng: lng,
+      label: label || 'This spot',
+      entity: entity || { lat: lat, lng: lng, name: label || 'Spot' },
+      defaultType: 'pin',
+      fromChooser: true
+    };
+    try {
+      if (typeof map !== 'undefined' && map && typeof map.closePopup === 'function') map.closePopup();
+    } catch (ePop) {}
+    renderShareChooserInModal(shareFlowCtx);
   }
 
   function openShareMyLocationChooser() {
     var lat = (typeof userLat !== 'undefined') ? userLat : null;
     var lng = (typeof userLng !== 'undefined') ? userLng : null;
     function go(la, lo) {
-      showSimpleModal('Share my location',
-        '<p class="settings-hint">Choose how to share your GPS position.</p>',
-        [
-          {
-            label: 'Share to another map',
-            primary: true,
-            close: false, // keep under stacked map picker
-            onClick: function () {
-              openShareToMapFlow({ lat: la, lng: lo, name: 'My location' }, 'pin');
+      shareFlowCtx = {
+        lat: la,
+        lng: lo,
+        label: 'My location',
+        entity: { lat: la, lng: lo, name: 'My location' },
+        defaultType: 'pin',
+        fromChooser: true
+      };
+      // Same modal shell as pin share; include party live share option
+      showSimpleModal('Share', '', [
+        {
+          label: 'Share to another map',
+          primary: true,
+          close: false,
+          onClick: function () {
+            openShareToMapFlow({ lat: la, lng: lo, name: 'My location' }, 'pin', { fromChooser: true });
+          }
+        },
+        {
+          label: 'Copy location',
+          close: true,
+          onClick: function () {
+            if (typeof shareLocationLink === 'function') shareLocationLink(la, lo, 'My location');
+            else if (typeof googleMapsShareUrl === 'function') {
+              var u = googleMapsShareUrl(la, lo);
+              if (navigator.clipboard) navigator.clipboard.writeText(u);
+              else window.prompt('Copy:', u);
             }
-          },
-          {
-            label: 'Copy location',
-            onClick: function () {
-              if (typeof shareLocationLink === 'function') shareLocationLink(la, lo, 'My location');
-              else if (typeof googleMapsShareUrl === 'function') {
-                var u = googleMapsShareUrl(la, lo);
-                if (navigator.clipboard) navigator.clipboard.writeText(u);
-                else window.prompt('Copy:', u);
-              }
-            }
-          },
-          {
-            label: sharing ? 'Stop sharing with party' : 'Share with party (live)',
-            onClick: function () {
-              if (!sharing) startSharing();
-              else stopSharing();
-            }
-          },
-          { label: 'Cancel' }
-        ]
-      );
+          }
+        },
+        {
+          label: sharing ? 'Stop sharing with party' : 'Share with party (live)',
+          close: true,
+          onClick: function () {
+            if (!sharing) startSharing();
+            else stopSharing();
+          }
+        },
+        { label: 'Cancel', close: true }
+      ], { reuse: true, cardClass: 'rs-select-map-card' });
     }
     if (lat != null && lng != null) go(lat, lng);
     else if (navigator.geolocation) {
