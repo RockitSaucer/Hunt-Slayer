@@ -2021,8 +2021,14 @@
 
   async function createPrivateMap(name) {
     var sb = window.__rsSb;
+    // Save current map before creating (switchToPrivate also snapshots; force upload first)
+    try {
+      if (C.forcePush) C.forcePush();
+      await new Promise(function (r) { setTimeout(r, 150); });
+    } catch (eSave) {}
     var { data, error } = await sb.rpc('create_private_map', { p_name: name });
     if (error) throw error;
+    // switchToPrivate → applyLiveKeysFromCurrentSlot clears previous pins for empty new maps
     await switchToPrivate(data.id);
     return data;
   }

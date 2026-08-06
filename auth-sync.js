@@ -106,6 +106,33 @@
     hiddenLocs: 'alabama_hunt_hidden_locations_v1'
   };
 
+  function emptyMapState() {
+    return {
+      pins: [],
+      hunts: [],
+      customAreas: [],
+      measuredPaths: [],
+      stands: {},
+      hiddenLocs: [],
+      meta: { savedAt: new Date().toISOString(), revision: 0 }
+    };
+  }
+
+  function mapStateHasContent(state) {
+    if (!state || typeof state !== 'object') return false;
+    if (state.pins && state.pins.length) return true;
+    if (state.hunts && state.hunts.length) return true;
+    if (state.customAreas && state.customAreas.length) return true;
+    if (state.measuredPaths && state.measuredPaths.length) return true;
+    if (state.hiddenLocs && state.hiddenLocs.length) return true;
+    if (state.stands && typeof state.stands === 'object') {
+      try {
+        if (Object.keys(state.stands).length) return true;
+      } catch (eK) {}
+    }
+    return false;
+  }
+
   function collectMapState() {
     var state = {
       pins: loadJson(MAP_KEYS.pins, []),
@@ -134,6 +161,24 @@
     if (viewState.mode === 'shared' && viewState.sharedMapId) return 'shared:' + viewState.sharedMapId;
     if (viewState.privateMapId) return 'private:' + viewState.privateMapId;
     return 'personal';
+  }
+
+  /**
+   * Load THIS map's cached state into the live localStorage keys (pins/areas/etc).
+   * If this map has never been opened, clear live keys so the previous map's data
+   * cannot leak into a new empty map.
+   */
+  function applyLiveKeysFromCurrentSlot() {
+    var cached = readLocalCache(cacheSlotKey());
+    if (cached && cached.state) {
+      applyMapState(cached.state);
+      localRevision = (cached.state.meta && cached.state.meta.revision) || 0;
+    } else {
+      applyMapState(emptyMapState());
+      localRevision = 0;
+      // Seed an empty cache entry so later collect/push never re-imports another map
+      try { writeLocalCache(emptyMapState()); } catch (eW) {}
+    }
   }
 
   function writeLocalCache(state) {
@@ -338,21 +383,26 @@
       lastPullAt = Date.now();
       if (rev && rev === localRevision && !force) return;
 
-      // If remote is empty but local still has data (and not dirty), seed cloud once
+      // If remote is empty but local still has data (and not dirty), seed cloud only when
+      // the data belongs to THIS map's cache slot — never import leftovers from another map.
       var local = collectMapState();
-      var remoteEmpty = !state || (
-        !(state.pins && state.pins.length) &&
-        !(state.hunts && state.hunts.length) &&
-        !(state.customAreas && state.customAreas.length) &&
-        !(state.measuredPaths && state.measuredPaths.length)
-      );
-      var localHas = (local.pins && local.pins.length) || (local.hunts && local.hunts.length) ||
-        (local.customAreas && local.customAreas.length) || (local.measuredPaths && local.measuredPaths.length);
-      // Only seed when we have never synced (rev 0) — not after intentional full delete
-      if (remoteEmpty && localHas && !rev) {
+      var remoteEmpty = !mapStateHasContent(state);
+      var localHas = mapStateHasContent(local);
+      var slotCache = readLocalCache(cacheSlotKey());
+      var slotOwnsData = !!(slotCache && mapStateHasContent(slotCache.state));
+      if (remoteEmpty && localHas && !rev && slotOwnsData) {
         dirty = true;
         try { localStorage.setItem(DIRTY_KEY, '1'); } catch (eD) {}
         scheduleCloudPush(true);
+        return;
+      }
+      if (remoteEmpty && localHas && !rev && !slotOwnsData) {
+        // Live keys still hold another map's pins — wipe them for this empty map
+        applyMapState(state || emptyMapState());
+        localRevision = 0;
+        writeLocalCache(emptyMapState());
+        refreshMapFromLocalState();
+        updateAuthChrome();
         return;
       }
 
@@ -780,8 +830,11 @@
   // ---- Shared maps ----
   async function createSharedMap(name) {
     if (!sb || !sessionUser) throw new Error('Sign in required');
-    // Save personal first
+    // Save current map first (do not copy its pins into the new shared map)
     await snapshotCurrentToCache();
+    if (isDirty() && isOnline()) {
+      try { await pushMapToCloud(); } catch (ePush) {}
+    }
     var { data, error } = await sb.rpc('create_shared_map', { p_name: name });
     if (error) throw error;
     viewState.mode = 'shared';
@@ -790,10 +843,13 @@
     viewState.sharedMapCode = data.code;
     persistViewState();
     await persistViewPrefsCloud();
-    // Seed shared with current local (user's stuff) then push
-    dirty = true;
-    try { localStorage.setItem(DIRTY_KEY, '1'); } catch (eD) {}
-    await pushMapToCloud();
+    // New shared maps start empty — content only arrives when users add it (or share later)
+    dirty = false;
+    try { localStorage.removeItem(DIRTY_KEY); } catch (eD) {}
+    applyMapState(emptyMapState());
+    localRevision = 0;
+    writeLocalCache(emptyMapState());
+    refreshMapFromLocalState();
     // Auto-copy invite with deep link
     try {
       var invite = inviteShareText(data.code, data.name);
@@ -813,6 +869,9 @@
   async function joinSharedMap(code) {
     if (!sb || !sessionUser) throw new Error('Sign in required');
     await snapshotCurrentToCache();
+    if (isDirty() && isOnline()) {
+      try { await pushMapToCloud(); } catch (ePush) {}
+    }
     var { data, error } = await sb.rpc('join_shared_map', { p_code: code });
     if (error) throw error;
     viewState.mode = 'shared';
@@ -822,8 +881,11 @@
     persistViewState();
     await persistViewPrefsCloud();
     dirty = false;
-    localRevision = 0;
+    try { localStorage.removeItem(DIRTY_KEY); } catch (eD) {}
+    // Load this shared map's cache or clear — never keep previous map's live keys
+    applyLiveKeysFromCurrentSlot();
     await pullMapFromCloud(true);
+    refreshMapFromLocalState();
     updateAuthChrome();
     try { startSharedMapLiveSync(); } catch (eLive) {}
     return data;
@@ -845,9 +907,9 @@
     }
     persistViewState();
     await persistViewPrefsCloud();
-    var cached = readLocalCache(cacheSlotKey());
-    if (cached && cached.state) applyMapState(cached.state);
     dirty = false;
+    try { localStorage.removeItem(DIRTY_KEY); } catch (eD) {}
+    applyLiveKeysFromCurrentSlot();
     try { stopSharedMapLiveSync(); } catch (eStop) {}
     await pullMapFromCloud(true);
     refreshMapFromLocalState();
@@ -869,9 +931,10 @@
     viewState.sharedMapCode = '';
     persistViewState();
     await persistViewPrefsCloud();
-    var cached = readLocalCache(cacheSlotKey());
-    if (cached && cached.state) applyMapState(cached.state);
     dirty = false;
+    try { localStorage.removeItem(DIRTY_KEY); } catch (eD) {}
+    // Critical: clear previous map's pins/areas from live keys before pull
+    applyLiveKeysFromCurrentSlot();
     try { stopSharedMapLiveSync(); } catch (eStop) {}
     await pullMapFromCloud(true);
     refreshMapFromLocalState();
@@ -891,9 +954,9 @@
     viewState.sharedMapCode = data.code;
     persistViewState();
     await persistViewPrefsCloud();
-    var cached = readLocalCache('shared:' + data.id);
-    if (cached && cached.state) applyMapState(cached.state);
     dirty = false;
+    try { localStorage.removeItem(DIRTY_KEY); } catch (eD) {}
+    applyLiveKeysFromCurrentSlot();
     await pullMapFromCloud(true);
     refreshMapFromLocalState();
     updateAuthChrome();

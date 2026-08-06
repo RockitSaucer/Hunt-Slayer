@@ -1,0 +1,14 @@
+﻿V7.0.2 Beta — map data isolation (pins/shapes/tracks per map)
+============================================================
+
+Bug: Creating or switching to a map kept the previous map's pins/areas in live
+localStorage. Cloud pull then "seeded" that data onto the empty map, so private
+maps imported each other.
+
+Fix (both sites):
+- On every map switch/create/join: load THIS map's cache or clear live keys.
+- Never seed empty cloud from leftover keys of another map.
+- New shared maps start empty (no auto-copy of previous map).
+- Refresh redraws measured paths after switch.
+
+SHELL_CACHE = reg-slayer-shell-v62
