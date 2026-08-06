@@ -9830,7 +9830,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.8 Beta">V7.0.8 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.9 Beta">V7.0.9 Beta</span>
     </div>
     <a class="brand-sister-link" id="brand-sister-link" href="https://www.regslayer.com" title="Open REG SLAYER (same account)">
       <span class="brand-sister-label">Reg Slayer</span>
@@ -11157,7 +11157,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.8-beta';
+    const APP_VERSION = '7.0.9-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -21243,19 +21243,20 @@
         );
       }
 
-      // Share sub-menu: same map-dot popup size (not a bottom sheet)
+      // Share sub-menu: same map-dot popup (in place — not a separate centered modal)
       if (opts.shareChooser) {
-        var sn = opts.shareName || (fromGps ? 'My location' : 'Map spot');
-        return (
-          '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
-            statusBlock +
-            '<div class="mdm-title">Share location</div>' +
-            '<div class="mdm-sub">' + String(sn).replace(/</g, '&lt;') + '</div>' +
-            '<button type="button" class="mdm-btn pin" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'share-to-map\');return false;">Share to another map</button>' +
-            '<button type="button" class="mdm-btn share" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'share-copy\');return false;">Copy location</button>' +
-            '<button type="button" class="mdm-btn" style="background:#3a4234;" onclick="event.preventDefault();event.stopPropagation();window.handleMapDotAction(\'add-back\');return false;">Back</button>' +
-          '</div>'
-        );
+        return buildShareChooserPopupHtml(opts.shareName || (fromGps ? 'My location' : 'Map spot'), {
+          fromGps: fromGps,
+          statusBlock: statusBlock
+        });
+      }
+      if (opts.selectMap) {
+        return buildSelectMapPopupHtml(opts.mapTargets || [], {
+          statusBlock: statusBlock,
+          loading: !!opts.mapLoading,
+          empty: !!opts.mapEmpty,
+          error: !!opts.mapError
+        });
       }
 
       // Main menu: 2×2 primary actions; offline + share below. ADCNR area map lives in Rules & regs.
@@ -21825,23 +21826,19 @@
         }
 
         if (act === 'share') {
-          // Unified share modal (same box for options → Select Map)
-          try { if (map) map.closePopup(); } catch (eClS) {}
+          // Same map-dot popup → Share options (not a separate window)
           var shareName = mapDotMenuSource === 'gps'
             ? 'My location'
             : (detected.name || 'Map spot');
-          if (mapDotMenuSource === 'gps' &&
-              window.RegSlayerParty && typeof window.RegSlayerParty.openShareMyLocationChooser === 'function') {
-            window.RegSlayerParty.openShareMyLocationChooser();
-          } else if (window.RegSlayerParty && typeof window.RegSlayerParty.openShareLocationChooser === 'function') {
-            window.RegSlayerParty.openShareLocationChooser(
-              clickLat, clickLng, shareName,
-              { lat: clickLat, lng: clickLng, name: shareName },
-              'pin'
-            );
-          } else {
-            alert('Sign in and open Settings → My Maps to share.');
-          }
+          beginShareInMapPopup({
+            lat: clickLat,
+            lng: clickLng,
+            label: shareName,
+            entity: { lat: clickLat, lng: clickLng, name: shareName },
+            defaultType: 'pin',
+            host: 'dot',
+            backMain: true
+          });
           return false;
         }
         if (act === 'edit-marker') {
@@ -21857,9 +21854,25 @@
           }
           return false;
         }
-        // Legacy share-copy / share-to-map still route through unified modal
-        if (act === 'share-copy' || act === 'share-to-map') {
-          return window.handleMapDotAction('share');
+        if (act === 'share-copy') {
+          shareLocationLink(clickLat, clickLng,
+            mapDotMenuSource === 'gps' ? 'My location' : (detected.name || 'Map spot'));
+          // Stay on share options in the same popup
+          setMapDotMenuContent({
+            shareChooser: true,
+            fromGps: mapDotMenuSource === 'gps',
+            shareName: mapDotMenuSource === 'gps' ? 'My location' : (detected.name || 'Map spot')
+          });
+          return false;
+        }
+        if (act === 'share-to-map') {
+          showSelectMapInMapPopup();
+          return false;
+        }
+        if (act === 'share-select-map') {
+          var idx = arguments.length > 1 ? arguments[1] : null;
+          // also support data-idx via global pending
+          return false;
         }
 
         if (act === 'offline-save') {
@@ -25277,14 +25290,262 @@
       } catch (eT) {}
     }
     window.togglePinEmphasize = togglePinEmphasize;
-    /**
-     * Share a saved pin to another map (full clone).
-     * Uses a window handler so Leaflet popup HTML never breaks on quoted ids.
-     */
+    // ---- Share flow inside the open Leaflet map popup (same window, no separate modal) ----
+    var shareInPopupCtx = null;
+    var shareInPopupTargets = [];
+
+    function escShareHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function buildShareChooserPopupHtml(label, opts) {
+      opts = opts || {};
+      var statusBlock = opts.statusBlock || '';
+      return (
+        '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
+          statusBlock +
+          '<div class="mdm-title">Share location</div>' +
+          (label ? '<div class="mdm-sub">' + escShareHtml(label) + '</div>' : '') +
+          '<button type="button" class="mdm-btn pin" onclick="event.preventDefault();event.stopPropagation();window.sharePopupGoSelectMap();return false;">Share to another map</button>' +
+          '<button type="button" class="mdm-btn share" onclick="event.preventDefault();event.stopPropagation();window.sharePopupCopyLocation();return false;">Copy location</button>' +
+          '<button type="button" class="mdm-btn" style="background:#3a4234;" onclick="event.preventDefault();event.stopPropagation();window.sharePopupBack();return false;">Back</button>' +
+        '</div>'
+      );
+    }
+
+    function buildSelectMapPopupHtml(targets, opts) {
+      opts = opts || {};
+      var statusBlock = opts.statusBlock || '';
+      var body = '';
+      if (opts.loading) {
+        body = '<div class="mdm-sub" style="text-align:center;padding:8px 0;">Loading maps…</div>';
+      } else if (opts.error) {
+        body = '<div class="mdm-sub" style="text-align:center;padding:8px 0;">Could not load maps.</div>';
+      } else if (opts.empty || !targets || !targets.length) {
+        body = '<div class="mdm-sub" style="text-align:center;padding:8px 0;">No other maps yet.</div>';
+      } else {
+        body = targets.map(function(t, i) {
+          return '<button type="button" class="mdm-btn pin" style="width:100%;margin-bottom:6px;" ' +
+            'onclick="event.preventDefault();event.stopPropagation();window.sharePopupPickMap(' + i + ');return false;">' +
+            escShareHtml(t.name || 'Map') + '</button>';
+        }).join('');
+      }
+      return (
+        '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
+          statusBlock +
+          '<div class="mdm-title">Select Map</div>' +
+          body +
+          '<button type="button" class="mdm-btn" style="background:#3a4234;width:100%;margin-top:4px;" ' +
+            'onclick="event.preventDefault();event.stopPropagation();window.sharePopupShowChooser();return false;">Back</button>' +
+        '</div>'
+      );
+    }
+
+    function findOpenSharePopupLayer() {
+      if (!map) return null;
+      if (mapDotMenuSource === 'gps' && gpsMarker && gpsMarker.isPopupOpen && gpsMarker.isPopupOpen()) {
+        return gpsMarker;
+      }
+      if (tempClickMarker && tempClickMarker.isPopupOpen && tempClickMarker.isPopupOpen()) {
+        return tempClickMarker;
+      }
+      var found = null;
+      try {
+        map.eachLayer(function(layer) {
+          if (found) return;
+          try {
+            if (layer && typeof layer.isPopupOpen === 'function' && layer.isPopupOpen() &&
+                typeof layer.setPopupContent === 'function') {
+              found = layer;
+            }
+          } catch (eL) {}
+        });
+      } catch (e) {}
+      return found;
+    }
+
+    function setOpenMapPopupHtml(html) {
+      var layer = findOpenSharePopupLayer();
+      if (layer) {
+        try { layer.setPopupContent(html); return true; } catch (eS) {}
+      }
+      // Fallback: open a popup at share coords so UI still appears on-map
+      if (map && shareInPopupCtx && shareInPopupCtx.lat != null && shareInPopupCtx.lng != null) {
+        try {
+          L.popup({ className: 'saved-item-popup map-dot-popup', maxWidth: 280, autoPan: false, closeOnClick: false })
+            .setLatLng([shareInPopupCtx.lat, shareInPopupCtx.lng])
+            .setContent(html)
+            .openOn(map);
+          return true;
+        } catch (eP) {}
+      }
+      return false;
+    }
+
+    function beginShareInMapPopup(ctx) {
+      shareInPopupCtx = ctx || {};
+      shareInPopupTargets = [];
+      var html = buildShareChooserPopupHtml(shareInPopupCtx.label || 'Location', {
+        fromGps: shareInPopupCtx.host === 'gps' || mapDotMenuSource === 'gps'
+      });
+      // Prefer existing open popup content swap
+      if (shareInPopupCtx.host === 'dot' || shareInPopupCtx.host === 'gps') {
+        setMapDotMenuContent({
+          shareChooser: true,
+          fromGps: shareInPopupCtx.host === 'gps' || mapDotMenuSource === 'gps',
+          shareName: shareInPopupCtx.label
+        });
+        return true;
+      }
+      return setOpenMapPopupHtml(html);
+    }
+
+    function sharePopupShowChooser() {
+      if (!shareInPopupCtx) return false;
+      if (shareInPopupCtx.host === 'dot' || shareInPopupCtx.host === 'gps') {
+        setMapDotMenuContent({
+          shareChooser: true,
+          fromGps: shareInPopupCtx.host === 'gps' || mapDotMenuSource === 'gps',
+          shareName: shareInPopupCtx.label
+        });
+        return false;
+      }
+      setOpenMapPopupHtml(buildShareChooserPopupHtml(shareInPopupCtx.label || 'Location', {}));
+      return false;
+    }
+
+    function sharePopupCopyLocation() {
+      if (!shareInPopupCtx) return false;
+      shareLocationLink(shareInPopupCtx.lat, shareInPopupCtx.lng, shareInPopupCtx.label || 'Location');
+      // Stay on same share options after copy
+      sharePopupShowChooser();
+      return false;
+    }
+
+    function sharePopupBack() {
+      if (shareInPopupCtx && (shareInPopupCtx.host === 'dot' || shareInPopupCtx.host === 'gps')) {
+        setMapDotMenuContent({ fromGps: shareInPopupCtx.host === 'gps' || mapDotMenuSource === 'gps' });
+        return false;
+      }
+      // Pin / shape: re-open original menu by closing is fine; try main pin rebuild via re-click is heavy
+      try { if (map) map.closePopup(); } catch (e) {}
+      shareInPopupCtx = null;
+      return false;
+    }
+
+    function showSelectMapInMapPopup() {
+      if (!shareInPopupCtx) {
+        // Seed from map-dot context
+        shareInPopupCtx = {
+          lat: clickLat,
+          lng: clickLng,
+          label: mapDotMenuSource === 'gps' ? 'My location' : 'Map spot',
+          entity: { lat: clickLat, lng: clickLng, name: mapDotMenuSource === 'gps' ? 'My location' : 'Map spot' },
+          defaultType: 'pin',
+          host: mapDotMenuSource === 'gps' ? 'gps' : 'dot'
+        };
+      }
+      var loadingHtml = buildSelectMapPopupHtml([], { loading: true });
+      if (shareInPopupCtx.host === 'dot' || shareInPopupCtx.host === 'gps') {
+        setMapDotMenuContent({
+          selectMap: true,
+          mapLoading: true,
+          fromGps: shareInPopupCtx.host === 'gps'
+        });
+      } else {
+        setOpenMapPopupHtml(loadingHtml);
+      }
+
+      var RP = window.RegSlayerParty;
+      if (!RP || typeof RP.listAllTargetMaps !== 'function') {
+        var errHtml = buildSelectMapPopupHtml([], { error: true });
+        if (shareInPopupCtx.host === 'dot' || shareInPopupCtx.host === 'gps') {
+          setMapDotMenuContent({ selectMap: true, mapError: true, fromGps: shareInPopupCtx.host === 'gps' });
+        } else setOpenMapPopupHtml(errHtml);
+        return false;
+      }
+      Promise.resolve(RP.listAllTargetMaps()).then(function(targets) {
+        shareInPopupTargets = targets || [];
+        if (!shareInPopupTargets.length) {
+          if (shareInPopupCtx.host === 'dot' || shareInPopupCtx.host === 'gps') {
+            setMapDotMenuContent({ selectMap: true, mapEmpty: true, fromGps: shareInPopupCtx.host === 'gps' });
+          } else {
+            setOpenMapPopupHtml(buildSelectMapPopupHtml([], { empty: true }));
+          }
+          return;
+        }
+        if (shareInPopupCtx.host === 'dot' || shareInPopupCtx.host === 'gps') {
+          setMapDotMenuContent({
+            selectMap: true,
+            mapTargets: shareInPopupTargets,
+            fromGps: shareInPopupCtx.host === 'gps'
+          });
+        } else {
+          setOpenMapPopupHtml(buildSelectMapPopupHtml(shareInPopupTargets, {}));
+        }
+      }).catch(function() {
+        if (shareInPopupCtx.host === 'dot' || shareInPopupCtx.host === 'gps') {
+          setMapDotMenuContent({ selectMap: true, mapError: true, fromGps: shareInPopupCtx.host === 'gps' });
+        } else {
+          setOpenMapPopupHtml(buildSelectMapPopupHtml([], { error: true }));
+        }
+      });
+      return false;
+    }
+
+    function sharePopupGoSelectMap() {
+      return showSelectMapInMapPopup();
+    }
+
+    function sharePopupPickMap(idx) {
+      var t = shareInPopupTargets[idx];
+      if (!t || !shareInPopupCtx) return false;
+      var RP = window.RegSlayerParty;
+      if (!RP || typeof RP.copyEntityToMap !== 'function') {
+        alert('Sign in to share to another map.');
+        return false;
+      }
+      var ent = shareInPopupCtx.entity || {
+        lat: shareInPopupCtx.lat,
+        lng: shareInPopupCtx.lng,
+        name: shareInPopupCtx.label
+      };
+      var typ = shareInPopupCtx.defaultType || 'pin';
+      // Show sharing state in same popup
+      setOpenMapPopupHtml(
+        '<div class="map-dot-menu"><div class="mdm-title">Select Map</div>' +
+        '<div class="mdm-sub" style="text-align:center;padding:10px 0;">Sharing to ' +
+        escShareHtml(t.name) + '…</div></div>'
+      );
+      Promise.resolve(RP.copyEntityToMap(ent, typ, t)).then(function() {
+        try { if (map) map.closePopup(); } catch (e) {}
+        shareInPopupCtx = null;
+        shareInPopupTargets = [];
+        if (typeof showAppCopyToast === 'function') {
+          showAppCopyToast('<span class="act">Shared to map</span><br>' + escShareHtml(t.name));
+        }
+      }).catch(function(e) {
+        alert((e && e.message) || String(e));
+        sharePopupShowChooser();
+      });
+      return false;
+    }
+
+    window.sharePopupShowChooser = sharePopupShowChooser;
+    window.sharePopupCopyLocation = sharePopupCopyLocation;
+    window.sharePopupBack = sharePopupBack;
+    window.sharePopupGoSelectMap = sharePopupGoSelectMap;
+    window.sharePopupPickMap = sharePopupPickMap;
+    window.beginShareInMapPopup = beginShareInMapPopup;
+    window.showSelectMapInMapPopup = showSelectMapInMapPopup;
+    window.setOpenMapPopupHtml = setOpenMapPopupHtml;
+    window.buildShareChooserPopupHtml = buildShareChooserPopupHtml;
+    window.buildSelectMapPopupHtml = buildSelectMapPopupHtml;
+
     function sharePinToAnotherMap(id) {
       var loc = locations.find(function(l) { return String(l.id) === String(id); });
       if (!loc) {
-        // Fallback: storage
         try {
           var pins = JSON.parse(localStorage.getItem('alabama_hunt_custom_pins') || '[]');
           if (Array.isArray(pins)) {
@@ -25292,21 +25553,16 @@
           }
         } catch (eP) {}
       }
-      if (!loc || loc.lat == null || loc.lng == null) {
-        alert('Pin not found or missing location.');
-        return false;
-      }
-      try { if (map) map.closePopup(); } catch (eC) {}
-      if (window.RegSlayerParty && typeof window.RegSlayerParty.openShareToMapFlow === 'function') {
-        // Pass full pin object so name/colors/notes/placement all clone
-        try {
-          window.RegSlayerParty.openShareToMapFlow(JSON.parse(JSON.stringify(loc)), 'pin');
-        } catch (eClone) {
-          window.RegSlayerParty.openShareToMapFlow(loc, 'pin');
-        }
-      } else {
-        alert('Sign in and open Settings → My Maps to share to another map.');
-      }
+      if (!loc) { alert('Pin not found.'); return false; }
+      beginShareInMapPopup({
+        lat: loc.lat,
+        lng: loc.lng,
+        label: loc.name || 'Pin',
+        entity: loc,
+        defaultType: 'pin',
+        host: 'pin'
+      });
+      showSelectMapInMapPopup();
       return false;
     }
     window.sharePinToAnotherMap = sharePinToAnotherMap;
@@ -25314,40 +25570,46 @@
     function shareSavedPinChooser(id) {
       var loc = locations.find(function(l) { return String(l.id) === String(id); });
       if (!loc) return false;
-      // Unified share modal: Share → Select Map / Copy (same box throughout)
-      if (window.RegSlayerParty && typeof window.RegSlayerParty.openShareLocationChooser === 'function') {
-        try { if (map) map.closePopup(); } catch (eC) {}
-        window.RegSlayerParty.openShareLocationChooser(
-          loc.lat,
-          loc.lng,
-          loc.name || 'Pin',
-          loc,
-          'pin'
-        );
-        return false;
-      }
-      return sharePinToAnotherMap(id);
+      // Same pin popup → share options (do not open a separate window)
+      beginShareInMapPopup({
+        lat: loc.lat,
+        lng: loc.lng,
+        label: loc.name || 'Pin',
+        entity: loc,
+        defaultType: 'pin',
+        host: 'pin'
+      });
+      setOpenMapPopupHtml(buildShareChooserPopupHtml(loc.name || 'Pin', {}));
+      return false;
     }
     window.shareSavedPinChooser = shareSavedPinChooser;
 
-    /** Shape / custom area share — same Share → Select Map flow */
+    /** Shape / custom area share — same in-popup flow */
     function shareCustomArea(id) {
-      try { if (map) map.closePopup(); } catch (eC) {}
-      if (window.RegSlayerParty && typeof window.RegSlayerParty.openShareCustomArea === 'function') {
-        return window.RegSlayerParty.openShareCustomArea(id);
+      var area = locations.find(function(l) {
+        return l && l.isCustomArea && String(l.id) === String(id);
+      });
+      if (!area) {
+        try {
+          var areas = JSON.parse(localStorage.getItem('alabama_hunt_custom_areas_v1') || '[]');
+          if (Array.isArray(areas)) {
+            area = areas.find(function(a) { return a && String(a.id) === String(id); }) || null;
+          }
+        } catch (eA) {}
       }
-      if (window.RegSlayerParty && typeof window.RegSlayerParty.openShareLocationChooser === 'function') {
-        var area = locations.find(function(l) {
-          return l && l.isCustomArea && String(l.id) === String(id);
-        });
-        if (area) {
-          window.RegSlayerParty.openShareLocationChooser(
-            area.lat, area.lng, area.name || 'Custom area', area, 'area'
-          );
-          return false;
-        }
+      if (!area) {
+        alert('Shape not found.');
+        return false;
       }
-      alert('Sign in to share shapes to another map.');
+      beginShareInMapPopup({
+        lat: area.lat,
+        lng: area.lng,
+        label: area.name || 'Custom area',
+        entity: area,
+        defaultType: 'area',
+        host: 'shape'
+      });
+      setOpenMapPopupHtml(buildShareChooserPopupHtml(area.name || 'Custom area', {}));
       return false;
     }
     window.shareCustomArea = shareCustomArea;

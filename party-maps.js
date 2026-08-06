@@ -3823,6 +3823,28 @@
     if (ent.lat == null && lat != null) ent.lat = lat;
     if (ent.lng == null && lng != null) ent.lng = lng;
     if (!ent.name && label) ent.name = label;
+    // Prefer in-map Leaflet popup (same window as pin/dot/shape menu)
+    if (typeof window.beginShareInMapPopup === 'function') {
+      var host = 'layer';
+      try {
+        if (ent.isCustomArea || defaultType === 'area') host = 'shape';
+        else if (ent.isPin || defaultType === 'pin') host = 'pin';
+      } catch (eH) {}
+      window.beginShareInMapPopup({
+        lat: lat != null ? lat : ent.lat,
+        lng: lng != null ? lng : ent.lng,
+        label: label || ent.name || 'This spot',
+        entity: ent,
+        defaultType: defaultType || inferShareType(ent, 'pin'),
+        host: host
+      });
+      if (typeof window.setOpenMapPopupHtml === 'function' && typeof window.buildShareChooserPopupHtml === 'function') {
+        window.setOpenMapPopupHtml(window.buildShareChooserPopupHtml(label || ent.name || 'Location', {}));
+      } else if (typeof window.sharePopupShowChooser === 'function') {
+        window.sharePopupShowChooser();
+      }
+      return;
+    }
     shareFlowCtx = {
       lat: lat != null ? lat : ent.lat,
       lng: lng != null ? lng : ent.lng,
@@ -3831,14 +3853,14 @@
       defaultType: defaultType || inferShareType(ent, 'pin'),
       fromChooser: true
     };
-    try {
-      if (typeof map !== 'undefined' && map && typeof map.closePopup === 'function') map.closePopup();
-    } catch (ePop) {}
     renderShareChooserInModal(shareFlowCtx);
   }
 
   /** Share a custom area / shape (full clone including ring). */
   function openShareCustomArea(areaId) {
+    if (typeof window.shareCustomArea === 'function') {
+      return window.shareCustomArea(areaId);
+    }
     var area = null;
     try {
       if (typeof locations !== 'undefined' && Array.isArray(locations)) {
@@ -4332,6 +4354,7 @@
     openShareLocationChooser: openShareLocationChooser,
     openShareMyLocationChooser: openShareMyLocationChooser,
     openShareCustomArea: openShareCustomArea,
+    listAllTargetMaps: listAllTargetMaps,
     openEditOwnMarker: window.openEditOwnMarker,
     openMapSwitcher: openMapSwitcher,
     closeMapSwitcher: closeMapSwitcher,

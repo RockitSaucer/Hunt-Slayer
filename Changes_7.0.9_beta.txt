@@ -1,0 +1,5 @@
+﻿V7.0.9 Beta — share stays inside the map popup
+==============================================
+- Share location / Share to another map / Select Map all swap content in the
+  same Leaflet map popup (dots, pins, shapes, GPS) — no separate centered modal
+- SHELL_CACHE = reg-slayer-shell-v69
