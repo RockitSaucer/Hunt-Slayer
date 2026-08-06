@@ -1,0 +1,9 @@
+V7.0.30 Beta (shell v90) — 2026-08-06
+
+Compass mode line click + zoom glue
+
+1) Click/tap the compass line: measuring probe snaps to that point along the heading ray.
+2) Fat invisible hit stroke under the thin line so thin lines are easy to click.
+3) Project click onto the heading ray (along-track distance).
+4) Never setLatLngs / rebuild line while zooming (was detaching line from GPS/dir icon).
+5) On zoomend: settle GPS marker then re-glue line (double rAF + short timeout).
