@@ -1,0 +1,6 @@
+﻿V7.0.8 Beta — unified share modal + shape share, no shape hover tip
+==================================================================
+- Share location → same modal options → Select Map (map names as same-style buttons)
+- Map dots, pins, GPS, shapes all use the same flow
+- Shapes: Share location with share-to-map; no hover tooltip
+- SHELL_CACHE = reg-slayer-shell-v68

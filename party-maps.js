@@ -3510,7 +3510,7 @@
     return entity;
   }
 
-  /** Reload full pin/hunt/stand from local data so share keeps every field. */
+  /** Reload full pin/hunt/stand/shape from local data so share keeps every field. */
   function hydrateShareEntity(entity) {
     if (!entity || typeof entity !== 'object') return {};
     var id = entity.id != null ? String(entity.id) : '';
@@ -3542,13 +3542,36 @@
           }
         }
       } catch (eH) {}
+      try {
+        var areas = JSON.parse(localStorage.getItem('alabama_hunt_custom_areas_v1') || '[]');
+        if (Array.isArray(areas)) {
+          for (var a = 0; a < areas.length; a++) {
+            if (areas[a] && String(areas[a].id) === id) {
+              return JSON.parse(JSON.stringify(areas[a]));
+            }
+          }
+        }
+      } catch (eA) {}
+      try {
+        var paths = JSON.parse(localStorage.getItem('alabama_hunt_measured_paths_v1') || '[]');
+        if (Array.isArray(paths)) {
+          for (var m = 0; m < paths.length; m++) {
+            if (paths[m] && String(paths[m].id) === id) {
+              return JSON.parse(JSON.stringify(paths[m]));
+            }
+          }
+        }
+      } catch (eM) {}
     }
     try { return JSON.parse(JSON.stringify(entity)); } catch (e2) { return entity; }
   }
 
   function inferShareType(entity, defaultType) {
     if (!entity) return defaultType || 'pin';
-    if (entity.ring || entity.polygon || entity.areaType) return 'area';
+    if (entity.isCustomArea || entity.ring || entity.polygon || entity.areaType) return 'area';
+    if (entity.kind === 'track' || entity.kind === 'measure' || (entity.points && entity.points.length)) {
+      return defaultType || 'path';
+    }
     // Past hunts (not map pins)
     if (entity.date && !entity.isPin && !entity.isStand) return defaultType || 'hunt';
     // Stand / hunt / custom pins all live in the pins array as isPin objects
@@ -3614,7 +3637,10 @@
     } else if (typ === 'hunt') {
       state.hunts.push(copy);
     } else if (typ === 'area') {
+      if (!copy.isCustomArea) copy.isCustomArea = true;
       state.customAreas.push(copy);
+    } else if (typ === 'path') {
+      state.measuredPaths.push(copy);
     } else if (typ === 'stand') {
       var key = 'shared';
       if (!Array.isArray(state.stands[key])) state.stands[key] = [];
@@ -3697,6 +3723,19 @@
       ent.lng = entity.lng;
       if (!ent.name && entity.name) ent.name = entity.name;
     }
+    // Shapes: derive a center if lat/lng missing
+    if ((ent.lat == null || ent.lng == null) && ent.ring && ent.ring.length) {
+      try {
+        var sx = 0, sy = 0, n = 0;
+        for (var ri = 0; ri < ent.ring.length; ri++) {
+          var pt = ent.ring[ri];
+          var pla = Array.isArray(pt) ? Number(pt[0]) : Number(pt.lat);
+          var plo = Array.isArray(pt) ? Number(pt[1]) : Number(pt.lng);
+          if (isFinite(pla) && isFinite(plo)) { sx += pla; sy += plo; n++; }
+        }
+        if (n) { ent.lat = sx / n; ent.lng = sy / n; }
+      } catch (eCtr) {}
+    }
     if (ent.lat == null || ent.lng == null || !isFinite(Number(ent.lat)) || !isFinite(Number(ent.lng))) {
       alert('Location not available to share.');
       return;
@@ -3705,87 +3744,54 @@
     ent.lng = Number(ent.lng);
     var typ = inferShareType(ent, defaultType || 'pin');
 
-    // Remember chooser context so Cancel can go back in the same popup
+    // Remember chooser context so Back returns to Share options in the same box
     shareFlowCtx = {
       lat: ent.lat,
       lng: ent.lng,
       label: ent.name || (entity && entity.name) || 'Pin',
       entity: ent,
       defaultType: typ,
-      fromChooser: !!opts.fromChooser
+      fromChooser: opts.fromChooser !== false
     };
 
-    // Show loading state in the same modal (or open it)
-    showSimpleModal('Select Map',
-      '<p class="settings-hint" style="text-align:center;margin:8px 0;">Loading maps…</p>',
-      [{ label: 'Cancel', close: true }],
-      { reuse: true, cardClass: 'rs-select-map-card' }
-    );
+    // Same box: loading as action buttons (matches Share step layout)
+    showSimpleModal('Select Map', '', [
+      { label: 'Loading maps…', close: false, onClick: function () {} },
+      shareFlowCtx.fromChooser
+        ? { label: 'Back', close: false, onClick: function () { renderShareChooserInModal(shareFlowCtx); } }
+        : { label: 'Cancel', close: true }
+    ], { reuse: true, cardClass: 'rs-select-map-card' });
 
     var targets;
     try {
       targets = await listAllTargetMaps();
     } catch (eList) {
       console.warn(eList);
-      showSimpleModal('Select Map',
-        '<p class="settings-hint" style="text-align:center;">Could not load your maps.</p>',
-        [
-          shareFlowCtx.fromChooser
-            ? { label: 'Back', close: false, onClick: function () { renderShareChooserInModal(shareFlowCtx); } }
-            : { label: 'Close', close: true }
-        ],
-        { reuse: true, cardClass: 'rs-select-map-card' }
-      );
+      showSimpleModal('Select Map', '', [
+        { label: 'Could not load maps', close: false, onClick: function () {} },
+        shareFlowCtx.fromChooser
+          ? { label: 'Back', close: false, onClick: function () { renderShareChooserInModal(shareFlowCtx); } }
+          : { label: 'Close', close: true }
+      ], { reuse: true, cardClass: 'rs-select-map-card' });
       return;
     }
     if (!targets.length) {
-      showSimpleModal('Select Map',
-        '<p class="settings-hint" style="text-align:center;">No other maps yet. Create one in Settings → My Maps.</p>',
-        [
-          shareFlowCtx.fromChooser
-            ? { label: 'Back', close: false, onClick: function () { renderShareChooserInModal(shareFlowCtx); } }
-            : { label: 'Close', close: true }
-        ],
-        { reuse: true, cardClass: 'rs-select-map-card' }
-      );
+      showSimpleModal('Select Map', '', [
+        { label: 'No other maps yet', close: false, onClick: function () {} },
+        shareFlowCtx.fromChooser
+          ? { label: 'Back', close: false, onClick: function () { renderShareChooserInModal(shareFlowCtx); } }
+          : { label: 'Close', close: true }
+      ], { reuse: true, cardClass: 'rs-select-map-card' });
       return;
     }
 
-    var listHtml = '<div class="rs-select-map-list" id="rs-select-map-list">' +
-      targets.map(function (t, i) {
-        return '<button type="button" class="rs-select-map-btn" data-idx="' + i + '">' +
-          esc(t.name || 'Map') + '</button>';
-      }).join('') +
-      '</div>';
-
-    var footerBtns = shareFlowCtx.fromChooser
-      ? [{ label: 'Back', close: false, onClick: function () { renderShareChooserInModal(shareFlowCtx); } }]
-      : [{ label: 'Cancel', close: true }];
-
-    // Same popup, new options — does not move or stack
-    var shareWrap = showSimpleModal('Select Map', listHtml, footerBtns, {
-      reuse: true,
-      cardClass: 'rs-select-map-card'
-    });
-
-    setTimeout(function () {
-      var list = (shareWrap && shareWrap.querySelector)
-        ? shareWrap.querySelector('#rs-select-map-list')
-        : document.getElementById('rs-select-map-list');
-      if (!list) return;
-      list.querySelectorAll('.rs-select-map-btn').forEach(function (btn) {
-        btn.onclick = function (ev) {
-          if (ev) { ev.preventDefault(); ev.stopPropagation(); }
-          var idx = parseInt(btn.getAttribute('data-idx'), 10);
-          var t = targets[idx];
-          if (!t) return;
-          btn.disabled = true;
-          var prevLabel = btn.textContent;
-          btn.textContent = 'Sharing…';
-          list.querySelectorAll('.rs-select-map-btn').forEach(function (b) {
-            if (b !== btn) b.disabled = true;
-          });
-          copyEntityToMap(ent, typ, t).then(function () {
+    // Same box as Share options: map names are the action buttons
+    var mapButtons = targets.map(function (t) {
+      return {
+        label: t.name || 'Map',
+        close: false,
+        onClick: function () {
+          return copyEntityToMap(ent, typ, t).then(function () {
             closeSimpleModal();
             try {
               if (window.showAppCopyToast) {
@@ -3796,30 +3802,65 @@
             } catch (eT) {
               alert('Saved to: ' + t.name);
             }
-          }).catch(function (e) {
-            btn.disabled = false;
-            btn.textContent = prevLabel || t.name;
-            list.querySelectorAll('.rs-select-map-btn').forEach(function (b) { b.disabled = false; });
-            alert(e.message || String(e));
           });
-        };
-      });
-    }, 20);
+        }
+      };
+    });
+    mapButtons.push(
+      shareFlowCtx.fromChooser
+        ? { label: 'Back', close: false, onClick: function () { renderShareChooserInModal(shareFlowCtx); } }
+        : { label: 'Cancel', close: true }
+    );
+
+    showSimpleModal('Select Map', '', mapButtons, {
+      reuse: true,
+      cardClass: 'rs-select-map-card'
+    });
   }
 
-  function openShareLocationChooser(lat, lng, label, entity) {
+  function openShareLocationChooser(lat, lng, label, entity, defaultType) {
+    var ent = entity || { lat: lat, lng: lng, name: label || 'Spot' };
+    if (ent.lat == null && lat != null) ent.lat = lat;
+    if (ent.lng == null && lng != null) ent.lng = lng;
+    if (!ent.name && label) ent.name = label;
     shareFlowCtx = {
-      lat: lat,
-      lng: lng,
-      label: label || 'This spot',
-      entity: entity || { lat: lat, lng: lng, name: label || 'Spot' },
-      defaultType: 'pin',
+      lat: lat != null ? lat : ent.lat,
+      lng: lng != null ? lng : ent.lng,
+      label: label || ent.name || 'This spot',
+      entity: ent,
+      defaultType: defaultType || inferShareType(ent, 'pin'),
       fromChooser: true
     };
     try {
       if (typeof map !== 'undefined' && map && typeof map.closePopup === 'function') map.closePopup();
     } catch (ePop) {}
     renderShareChooserInModal(shareFlowCtx);
+  }
+
+  /** Share a custom area / shape (full clone including ring). */
+  function openShareCustomArea(areaId) {
+    var area = null;
+    try {
+      if (typeof locations !== 'undefined' && Array.isArray(locations)) {
+        area = locations.find(function (l) {
+          return l && l.isCustomArea && String(l.id) === String(areaId);
+        }) || null;
+      }
+    } catch (e0) {}
+    if (!area) {
+      try {
+        var areas = JSON.parse(localStorage.getItem('alabama_hunt_custom_areas_v1') || '[]');
+        if (Array.isArray(areas)) {
+          area = areas.find(function (a) { return a && String(a.id) === String(areaId); }) || null;
+        }
+      } catch (e1) {}
+    }
+    if (!area) {
+      alert('Shape not found.');
+      return false;
+    }
+    openShareLocationChooser(area.lat, area.lng, area.name || 'Custom area', area, 'area');
+    return false;
   }
 
   function openShareMyLocationChooser() {
@@ -4290,6 +4331,7 @@
     openShareToMapFlow: openShareToMapFlow,
     openShareLocationChooser: openShareLocationChooser,
     openShareMyLocationChooser: openShareMyLocationChooser,
+    openShareCustomArea: openShareCustomArea,
     openEditOwnMarker: window.openEditOwnMarker,
     openMapSwitcher: openMapSwitcher,
     closeMapSwitcher: closeMapSwitcher,
