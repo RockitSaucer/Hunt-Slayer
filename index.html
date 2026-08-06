@@ -10386,7 +10386,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.28 Beta">V7.0.28 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.29 Beta">V7.0.29 Beta</span>
     </div>
     <a class="brand-sister-link" id="brand-sister-link" href="https://www.regslayer.com" title="Open REG SLAYER (same account)">
       <span class="brand-sister-label">Reg Slayer</span>
@@ -22165,36 +22165,100 @@
       });
     }
 
-    function fetchCompassElevDelta(pt, distMi) {
+    function absHeadingDiffDeg(a, b) {
+      var d = Math.abs(Number(a) - Number(b)) % 360;
+      return d > 180 ? 360 - d : d;
+    }
+
+    function compassProbeState() {
+      var heading = getCompassHeadingDeg();
+      var probeMi = window._cmProbeDistMi != null ? window._cmProbeDistMi : 5;
+      probeMi = Math.max(0.02, Math.min(20, probeMi));
+      var pt = compassModeDestPoint(userLat, userLng, heading, probeMi);
+      return { heading: heading, probeMi: probeMi, pt: pt };
+    }
+
+    function myElevFtNow() {
+      if (typeof window._lastGpsAltitudeM === 'number' && !isNaN(window._lastGpsAltitudeM)) {
+        return window._lastGpsAltitudeM * 3.28084;
+      }
+      if (userLat == null || userLng == null) return null;
+      return elevCacheGet(userLat, userLng);
+    }
+
+    /** Paint Elev Δ from cache for current heading (no network). */
+    function paintCompassElevFromCache() {
+      if (!compassModeEnabled || userLat == null || userLng == null) return false;
+      try {
+        var st = compassProbeState();
+        var th = elevCacheGet(st.pt.lat, st.pt.lng);
+        var me = myElevFtNow();
+        if (th == null || me == null || isNaN(th) || isNaN(me)) return false;
+        var txt = formatElevDeltaFt(th - me);
+        if (txt !== window._cmLastElevTxt) {
+          window._cmLastElevTxt = txt;
+          updateCompassModeHudLabel(st.probeMi, txt);
+        } else {
+          // Still refresh HUD placement while spinning
+          updateCompassModeHudLabel(st.probeMi, txt);
+        }
+        return true;
+      } catch (eP) {
+        return false;
+      }
+    }
+
+    /** Warm cache a few degrees left/right so spin stays snappy. */
+    function prefetchCompassElevNeighbors(heading, probeMi) {
+      if (userLat == null || userLng == null) return;
+      [-15, -8, 8, 15].forEach(function(d) {
+        try {
+          var pt = compassModeDestPoint(userLat, userLng, heading + d, probeMi);
+          if (elevCacheGet(pt.lat, pt.lng) != null) return;
+          fetchElevFtAt(pt.lat, pt.lng).catch(function() {});
+        } catch (eN) {}
+      });
+    }
+
+    function fetchCompassElevDelta(pt, distMi, opts) {
       if (!pt || userLat == null || userLng == null) return;
+      opts = opts || {};
       var reqId = (window._cmElevReq = (window._cmElevReq || 0) + 1);
-      var myAltM = (typeof window._lastGpsAltitudeM === 'number' && !isNaN(window._lastGpsAltitudeM))
-        ? window._lastGpsAltitudeM
-        : null;
-      var myAltFt = myAltM != null ? myAltM * 3.28084 : null;
+      var reqHeading = opts.heading != null ? opts.heading : getCompassHeadingDeg();
+      var reqStarted = Date.now();
+      var myAltFt = myElevFtNow();
 
       function finish(meFt, thereFt) {
-        if (reqId !== window._cmElevReq) return;
+        // Accept result if it is the latest request, OR heading only drifted a little
+        // (so mid-spin responses still paint instead of being cancelled forever).
+        var curH = getCompassHeadingDeg();
+        var hDiff = absHeadingDiffDeg(reqHeading, curH);
+        var isLatest = (reqId === window._cmElevReq);
+        if (!isLatest && hDiff > 18) return;
+        if (window._cmElevAppliedReq != null && reqId < window._cmElevAppliedReq && hDiff > 6) return;
         if (meFt == null || thereFt == null || isNaN(meFt) || isNaN(thereFt)) {
-          updateCompassModeHudLabel(distMi, '—');
+          if (isLatest && !window._cmLastElevTxt) updateCompassModeHudLabel(distMi, '—');
           return;
         }
+        window._cmElevAppliedReq = reqId;
         var dFt = thereFt - meFt;
         var txt = formatElevDeltaFt(dFt);
         window._cmLastElevTxt = txt;
-        updateCompassModeHudLabel(distMi, txt);
+        // Use current probe distance so label stays in sync if user dragged mid-fetch
+        var mi = window._cmProbeDistMi != null ? window._cmProbeDistMi : distMi;
+        updateCompassModeHudLabel(mi, txt);
+        try { prefetchCompassElevNeighbors(curH, mi); } catch (ePf) {}
       }
 
       // Instant paint from cache when both points known
       var thHit = elevCacheGet(pt.lat, pt.lng);
-      var meHit = myAltFt != null ? myAltFt : elevCacheGet(userLat, userLng);
-      if (meHit != null && thHit != null) {
-        finish(meHit, thHit);
+      if (myAltFt != null && thHit != null) {
+        finish(myAltFt, thHit);
         return;
       }
 
-      var thCached = elevCacheGet(pt.lat, pt.lng);
-      var meCached = myAltFt != null ? myAltFt : elevCacheGet(userLat, userLng);
+      var thCached = thHit;
+      var meCached = myAltFt;
 
       var jobs = [];
       // Multi-point Open-Meteo when both need network
@@ -22226,52 +22290,65 @@
       firstElevPair(jobs).then(function(pair) {
         finish(pair.meFt, pair.thereFt);
       }).catch(function() {
-        if (reqId === window._cmElevReq) updateCompassModeHudLabel(distMi, '—');
+        // Keep last good elev while spinning — only clear if we have nothing
+        if (reqId === window._cmElevReq && !window._cmLastElevTxt) {
+          updateCompassModeHudLabel(distMi, '—');
+        }
       });
     }
 
     /**
-     * Heading changes skip full elev work in the hot path; debounce a fetch so
-     * Elev Δ tracks the probe without hammering the DEM while spinning.
+     * Keep Elev Δ moving while the user spins:
+     * - Cache hits paint immediately
+     * - Network uses throttle (not pure debounce) so mid-spin still gets samples
+     * - Trailing timer fires once more when spinning stops
      */
     function scheduleCompassElevRefresh() {
       if (!compassModeEnabled || window._cmDragging) return;
       if (userLat == null || userLng == null) return;
-      if (window._cmElevDebounceTimer) {
-        try { clearTimeout(window._cmElevDebounceTimer); } catch (eT) {}
+
+      // Always try cache first so spin feels live when neighbors were prefetched
+      if (paintCompassElevFromCache()) {
+        // Still arm a light trailing refresh in case terrain changes at new bearing
       }
-      // If probe point already cached, update HUD immediately (no wait)
-      try {
-        var heading0 = getCompassHeadingDeg();
-        var probeMi0 = window._cmProbeDistMi != null ? window._cmProbeDistMi : 5;
-        probeMi0 = Math.max(0.02, Math.min(20, probeMi0));
-        var pt0 = compassModeDestPoint(userLat, userLng, heading0, probeMi0);
-        var th0 = elevCacheGet(pt0.lat, pt0.lng);
-        var me0 = (typeof window._lastGpsAltitudeM === 'number' && !isNaN(window._lastGpsAltitudeM))
-          ? window._lastGpsAltitudeM * 3.28084
-          : elevCacheGet(userLat, userLng);
-        if (th0 != null && me0 != null) {
-          var txt0 = formatElevDeltaFt(th0 - me0);
-          window._cmLastElevTxt = txt0;
-          updateCompassModeHudLabel(probeMi0, txt0);
-          return;
-        }
-      } catch (eC) {}
-      window._cmElevDebounceTimer = setTimeout(function() {
+
+      var now = Date.now();
+      var minInterval = 300; // ~3 elev samples/sec max while spinning
+      var lastStart = window._cmElevLastStartAt || 0;
+      var elapsed = now - lastStart;
+
+      function runFetch() {
         window._cmElevDebounceTimer = null;
         if (!compassModeEnabled || window._cmDragging) return;
         if (userLat == null || userLng == null) return;
+        // Cache may have filled from prefetch while we waited
+        if (paintCompassElevFromCache()) {
+          // If cache was enough, still throttle timestamp so we do not spam
+          window._cmElevLastStartAt = Date.now();
+          return;
+        }
         try {
-          var heading = getCompassHeadingDeg();
-          var probeMi = window._cmProbeDistMi != null ? window._cmProbeDistMi : 5;
-          probeMi = Math.max(0.02, Math.min(20, probeMi));
-          var pt = compassModeDestPoint(userLat, userLng, heading, probeMi);
-          var locKey = elevCacheKey(pt.lat, pt.lng) + '|' + elevCacheKey(userLat, userLng);
-          // Still re-fetch if only a short time since same key — cache handles speed
-          window._cmElevLastLocKey = locKey;
-          fetchCompassElevDelta(pt, probeMi);
+          var st = compassProbeState();
+          window._cmElevLastStartAt = Date.now();
+          window._cmElevLastLocKey = elevCacheKey(st.pt.lat, st.pt.lng);
+          fetchCompassElevDelta(st.pt, st.probeMi, { heading: st.heading });
         } catch (eF) {}
-      }, 80);
+      }
+
+      if (window._cmElevDebounceTimer) {
+        try { clearTimeout(window._cmElevDebounceTimer); } catch (eT) {}
+        window._cmElevDebounceTimer = null;
+      }
+
+      if (elapsed >= minInterval) {
+        // Mid-spin: fire now so Elev Δ actually changes while turning
+        runFetch();
+        // Trailing edge when they stop turning
+        window._cmElevDebounceTimer = setTimeout(runFetch, minInterval);
+      } else {
+        // Wait out the rest of the throttle window, then fetch latest heading
+        window._cmElevDebounceTimer = setTimeout(runFetch, Math.max(40, minInterval - elapsed));
+      }
     }
 
     function projectDistOnHeading(latlng) {

@@ -1,0 +1,13 @@
+V7.0.29 Beta (shell v89) — 2026-08-06
+
+Compass Elev Δ updates while spinning
+
+Root cause: pure debounce + hard-cancel of older elev requests meant continuous
+heading changes never let a fetch finish, so Elev Δ looked frozen.
+
+Fix:
+1) Throttle (~300ms) instead of only debounce — samples mid-spin, not only after stop
+2) Accept elev results if heading drifted only a little (do not drop all in-flight)
+3) Instant paint from cache on every heading tick
+4) Prefetch neighbors ±8°/±15° so the next spin step often hits cache
+5) Keep last good elev if a fetch fails (no flash to blank)
