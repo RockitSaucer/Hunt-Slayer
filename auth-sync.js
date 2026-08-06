@@ -587,6 +587,110 @@
     return currentAppOrigin() + '/?join=' + c;
   }
 
+  /** Base64url helpers for sister-site SSO handoff (tokens in URL hash only). */
+  function b64urlEncode(str) {
+    try {
+      var b64 = btoa(unescape(encodeURIComponent(str)));
+      return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+    } catch (e) { return ''; }
+  }
+  function b64urlDecode(str) {
+    try {
+      var s = String(str || '').replace(/-/g, '+').replace(/_/g, '/');
+      while (s.length % 4) s += '=';
+      return decodeURIComponent(escape(atob(s)));
+    } catch (e) { return ''; }
+  }
+
+  /**
+   * Consume #rs_sso=… handoff from the sister site (same Supabase project).
+   * Restores session into this origin's localStorage and optional view prefs.
+   */
+  async function consumeSisterSsoHandoff() {
+    var raw = '';
+    try {
+      var hash = String(window.location.hash || '');
+      var m = hash.match(/(?:^|#|&)rs_sso=([^&]+)/);
+      if (m) raw = m[1];
+      if (!raw) {
+        var u = new URL(window.location.href);
+        raw = u.searchParams.get('rs_sso') || '';
+      }
+    } catch (e0) { raw = ''; }
+    if (!raw) return false;
+
+    // Strip tokens from the address bar immediately
+    try {
+      var u2 = new URL(window.location.href);
+      u2.searchParams.delete('rs_sso');
+      var h2 = String(u2.hash || '').replace(/([#&]?)rs_sso=[^&]*/g, '').replace(/^#&/, '#').replace(/^#$/, '');
+      u2.hash = h2.charAt(0) === '#' ? h2.slice(1) : h2;
+      if (window.history && history.replaceState) {
+        history.replaceState({}, '', u2.pathname + (u2.search || '') + (u2.hash || ''));
+      }
+    } catch (eStrip) {}
+
+    var payload = null;
+    try { payload = JSON.parse(b64urlDecode(raw)); } catch (eP) { payload = null; }
+    if (!payload || !payload.at || !payload.rt) return false;
+
+    try {
+      await ensureClient();
+      var res = await sb.auth.setSession({
+        access_token: payload.at,
+        refresh_token: payload.rt
+      });
+      if (res && res.error) throw res.error;
+      if (payload.view && typeof payload.view === 'object') {
+        try {
+          viewState = Object.assign({
+            mode: 'private', privateMapId: null, privateMapName: 'My Map',
+            sharedMapId: null, sharedMapName: '', sharedMapCode: ''
+          }, payload.view);
+          if (viewState.mode === 'personal') viewState.mode = 'private';
+          persistViewState();
+        } catch (eV) {}
+      }
+      return true;
+    } catch (eSet) {
+      console.warn('Sister SSO handoff failed', eSet);
+      return false;
+    }
+  }
+
+  /**
+   * Build sister-site URL with session handoff so the other origin is signed in.
+   * targetOrigin e.g. https://www.regslayer.com
+   */
+  async function buildSisterHandoffUrl(targetOrigin) {
+    var base = String(targetOrigin || '').replace(/\/$/, '');
+    if (!base) base = 'https://regslayer.com';
+    var url = base + '/';
+    try {
+      await ensureClient();
+      var { data } = await sb.auth.getSession();
+      var sess = data && data.session;
+      if (sess && sess.access_token && sess.refresh_token) {
+        var payload = {
+          at: sess.access_token,
+          rt: sess.refresh_token,
+          exp: sess.expires_at || null,
+          view: viewState || null,
+          t: Date.now()
+        };
+        var enc = b64urlEncode(JSON.stringify(payload));
+        if (enc) url = base + '/#rs_sso=' + enc;
+      }
+    } catch (e) {}
+    return url;
+  }
+
+  /** Navigate to sister site with session (same tab). */
+  async function goToSisterSite(targetOrigin) {
+    var url = await buildSisterHandoffUrl(targetOrigin);
+    window.location.href = url;
+  }
+
   async function loadProfile() {
     if (!sb || !sessionUser) return null;
     var { data, error } = await sb
@@ -1183,6 +1287,8 @@
     showAuthPanel('signin');
     try {
       await ensureClient();
+      // Sister-site SSO: apply tokens from the other domain before reading session
+      try { await consumeSisterSsoHandoff(); } catch (eSso) { console.warn(eSso); }
       var { data } = await sb.auth.getSession();
       if (data && data.session && data.session.user) {
         sessionUser = data.session.user;
@@ -1258,6 +1364,9 @@
     inviteShareText: inviteShareText,
     currentAppOrigin: currentAppOrigin,
     appPublicOrigins: appPublicOrigins,
+    buildSisterHandoffUrl: buildSisterHandoffUrl,
+    goToSisterSite: goToSisterSite,
+    consumeSisterSsoHandoff: consumeSisterSsoHandoff,
     get _sb() { return sb; }
   };
   // Expose for party extension

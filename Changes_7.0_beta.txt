@@ -1,0 +1,37 @@
+V7 Beta — dual-site defaults, SSO handoff, section min, compass settings
+========================================================================
+
+Applies to both Hunt-Slayer and Reg-Slayer (site-specific defaults via SITE_ID).
+
+Auth / maps
+-----------
+- Sister-site header button passes Supabase session (+ active map view) in
+  URL hash `#rs_sso=…` so you stay signed in when switching domains.
+- Same HuntSlayer Supabase project; maps pull from cloud after handoff.
+
+Layout defaults
+---------------
+- **Reg:** desktop side-by-side planner (`planner-dock-left` off) until user changes it.
+- **Hunt:** map Max on launch (mobile + desktop) via `mapFullscreenLaunch`.
+- **Hunt:** when not maxed, first-launch planner is stacked (dock-left on);
+  after the user toggles dock, choice is remembered.
+
+Tools / compass
+---------------
+- Settings → **Enable compass mode**: when off, toolbar compass only shows/hides
+  the dial (no compass-mode line cycle).
+- Settings → **On launch show** Compass | Wind (persisted).
+- **Reg:** GPS track tool off by default.
+- **Hunt:** dial/compass chrome on; launch dial mode defaults to Compass.
+
+Sections
+--------
+- Phone: all section minimize buttons (steps, weather, tracts) work like
+  Available tracts — not tracts-only anymore.
+- Map still uses Min / Max only.
+
+Version / cache
+---------------
+- APP_VERSION = 7.0-beta
+- Badge: V7 Beta
+- SHELL_CACHE = reg-slayer-shell-v60
