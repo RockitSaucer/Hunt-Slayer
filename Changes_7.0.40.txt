@@ -1,0 +1,19 @@
+V7.0.40 Beta — Kick member RPC + private owner line
+
+What
+1. Kick member from shared map (creator):
+   Production Supabase was missing migrations that define
+   public.remove_shared_map_member(p_map_id, p_user_id). Applied:
+   - 20260805220000_map_host_leave_delete
+   - 20260805230000_direction_icon (fixed: DROP before recreate list_shared_map_members)
+   - 20260806010000_rotate_code_on_kick (kick + rotate invite code)
+   Client party-maps.js was already correct; schema cache error is resolved on the DB.
+
+2. Private property status banner:
+   Shows "Private Property" then the tax/parcel owner on the next line only.
+   No address or parcel number.
+
+Ship
+- APP_VERSION 7.0.40-beta · shell v100
+- Both Hunt-Slayer and Reg-Slayer (UI)
+- Supabase HuntSlayer project (migrations) — no site deploy required for kick fix
