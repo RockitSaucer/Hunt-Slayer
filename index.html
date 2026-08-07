@@ -8681,10 +8681,17 @@
       color: var(--muted);
       cursor: pointer;
       font-weight: bold;
-      font-size: 18px;
+      font-size: 22px;
       line-height: 1;
-      padding: 0 2px;
+      padding: 4px 8px;
+      margin: -4px -4px -4px 0;
+      flex-shrink: 0;
+      z-index: 2;
+      position: relative;
+      pointer-events: auto;
+      -webkit-tap-highlight-color: transparent;
     }
+    .mwo-close:hover { color: #e59a18; }
     .mwo-body { font-size: 12px; color: var(--ink); }
     .mwo-more {
       margin-top: 10px;
@@ -10413,7 +10420,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.38 Beta">V7.0.38 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.39 Beta">V7.0.39 Beta</span>
     </div>
     <a class="brand-sister-link" id="brand-sister-link" href="https://www.regslayer.com" title="Open REG SLAYER (same account)">
       <span class="brand-sister-label">Reg Slayer</span>
@@ -11653,6 +11660,10 @@
                 <label class="settings-row-main" for="set-weather-map-fs"><input type="checkbox" id="set-weather-map-fs" onchange="saveAppSettingsFromUi()"><span class="sr-text">Weather on map when fullscreen</span></label>
                 <button type="button" class="settings-info-btn" data-title="Weather on map when fullscreen" data-info="Show a compact weather card while the map is maximized (Max)." aria-label="About weather on map" onclick="return showSettingsInfo(this,event)">i</button>
               </div>
+              <div class="settings-row">
+                <label class="settings-row-main" for="set-weather-spot-popup"><input type="checkbox" id="set-weather-spot-popup" onchange="saveAppSettingsFromUi()"><span class="sr-text">Weather popup when placing a map dot</span></label>
+                <button type="button" class="settings-info-btn" data-title="Weather popup when placing a map dot" data-info="When checked, a compact weather card appears on free map clicks (and Max). When unchecked, the card only opens after you tap Get weather on a dot or pin. Hourly weather for the clicked area still loads either way." aria-label="About weather popup on map click" onclick="return showSettingsInfo(this,event)">i</button>
+              </div>
             </div>
           </section>
 
@@ -11822,7 +11833,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.38-beta';
+    const APP_VERSION = '7.0.39-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -11845,7 +11856,8 @@
         },
         defaults: {
           overlays: { parcels: false, roads: false, topo: false, pastHunts: false },
-          weather: { unit: 'F', enabled: true, mapFullscreen: true },
+          // autoSpotPopup: compact map weather card on free map click (Get weather always can open it)
+          weather: { unit: 'F', enabled: true, mapFullscreen: true, autoSpotPopup: true },
           showYouthHunts: false,
           rutMapAlerts: true,
           // Which dial on first paint (user can change; persists in settings)
@@ -16592,12 +16604,29 @@
       usingCurrentLocation = false;
       isShowingCurrentData = false;
       isHistorical = getDaysFromToday(selectedDate) < 0;
-      // Keep compass / weather HUD visible for map clicks (including fullscreen)
-      window._forceMapWeatherOverlay = !!isMapFullscreen() || !!opts.showOverlay;
-      // Load weather at this exact coordinate (dashboard + map wind compass)
+      // Compact floating card:
+      //  - Get weather / explicit showOverlay → always allow
+      //  - Auto map click → only if Defaults → Weather → auto spot popup is on
+      var autoOk = (typeof weatherAutoSpotPopupEnabled === 'function')
+        ? weatherAutoSpotPopupEnabled()
+        : true;
+      var wantPopup = !!opts.showOverlay || (!!opts.forcePopup);
+      if (opts.autoFromMapClick) {
+        // Free map click: popup only when setting allows (and typically Max / mapFullscreen path)
+        wantPopup = autoOk && (!!opts.showOverlay || !!isMapFullscreen());
+      } else if (!wantPopup && autoOk && isMapFullscreen()) {
+        // Pin / list flows that did not pass showOverlay still get Max card when auto is on
+        wantPopup = true;
+      }
+      window._forceMapWeatherOverlay = !!wantPopup;
+      // Load weather at this exact coordinate (dashboard hourly + map wind compass always)
       // Default: never auto-scroll away from the map for map-spot weather
       var skipScroll = opts.skipScroll !== undefined ? !!opts.skipScroll : true;
-      selectLocation(clickLoc, openRule, { skipScroll: skipScroll });
+      selectLocation(clickLoc, openRule, {
+        skipScroll: skipScroll,
+        // loadWeatherAndRender uses this for auto compact card on Max
+        allowMapWeatherPopup: wantPopup
+      });
     }
     window.selectWeatherAtMapPoint = selectWeatherAtMapPoint;
 
@@ -23949,11 +23978,13 @@
         var lat = clickLat != null ? clickLat : pl.lat;
         var lng = clickLng != null ? clickLng : pl.lng;
         if (act === 'weather') {
+          // Explicit Get weather — always allow compact card + hourly
           selectPublicLandWeather(pl.layer, pl.attrs || {}, lat, lng, {
             closePopup: true,
-            showOverlay: isMapFullscreen(),
+            showOverlay: true,
             skipScroll: false
           });
+          window._forceMapWeatherOverlay = true;
           if (isPhoneLayout()) {
             var dashPl = document.getElementById('dashboard-container');
             if (dashPl) setTimeout(function() { dashPl.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150);
@@ -24302,10 +24333,19 @@
       }
       if (openMenu) refreshDotPopup(true);
 
-      // Always refresh weather + compass for this map click (unless explicitly skipped).
+      // Always refresh weather + compass / hourly for this map click (unless explicitly skipped).
+      // Compact floating card only auto-opens when Defaults → Weather → "Weather popup when placing a map dot" is on.
       var detected = detectBoundaryAndZone(clickLat, clickLng);
       if (!skipWeather) {
-        selectWeatherAtMapPoint(clickLat, clickLng, detected, null, { skipScroll: true });
+        var autoPopup = (typeof weatherAutoSpotPopupEnabled === 'function')
+          ? weatherAutoSpotPopupEnabled()
+          : true;
+        selectWeatherAtMapPoint(clickLat, clickLng, detected, null, {
+          skipScroll: true,
+          // showOverlay only when auto-popup setting allows (Get weather forces it later)
+          showOverlay: autoPopup && (typeof isMapFullscreen === 'function' ? isMapFullscreen() : false),
+          autoFromMapClick: true
+        });
       }
 
       // Parcel owner (when Property lines overlay is useful; always try so owner shows if grid available)
@@ -24409,12 +24449,13 @@
 
         if (act === 'weather') {
           ensureHuntContext();
-          // Explicit "Get weather" from the orange-dot menu — OK to show dashboard
+          // Explicit "Get weather" from the orange-dot menu — always show compact card + hourly
           selectWeatherAtMapPoint(clickLat, clickLng, detected, lastClickTva, {
             skipScroll: false,
-            showOverlay: isMapFullscreen()
+            showOverlay: true,
+            forcePopup: true
           });
-          if (isMapFullscreen()) window._forceMapWeatherOverlay = true;
+          window._forceMapWeatherOverlay = true;
           if (map) map.closePopup();
           if (isPhoneLayout()) {
             var dashW = document.getElementById('dashboard-container');
@@ -29950,14 +29991,16 @@ function togglePinIconPicker() {
       try {
         if (act === 'weather') {
           ensureHuntContext();
-          // Prefer saved weather when present; always allow dashboard for pin location
+          // Explicit Get weather — always show compact card + hourly for this pin
           if (typeof selectSavedPin === 'function' && (loc.isHunt || loc.savedWeather)) {
+            window._forceMapWeatherOverlay = true;
             selectSavedPin(pinId);
           } else {
             var detected = detectBoundaryAndZone(clickLat, clickLng);
             selectWeatherAtMapPoint(clickLat, clickLng, detected, loc.tva || null, {
               skipScroll: false,
-              showOverlay: isMapFullscreen()
+              showOverlay: true,
+              forcePopup: true
             });
             if (map) map.closePopup();
           }
@@ -33090,7 +33133,11 @@ function togglePinIconPicker() {
       });
       // TVA note for this coordinate (no boundary on map)
       applyTvaToLocation(location, location.lat, location.lng);
-      loadWeatherAndRender(location, rule, null, { skipScroll: skipScroll });
+      loadWeatherAndRender(location, rule, null, {
+        skipScroll: skipScroll,
+        // Propagate compact-card intent from map click / Get weather
+        allowMapWeatherPopup: opts.allowMapWeatherPopup
+      });
       if (skipScroll) scheduleMapInViewRestore();
     }
     async function selectSubsection(locId, subIdx) {
@@ -33154,7 +33201,19 @@ function togglePinIconPicker() {
           waterData.station = nearest;
           waterData.distance = minDist;
         }
-        if (mapOnly || (skipScroll && isMapFullscreen() && appSettings.defaults.weather.mapFullscreen)) {
+        // Compact floating card: map-only always (no dashboard); Max/auto only when allowed.
+        // Hourly still always goes to displayDashboard when planner weather is visible.
+        var wantCompact = !!mapOnly ||
+          !!window._forceMapWeatherOverlay ||
+          (opts.allowMapWeatherPopup === true) ||
+          (!!skipScroll && isMapFullscreen() &&
+            appSettings.defaults.weather.mapFullscreen &&
+            (typeof weatherAutoSpotPopupEnabled !== 'function' || weatherAutoSpotPopupEnabled()));
+        // Explicit false from free map click with setting off
+        if (opts.allowMapWeatherPopup === false && !mapOnly && !window._forceMapWeatherOverlay) {
+          wantCompact = false;
+        }
+        if (wantCompact && (mapOnly || isMapFullscreen() || window._forceMapWeatherOverlay || opts.allowMapWeatherPopup === true)) {
           showMapWeatherPopup(location, weather, lat, lng, rule);
           if (typeof updateMapWindHud === 'function') {
             var wspd, wdir;
@@ -33170,6 +33229,15 @@ function togglePinIconPicker() {
             renderSubsections(location, rule);
           } else if (loading) loading.style.display = 'none';
         } else {
+          // No compact card — still update wind HUD + full hourly dashboard for this lat/lng
+          if (typeof updateMapWindHud === 'function') {
+            if (weather.isCurrent && weather.current) {
+              updateMapWindHud(weather.current.wind_speed_10m, weather.current.wind_direction_10m, true);
+            } else if (weather.hourly) {
+              var idx2 = weather.hourly.wind_speed_10m && weather.hourly.wind_speed_10m[7] != null ? 7 : 12;
+              updateMapWindHud(weather.hourly.wind_speed_10m[idx2], weather.hourly.wind_direction_10m[idx2], false);
+            }
+          }
           displayDashboard(location, rule, weather, subsection, waterData, dateToUse, lat, lng);
           renderSubsections(location, rule);
         }
@@ -33177,8 +33245,9 @@ function togglePinIconPicker() {
         if (reqId !== weatherRequestSeq) return;
         console.error('Weather fetch error:', err);
         var sim = generateSimulatedWeather(lat, lng, dateToUse);
-        if (mapOnly) showMapWeatherPopup(location, sim, lat, lng, rule);
-        else displayDashboard(location, rule, sim, subsection, null, dateToUse, lat, lng);
+        var forceSimPopup = !!mapOnly || !!window._forceMapWeatherOverlay || opts.allowMapWeatherPopup === true;
+        if (forceSimPopup) showMapWeatherPopup(location, sim, lat, lng, rule);
+        if (!mapOnly) displayDashboard(location, rule, sim, subsection, null, dateToUse, lat, lng);
         if (!mapOnly) renderSubsections(location, rule);
       }
       if (skipScroll) scheduleMapInViewRestore();
@@ -33751,12 +33820,20 @@ function togglePinIconPicker() {
       if (location.notes) {
         html += '<div style="margin-top:8px;font-size:11px;color:var(--muted);"><i>' + String(location.notes).replace(/\n/g, '<br>') + '</i></div>';
       }
-      // Prefer settings-aware map weather popup when fullscreen / forced
+      // Prefer settings-aware map weather popup when fullscreen / forced / Get weather
       var isCurrentLoc = !location || location.id == 9999 || location.type === 'Current Location' || usingCurrentLocation;
       var forceBox = !!window._forceMapWeatherOverlay && !isCurrentLoc;
       var fullscreen = document.querySelector('.map-wrapper') && document.querySelector('.map-wrapper').classList.contains('fullscreen');
       var allowMapWx = weatherFeaturesEnabled() && appSettings.defaults.weather.mapFullscreen;
-      var showOverlay = allowMapWx && (forceBox || (fullscreen && selectedLocationId && !isCurrentLoc) || isMapOnlyMode());
+      var autoSpot = (typeof weatherAutoSpotPopupEnabled === 'function')
+        ? weatherAutoSpotPopupEnabled()
+        : true;
+      // Auto Max card only when setting is on; Get weather sets forceBox regardless
+      var showOverlay = allowMapWx && (
+        forceBox ||
+        isMapOnlyMode() ||
+        (autoSpot && fullscreen && selectedLocationId && !isCurrentLoc)
+      );
       if (showOverlay) {
         showMapWeatherPopup(location, weather, lat, lng, rule);
       } else {
@@ -33765,6 +33842,7 @@ function togglePinIconPicker() {
         var mwoTitle = document.getElementById('mwo-title');
         if (mwoTitle) mwoTitle.innerText = title;
         var ov = document.getElementById('map-weather-overlay');
+        // Not showing compact card this render — hide any leftover (e.g. setting off after Get weather)
         if (ov) ov.style.display = 'none';
       }
       window._forceMapWeatherOverlay = false;
@@ -34527,6 +34605,8 @@ function togglePinIconPicker() {
       var w = appSettings.defaults.weather;
       set('set-weather-enabled', w.enabled);
       set('set-weather-map-fs', w.mapFullscreen);
+      // Default ON when missing (older saved prefs)
+      set('set-weather-spot-popup', w.autoSpotPopup !== false);
       document.querySelectorAll('input[name="set-temp-unit"]').forEach(function(r) {
         r.checked = (r.value === (w.unit || 'F'));
       });
@@ -34584,6 +34664,7 @@ function togglePinIconPicker() {
       appSettings.defaults.overlays.pastHunts = g('set-def-ov-hunts');
       appSettings.defaults.weather.enabled = g('set-weather-enabled');
       appSettings.defaults.weather.mapFullscreen = g('set-weather-map-fs');
+      appSettings.defaults.weather.autoSpotPopup = g('set-weather-spot-popup');
       var unitEl = document.querySelector('input[name="set-temp-unit"]:checked');
       appSettings.defaults.weather.unit = unitEl ? unitEl.value : 'F';
       appSettings.defaults.showYouthHunts = g('set-show-youth-hunts');
@@ -35036,21 +35117,36 @@ function togglePinIconPicker() {
     function weatherFeaturesEnabled() {
       return !!(appSettings.defaults.weather && appSettings.defaults.weather.enabled);
     }
+    /** Compact map weather card auto-opens on free map click when true (Defaults → Weather). */
+    function weatherAutoSpotPopupEnabled() {
+      if (!weatherFeaturesEnabled()) return false;
+      var w = appSettings.defaults && appSettings.defaults.weather;
+      // Missing key (older prefs) → keep previous auto behavior
+      return !w || w.autoSpotPopup !== false;
+    }
+    window.weatherAutoSpotPopupEnabled = weatherAutoSpotPopupEnabled;
 
     var lastMapWeatherPayload = null;
+    /** True after user hits × on the compact card — until next intentional show. */
+    var mapWeatherUserDismissed = false;
 
     function closeMapWeatherPopup() {
+      mapWeatherUserDismissed = true;
       var el = document.getElementById('map-weather-overlay');
       if (el) el.style.display = 'none';
-      closeMapWeatherDetails();
+      // Hide details only — do NOT call closeMapWeatherDetails() (that reopened compact)
+      var details = document.getElementById('map-weather-details');
+      if (details) details.style.display = 'none';
     }
     function closeMapWeatherDetails() {
       var el = document.getElementById('map-weather-details');
       if (el) el.style.display = 'none';
-      // Bring back compact weather in the same corner if a spot is still selected
+      // Bring back compact only if user did not fully dismiss the weather card
       try {
         var compact = document.getElementById('map-weather-overlay');
-        if (compact && lastMapWeatherPayload) compact.style.display = 'block';
+        if (compact && lastMapWeatherPayload && !mapWeatherUserDismissed) {
+          compact.style.display = 'block';
+        }
       } catch (eR) {}
     }
     window.closeMapWeatherPopup = closeMapWeatherPopup;
@@ -35111,6 +35207,25 @@ function togglePinIconPicker() {
     function wireMapWeatherDetailsDrag() {
       wireDraggableMapPanel(document.getElementById('map-weather-details'));
       wireDraggableMapPanel(document.getElementById('map-weather-overlay'));
+      // Extra: make sure × always closes (drag handler must not steal the tap)
+      function wireCloseBtn(btn, fn) {
+        if (!btn || btn._mwoCloseWired) return;
+        btn._mwoCloseWired = true;
+        btn.addEventListener('pointerdown', function(ev) {
+          ev.stopPropagation();
+        });
+        btn.addEventListener('click', function(ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          if (typeof fn === 'function') fn();
+        });
+      }
+      try {
+        var ov = document.getElementById('map-weather-overlay');
+        if (ov) wireCloseBtn(ov.querySelector('.mwo-close'), closeMapWeatherPopup);
+        var det = document.getElementById('map-weather-details');
+        if (det) wireCloseBtn(det.querySelector('.mwo-close'), closeMapWeatherDetails);
+      } catch (eWire) {}
     }
 
     function expandMapWeatherDetails() {
@@ -35141,6 +35256,7 @@ function togglePinIconPicker() {
 
     function showMapWeatherPopup(location, weather, lat, lng, rule) {
       if (!weatherFeaturesEnabled()) return;
+      mapWeatherUserDismissed = false;
       var overlay = document.getElementById('map-weather-overlay');
       var body = document.getElementById('mwo-body');
       var title = document.getElementById('mwo-title');

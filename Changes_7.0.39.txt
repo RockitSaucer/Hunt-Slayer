@@ -1,0 +1,15 @@
+V7.0.39 Beta — Map weather popup close + setting
+
+What
+1. Fixed × on the compact map weather card — it could not stay closed because
+   closeMapWeatherPopup() called closeMapWeatherDetails(), which immediately
+   re-showed the compact card whenever lastMapWeatherPayload was set.
+2. Settings → Defaults → Weather → “Weather popup when placing a map dot”
+   - Checked (default): compact weather card can auto-open on free map click (Max).
+   - Unchecked: card only opens after Get weather on a dot or pin.
+3. Either way, hourly weather for the clicked lat/lng still loads into the
+   dashboard / details (More details includes hourly). Wind HUD still updates.
+
+Ship
+- APP_VERSION 7.0.39-beta · shell v99
+- Both Hunt-Slayer and Reg-Slayer
