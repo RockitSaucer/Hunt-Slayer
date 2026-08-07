@@ -10413,7 +10413,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.37 Beta">V7.0.37 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.38 Beta">V7.0.38 Beta</span>
     </div>
     <a class="brand-sister-link" id="brand-sister-link" href="https://www.regslayer.com" title="Open REG SLAYER (same account)">
       <span class="brand-sister-label">Reg Slayer</span>
@@ -10812,7 +10812,7 @@
               <div class="map-search-results" id="map-search-results" role="listbox" aria-label="Search results"></div>
               <div class="map-search-status" id="map-search-status" hidden></div>
               <div class="map-search-row">
-                <input type="search" class="map-search-input" id="map-search-input" placeholder="Search pins, places, addresses…" autocomplete="off" enterkeyhint="search" aria-autocomplete="list" aria-controls="map-search-results" />
+                <input type="search" class="map-search-input" id="map-search-input" placeholder="Search pins, places, addresses, or lat,lng…" autocomplete="off" enterkeyhint="search" aria-autocomplete="list" aria-controls="map-search-results" />
                 <button type="button" class="map-search-clear" id="map-search-clear" title="Clear" aria-label="Clear search">×</button>
               </div>
             </div>
@@ -11822,7 +11822,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.37-beta';
+    const APP_VERSION = '7.0.38-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -17649,6 +17649,145 @@
       return loc.type || 'Place';
     }
 
+    /**
+     * Parse lat/lng typed or pasted into map search.
+     * Supports: 33.2098, -87.5692 | 33.2098 -87.5692 | 33.2098°N 87.5692°W
+     *   | N 33.2098, W 87.5692 | 33°12'35"N 87°34'9"W | Google @lat,lng
+     * Returns { lat, lng, pure } or null. pure=true when the whole query is only coords.
+     * Avoids treating place names that happen to contain two numbers as coordinates.
+     */
+    function parseMapSearchCoordinates(query) {
+      var raw = String(query || '').trim();
+      if (!raw || raw.length < 3) return null;
+      var s = raw
+        .replace(/\u00b0/g, '°')
+        .replace(/[′'’]/g, "'")
+        .replace(/[″"”]/g, '"')
+        .replace(/\s+/g, ' ')
+        .trim();
+      var pure = /^[\s0-9.+\-,;°'"NSEWnsew@]+$/.test(s);
+
+      function ok(lat, lng) {
+        return isFinite(lat) && isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+      }
+      function pack(lat, lng) {
+        // If first value looks like longitude (GIS paste order)
+        if (Math.abs(lat) > 90 && Math.abs(lng) <= 90 && Math.abs(lat) <= 180) {
+          var t = lat; lat = lng; lng = t;
+        }
+        if (!ok(lat, lng)) return null;
+        return { lat: lat, lng: lng, pure: pure };
+      }
+      function dmsToDec(d, m, sec, hemi) {
+        var signedIn = parseFloat(d);
+        var deg = Math.abs(signedIn || 0);
+        var min = Math.abs(parseFloat(m) || 0);
+        var se = Math.abs(parseFloat(sec) || 0);
+        var v = deg + (min / 60) + (se / 3600);
+        var h = String(hemi || '').toUpperCase();
+        if (h === 'S' || h === 'W' || signedIn < 0) v = -Math.abs(v);
+        else if (h === 'N' || h === 'E') v = Math.abs(v);
+        return v;
+      }
+
+      // Google / Apple style @lat,lng (works even inside longer paste)
+      var mAt = s.match(/@\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+      if (mAt) {
+        var rAt = pack(parseFloat(mAt[1]), parseFloat(mAt[2]));
+        if (rAt) return rAt;
+      }
+
+      // Full DMS pair: 33°12'35.3"N 87°34'9.1"W
+      var dmsRe =
+        /([NnSsEeWw])?\s*([+\-]?\d{1,3})\s*°\s*(\d{1,2}(?:\.\d+)?)\s*[']?\s*(\d{1,2}(?:\.\d+)?)\s*["]?\s*([NnSsEeWw])?/g;
+      var dmsParts = [];
+      var dm;
+      while ((dm = dmsRe.exec(s)) !== null) {
+        dmsParts.push(dmsToDec(dm[2], dm[3], dm[4], dm[5] || dm[1] || ''));
+        if (dmsParts.length >= 2) break;
+      }
+      if (dmsParts.length >= 2) {
+        var rDms = pack(dmsParts[0], dmsParts[1]);
+        if (rDms) return rDms;
+      }
+
+      // Degrees + decimal minutes: 33°12.588'N, 87°34.152'W
+      if (dmsParts.length < 2) {
+        var dmRe =
+          /([NnSsEeWw])?\s*([+\-]?\d{1,3})\s*°\s*(\d{1,2}(?:\.\d+)?)\s*[']?\s*([NnSsEeWw])?/g;
+        var dmParts = [];
+        var dmm;
+        while ((dmm = dmRe.exec(s)) !== null) {
+          dmParts.push(dmsToDec(dmm[2], dmm[3], 0, dmm[4] || dmm[1] || ''));
+          if (dmParts.length >= 2) break;
+        }
+        if (dmParts.length >= 2) {
+          var rDm = pack(dmParts[0], dmParts[1]);
+          if (rDm) return rDm;
+        }
+      }
+
+      // Only treat free-floating decimals as coords when the query looks coordinate-like
+      // (pure numeric paste, comma pair, decimals, or hemisphere letters) — not "Area 51 unit 2"
+      var hasCommaPair = /-?\d+(?:\.\d+)?\s*[,;]\s*-?\d+(?:\.\d+)?/.test(s);
+      var hasDecimalPair = /-?\d+\.\d+\s*[,;\s]\s*-?\d+\.\d+/.test(s);
+      var hasHemiPair =
+        /(?:^|[^A-Za-z])([NnSs])\s*[+\-]?\d|(?:^|[^A-Za-z])[+\-]?\d+(?:\.\d+)?\s*°?\s*([NnSs])(?:$|[^A-Za-z])/.test(s) &&
+        /(?:^|[^A-Za-z])([EeWw])\s*[+\-]?\d|(?:^|[^A-Za-z])[+\-]?\d+(?:\.\d+)?\s*°?\s*([EeWw])(?:$|[^A-Za-z])/.test(s);
+      if (!pure && !hasCommaPair && !hasDecimalPair && !hasHemiPair) return null;
+
+      // Decimal degrees ± optional N/S E/W
+      // Prefer leading hemi (N33.2 W87.5) so trailing letter is not stolen from the next coord.
+      // Also: 33.2098°N, 87.5692°W | 33.2098, -87.5692
+      var decRe =
+        /([NnSsEeWw])\s*([+\-]?\d{1,3}(?:\.\d+)?)\s*°?|([+\-]?\d{1,3}(?:\.\d+)?)\s*°?\s*([NnSsEeWw])\b|([+\-]?\d{1,3}(?:\.\d+)?)\s*°?/g;
+      var nums = [];
+      var nm;
+      while ((nm = decRe.exec(s)) !== null) {
+        var hemi3 = '';
+        var numStr = '';
+        if (nm[1] && nm[2]) {
+          // Leading hemi: N33.2098
+          hemi3 = nm[1].toUpperCase();
+          numStr = nm[2];
+        } else if (nm[3] && nm[4]) {
+          // Trailing hemi: 33.2098°N
+          hemi3 = nm[4].toUpperCase();
+          numStr = nm[3];
+        } else if (nm[5]) {
+          // Bare number: 33.2098 or -87.5692
+          numStr = nm[5];
+        } else {
+          continue;
+        }
+        var val = parseFloat(numStr);
+        if (isNaN(val)) continue;
+        if (hemi3 === 'S' || hemi3 === 'W') val = -Math.abs(val);
+        else if (hemi3 === 'N' || hemi3 === 'E') val = Math.abs(val);
+        nums.push({ v: val, hemi: hemi3, raw: numStr });
+        if (nums.length >= 2) break;
+      }
+      if (nums.length >= 2) {
+        // Integer-only pair without comma is too ambiguous (skip unless hemi)
+        var bothInt = nums[0].raw.indexOf('.') < 0 && nums[1].raw.indexOf('.') < 0;
+        if (bothInt && !hasCommaPair && !hasHemiPair) return null;
+        var a = nums[0].v, b = nums[1].v;
+        var ha = nums[0].hemi, hb = nums[1].hemi;
+        var latN, lngN;
+        if ((ha === 'N' || ha === 'S') && (hb === 'E' || hb === 'W')) {
+          latN = a; lngN = b;
+        } else if ((ha === 'E' || ha === 'W') && (hb === 'N' || hb === 'S')) {
+          latN = b; lngN = a;
+        } else {
+          latN = a; lngN = b;
+        }
+        return pack(latN, lngN);
+      }
+
+      return null;
+    }
+    window.parseMapSearchCoordinates = parseMapSearchCoordinates;
+
     function collectLocalMapSearchHits(query) {
       var q = String(query || '').trim().toLowerCase();
       if (!q || q.length < 1) return [];
@@ -17870,6 +18009,20 @@
       }
     }
 
+    function coordsMapSearchHit(coords) {
+      if (!coords) return null;
+      var lat = Number(coords.lat);
+      var lng = Number(coords.lng);
+      if (isNaN(lat) || isNaN(lng)) return null;
+      return {
+        label: lat.toFixed(5) + ', ' + lng.toFixed(5),
+        sub: 'Coordinates',
+        kind: 'coords',
+        lat: lat,
+        lng: lng
+      };
+    }
+
     function runMapSearch(query) {
       var q = String(query || '').trim();
       var req = ++mapSearchReqId;
@@ -17884,8 +18037,20 @@
         setMapSearchStatus('');
         return;
       }
+      // Coordinates first — typed/pasted lat,lng jumps without waiting on Photon
+      var coords = (typeof parseMapSearchCoordinates === 'function')
+        ? parseMapSearchCoordinates(q) : null;
+      var coordHit = coords ? coordsMapSearchHit(coords) : null;
       var local = collectLocalMapSearchHits(q);
-      // Show local immediately
+      if (coordHit) {
+        // Put exact coords at top; drop near-duplicate local hits at same point
+        local = local.filter(function(h) {
+          return Math.abs(Number(h.lat) - coordHit.lat) > 0.00015 ||
+            Math.abs(Number(h.lng) - coordHit.lng) > 0.00015;
+        });
+        local.unshift(coordHit);
+      }
+      // Show local (+ coords) immediately
       if (req === mapSearchReqId) {
         if (local.length) {
           renderMapSearchResults(local);
@@ -17893,6 +18058,14 @@
         } else {
           setMapSearchStatus('Searching…');
         }
+      }
+      // Pure coordinate paste: skip geocode noise (e.g. Photon matching street numbers)
+      if (coords && coords.pure) {
+        if (req === mapSearchReqId) {
+          if (local.length) renderMapSearchResults(local);
+          else setMapSearchStatus('No matches — try another place, address, or lat,lng.');
+        }
+        return;
       }
       // Merge geocode suggestions
       geocodeMapSearchSuggestions(q).then(function(geoHits) {
@@ -17909,7 +18082,7 @@
           combined.push(h);
         });
         if (!combined.length) {
-          setMapSearchStatus('No matches — try another place or address.');
+          setMapSearchStatus('No matches — try another place, address, or lat,lng.');
           renderMapSearchResults([]);
           return;
         }
@@ -17917,7 +18090,7 @@
       }).catch(function() {
         if (req !== mapSearchReqId) return;
         if (local.length) renderMapSearchResults(local);
-        else setMapSearchStatus('No matches — try another place or address.');
+        else setMapSearchStatus('No matches — try another place, address, or lat,lng.');
       });
     }
 
@@ -17931,7 +18104,9 @@
         try {
           if (typeof map !== 'undefined' && map) {
             var z = map.getZoom ? map.getZoom() : 10;
-            var targetZ = hit.kind === 'geo' ? Math.max(z, 13) : Math.max(z, 14);
+            // Coords / places: deep zoom so the orange pin is useful
+            var targetZ = hit.kind === 'coords' ? Math.max(z, 15)
+              : (hit.kind === 'geo' ? Math.max(z, 13) : Math.max(z, 14));
             if (z < targetZ) map.setView([lat, lng], targetZ, { animate: true });
             else map.panTo([lat, lng], { animate: true });
           }
@@ -18015,7 +18190,14 @@
           } else if (mapSearchHits.length) {
             selectMapSearchResult(mapSearchHits[0]);
           } else {
-            runMapSearch(input.value);
+            // Enter before debounce finishes: jump if query is lat,lng
+            var enterCoords = (typeof parseMapSearchCoordinates === 'function')
+              ? parseMapSearchCoordinates(input.value) : null;
+            if (enterCoords) {
+              selectMapSearchResult(coordsMapSearchHit(enterCoords));
+            } else {
+              runMapSearch(input.value);
+            }
           }
         }
       });

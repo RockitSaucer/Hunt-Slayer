@@ -1,0 +1,15 @@
+V7.0.38 Beta — Map search finds coordinates
+
+What
+- Map search bar accepts lat/lng and jumps there with the orange temp pin.
+- Formats: 33.2098, -87.5692 · space-separated decimals · N/S E/W · ° / DMS · Google @lat,lng
+- Pure coordinate paste skips Photon geocode (instant, no street-number noise).
+- Enter jumps immediately if the query is coordinates (even before debounce).
+- Placeholder: “Search pins, places, addresses, or lat,lng…”
+
+Why
+- Pasted GPS / OnX / Google coordinates never matched pins or place names.
+
+Ship
+- APP_VERSION 7.0.38-beta · shell v98
+- Both Hunt-Slayer and Reg-Slayer
