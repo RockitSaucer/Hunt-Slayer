@@ -1,0 +1,6 @@
+V7.0.37 Beta (shell v97) — Fix Offline map popup crash
+
+Root cause: pin Offline map used undefined `safeId` / `id` (should be pinId),
+throwing before the 2/5/10 mi chooser could show.
+
+Also run offline-save early in map-dot handler with clearer errors.

@@ -10413,7 +10413,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.36 Beta">V7.0.36 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.37 Beta">V7.0.37 Beta</span>
     </div>
     <a class="brand-sister-link" id="brand-sister-link" href="https://www.regslayer.com" title="Open REG SLAYER (same account)">
       <span class="brand-sister-label">Reg Slayer</span>
@@ -11822,7 +11822,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.36-beta';
+    const APP_VERSION = '7.0.37-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -24172,6 +24172,53 @@
           return false;
         }
 
+        // Offline map: must run before lat/lng hard-fail messaging blocks GPS-only cases
+        if (act === 'offline-save' || act === 'offline-back' ||
+            act === 'offline-mi2' || act === 'offline-mi5' || act === 'offline-mi10') {
+          try {
+            if (act === 'offline-save') {
+              if (clickLat == null || clickLng == null) {
+                alert('Tap the map to place a spot first, then choose Offline map.');
+                return false;
+              }
+              setMapDotMenuContent({ offlineRadiusChooser: true, fromGps: mapDotMenuSource === 'gps' });
+              return false;
+            }
+            if (act === 'offline-back') {
+              setMapDotMenuContent({ fromGps: mapDotMenuSource === 'gps' });
+              return false;
+            }
+            if (clickLat == null || clickLng == null) {
+              alert('Tap the map to place a spot first, then choose Offline map.');
+              return false;
+            }
+            var tierMapDot = { 'offline-mi2': 'mi2', 'offline-mi5': 'mi5', 'offline-mi10': 'mi10' };
+            var tidDot = tierMapDot[act] || 'mi2';
+            var spotLabelDot = 'Map spot';
+            try {
+              if (mapDotMenuSource === 'gps') spotLabelDot = 'My GPS';
+              else if (typeof detectBoundaryAndZone === 'function') {
+                var detO = detectBoundaryAndZone(clickLat, clickLng);
+                if (detO && detO.name) spotLabelDot = detO.name;
+              }
+            } catch (eLab) {}
+            if (typeof window.saveOfflineMapAround === 'function') {
+              window.saveOfflineMapAround(clickLat, clickLng, {
+                label: spotLabelDot,
+                source: 'map-dot',
+                tierId: tidDot,
+                basemap: (typeof activeBasemapKey === 'string' && activeBasemapKey) ? activeBasemapKey : 'topo'
+              });
+            } else {
+              alert('Offline map is not available yet. Hard-refresh the page and try again.');
+            }
+          } catch (eOff) {
+            console.error('offline map action', act, eOff);
+            alert('Offline map failed: ' + ((eOff && eOff.message) || eOff));
+          }
+          return false;
+        }
+
         if (clickLat == null || clickLng == null) {
           alert('Tap the map to place a spot first, then choose an action.');
           return false;
@@ -24332,30 +24379,6 @@
         if (act === 'share-select-map') {
           var idx = arguments.length > 1 ? arguments[1] : null;
           // also support data-idx via global pending
-          return false;
-        }
-
-        if (act === 'offline-save') {
-          ensureHuntContext();
-          setMapDotMenuContent({ offlineRadiusChooser: true, fromGps: mapDotMenuSource === 'gps' });
-          return false;
-        }
-        if (act === 'offline-back') {
-          setMapDotMenuContent({ fromGps: mapDotMenuSource === 'gps' });
-          return false;
-        }
-        if (act === 'offline-mi2' || act === 'offline-mi5' || act === 'offline-mi10') {
-          ensureHuntContext();
-          var tierMap = { 'offline-mi2': 'mi2', 'offline-mi5': 'mi5', 'offline-mi10': 'mi10' };
-          var tid = tierMap[act] || 'mi2';
-          var spotLabel = (detected && detected.name) ? detected.name : 'Map spot';
-          if (mapDotMenuSource === 'gps') spotLabel = 'My GPS';
-          window.saveOfflineMapAround(clickLat, clickLng, {
-            label: spotLabel,
-            source: 'pin',
-            tierId: tid,
-            basemap: (typeof activeBasemapKey === 'string' && activeBasemapKey) ? activeBasemapKey : 'topo'
-          });
           return false;
         }
       } catch (err) {
@@ -29786,47 +29809,66 @@ function togglePinIconPicker() {
           if (map) map.closePopup();
           return false;
         }
-        if (act === 'offline-save') {
+        if (act === 'offline-save' || act === 'offline-back' ||
+            act === 'offline-mi2' || act === 'offline-mi5' || act === 'offline-mi10') {
+          // pinId is the function arg — never use undefined safeId/id
+          var pinSafe = String(pinId == null ? '' : pinId).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
           if (loc && loc.lat != null && loc.lng != null) {
             clickLat = Number(loc.lat);
             clickLng = Number(loc.lng);
           }
-          var chooserHtml =
-            '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
-              '<div class="mdm-title">Offline map pack</div>' +
-              '<div class="mdm-sub">How far around this pin? You will confirm size before download.</div>' +
-              '<div class="mdm-actions-grid">' +
-              '<button type="button" class="mdm-btn" style="background:#1a4a5c;" onclick="event.preventDefault();event.stopPropagation();window.handlePinPopupAction(\'' + safeId + '\',\'offline-mi2\');return false;">2 miles</button>' +
-              '<button type="button" class="mdm-btn" style="background:#1a4a5c;" onclick="event.preventDefault();event.stopPropagation();window.handlePinPopupAction(\'' + safeId + '\',\'offline-mi5\');return false;">5 miles</button>' +
-              '<button type="button" class="mdm-btn" style="background:#1a4a5c;" onclick="event.preventDefault();event.stopPropagation();window.handlePinPopupAction(\'' + safeId + '\',\'offline-mi10\');return false;">10 miles</button>' +
-              '<button type="button" class="mdm-btn" style="background:#3a4234;" onclick="event.preventDefault();event.stopPropagation();window.handlePinPopupAction(\'' + safeId + '\',\'offline-back\');return false;">Back</button>' +
-              '</div></div>';
-          try {
-            if (map && map._popup && typeof map._popup.setContent === 'function') {
-              map._popup.setContent(chooserHtml);
+          if (act === 'offline-save') {
+            var chooserHtml =
+              '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
+                '<div class="mdm-title">Offline map pack</div>' +
+                '<div class="mdm-sub">How far around this pin? You will confirm size before download.</div>' +
+                '<div class="mdm-actions-grid">' +
+                '<button type="button" class="mdm-btn" style="background:#1a4a5c;" onclick="event.preventDefault();event.stopPropagation();window.handlePinPopupAction(\'' + pinSafe + '\',\'offline-mi2\');return false;">2 miles</button>' +
+                '<button type="button" class="mdm-btn" style="background:#1a4a5c;" onclick="event.preventDefault();event.stopPropagation();window.handlePinPopupAction(\'' + pinSafe + '\',\'offline-mi5\');return false;">5 miles</button>' +
+                '<button type="button" class="mdm-btn" style="background:#1a4a5c;" onclick="event.preventDefault();event.stopPropagation();window.handlePinPopupAction(\'' + pinSafe + '\',\'offline-mi10\');return false;">10 miles</button>' +
+                '<button type="button" class="mdm-btn" style="background:#3a4234;" onclick="event.preventDefault();event.stopPropagation();window.handlePinPopupAction(\'' + pinSafe + '\',\'offline-back\');return false;">Back</button>' +
+                '</div></div>';
+            try {
+              if (map && map._popup && typeof map._popup.setContent === 'function') {
+                map._popup.setContent(chooserHtml);
+              } else if (map) {
+                // Fallback: open a lightweight popup at the pin
+                L.popup({ className: 'map-dot-popup', closeButton: true, maxWidth: 280 })
+                  .setLatLng([clickLat, clickLng])
+                  .setContent(chooserHtml)
+                  .openOn(map);
+              }
+            } catch (ePop) {
+              console.warn('offline chooser popup', ePop);
+              // Last resort: go straight to confirm for 2 mi
+              if (typeof window.saveOfflineMapAround === 'function') {
+                window.saveOfflineMapAround(clickLat, clickLng, {
+                  label: (loc && loc.name) || 'Pin',
+                  source: 'pin',
+                  sourceId: pinId,
+                  tierId: 'mi2',
+                  basemap: (typeof activeBasemapKey === 'string' && activeBasemapKey) ? activeBasemapKey : 'topo'
+                });
+              }
             }
-          } catch (ePop) {}
-          return false;
-        }
-        if (act === 'offline-back') {
-          try {
-            if (map) map.closePopup();
-          } catch (eB) {}
-          return false;
-        }
-        if (act === 'offline-mi2' || act === 'offline-mi5' || act === 'offline-mi10') {
-          if (loc && loc.lat != null && loc.lng != null) {
-            clickLat = Number(loc.lat);
-            clickLng = Number(loc.lng);
+            return false;
+          }
+          if (act === 'offline-back') {
+            try { if (map) map.closePopup(); } catch (eB) {}
+            return false;
           }
           var tmap = { 'offline-mi2': 'mi2', 'offline-mi5': 'mi5', 'offline-mi10': 'mi10' };
-          window.saveOfflineMapAround(clickLat, clickLng, {
-            label: (loc && loc.name) ? loc.name : 'Pin',
-            source: 'pin',
-            sourceId: id,
-            tierId: tmap[act] || 'mi2',
-            basemap: (typeof activeBasemapKey === 'string' && activeBasemapKey) ? activeBasemapKey : 'topo'
-          });
+          if (typeof window.saveOfflineMapAround === 'function') {
+            window.saveOfflineMapAround(clickLat, clickLng, {
+              label: (loc && loc.name) ? loc.name : 'Pin',
+              source: 'pin',
+              sourceId: pinId,
+              tierId: tmap[act] || 'mi2',
+              basemap: (typeof activeBasemapKey === 'string' && activeBasemapKey) ? activeBasemapKey : 'topo'
+            });
+          } else {
+            alert('Offline map is not available yet. Hard-refresh the page and try again.');
+          }
           return false;
         }
       } catch (err) {
