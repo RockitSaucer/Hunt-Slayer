@@ -1,0 +1,9 @@
+V7.0.43 Beta — map_state poll 15s + arrow head frontDeg flip
+
+1. Shared map backup poll: 7s → 15s (Realtime still primary for pins/emphasize).
+   Weather cache unchanged (15 min).
+
+2. Arrow head direction icon: frontDeg 180 → 0 so tip faces look direction
+   (opposite of V7.0.41/42). Cache bust dir7. Hard-refresh required.
+
+Ship: 7.0.43-beta · shell v103 · both sites

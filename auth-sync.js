@@ -1115,13 +1115,13 @@
     }
 
     // Fast poll backup so emphasize still lands if Realtime is off
-    // (was 4s; 7s still near-live, less radio when Realtime is healthy)
+    // 15s ≈ half the fetches of 7s; Realtime stays primary for instant pin/emphasize
     sharedMapFastPoll = setInterval(function () {
       if (document.visibilityState === 'hidden') return;
       if (!isOnline() || isDirty()) return;
       if (viewState.mode !== 'shared' || !viewState.sharedMapId) return;
       pullMapFromCloud(false);
-    }, 7000);
+    }, 15000);
   }
 
   async function persistViewPrefsCloud() {

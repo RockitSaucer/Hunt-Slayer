@@ -23,8 +23,8 @@
   var SHARE_PREF_KEY = 'reg_slayer_share_loc_pref_v2';
   /** Directional icons for party/GPS (from icons/dir — location icons pipeline). */
   var DIR_ICON_CATALOG = [
-    // PNG tip was drawn opposite the map heading axis — frontDeg 180 so tip faces look direction
-    { id: 'arrow_head', name: 'Arrow head', src: 'icons/dir/arrow_head.png', frontDeg: 180 },
+    // Tip of broadhead = look direction. PNG tip is "up" at rest → frontDeg 0 (180 was reverse).
+    { id: 'arrow_head', name: 'Arrow head', src: 'icons/dir/arrow_head.png', frontDeg: 0 },
     { id: 'boat', name: 'Boat', src: 'icons/dir/boat.png', frontDeg: 0 },
     // PNG is diagonal: nose lower-left (~225°). Rotate −225° so tip points up.
     { id: 'bomb', name: 'Bomb', src: 'icons/dir/bomb.png', frontDeg: 225 },
@@ -42,7 +42,7 @@
     { id: 'dobbs', name: 'Dobbs', src: 'icons/dir/dobbs.png', frontDeg: 0 },
     { id: 'x_wing', name: 'X-wing', src: 'icons/dir/x_wing.png', frontDeg: 0 }
   ];
-  var DIR_ICON_BUST = 'dir6';
+  var DIR_ICON_BUST = 'dir7';
   /**
    * Presence cadence tiers (GPS share only — does not change pins/weather/map_state).
    * Moving → burst; still → slower heartbeat; background → ~20s; large parties slightly slower.
