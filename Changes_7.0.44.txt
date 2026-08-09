@@ -1,0 +1,14 @@
+V7.0.44 Beta — Report an issue (secure GitHub bridge)
+
+What
+- Header “Report an issue” under sister-site button (Hunt + Reg).
+- Modal → POST /api/report-issue (Vercel serverless).
+- Creates GitHub issue on RockitSaucer/Hunt-Slayer with labels
+  from-site + from-huntslayer | from-regslayer.
+- Token only in Vercel env GITHUB_ISSUE_TOKEN — never in client JS.
+
+Labels on Hunt-Slayer repo (also used by agent workflow):
+  from-site, from-huntslayer, from-regslayer,
+  ready-for-review, ready-to-commit, revised-changes
+
+Ship: 7.0.44-beta · shell v104 · api/report-issue.js on both sites

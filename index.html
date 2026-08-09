@@ -220,13 +220,21 @@
       user-select: none;
       text-shadow: 0 1px 3px rgba(0,0,0,0.85);
     }
-    /* Sister site — right side of brand header */
-    .brand-sister-link {
+    /* Sister site + report — right side of brand header */
+    .brand-header-actions {
       position: absolute;
       right: 12px;
       top: 50%;
       transform: translateY(-50%);
       z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+      max-width: min(160px, 42vw);
+    }
+    .brand-sister-link,
+    .brand-report-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -247,16 +255,32 @@
       backdrop-filter: blur(4px);
       -webkit-backdrop-filter: blur(4px);
       transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+      cursor: pointer;
+      font-family: inherit;
+      box-sizing: border-box;
+      width: 100%;
+    }
+    .brand-report-btn {
+      border-color: rgba(160, 175, 150, 0.45);
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      padding: 6px 10px;
+      text-transform: none;
+      font-weight: 650;
+      color: rgba(220, 230, 210, 0.95);
     }
     .brand-sister-link:hover,
-    .brand-sister-link:focus-visible {
+    .brand-sister-link:focus-visible,
+    .brand-report-btn:hover,
+    .brand-report-btn:focus-visible {
       border-color: var(--accent, #e59a18);
       background: rgba(72, 106, 47, 0.55);
       color: #fff;
       outline: none;
     }
-    .brand-sister-link:active {
-      transform: translateY(-50%) scale(0.98);
+    .brand-sister-link:active,
+    .brand-report-btn:active {
+      transform: scale(0.98);
     }
     .brand-sister-link .brand-sister-label {
       color: var(--accent, #e59a18);
@@ -265,6 +289,97 @@
     .brand-sister-link:focus-visible .brand-sister-label {
       color: #ffc45a;
     }
+    /* Report-an-issue modal */
+    .report-issue-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 12000;
+      background: rgba(0, 0, 0, 0.62);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+    .report-issue-overlay.is-open { display: flex; }
+    .report-issue-modal {
+      width: min(420px, 100%);
+      max-height: min(90vh, 560px);
+      overflow: auto;
+      background: var(--panel, #161a12);
+      border: 1px solid var(--border, #2a3224);
+      border-radius: 12px;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.55);
+      padding: 16px 16px 14px;
+      color: var(--ink, #e8eee2);
+    }
+    .report-issue-modal h3 {
+      margin: 0 0 6px;
+      font-size: 16px;
+      color: #fff;
+    }
+    .report-issue-modal .ri-sub {
+      margin: 0 0 12px;
+      font-size: 12px;
+      color: var(--muted, #9aaa8c);
+      line-height: 1.35;
+    }
+    .report-issue-modal label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted, #9aaa8c);
+      margin: 0 0 4px;
+    }
+    .report-issue-modal input,
+    .report-issue-modal textarea {
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 10px;
+      padding: 9px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border, #2a3224);
+      background: #0c0f0a;
+      color: #f0f4ee;
+      font-size: 13px;
+      font-family: inherit;
+      resize: vertical;
+    }
+    .report-issue-modal textarea { min-height: 110px; }
+    .report-issue-modal .ri-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 4px;
+    }
+    .report-issue-modal .ri-actions button {
+      padding: 9px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border, #2a3224);
+      background: #1e2418;
+      color: #e8eee2;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .report-issue-modal .ri-actions button.ri-submit {
+      background: var(--green, #3f6b2a);
+      border-color: #4a7d32;
+      color: #fff;
+    }
+    .report-issue-modal .ri-actions button:disabled {
+      opacity: 0.55;
+      cursor: wait;
+    }
+    .report-issue-modal .ri-status {
+      font-size: 12px;
+      min-height: 1.2em;
+      margin: 0 0 8px;
+      color: var(--accent, #e59a18);
+    }
+    .report-issue-modal .ri-status.is-err { color: #fca5a5; }
+    .report-issue-modal .ri-status.is-ok { color: #86efac; }
     /* Brand header map name retired — name lives flush above the map */
     .brand-map-name {
       display: none !important;
@@ -925,15 +1040,20 @@
       object-position: center;
     }
     html.layout-phone .brand-version { font-size: 9px; bottom: 8px; right: 4px; }
-    html.layout-phone .brand-sister-link {
+    html.layout-phone .brand-header-actions {
       right: 8px;
-      padding: 8px 10px;
-      font-size: 11px;
+      max-width: min(132px, 40vw);
+      gap: 5px;
+    }
+    html.layout-phone .brand-sister-link,
+    html.layout-phone .brand-report-btn {
+      padding: 7px 9px;
+      font-size: 10px;
       letter-spacing: 0.04em;
       border-radius: 8px;
-      z-index: 5;
-      min-height: 36px;
+      min-height: 32px;
     }
+    html.layout-phone .brand-report-btn { font-size: 9px; min-height: 28px; padding: 5px 8px; }
     html.layout-phone .brand-logo-wrap { padding-right: 100px; }
     html.layout-phone .site-footer-inner { gap: 6px 10px; padding-left: 12px; padding-right: 12px; }
     html.layout-phone .site-footer-inner p { font-size: 12px; }
@@ -1079,15 +1199,20 @@
       .brand-logo-wrap { width: 94vw; height: 100%; padding-right: 100px; overflow: hidden; }
       .brand-logo { width: auto; height: 150px; max-height: none; object-fit: contain; object-position: center; }
       .brand-version { font-size: 9px; bottom: 8px; }
-      .brand-sister-link {
+      .brand-header-actions {
         right: 8px;
-        padding: 8px 10px;
-        font-size: 11px;
+        max-width: min(132px, 40vw);
+        gap: 5px;
+      }
+      .brand-sister-link,
+      .brand-report-btn {
+        padding: 7px 9px;
+        font-size: 10px;
         letter-spacing: 0.04em;
         border-radius: 8px;
-        z-index: 5;
-        min-height: 36px;
+        min-height: 32px;
       }
+      .brand-report-btn { font-size: 9px; min-height: 28px; padding: 5px 8px; }
       .site-footer-inner { gap: 6px 10px; padding-left: 12px; padding-right: 12px; }
       .site-footer-inner p { font-size: 12px; }
       #dashboard-container,
@@ -10420,12 +10545,34 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.43 Beta">V7.0.43 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.44 Beta">V7.0.44 Beta</span>
     </div>
-    <a class="brand-sister-link" id="brand-sister-link" href="https://www.regslayer.com" title="Open REG SLAYER (same account)">
-      <span class="brand-sister-label">Reg Slayer</span>
-    </a>
+    <div class="brand-header-actions">
+      <a class="brand-sister-link" id="brand-sister-link" href="https://www.regslayer.com" title="Open REG SLAYER (same account)">
+        <span class="brand-sister-label">Reg Slayer</span>
+      </a>
+      <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
+    </div>
   </header>
+
+  <!-- Report an issue (posts to Hunt-Slayer GitHub via secure server API) -->
+  <div id="report-issue-overlay" class="report-issue-overlay" aria-hidden="true">
+    <div class="report-issue-modal" role="dialog" aria-modal="true" aria-labelledby="report-issue-title">
+      <h3 id="report-issue-title">Report an issue</h3>
+      <p class="ri-sub">Describe what went wrong. This creates a ticket for the developer (no password or map data is sent).</p>
+      <label for="report-issue-title-in">Title (optional)</label>
+      <input id="report-issue-title-in" type="text" maxlength="120" placeholder="Short summary" autocomplete="off" />
+      <label for="report-issue-msg">What happened?</label>
+      <textarea id="report-issue-msg" maxlength="4000" placeholder="What were you doing? What did you expect? What happened instead?"></textarea>
+      <label for="report-issue-contact">Contact (optional)</label>
+      <input id="report-issue-contact" type="text" maxlength="120" placeholder="Email or username if you want a reply" autocomplete="email" />
+      <p class="ri-status" id="report-issue-status" role="status"></p>
+      <div class="ri-actions">
+        <button type="button" id="report-issue-cancel">Cancel</button>
+        <button type="button" class="ri-submit" id="report-issue-submit">Submit</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Auth gate (Supabase HuntSlayer) -->
   <div id="auth-gate" aria-hidden="true">
@@ -11833,7 +11980,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.43-beta';
+    const APP_VERSION = '7.0.44-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -35813,6 +35960,94 @@ function togglePinIconPicker() {
       };
       window.saveFreeStandAt._rsCloud = true;
     }
+
+    // Report an issue → secure /api/report-issue (token never in the browser)
+    (function wireReportIssueUi() {
+      var btn = document.getElementById('brand-report-issue-btn');
+      var overlay = document.getElementById('report-issue-overlay');
+      var cancel = document.getElementById('report-issue-cancel');
+      var submit = document.getElementById('report-issue-submit');
+      var msgEl = document.getElementById('report-issue-msg');
+      var titleEl = document.getElementById('report-issue-title-in');
+      var contactEl = document.getElementById('report-issue-contact');
+      var statusEl = document.getElementById('report-issue-status');
+      if (!btn || !overlay || btn._rsReportWired) return;
+      btn._rsReportWired = true;
+
+      function setStatus(text, kind) {
+        if (!statusEl) return;
+        statusEl.textContent = text || '';
+        statusEl.classList.remove('is-err', 'is-ok');
+        if (kind === 'err') statusEl.classList.add('is-err');
+        if (kind === 'ok') statusEl.classList.add('is-ok');
+      }
+      function openReport() {
+        overlay.classList.add('is-open');
+        overlay.setAttribute('aria-hidden', 'false');
+        setStatus('');
+        try { if (msgEl) msgEl.focus(); } catch (eF) {}
+      }
+      function closeReport() {
+        overlay.classList.remove('is-open');
+        overlay.setAttribute('aria-hidden', 'true');
+        if (submit) submit.disabled = false;
+      }
+      btn.addEventListener('click', function(ev) {
+        ev.preventDefault();
+        openReport();
+      });
+      if (cancel) cancel.addEventListener('click', function(ev) {
+        ev.preventDefault();
+        closeReport();
+      });
+      overlay.addEventListener('click', function(ev) {
+        if (ev.target === overlay) closeReport();
+      });
+      document.addEventListener('keydown', function(ev) {
+        if (ev.key === 'Escape' && overlay.classList.contains('is-open')) closeReport();
+      });
+      if (submit) submit.addEventListener('click', function(ev) {
+        ev.preventDefault();
+        var message = msgEl ? String(msgEl.value || '').trim() : '';
+        if (message.length < 8) {
+          setStatus('Please write a short description of the issue.', 'err');
+          return;
+        }
+        submit.disabled = true;
+        setStatus('Sending…', '');
+        var payload = {
+          message: message,
+          title: titleEl ? String(titleEl.value || '').trim() : '',
+          contact: contactEl ? String(contactEl.value || '').trim() : '',
+          site: (typeof SITE_ID !== 'undefined' && SITE_ID === 'reg') ? 'reg' : 'hunt'
+        };
+        fetch('/api/report-issue', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }).then(function(res) {
+          return res.json().then(function(data) {
+            return { res: res, data: data };
+          }).catch(function() {
+            return { res: res, data: null };
+          });
+        }).then(function(r) {
+          if (r.res.ok && r.data && r.data.ok) {
+            setStatus('Thanks — report filed' + (r.data.number ? (' (#' + r.data.number + ')') : '') + '.', 'ok');
+            if (msgEl) msgEl.value = '';
+            if (titleEl) titleEl.value = '';
+            setTimeout(closeReport, 1400);
+          } else {
+            var err = (r.data && r.data.error) ? r.data.error : 'Could not send report. Try again later.';
+            setStatus(err, 'err');
+            submit.disabled = false;
+          }
+        }).catch(function() {
+          setStatus('Network error — check connection and try again.', 'err');
+          submit.disabled = false;
+        });
+      });
+    })();
 
     // Sister-site header button: hand off Supabase session so no re-login
     (function wireSisterSiteLink() {
