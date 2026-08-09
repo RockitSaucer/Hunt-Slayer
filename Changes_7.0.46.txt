@@ -1,0 +1,10 @@
+V7.0.46 Beta - Smiley directional icon
+
+Issue #32 (from-site):
+- New "Smiley" in party/GPS direction icon picker
+- Procedural SVG (no PNG): solid fill = custom arrow color
+- Eyes + smile = opposite color on color wheel (HSL hue +180°)
+- Black/white/gray fills use hard contrast (black→white features, etc.)
+- frontDeg 0: upright when facing north; rotates with heading like other dir icons
+
+Ship: both sites · shell v106 · party-maps.js DIR_ICON_BUST dir8

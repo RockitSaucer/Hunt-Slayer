@@ -40,9 +40,11 @@
     // Upright profile (head at top). frontDeg 0 = head leads with device heading
     // (same model as default arrow tip). Do not use 90 — that laid the figure on its side.
     { id: 'dobbs', name: 'Dobbs', src: 'icons/dir/dobbs.png', frontDeg: 0 },
-    { id: 'x_wing', name: 'X-wing', src: 'icons/dir/x_wing.png', frontDeg: 0 }
+    { id: 'x_wing', name: 'X-wing', src: 'icons/dir/x_wing.png', frontDeg: 0 },
+    // Procedural SVG (no PNG): solid fill + opposite-wheel eyes/mouth. frontDeg 0 = upright when heading north.
+    { id: 'smiley', name: 'Smiley', frontDeg: 0, render: 'svg-smiley' }
   ];
-  var DIR_ICON_BUST = 'dir7';
+  var DIR_ICON_BUST = 'dir8';
   /**
    * Presence cadence tiers (GPS share only — does not change pins/weather/map_state).
    * Moving → burst; still → slower heartbeat; background → ~20s; large parties slightly slower.
@@ -243,8 +245,110 @@
   }
   function dirIconSrc(id) {
     var ic = getDirIconById(id);
-    if (!ic) return '';
+    if (!ic || !ic.src) return '';
     return ic.src + (DIR_ICON_BUST ? ('?v=' + DIR_ICON_BUST) : '');
+  }
+
+  function hexToRgbDir(hex) {
+    hex = normalizeDirHex(hex);
+    return {
+      r: parseInt(hex.slice(1, 3), 16),
+      g: parseInt(hex.slice(3, 5), 16),
+      b: parseInt(hex.slice(5, 7), 16)
+    };
+  }
+
+  function rgbToHslDir(r, g, b) {
+    r /= 255;
+    g /= 255;
+    b /= 255;
+    var max = Math.max(r, g, b);
+    var min = Math.min(r, g, b);
+    var h = 0;
+    var s = 0;
+    var l = (max + min) / 2;
+    if (max !== min) {
+      var d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+      else if (max === g) h = ((b - r) / d + 2) / 6;
+      else h = ((r - g) / d + 4) / 6;
+    }
+    return { h: h * 360, s: s, l: l };
+  }
+
+  function hslToHexDir(h, s, l) {
+    h = ((h % 360) + 360) % 360;
+    s = Math.max(0, Math.min(1, s));
+    l = Math.max(0, Math.min(1, l));
+    var c = (1 - Math.abs(2 * l - 1)) * s;
+    var x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    var m = l - c / 2;
+    var r = 0;
+    var g = 0;
+    var b = 0;
+    if (h < 60) { r = c; g = x; }
+    else if (h < 120) { r = x; g = c; }
+    else if (h < 180) { g = c; b = x; }
+    else if (h < 240) { g = x; b = c; }
+    else if (h < 300) { r = x; b = c; }
+    else { r = c; b = x; }
+    function ch(v) {
+      var n = Math.round((v + m) * 255);
+      n = Math.max(0, Math.min(255, n));
+      var t = n.toString(16);
+      return t.length === 1 ? '0' + t : t;
+    }
+    return '#' + ch(r) + ch(g) + ch(b);
+  }
+
+  /** True color-wheel complement: HSL hue + 180°, same S/L. */
+  function oppositeWheelHex(hex) {
+    var rgb = hexToRgbDir(hex);
+    var hsl = rgbToHslDir(rgb.r, rgb.g, rgb.b);
+    return hslToHexDir(hsl.h + 180, hsl.s, hsl.l);
+  }
+
+  function relativeLuminanceDir(hex) {
+    var rgb = hexToRgbDir(hex);
+    function lin(c) {
+      c = c / 255;
+      return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    }
+    return 0.2126 * lin(rgb.r) + 0.7152 * lin(rgb.g) + 0.0722 * lin(rgb.b);
+  }
+
+  /**
+   * Eyes/mouth color for smiley: opposite on wheel; black/white/gray → hard contrast
+   * so features stay visible (black fill → white features, etc.).
+   */
+  function featureContrastHex(fillHex) {
+    fillHex = normalizeDirHex(fillHex);
+    var rgb = hexToRgbDir(fillHex);
+    var hsl = rgbToHslDir(rgb.r, rgb.g, rgb.b);
+    var lum = relativeLuminanceDir(fillHex);
+    if (hsl.s < 0.12 || lum < 0.12 || lum > 0.85) {
+      return lum > 0.5 ? '#000000' : '#ffffff';
+    }
+    return oppositeWheelHex(fillHex);
+  }
+
+  /** Procedural dual-color smiley (fill = custom color, features = opposite/contrast). */
+  function dirIconSmileyMarkup(hex, size) {
+    var s = size || 30;
+    hex = normalizeDirHex(hex);
+    var feat = featureContrastHex(hex);
+    return (
+      '<svg class="rs-dir-icon-svg rs-dir-smiley" width="' + s + '" height="' + s + '" viewBox="0 0 100 100" ' +
+        'xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" ' +
+        'style="display:block;overflow:visible;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.45));">' +
+        '<circle cx="50" cy="50" r="46" fill="' + hex + '" stroke="#000000" stroke-width="4"/>' +
+        '<circle cx="35" cy="40" r="7" fill="' + feat + '"/>' +
+        '<circle cx="65" cy="40" r="7" fill="' + feat + '"/>' +
+        '<path d="M30 58 Q50 78 70 58" fill="none" stroke="' + feat +
+          '" stroke-width="6" stroke-linecap="round"/>' +
+      '</svg>'
+    );
   }
   function prefKey(uid) {
     return String(uid == null ? '' : uid);
@@ -371,11 +475,15 @@
 
   /**
    * Recolor black silhouette PNGs to a solid hex + thin black outline
-   * (matches default GPS arrow stroke).
+   * (matches default GPS arrow stroke). SVG smileys use dual-color path.
    */
   function dirIconColoredMarkup(iconId, hex, size) {
-    var img = dirIconSrc(iconId);
     var s = size || 30;
+    var icMeta = getDirIconById(iconId);
+    if (icMeta && (icMeta.render === 'svg-smiley' || icMeta.id === 'smiley')) {
+      return dirIconSmileyMarkup(hex, s);
+    }
+    var img = dirIconSrc(iconId);
     if (!img) return '';
     hex = normalizeDirHex(hex);
     _dirGlyphFilterSeq += 1;
