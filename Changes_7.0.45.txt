@@ -1,0 +1,9 @@
+V7.0.45 Beta — Mobile header/footer scroll + safe-area
+
+Phone:
+- Header/footer no longer permanent chrome; scroll with the page
+- Safe-area padding so sister/report clear status bar
+- Smaller header buttons; version bottom-left (not under buttons)
+- Body height auto so document scroll works
+
+Ship: both sites · shell v105

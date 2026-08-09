@@ -777,12 +777,15 @@
     html.layout-desktop .site-footer-inner a {
       font-size: 9px;
     }
-    /* Phone: tiny footer, only after scrolling past content (#21) */
+    /* Phone: tiny footer in document flow only after content (not stuck to viewport) */
     html.layout-phone .site-footer {
-      padding: 2px 6px 6px !important;
-      margin-top: 4px;
+      padding: 2px 6px calc(6px + env(safe-area-inset-bottom, 0px)) !important;
+      margin-top: 12px !important; /* not auto — avoids permanent bottom dock */
       opacity: 0.72;
       line-height: 1.15;
+      position: static !important;
+      bottom: auto !important;
+      flex: 0 0 auto;
     }
     html.layout-phone .site-footer-inner {
       gap: 1px 6px !important;
@@ -991,19 +994,37 @@
     }
 
     /* Phone shell via JS class (works even on wider phone landscape) */
-    html.layout-phone,
-    html.layout-phone body {
+    /*
+     * Document scrolls as a normal page on phone:
+     * header + footer are in flow and leave the screen when you scroll —
+     * they must NOT be fixed/sticky and must not lock body to 100vh flex fill.
+     */
+    html.layout-phone {
+      height: auto;
+      min-height: 100%;
       overflow-x: hidden;
+      overflow-y: auto;
       max-width: 100%;
       width: 100%;
+    }
+    html.layout-phone body {
+      height: auto !important;
+      min-height: 100dvh;
+      max-width: 100%;
+      width: 100%;
+      overflow-x: hidden;
+      overflow-y: visible;
+      display: flex;
+      flex-direction: column;
     }
     html.layout-phone .app-shell {
       max-width: none;
       width: 100%;
-      padding: 10px 0 18px;
+      padding: 8px 0 12px;
       margin: 0;
       box-sizing: border-box;
       overflow-x: hidden;
+      flex: 0 0 auto; /* grow with content; do not trap scroll inside shell */
     }
     html.layout-phone .container {
       display: flex;
@@ -1015,46 +1036,75 @@
       box-sizing: border-box;
       overflow-x: hidden;
     }
-    /* Phone brand bar: 50% taller than prior 64px so logo + sister button are usable */
+    /*
+     * Phone brand bar: clear status bar (safe-area), compact height,
+     * small sister/report buttons, version bottom-left (not under buttons).
+     * Scrolls away with the page — never sticky/fixed on phone.
+     */
     html.layout-phone .brand-header {
-      padding: 4px 10px;
-      position: relative;
-      height: 96px;
-      min-height: 96px;
-      max-height: 96px;
-      overflow: hidden;
+      position: relative !important;
+      top: auto !important;
+      left: auto !important;
+      right: auto !important;
+      /* Sit below battery/wifi bar when viewport-fit=cover */
+      padding: max(8px, env(safe-area-inset-top, 0px)) 8px 6px;
+      height: auto;
+      min-height: 72px;
+      max-height: none;
+      overflow: visible;
+      flex: 0 0 auto;
+      z-index: 20;
+      box-sizing: border-box;
     }
     html.layout-phone .brand-logo-wrap {
-      width: 94vw;
+      width: 100%;
       max-width: 100%;
-      height: 100%;
-      padding-right: 100px;
+      height: 64px;
+      min-height: 64px;
+      padding-right: 102px;
+      padding-left: 4px;
       overflow: hidden;
+      box-sizing: border-box;
     }
-    /* Taller bar → larger logo (still clipped top/bottom empty PNG margins) */
     html.layout-phone .brand-logo {
       width: auto;
-      height: 150px;
+      height: 110px;
       max-height: none;
       object-fit: contain;
       object-position: center;
     }
-    html.layout-phone .brand-version { font-size: 9px; bottom: 8px; right: 4px; }
+    /* Version: bottom-left of logo area so header actions never cover it */
+    html.layout-phone .brand-version {
+      right: auto !important;
+      left: 8px !important;
+      bottom: 5px !important;
+      font-size: 9px;
+      z-index: 3;
+      letter-spacing: 0.06em;
+    }
     html.layout-phone .brand-header-actions {
-      right: 8px;
-      max-width: min(132px, 40vw);
-      gap: 5px;
+      top: max(6px, env(safe-area-inset-top, 0px)) !important;
+      bottom: auto !important;
+      right: 6px !important;
+      transform: none !important;
+      max-width: min(108px, 36vw);
+      gap: 3px;
+      z-index: 4;
     }
     html.layout-phone .brand-sister-link,
     html.layout-phone .brand-report-btn {
-      padding: 7px 9px;
-      font-size: 10px;
-      letter-spacing: 0.04em;
-      border-radius: 8px;
-      min-height: 32px;
+      padding: 5px 7px;
+      font-size: 9px;
+      letter-spacing: 0.03em;
+      border-radius: 7px;
+      min-height: 26px;
+      line-height: 1.15;
     }
-    html.layout-phone .brand-report-btn { font-size: 9px; min-height: 28px; padding: 5px 8px; }
-    html.layout-phone .brand-logo-wrap { padding-right: 100px; }
+    html.layout-phone .brand-report-btn {
+      font-size: 8px;
+      min-height: 24px;
+      padding: 4px 6px;
+    }
     html.layout-phone .site-footer-inner { gap: 6px 10px; padding-left: 12px; padding-right: 12px; }
     html.layout-phone .site-footer-inner p { font-size: 12px; }
     html.layout-phone #dashboard-container,
@@ -1127,7 +1177,11 @@
     html.layout-phone .site-footer {
       position: static !important;
       bottom: auto !important;
+      top: auto !important;
+      left: auto !important;
+      right: auto !important;
       z-index: auto;
+      flex-shrink: 0;
     }
     html.layout-phone .card-map .map-section-block {
       width: 100%;
@@ -1188,31 +1242,57 @@
         gap: 12px;
         width: 100%;
       }
+      html, body {
+        height: auto;
+        min-height: 100%;
+        overflow-x: hidden;
+      }
+      body {
+        min-height: 100dvh;
+        overflow-y: visible;
+      }
       .brand-header {
-        padding: 4px 10px;
-        position: relative;
-        height: 96px;
-        min-height: 96px;
-        max-height: 96px;
+        position: relative !important;
+        padding: max(8px, env(safe-area-inset-top, 0px)) 8px 6px;
+        height: auto;
+        min-height: 72px;
+        max-height: none;
+        overflow: visible;
+      }
+      .brand-logo-wrap {
+        width: 100%;
+        height: 64px;
+        min-height: 64px;
+        padding-right: 102px;
         overflow: hidden;
       }
-      .brand-logo-wrap { width: 94vw; height: 100%; padding-right: 100px; overflow: hidden; }
-      .brand-logo { width: auto; height: 150px; max-height: none; object-fit: contain; object-position: center; }
-      .brand-version { font-size: 9px; bottom: 8px; }
+      .brand-logo { width: auto; height: 110px; max-height: none; object-fit: contain; object-position: center; }
+      .brand-version {
+        right: auto !important;
+        left: 8px !important;
+        bottom: 5px !important;
+        font-size: 9px;
+      }
       .brand-header-actions {
-        right: 8px;
-        max-width: min(132px, 40vw);
-        gap: 5px;
+        top: max(6px, env(safe-area-inset-top, 0px)) !important;
+        right: 6px !important;
+        transform: none !important;
+        max-width: min(108px, 36vw);
+        gap: 3px;
       }
       .brand-sister-link,
       .brand-report-btn {
-        padding: 7px 9px;
-        font-size: 10px;
-        letter-spacing: 0.04em;
-        border-radius: 8px;
-        min-height: 32px;
+        padding: 5px 7px;
+        font-size: 9px;
+        letter-spacing: 0.03em;
+        border-radius: 7px;
+        min-height: 26px;
       }
-      .brand-report-btn { font-size: 9px; min-height: 28px; padding: 5px 8px; }
+      .brand-report-btn { font-size: 8px; min-height: 24px; padding: 4px 6px; }
+      .site-footer {
+        position: static !important;
+        margin-top: 12px !important;
+      }
       .site-footer-inner { gap: 6px 10px; padding-left: 12px; padding-right: 12px; }
       .site-footer-inner p { font-size: 12px; }
       #dashboard-container,
@@ -10545,7 +10625,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.44 Beta">V7.0.44 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.45 Beta">V7.0.45 Beta</span>
     </div>
     <div class="brand-header-actions">
       <a class="brand-sister-link" id="brand-sister-link" href="https://www.regslayer.com" title="Open REG SLAYER (same account)">
@@ -11980,7 +12060,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.44-beta';
+    const APP_VERSION = '7.0.45-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
