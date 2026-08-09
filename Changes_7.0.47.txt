@@ -1,0 +1,14 @@
+V7.0.47 — Calendar events: start/end dates, map scope, location pick, hide vs delete
+
+Issue #33 (ready-to-commit)
+
+- Events are multi-day ranges (start date + end date), local calendar Y-M-D (no UTC day-shift).
+- Create/edit form: start/end, map scope (personal / all my maps / each shared map), color, hunt link, Add location.
+- Calendar dots appear on every day in the event range.
+- Add location → tap map → confirm "Add this as location for (name)?" → stores lat/lng.
+- Event list: Map (snap), Edit (creator), Hide (my calendar only), Delete (creator only).
+- Storage: localStorage reg_slayer_cal_events_v2 (+ hides); optional Supabase tables when migration applied.
+- New shell file: calendar-events.js; SHELL_CACHE reg-slayer-shell-v107.
+- Migration: supabase/migrations/20260810020000_map_calendar_events.sql (apply on HuntSlayer project).
+
+Shipped on Hunt-Slayer + Reg-Slayer.
