@@ -1,0 +1,12 @@
+V7.0.48 — Link pins to calendar events + “just show event pins”
+
+- Pin editor: **Add pin to event** (pick from trips/events); status + remove link
+- Pins store `eventId` in local pin data (cloud pin sync includes field automatically)
+- Event **Quick Load** menu:
+  1. Just show event pins
+  2. Load event on map / hunt data (when linked)
+  3. Both
+- Event-pins filter: only linked pins visible; map banner with **Show all pins**
+- Selecting a calendar day outside the event range (or editing a different event) clears the filter
+
+Shell: reg-slayer-shell-v108 · both Hunt + Reg
