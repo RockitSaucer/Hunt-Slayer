@@ -1,0 +1,39 @@
+V7.0.42 Beta — Presence efficiency + fast mutual visibility
+
+Implemented (from scale list, except 10/11/12 and UX-changing items):
+
+1) Presence cadence tiers (GPS share only)
+   - Moving: ~4s (scaled up slightly for large parties)
+   - Recently still: ~9s
+   - Long sit: ~50s
+   - Background: ~20s pos+heading together
+   - Party size scale: 5+ / 7+ / 10+ members slightly slower GPS upserts
+
+2) Delta-only presence
+   - Skip non-heartbeat upserts if moved <15 m and heading turn <15°
+   - Still heartbeats so peers do not drop you (TTL)
+
+3) Peer pull only on open shared maps
+   - No presence poll on private maps / when tab hidden
+   - Throttled listMembers (profiles) vs presence ticks
+
+4) Presence TTL + Realtime
+   - Client hides peers after ~3.5 min silence
+   - Supabase Realtime on party_presence (migration) so share ON
+     shows on others’ maps quickly without manual refresh
+   - Poll ~2.5s (4s if large party) as backup
+
+8) Images — already compressed JPEGs in pin editor (no change)
+
+9) Service worker
+   - Supabase URLs: network-only (never cache presence/map_state)
+   - Shell/icons: versioned cache (v102)
+   - Map tiles: cache-first, no re-fetch of tiles already stored
+
+NOT changed (would alter non-GPS product behavior — ask first):
+5) Lower online maxZoom / force fewer basemap layers
+6) Longer weather cache / different weather auto-refresh policy
+7) Slow shared map_state poll from 7s → 1–2 min (would delay pin/emphasize sync)
+10–12) excluded by request
+
+Ship: APP 7.0.42-beta · shell v102 · both sites + Supabase realtime migration

@@ -43,20 +43,31 @@
     { id: 'x_wing', name: 'X-wing', src: 'icons/dir/x_wing.png', frontDeg: 0 }
   ];
   var DIR_ICON_BUST = 'dir6';
-  var MOVE_M = 8; // meters = "moving"
-  var MOVE_MS = 4000; // min interval when moving (unchanged — still snappy when walking)
-  // Foreground: snappy while app is open
-  var HEARTBEAT_MS = 8000; // idle presence upsert while sharing (visible)
-  var HEADING_PUSH_DEG = 8; // re-push when facing turns this many degrees
-  var HEADING_PUSH_MS = 1200; // min interval for heading-only updates (visible only)
-  // Background / app not focused: much cheaper radio (pos + heading together)
-  var BG_HEARTBEAT_MS = 20000;
+  /**
+   * Presence cadence tiers (GPS share only — does not change pins/weather/map_state).
+   * Moving → burst; still → slower heartbeat; background → ~20s; large parties slightly slower.
+   * Delta gate skips worthless radio when pos/heading barely changed (still heartbeats for TTL).
+   */
+  var MOVE_M = 12; // meters = "moving" for burst tier
+  var DELTA_M = 15; // skip non-heartbeat upsert if moved less than this
+  var DELTA_HEADING_DEG = 15; // and turned less than this
+  var MOVE_MS = 4000; // min interval while walking/driving (foreground)
+  var HEARTBEAT_MS = 9000; // standing still but recently moved
+  var STATIONARY_MS = 50000; // long sit (~45–60s) when barely moving
+  var HEADING_PUSH_DEG = 12; // re-push when facing turns (foreground heading-only)
+  var HEADING_PUSH_MS = 2000; // min interval for heading-only updates (visible only)
+  var BG_HEARTBEAT_MS = 20000; // background pos+heading combined
   /** Auto-pause live GPS if the user has not viewed the map for this long */
   var SHARE_IDLE_MS = 60 * 60 * 1000;
-  var PULL_MS = 5000; // peer visibility poll when app is open
+  /** Peer presence poll when shared map is open (realtime also fires — this is backup) */
+  var PULL_MS = 2500;
+  var PULL_MS_LARGE = 4000; // slightly calmer when many members; realtime still snappy
+  var PRESENCE_STALE_MS = 3.5 * 60 * 1000; // hide peer after silence (covers 20s bg pings)
+  var LIST_MEMBERS_MIN_MS = 25000; // don't re-fetch profiles every presence tick
 
   var presenceTimer = null;
   var presenceWatch = null;
+  var presenceChannel = null;
   var headingOrientHandler = null;
   var headingWatchOn = false;
   /** Actively broadcasting GPS to the party */
@@ -68,8 +79,11 @@
   var lastMapViewAt = Date.now();
   var shareMapViewWired = false;
   var lastSent = { lat: null, lng: null, heading: null, at: 0 };
+  var lastRealMoveAt = 0; // for stationary tier
   var lastFacingHeading = null; // device compass / GPS course
   var lastHeadingPushAt = 0;
+  var lastListMembersAt = 0;
+  var partyPullInterval = null;
   var partyLayer = null;
   var partyMarkers = {};
   var myArrowColor = '#e11d1d';
@@ -166,6 +180,43 @@
     if (a == null || b == null) return 180;
     var d = Math.abs(a - b) % 360;
     return d > 180 ? 360 - d : d;
+  }
+
+  /** Shared-map party size (for adaptive GPS/presence radio only). */
+  function partyMemberCount() {
+    try {
+      var arr = window.__rsPartyMembers;
+      if (arr && arr.length) return arr.length;
+    } catch (e) {}
+    return 1;
+  }
+
+  /** Scale intervals up slightly when many hunters share one map (smooth for everyone). */
+  function partySizeScale() {
+    var n = partyMemberCount();
+    if (n >= 10) return 1.55;
+    if (n >= 7) return 1.35;
+    if (n >= 5) return 1.2;
+    return 1;
+  }
+
+  /**
+   * Min ms between presence upserts for current situation.
+   * @param {boolean} moved meaningful position change
+   * @param {boolean} bg app backgrounded
+   */
+  function presenceCadenceMs(moved, bg) {
+    var sc = partySizeScale();
+    if (bg) return Math.round(BG_HEARTBEAT_MS * sc);
+    if (moved) return Math.round(MOVE_MS * sc);
+    var sitMs = Date.now() - (lastRealMoveAt || lastSent.at || 0);
+    if (sitMs >= 45000) return Math.round(STATIONARY_MS * sc);
+    return Math.round(HEARTBEAT_MS * sc);
+  }
+
+  function peerPullIntervalMs() {
+    var n = partyMemberCount();
+    return n >= 7 ? PULL_MS_LARGE : PULL_MS;
   }
 
   /** Prefer device compass; fall back to GPS course-over-ground. */
@@ -1407,7 +1458,8 @@
     }
   }
 
-  async function pullPresence() {
+  async function pullPresence(opts) {
+    opts = opts || {};
     var vs = C.getViewState && C.getViewState();
     var sb = getSb();
     var user = getUser();
@@ -1416,20 +1468,37 @@
     if (m && !window.map) {
       try { window.map = m; } catch (eWm) {}
     }
+    // Private maps / not shared: never poll presence (no party dots)
     if (!vs || vs.mode !== 'shared' || !vs.sharedMapId || !sb || !m) {
       // Don't wipe markers just because map isn't ready yet — only when not on shared
-      if (!vs || vs.mode !== 'shared' || !vs.sharedMapId) clearPartyMarkers();
+      if (!vs || vs.mode !== 'shared' || !vs.sharedMapId) {
+        clearPartyMarkers();
+        stopPresenceRealtime();
+      }
       return;
     }
+    // Only draw peers when the map/app is open (background: no peer pull)
+    try {
+      if (!opts.force && typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return;
+      }
+    } catch (eVis) {}
     var layer = ensurePartyLayer();
     if (!layer) return;
     try {
-      // Refresh member labels occasionally
-      // Refresh member profiles + my overrides so direction icons stay current
-      try {
-        await listMembers();
-      } catch (eMem) {
-        console.warn('listMembers', eMem);
+      // Profiles/icons: throttle (every presence tick was expensive)
+      if (!opts.skipMembers) {
+        var needMembers = !lastListMembersAt ||
+          (Date.now() - lastListMembersAt) >= LIST_MEMBERS_MIN_MS ||
+          !(window.__rsPartyMembers && window.__rsPartyMembers.length);
+        if (needMembers) {
+          try {
+            await listMembers();
+            lastListMembersAt = Date.now();
+          } catch (eMem) {
+            console.warn('listMembers', eMem);
+          }
+        }
       }
 
       var res = await sb.from('party_presence')
@@ -1452,9 +1521,9 @@
         if (!row.is_sharing || row.lat == null || row.lng == null) return;
         // Hide self from party layer (own GPS marker is separate)
         if (user && String(row.user_id) === String(user.id)) return;
-        // Stale > 3 min hide (heartbeats are ~5s — 20 min was too forgiving for "offline")
+        // Stale hide (covers ~20s background heartbeats)
         var age = Date.now() - new Date(row.updated_at).getTime();
-        if (isNaN(age) || age > 3 * 60 * 1000) return;
+        if (isNaN(age) || age > PRESENCE_STALE_MS) return;
         var uid = String(row.user_id);
         seen[uid] = true;
         var mem = byId[row.user_id] || byId[uid] ||
@@ -1721,26 +1790,37 @@
 
     var now = Date.now();
     var bg = isShareBackgrounded();
+    var distM = 0;
     var moved = true;
     if (lastSent.lat != null) {
-      var d = haversineM(lastSent.lat, lastSent.lng, lat, lng);
-      moved = d >= MOVE_M;
+      distM = haversineM(lastSent.lat, lastSent.lng, lat, lng);
+      moved = distM >= MOVE_M;
     }
     var headingTurned = lastSent.heading == null
       ? (hdg != null)
       : (hdg != null && headingDelta(lastSent.heading, hdg) >= HEADING_PUSH_DEG);
+    // Delta-only: tiny wiggles / sub-threshold turns don't burn radio (except forced heartbeats)
+    var meaningful = (lastSent.lat == null) ||
+      distM >= DELTA_M ||
+      (hdg != null && lastSent.heading != null && headingDelta(lastSent.heading, hdg) >= DELTA_HEADING_DEG) ||
+      (hdg != null && lastSent.heading == null);
 
     if (!force && lastSent.at) {
       var elapsed = now - lastSent.at;
-      if (bg) {
-        // Background: one combined pos+heading ping about every 20s (saves data/battery)
-        if (elapsed < BG_HEARTBEAT_MS) return true;
+      var needMs = presenceCadenceMs(moved, bg);
+      if (!meaningful) {
+        // Same spot/heading: only send when heartbeat timer fires (keeps TTL / is_sharing fresh)
+        if (elapsed < needMs) return true;
+      } else if (bg) {
+        if (elapsed < needMs) return true;
       } else {
-        if (moved && elapsed < MOVE_MS) return true;
-        if (!moved && headingTurned && elapsed < HEADING_PUSH_MS) return true;
-        if (!moved && !headingTurned && elapsed < HEARTBEAT_MS) return true;
+        if (moved && elapsed < presenceCadenceMs(true, false)) return true;
+        if (!moved && headingTurned && elapsed < HEADING_PUSH_MS * partySizeScale()) return true;
+        if (!moved && !headingTurned && elapsed < needMs) return true;
       }
     }
+
+    if (moved || lastSent.lat == null) lastRealMoveAt = now;
 
     var payload = {
       map_id: vs.sharedMapId,
@@ -1750,7 +1830,7 @@
       lng: lng,
       heading: hdg,
       started_at: new Date(shareStartedAt).toISOString(),
-      last_moved_at: new Date().toISOString(),
+      last_moved_at: new Date(moved || !lastSent.at ? now : (lastRealMoveAt || now)).toISOString(),
       updated_at: new Date().toISOString()
     };
     try {
@@ -1772,6 +1852,57 @@
       console.warn('presence push', e);
       return false;
     }
+  }
+
+  function stopPresenceRealtime() {
+    if (!presenceChannel) return;
+    try {
+      var sb = getSb() || window.__rsSb;
+      if (sb && sb.removeChannel) sb.removeChannel(presenceChannel);
+    } catch (e0) {
+      try { presenceChannel.unsubscribe && presenceChannel.unsubscribe(); } catch (e1) {}
+    }
+    presenceChannel = null;
+  }
+
+  /**
+   * Live peer dots: Realtime on party_presence so others appear within ~1s of sharing
+   * without a manual refresh. Poll is backup if Realtime is unavailable.
+   */
+  function startPresenceRealtime(mapId) {
+    stopPresenceRealtime();
+    var sb = getSb() || window.__rsSb;
+    if (!sb || !mapId || !sb.channel) return;
+    try {
+      presenceChannel = sb
+        .channel('party-presence-' + String(mapId))
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'party_presence',
+            filter: 'map_id=eq.' + mapId
+          },
+          function () {
+            try {
+              if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+            } catch (eH) {}
+            // Light pull (skip profile re-fetch) so dots update immediately both ways
+            try { pullPresence({ skipMembers: true }); } catch (eP) {}
+          }
+        )
+        .subscribe(function (/* status */) {});
+    } catch (eCh) {
+      console.warn('presence realtime unavailable', eCh);
+      presenceChannel = null;
+    }
+  }
+
+  function ensurePresenceRealtimeForCurrentMap() {
+    var mid = currentSharedMapId();
+    if (mid) startPresenceRealtime(mid);
+    else stopPresenceRealtime();
   }
 
   function stopPartyHeadingWatch() {
@@ -1848,7 +1979,9 @@
       presenceTimer = null;
     }
     if (!sharing) return;
-    var ms = isShareBackgrounded() ? BG_HEARTBEAT_MS : HEARTBEAT_MS;
+    var ms = presenceCadenceMs(false, isShareBackgrounded());
+    // Timer slightly denser than max cadence so stationary/move tiers can still fire on time
+    ms = Math.max(2000, Math.min(ms, isShareBackgrounded() ? BG_HEARTBEAT_MS : HEARTBEAT_MS));
     presenceTimer = setInterval(shareHeartbeatTick, ms);
   }
 
@@ -1951,15 +2084,22 @@
 
     startShareGpsWatch({ background: isShareBackgrounded() });
     restartShareHeartbeat();
+    // Realtime + immediate pull so party members see each other without manual refresh
+    try { ensurePresenceRealtimeForCurrentMap(); } catch (eRt) {}
+    try { pullPresence({ force: true }); } catch (ePull0) {}
 
     // Immediate force push
     navigator.geolocation.getCurrentPosition(function (pos) {
       var h0 = resolveFacingHeading(pos.coords.heading);
       pushPresence(pos.coords.latitude, pos.coords.longitude, h0, true).then(function (ok) {
+        // Second pull shortly after first upsert so peers (and us) paint dots ASAP
+        setTimeout(function () {
+          try { pullPresence({ skipMembers: true, force: true }); } catch (eP2) {}
+        }, 400);
         if (ok !== false && window.showAppCopyToast && !silent) {
           showAppCopyToast(
             '<span class="act">Sharing location</span><br>' +
-            'Party can see you. Stays on ~1 hour after you leave the app (20s updates when backgrounded).'
+            'Party can see you live. Background ~20s pings; auto-pause after 1 hour away.'
           );
         } else if (ok !== false && window.showAppCopyToast && resume) {
           showAppCopyToast('<span class="act">Sharing location</span><br>Resumed — 1 hour timer restarted.');
@@ -1977,8 +2117,6 @@
         persistSharePref();
       }
     }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
-
-    if (!isShareBackgrounded()) pullPresence();
   }
 
   /**
@@ -1996,6 +2134,8 @@
     }
     if (presenceTimer) { clearInterval(presenceTimer); presenceTimer = null; }
     stopPartyHeadingWatch();
+    // Keep presence realtime while on a shared map so we still SEE others after we stop sharing
+    try { ensurePresenceRealtimeForCurrentMap(); } catch (eRt2) {}
 
     var idlePause = (reason === 'idle' || reason === 'auto');
     if (idlePause) {
@@ -2298,6 +2438,9 @@
       // Always refresh chrome labels after switch (mobile title + max-mode chip)
       try { updateBrandName(); } catch (eBn) {}
       try { refreshMapsUi(); } catch (eRu) {}
+      // Leave shared map → no party presence traffic
+      try { stopPresenceRealtime(); } catch (eRt) {}
+      try { clearPartyMarkers(); } catch (eCl) {}
       return;
     }
     // Fallback: set view + pull
@@ -2594,7 +2737,9 @@
           C.switchToShared(id).then(function () {
             updateBrandName();
             refreshMapsUi();
-            try { pullPresence(); } catch (eP) {}
+            try { ensurePresenceRealtimeForCurrentMap(); } catch (eRt) {}
+            try { restartPartyPullLoop(); } catch (ePl) {}
+            try { pullPresence({ force: true }); } catch (eP) {}
           }).catch(function (e) { alert(e.message || e); });
         }
       };
@@ -4584,11 +4729,12 @@
   });
 
   // After auth
-  var partyPullInterval = null;
-  function ensurePartyPullLoop() {
-    if (partyPullInterval) return;
-    // Always pull when viewing a shared map — even if we are not sharing ourselves
-    // Faster poll so mobile clients see each other both ways
+  function restartPartyPullLoop() {
+    if (partyPullInterval) {
+      try { clearInterval(partyPullInterval); } catch (eC) {}
+      partyPullInterval = null;
+    }
+    // Shared map only; never private maps. Realtime is primary; poll is backup.
     partyPullInterval = setInterval(function () {
       var vs = C.getViewState && C.getViewState();
       if (vs && vs.mode === 'shared' && vs.sharedMapId && document.visibilityState === 'visible') {
@@ -4596,14 +4742,26 @@
         if (m && !window.map) {
           try { window.map = m; } catch (e) {}
         }
-        pullPresence();
+        pullPresence({ skipMembers: true });
       }
-    }, PULL_MS);
+    }, peerPullIntervalMs());
+  }
+
+  function ensurePartyPullLoop() {
+    if (partyPullInterval) return;
+    restartPartyPullLoop();
+    // Re-tune poll rate occasionally as party size changes
+    setInterval(function () {
+      try {
+        if (partyPullInterval && currentSharedMapId()) restartPartyPullLoop();
+      } catch (eR) {}
+    }, 60000);
     // Extra pull when tab becomes visible (mobile backgrounding)
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible') {
         setTimeout(function () {
-          pullPresence();
+          try { ensurePresenceRealtimeForCurrentMap(); } catch (eRt) {}
+          pullPresence({ force: true });
           try { markMapViewed(); } catch (eMv) {}
         }, 200);
       }
@@ -4611,7 +4769,8 @@
     // pageshow (bfcache restore on iOS)
     window.addEventListener('pageshow', function () {
       setTimeout(function () {
-        pullPresence();
+        try { ensurePresenceRealtimeForCurrentMap(); } catch (eRt2) {}
+        pullPresence({ force: true });
         try { markMapViewed(); } catch (eMv2) {}
       }, 300);
     });
@@ -4637,6 +4796,7 @@
     } catch (ePref) {}
     updateShareLocBtn();
     ensurePartyPullLoop();
+    try { ensurePresenceRealtimeForCurrentMap(); } catch (eRt0) {}
     // Warm map-name dropdown so first click is smooth
     try {
       setTimeout(function () { prefetchMapSwitcherLists(); }, 800);
@@ -4648,7 +4808,8 @@
         if (m0) window.map = m0;
       } catch (e0) {}
       refreshMapsUi();
-      pullPresence();
+      try { ensurePresenceRealtimeForCurrentMap(); } catch (eRt1) {}
+      pullPresence({ force: true });
       // Opening the app / map counts as a view → reset idle + resume if toggle still on
       try { markMapViewed(); } catch (eMv) {}
     }, 500);
@@ -4679,7 +4840,8 @@
         } catch (e) {}
         try { hookMapForShareView(m || getMap()); } catch (eH) {}
         setTimeout(function () {
-          pullPresence();
+          try { ensurePresenceRealtimeForCurrentMap(); } catch (eRt) {}
+          pullPresence({ force: true });
           try { markMapViewed(); } catch (eMv) {}
         }, 50);
         return m;
@@ -4691,6 +4853,27 @@
   // ensureMap is defined later in index.html — retry until wired
   [0, 500, 1500, 4000].forEach(function (ms) {
     setTimeout(installEnsureMapPartyHook, ms);
+  });
+
+  // After cloud map switch, re-bind presence Realtime so dots appear without refresh
+  function installSwitchSharedHook() {
+    if (!C.switchToShared || C.switchToShared._rsPresenceHook) return;
+    var _orig = C.switchToShared.bind(C);
+    C.switchToShared = function () {
+      var args = arguments;
+      return Promise.resolve(_orig.apply(C, args)).then(function (r) {
+        try { ensurePresenceRealtimeForCurrentMap(); } catch (eRt) {}
+        try { restartPartyPullLoop(); } catch (ePl) {}
+        setTimeout(function () {
+          try { pullPresence({ force: true }); } catch (eP) {}
+        }, 80);
+        return r;
+      });
+    };
+    C.switchToShared._rsPresenceHook = true;
+  }
+  [0, 800, 2000, 5000].forEach(function (ms) {
+    setTimeout(installSwitchSharedHook, ms);
   });
 
   if (C.authReady && C.authReady.then) {

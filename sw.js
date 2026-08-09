@@ -2,7 +2,7 @@
  * Caches app shell for return visits with no signal.
  * Map tiles: cache-first when already stored; network otherwise (then cache).
  */
-const SHELL_CACHE = 'reg-slayer-shell-v101';
+const SHELL_CACHE = 'reg-slayer-shell-v102';
 const TILE_CACHE = 'reg-slayer-tiles-v2';
 const DATA_CACHE = 'reg-slayer-data-v1';
 /** Soft cap on cached map tiles (~18KB avg → ~45MB). Oldest entries dropped first. */
@@ -148,6 +148,16 @@ function isApiUrl(url) {
   }
 }
 
+/** Live party / auth / map state — never long-cache (presence must stay current) */
+function isSupabaseUrl(url) {
+  try {
+    const h = new URL(url).hostname;
+    return h.includes('supabase.co') || h.includes('supabase.in');
+  } catch (e) {
+    return false;
+  }
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(SHELL_CACHE).then((cache) =>
@@ -256,6 +266,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Supabase (presence, maps, auth): always network — never cache live GPS / map_state
+  if (isSupabaseUrl(url)) {
+    event.respondWith(
+      fetch(req).catch(() => Response.error())
+    );
+    return;
+  }
+
   // Radar tiles: network-only (short-lived frames — do not bloat TILE_CACHE)
   if (isRadarTileUrl(url)) {
     event.respondWith(
@@ -264,7 +282,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Map tiles: cache-first (supports offline packs + browsed tiles), with soft size cap
+  // Map tiles: cache-first (offline packs + already-browsed tiles). No background revalidate
+  // on every hit — saves cellular when panning over known tiles. New areas still network-fetch.
   if (isTileUrl(url)) {
     event.respondWith(
       caches.open(TILE_CACHE).then((cache) =>
@@ -279,15 +298,14 @@ self.addEventListener('fetch', (event) => {
               }
               return res;
             })
-            .catch(() => cached || Response.error());
+            .catch(() => Response.error());
         })
       )
     );
     return;
   }
 
-  // Weather / GIS APIs: network-first, fall back to cache
-  // (skip caching large radar API JSON lists if any)
+  // Weather / GIS APIs: network-first, short offline fallback (not for presence)
   if (isApiUrl(url)) {
     event.respondWith(
       fetch(req)
