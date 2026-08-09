@@ -1,0 +1,18 @@
+V7.0.41 Beta — Arrow head facing + background share @ 20s
+
+What
+1. Arrow head direction icon: frontDeg set to 180 so the tip points the
+   way the user is looking (was opposite). Cache bust dir6.
+
+2. Share location while app is backgrounded (best-effort on mobile browsers):
+   - Keeps tracking after you leave the app / switch tabs.
+   - Position + heading ping together about every 20 seconds (less data/battery).
+   - Peer pull only while the app is open.
+   - After 1 hour in background without reopening, auto-pause GPS; toolbar
+     toggle stays on and sharing resumes when you open the app (1h timer restarts).
+   - Fully force-closing the browser tab/process still cannot run JS GPS
+     (platform limit); native wrapper would be needed for true kill-state track.
+
+Ship
+- APP_VERSION 7.0.41-beta · shell v101
+- party-maps.js + icons/dir/_catalog.json on Hunt + Reg

@@ -16,13 +16,15 @@
   var PARTY_PREFS_LOCAL_KEY = 'reg_slayer_party_prefs_local_v1';
   /**
    * Share-location preference survives idle auto-pause.
-   * want=true keeps the toolbar toggle on; active GPS may pause after 1h
-   * without viewing the map, then resume when the map is opened again.
+   * want=true keeps the toolbar toggle on. While backgrounded, GPS keeps
+   * pinging ~every 20s (pos+heading). After 1h away without reopening the app,
+   * active GPS pauses; toggle stays on and resumes when they return.
    */
   var SHARE_PREF_KEY = 'reg_slayer_share_loc_pref_v2';
   /** Directional icons for party/GPS (from icons/dir — location icons pipeline). */
   var DIR_ICON_CATALOG = [
-    { id: 'arrow_head', name: 'Arrow head', src: 'icons/dir/arrow_head.png', frontDeg: 0 },
+    // PNG tip was drawn opposite the map heading axis — frontDeg 180 so tip faces look direction
+    { id: 'arrow_head', name: 'Arrow head', src: 'icons/dir/arrow_head.png', frontDeg: 180 },
     { id: 'boat', name: 'Boat', src: 'icons/dir/boat.png', frontDeg: 0 },
     // PNG is diagonal: nose lower-left (~225°). Rotate −225° so tip points up.
     { id: 'bomb', name: 'Bomb', src: 'icons/dir/bomb.png', frontDeg: 225 },
@@ -40,16 +42,18 @@
     { id: 'dobbs', name: 'Dobbs', src: 'icons/dir/dobbs.png', frontDeg: 0 },
     { id: 'x_wing', name: 'X-wing', src: 'icons/dir/x_wing.png', frontDeg: 0 }
   ];
-  var DIR_ICON_BUST = 'dir5';
+  var DIR_ICON_BUST = 'dir6';
   var MOVE_M = 8; // meters = "moving"
   var MOVE_MS = 4000; // min interval when moving (unchanged — still snappy when walking)
-  // Phase A efficiency: slightly less radio when standing still (move/heading still push promptly)
-  var HEARTBEAT_MS = 8000; // idle presence upsert while sharing
+  // Foreground: snappy while app is open
+  var HEARTBEAT_MS = 8000; // idle presence upsert while sharing (visible)
   var HEADING_PUSH_DEG = 8; // re-push when facing turns this many degrees
-  var HEADING_PUSH_MS = 1200; // min interval for heading-only updates
+  var HEADING_PUSH_MS = 1200; // min interval for heading-only updates (visible only)
+  // Background / app not focused: much cheaper radio (pos + heading together)
+  var BG_HEARTBEAT_MS = 20000;
   /** Auto-pause live GPS if the user has not viewed the map for this long */
   var SHARE_IDLE_MS = 60 * 60 * 1000;
-  var PULL_MS = 5000; // peer visibility poll (was 3s; still near-live for party)
+  var PULL_MS = 5000; // peer visibility poll when app is open
 
   var presenceTimer = null;
   var presenceWatch = null;
@@ -1575,10 +1579,20 @@
     }
   }
 
+  /** True when tab/app is not visible (backgrounded). Fully force-closed tabs cannot run JS. */
+  function isShareBackgrounded() {
+    try {
+      return typeof document !== 'undefined' && document.visibilityState === 'hidden';
+    } catch (e) {
+      return false;
+    }
+  }
+
   /**
    * Auto-pause after 1 hour without the map/app being open (visible).
-   * While the page is visible the idle clock stays fresh. Background / closed
-   * for ≥1h → pause GPS but keep the toolbar toggle preference on.
+   * While visible the idle clock stays fresh. Backgrounded ≥1h → pause GPS
+   * but keep the toolbar toggle preference on (resumes when they reopen).
+   * Opening the app again restarts the 1h timer.
    */
   function checkShareIdleTimeout() {
     if (!sharing || !shareWanted) return false;
@@ -1611,15 +1625,26 @@
     shareMapViewWired = true;
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible') {
+        // Reopen app/tab → restart 1h timer and resume full-rate share
         markMapViewed();
-        // Resume GPS hardware if share is still on (no feature change — silent resume)
-        try { resumeShareGpsWatchIfNeeded(); } catch (eR) {}
+        try {
+          if (sharing && shareWanted) {
+            startShareGpsWatch({ background: false });
+            restartShareHeartbeat();
+          } else {
+            resumeShareGpsWatchIfNeeded();
+          }
+        } catch (eR) {}
       } else if (shareWanted || sharing) {
-        // Start idle clock from the moment they leave the map/app
+        // Leave app: start idle clock, keep tracking at ~20s (cheaper data/battery)
         lastMapViewAt = Date.now();
         persistSharePref();
-        // Hard pause GPS radio while backgrounded (toggle / shareWanted unchanged)
-        try { pauseShareGpsWatch(); } catch (eP) {}
+        try {
+          if (sharing) {
+            startShareGpsWatch({ background: true });
+            restartShareHeartbeat();
+          }
+        } catch (eP) {}
       }
     });
     window.addEventListener('pageshow', function () { markMapViewed(); });
@@ -1638,13 +1663,17 @@
     }
   }
 
-  function startShareGpsWatch() {
+  /**
+   * Live GPS for party share.
+   * Foreground: high accuracy, frequent updates.
+   * Background: keep running at low rate (~20s) so peers still see you after you leave the app.
+   */
+  function startShareGpsWatch(opts) {
     if (!navigator.geolocation) return;
+    opts = opts || {};
+    var bg = opts.background != null ? !!opts.background : isShareBackgrounded();
     pauseShareGpsWatch();
     presenceWatch = navigator.geolocation.watchPosition(function (pos) {
-      try {
-        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
-      } catch (eH) {}
       if (!sharing) return;
       var lat = pos.coords.latitude, lng = pos.coords.longitude;
       // GPS course when moving; otherwise device compass
@@ -1659,26 +1688,24 @@
       pushPresence(lat, lng, heading, false);
     }, function (err) {
       console.warn('share location GPS error', err);
+      // Only nag when the app is open
+      if (isShareBackgrounded()) return;
       try {
         if (window.showAppCopyToast) {
           showAppCopyToast('<span class="act">Location error</span><br>Allow location access to share with party.');
         }
       } catch (e3) {}
     }, {
-      enableHighAccuracy: true,
-      // Slightly higher maxAge reduces GPS wakeups; still fresh for hunting pace
-      maximumAge: 4000,
-      timeout: 15000
+      enableHighAccuracy: !bg,
+      maximumAge: bg ? 18000 : 4000,
+      timeout: bg ? 25000 : 15000
     });
   }
 
   function resumeShareGpsWatchIfNeeded() {
     if (!sharing || !shareWanted) return;
     if (presenceWatch != null) return;
-    try {
-      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
-    } catch (eV) {}
-    startShareGpsWatch();
+    startShareGpsWatch({ background: isShareBackgrounded() });
   }
 
   async function pushPresence(lat, lng, heading, force) {
@@ -1686,9 +1713,6 @@
     var sb = getSb();
     var user = getUser();
     if (!sharing || !vs || vs.mode !== 'shared' || !vs.sharedMapId || !sb || !user) return false;
-    try {
-      if (typeof document !== 'undefined' && document.visibilityState === 'hidden' && !force) return false;
-    } catch (eVis) {}
     // Auto-pause after 1h without viewing the map (preference stays on)
     if (checkShareIdleTimeout()) return false;
     // Always resolve best facing heading (never wipe with null on heartbeat)
@@ -1696,6 +1720,7 @@
     if (hdg == null && lastSent.heading != null) hdg = lastSent.heading;
 
     var now = Date.now();
+    var bg = isShareBackgrounded();
     var moved = true;
     if (lastSent.lat != null) {
       var d = haversineM(lastSent.lat, lastSent.lng, lat, lng);
@@ -1707,9 +1732,14 @@
 
     if (!force && lastSent.at) {
       var elapsed = now - lastSent.at;
-      if (moved && elapsed < MOVE_MS) return true;
-      if (!moved && headingTurned && elapsed < HEADING_PUSH_MS) return true;
-      if (!moved && !headingTurned && elapsed < HEARTBEAT_MS) return true;
+      if (bg) {
+        // Background: one combined pos+heading ping about every 20s (saves data/battery)
+        if (elapsed < BG_HEARTBEAT_MS) return true;
+      } else {
+        if (moved && elapsed < MOVE_MS) return true;
+        if (!moved && headingTurned && elapsed < HEADING_PUSH_MS) return true;
+        if (!moved && !headingTurned && elapsed < HEARTBEAT_MS) return true;
+      }
     }
 
     var payload = {
@@ -1728,7 +1758,7 @@
       if (res.error) {
         console.warn('presence push failed', res.error);
         try {
-          if (window.showAppCopyToast) {
+          if (!bg && window.showAppCopyToast) {
             showAppCopyToast('<span class="act">Share location failed</span><br>' +
               esc(res.error.message || 'Could not update party location'));
           }
@@ -1766,8 +1796,8 @@
       if (raw == null) return;
       lastFacingHeading = raw;
       try { window.deviceHeadingDeg = raw; } catch (eW) {}
-      // Push facing update while sharing (even if standing still)
-      if (sharing && lastSent.lat != null) {
+      // Heading-only network pushes only while the app is open (bg uses 20s pos+heading)
+      if (sharing && lastSent.lat != null && !isShareBackgrounded()) {
         var now = Date.now();
         if (now - lastHeadingPushAt >= HEADING_PUSH_MS) {
           if (lastSent.heading == null || headingDelta(lastSent.heading, raw) >= HEADING_PUSH_DEG) {
@@ -1779,6 +1809,47 @@
     try { window.addEventListener('deviceorientationabsolute', headingOrientHandler, true); } catch (eA) {}
     try { window.addEventListener('deviceorientation', headingOrientHandler, true); } catch (eR) {}
     headingWatchOn = true;
+  }
+
+  /** Heartbeat tick: peers when open; own pos+heading always (20s when backgrounded). */
+  function shareHeartbeatTick() {
+    if (!sharing) return;
+    if (checkShareIdleTimeout()) return;
+    var bg = isShareBackgrounded();
+    // Pull party markers only while app is open (big data saver when backgrounded)
+    if (!bg) {
+      try { pullPresence(); } catch (eP) {}
+    }
+    if (bg) {
+      // Fresh fix every ~20s while backgrounded (browsers throttle watchPosition heavily)
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        if (!sharing) return;
+        var h = resolveFacingHeading(pos.coords.heading);
+        pushPresence(pos.coords.latitude, pos.coords.longitude, h, true);
+      }, function () {
+        if (!sharing || lastSent.lat == null) return;
+        var h2 = resolveFacingHeading(lastSent.heading);
+        pushPresence(lastSent.lat, lastSent.lng, h2, true);
+      }, {
+        enableHighAccuracy: false,
+        maximumAge: 18000,
+        timeout: 20000
+      });
+    } else if (lastSent.lat != null) {
+      var h3 = resolveFacingHeading(lastSent.heading);
+      pushPresence(lastSent.lat, lastSent.lng, h3, true);
+    }
+  }
+
+  function restartShareHeartbeat() {
+    if (presenceTimer) {
+      clearInterval(presenceTimer);
+      presenceTimer = null;
+    }
+    if (!sharing) return;
+    var ms = isShareBackgrounded() ? BG_HEARTBEAT_MS : HEARTBEAT_MS;
+    presenceTimer = setInterval(shareHeartbeatTick, ms);
   }
 
   function requestOrientationPermissionIfNeeded() {
@@ -1804,7 +1875,8 @@
     heading = normalizeHeading(heading);
     if (heading == null) return;
     lastFacingHeading = heading;
-    if (sharing && lastSent.lat != null) {
+    // Only burn radio on heading-only while foregrounded
+    if (sharing && lastSent.lat != null && !isShareBackgrounded()) {
       var now = Date.now();
       if (now - lastHeadingPushAt >= HEADING_PUSH_MS &&
           (lastSent.heading == null || headingDelta(lastSent.heading, heading) >= HEADING_PUSH_DEG)) {
@@ -1877,32 +1949,20 @@
       }
     });
 
-    startShareGpsWatch();
-
-    // Heartbeat: idle check + peer pull + presence push
-    if (presenceTimer) clearInterval(presenceTimer);
-    presenceTimer = setInterval(function () {
-      if (!sharing) return;
-      // No network/GPS work while tab/app is in background
-      try {
-        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
-      } catch (eVis) {}
-      if (checkShareIdleTimeout()) return;
-      pullPresence();
-      if (lastSent.lat != null) {
-        var h = resolveFacingHeading(lastSent.heading);
-        pushPresence(lastSent.lat, lastSent.lng, h, true);
-      }
-    }, HEARTBEAT_MS);
+    startShareGpsWatch({ background: isShareBackgrounded() });
+    restartShareHeartbeat();
 
     // Immediate force push
     navigator.geolocation.getCurrentPosition(function (pos) {
       var h0 = resolveFacingHeading(pos.coords.heading);
       pushPresence(pos.coords.latitude, pos.coords.longitude, h0, true).then(function (ok) {
         if (ok !== false && window.showAppCopyToast && !silent) {
-          showAppCopyToast('<span class="act">Sharing location</span><br>Party can see your position and facing direction.');
+          showAppCopyToast(
+            '<span class="act">Sharing location</span><br>' +
+            'Party can see you. Stays on ~1 hour after you leave the app (20s updates when backgrounded).'
+          );
         } else if (ok !== false && window.showAppCopyToast && resume) {
-          showAppCopyToast('<span class="act">Sharing location</span><br>Resumed — you viewed the map.');
+          showAppCopyToast('<span class="act">Sharing location</span><br>Resumed — 1 hour timer restarted.');
         }
       });
     }, function (err) {
@@ -1918,7 +1978,7 @@
       }
     }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
 
-    pullPresence();
+    if (!isShareBackgrounded()) pullPresence();
   }
 
   /**
@@ -1965,7 +2025,7 @@
       try {
         showAppCopyToast && showAppCopyToast(
           '<span class="act">Location sharing paused</span><br>' +
-          'Auto-off after 1 hour away from the map. Toggle stays on — opens again when you view the map.'
+          'Auto-off after 1 hour in the background. Toggle stays on — opens again when you return to the app.'
         );
       } catch (e4) {}
     } else if (wasSharing || reason === 'user') {
@@ -2004,8 +2064,8 @@
       btn.title = 'Sharing location with party (tap to stop)';
       btn.setAttribute('data-mbb-tip', 'Sharing location');
     } else if (shareWanted) {
-      btn.title = 'Share on (paused after 1h away) — open map to resume, or tap to turn off';
-      btn.setAttribute('data-mbb-tip', 'Share paused — open map');
+      btn.title = 'Share on (paused after 1h in background) — open app to resume, or tap to turn off';
+      btn.setAttribute('data-mbb-tip', 'Share paused — open app');
     } else {
       btn.title = 'Share current location with party';
       btn.setAttribute('data-mbb-tip', 'Share location');

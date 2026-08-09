@@ -4,7 +4,7 @@
     "name": "Arrow head",
     "src": "icons/dir/arrow_head.png",
     "defaultColor": "#1a1a1a",
-    "frontDeg": 0.0
+    "frontDeg": 180.0
   },
   {
     "id": "boat",
