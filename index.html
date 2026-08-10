@@ -10777,7 +10777,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.58 Beta">V7.0.58 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.59 Beta">V7.0.59 Beta</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-sister-link" id="brand-other-slay-btn" title="Open Hunt, Reg, or Plan Slayer">
@@ -11778,17 +11778,20 @@
     <div class="svl-body" id="svl-body"></div>
   </div>
 
-  <!-- Event share: Copy event → Copy code or Add members (map partners) -->
-  <div id="event-share-people-modal" class="app-prompt-modal" hidden style="display:none;" role="dialog" aria-modal="true" aria-labelledby="event-share-people-title" onclick="if(event.target===this)closeEventSharePeople()">
+  <!-- Event share: Share event → Copy code or Add members (map partners) -->
+  <div id="event-share-people-modal" class="app-prompt-modal" hidden style="display:none;z-index:2147483000;" role="dialog" aria-modal="true" aria-labelledby="event-share-people-title" onclick="if(event.target===this)onEventShareBackdrop()">
     <div class="shape-save-card" onclick="event.stopPropagation()" style="max-width:380px;">
-      <h3 id="event-share-people-title">Copy event</h3>
-      <div class="ss-meta">Share this event with others, or copy an invite code.</div>
-      <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
-        <button type="button" class="ss-save" style="width:100%;" onclick="copyEventShareCode()">Copy</button>
-        <button type="button" class="ss-save" style="width:100%;background:var(--panel);color:var(--accent);border:1px solid var(--accent);" onclick="openEventMapPartners()">Add members</button>
-        <button type="button" class="ss-cancel" style="width:100%;" onclick="closeEventSharePeople()">Cancel</button>
+      <h3 id="event-share-people-title">Share event</h3>
+      <div class="ss-meta">Share this event with others, or copy an invite code. Tap people to select, then Add.</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+        <button type="button" class="ss-save" style="width:100%;min-height:48px;font-size:15px;font-weight:800;" onclick="copyEventShareCode()">Copy invite code</button>
+        <button type="button" class="ss-save" style="width:100%;min-height:48px;font-size:15px;font-weight:800;background:var(--panel);color:var(--accent);border:1px solid var(--accent);" onclick="openEventMapPartners()">Add members</button>
+        <button type="button" class="ss-cancel" style="width:100%;min-height:44px;" onclick="closeEventSharePeople()">Cancel</button>
       </div>
       <div id="event-map-partners-box" style="display:none;margin-top:12px;max-height:240px;overflow:auto;"></div>
+      <div id="event-map-partners-actions" style="display:none;margin-top:10px;">
+        <button type="button" class="ss-save" style="width:100%;min-height:48px;font-weight:800;" onclick="commitEventMapPartners()">Add</button>
+      </div>
     </div>
   </div>
 
@@ -12321,7 +12324,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.58-beta';
+    const APP_VERSION = '7.0.59-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -32969,6 +32972,7 @@ function togglePinIconPicker() {
 
 
     var _eventShareId = null;
+    var _eventShareSelected = [];
     function openEventAddPeople() {
       var id = editingEventId || _quickLoadEventId;
       if (!id && window.RegSlayerCalendarEvents) {
@@ -32980,9 +32984,12 @@ function togglePinIconPicker() {
         else try { alert('Save the event first, then Add people'); } catch (e) {}
         return;
       }
+      _eventShareSelected = [];
       var modal = document.getElementById('event-share-people-modal');
       var box = document.getElementById('event-map-partners-box');
+      var acts = document.getElementById('event-map-partners-actions');
       if (box) box.style.display = 'none';
+      if (acts) acts.style.display = 'none';
       if (modal) {
         modal.hidden = false;
         modal.style.display = 'flex';
@@ -32996,6 +33003,7 @@ function togglePinIconPicker() {
         modal.style.display = 'none';
         modal.classList.remove('active');
       }
+      _eventShareSelected = [];
     }
     function copyEventShareCode() {
       var ev = window.RegSlayerCalendarEvents && window.RegSlayerCalendarEvents.getById(_eventShareId);
@@ -33015,8 +33023,11 @@ function togglePinIconPicker() {
     }
     function openEventMapPartners() {
       var box = document.getElementById('event-map-partners-box');
+      var acts = document.getElementById('event-map-partners-actions');
       if (!box) return;
+      _eventShareSelected = [];
       box.style.display = 'block';
+      if (acts) acts.style.display = 'block';
       box.innerHTML = '<p class="ss-meta">Loading people from your shared maps…</p>';
       var partners = [];
       try {
@@ -33037,6 +33048,9 @@ function togglePinIconPicker() {
       }
       partners.forEach(add);
       friends.forEach(add);
+      function isSel(id) {
+        return _eventShareSelected.some(function (x) { return String(x.user_id) === String(id); });
+      }
       function renderPick() {
         if (!list.length) {
           box.innerHTML = '<p class="ss-meta">No map partners yet. Share a map on Hunt/Reg first.</p>';
@@ -33045,12 +33059,15 @@ function togglePinIconPicker() {
         box.innerHTML = list.slice(0, 40).map(function (p) {
           var name = (p.display_name || p.username || 'Member').replace(/</g, '&lt;');
           var id = String(p.user_id || p.display_name || '').replace(/'/g, '');
-          return '<button type="button" onclick="addMemberToHuntEvent(\'' + id + '\',\'' + name.replace(/'/g, '') +
-            '\')" style="width:100%;text-align:left;margin:0 0 6px;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--ink);cursor:pointer;font-weight:700">' +
-            name + '</button>';
+          var on = isSel(id);
+          return '<button type="button" onclick="toggleEventShareMember(\'' + id + '\',\'' + name.replace(/'/g, '') +
+            '\')" style="width:100%;text-align:left;margin:0 0 6px;padding:12px;min-height:46px;border-radius:8px;border:1px solid ' +
+            (on ? 'var(--accent)' : 'var(--border)') + ';background:' + (on ? 'linear-gradient(180deg,#3a4a28,#2a3220)' : 'var(--panel)') +
+            ';color:var(--ink);cursor:pointer;font-weight:700;box-shadow:' + (on ? '0 0 0 2px rgba(229,154,24,0.4)' : 'none') + '">' +
+            name + (on ? ' ✓' : '') + '</button>';
         }).join('');
       }
-      // Refresh from cloud when possible
+      window._eventShareRenderPick = renderPick;
       try {
         var sb = window.RegSlayerCloud && window.RegSlayerCloud.getClient && window.RegSlayerCloud.getClient();
         if (sb) {
@@ -33082,23 +33099,52 @@ function togglePinIconPicker() {
         } else renderPick();
       } catch (eC) { renderPick(); }
     }
-    function addMemberToHuntEvent(uid, name) {
+    function toggleEventShareMember(uid, name) {
+      var idx = _eventShareSelected.findIndex(function (x) { return String(x.user_id) === String(uid); });
+      if (idx >= 0) _eventShareSelected.splice(idx, 1);
+      else _eventShareSelected.push({ user_id: uid, display_name: name || 'Member' });
+      if (typeof window._eventShareRenderPick === 'function') window._eventShareRenderPick();
+    }
+    function addMemberToHuntEvent(uid, name, quiet) {
       var ev = window.RegSlayerCalendarEvents && window.RegSlayerCalendarEvents.getById(_eventShareId);
-      if (!ev) return;
+      if (!ev) return false;
       if (!Array.isArray(ev.members)) ev.members = [];
       if (ev.members.some(function (m) { return String(m.user_id) === String(uid); })) {
-        if (typeof showAppCopyToast === 'function') showAppCopyToast('Already a member');
-        return;
+        if (!quiet && typeof showAppCopyToast === 'function') showAppCopyToast('Already a member');
+        return false;
       }
       ev.members.push({ user_id: uid, display_name: name || 'Member', role: 'member' });
       try { window.RegSlayerCalendarEvents.upsert(ev); } catch (e) {}
-      if (typeof showAppCopyToast === 'function') showAppCopyToast('Added ' + (name || 'member'));
+      if (!quiet && typeof showAppCopyToast === 'function') showAppCopyToast('Added ' + (name || 'member'));
+      return true;
+    }
+    function commitEventMapPartners() {
+      if (!_eventShareSelected.length) {
+        if (typeof showAppCopyToast === 'function') showAppCopyToast('Select at least one person');
+        return;
+      }
+      var n = 0;
+      _eventShareSelected.forEach(function (p) {
+        if (addMemberToHuntEvent(p.user_id, p.display_name, true)) n++;
+      });
+      _eventShareSelected = [];
+      if (typeof showAppCopyToast === 'function') {
+        showAppCopyToast(n ? ('Added ' + n + ' member' + (n === 1 ? '' : 's')) : 'Already members');
+      }
+      closeEventSharePeople();
+    }
+    function onEventShareBackdrop() {
+      if (_eventShareSelected.length) commitEventMapPartners();
+      else closeEventSharePeople();
     }
     window.openEventAddPeople = openEventAddPeople;
     window.closeEventSharePeople = closeEventSharePeople;
     window.copyEventShareCode = copyEventShareCode;
     window.openEventMapPartners = openEventMapPartners;
     window.addMemberToHuntEvent = addMemberToHuntEvent;
+    window.toggleEventShareMember = toggleEventShareMember;
+    window.commitEventMapPartners = commitEventMapPartners;
+    window.onEventShareBackdrop = onEventShareBackdrop;
 
     window.loadSavedEventHuntDataById = loadSavedEventHuntDataById;
 
