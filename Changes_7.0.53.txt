@@ -1,0 +1,6 @@
+﻿V7.0.53 — #36 hourly 24h scroll + #37 event date defaults
+
+- Hourly weather box: daylight viewport with scroll for full 24h (CSS no longer forces height:auto)
+- fitHourlyDaylightViewport uses inline !important height + overflow-y auto
+- Add Event: seed start/end from selected calendar day; while form open, tap another day sets end
+- Hunt + Reg; shell v113
