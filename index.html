@@ -10731,7 +10731,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.55 Beta">V7.0.55 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.56 Beta">V7.0.56 Beta</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-sister-link" id="brand-other-slay-btn" title="Open Hunt, Reg, or Plan Slayer">
@@ -12042,6 +12042,14 @@
                 <label class="settings-row-main" for="set-def-ov-hunts"><input type="checkbox" id="set-def-ov-hunts" onchange="saveAppSettingsFromUi()"><span class="sr-text">Past hunts</span></label>
                 <button type="button" class="settings-info-btn" data-title="Past hunts" data-info="Auto-show your logged past hunt stand pins on the map at launch." aria-label="About Past hunts" onclick="return showSettingsInfo(this,event)">i</button>
               </div>
+              <div class="settings-row">
+                <label class="settings-row-main" for="set-def-ov-soa"><input type="checkbox" id="set-def-ov-soa" onchange="saveAppSettingsFromUi()"><span class="sr-text">Show Special Opportunity Areas (SOA)</span></label>
+                <button type="button" class="settings-info-btn" data-title="Special Opportunity Areas" data-info="Auto-show SOA fill on the map at launch. Off by default — turn on only when you need SOAs. Available Hunts only lists SOAs when this layer is on." aria-label="About SOA default" onclick="return showSettingsInfo(this,event)">i</button>
+              </div>
+              <div class="settings-row">
+                <label class="settings-row-main" for="set-def-ov-pdha"><input type="checkbox" id="set-def-ov-pdha" onchange="saveAppSettingsFromUi()"><span class="sr-text">Show Disabled Hunt Areas (PDHA)</span></label>
+                <button type="button" class="settings-info-btn" data-title="Disabled Hunt Areas" data-info="Auto-show PDHA fill on the map at launch. Off by default. Available Hunts only lists PDHAs when this layer is on." aria-label="About PDHA default" onclick="return showSettingsInfo(this,event)">i</button>
+              </div>
             </div>
           </section>
 
@@ -12241,7 +12249,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.55-beta';
+    const APP_VERSION = '7.0.56-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -12263,7 +12271,15 @@
           enableCompassMode: false // toolbar no longer cycles into compass mode unless enabled
         },
         defaults: {
-          overlays: { parcels: false, roads: false, topo: false, pastHunts: false },
+          overlays: {
+            parcels: false,
+            roads: false,
+            topo: false,
+            pastHunts: false,
+            // Public-land fills — off by default (also Layers SOA/PDHA default off)
+            soa: false,
+            pdha: false
+          },
           // autoSpotPopup: compact map weather card on free map click (Get weather always can open it)
           weather: { unit: 'F', enabled: true, mapFullscreen: true, autoSpotPopup: true },
           showYouthHunts: false,
@@ -12793,8 +12809,11 @@
         color: PUBLIC_LAND_COLORS.tva.color,
         fillOpacity: PUBLIC_LAND_COLORS.tva.fillOpacity,
         weight: PUBLIC_LAND_COLORS.tva.weight,
+        // Do not list as Wheeler/Guntersville — those names are reservoir tags, not always the real place.
+        // Display rule (#47): primary name is "TVA"; reservoir kept as note/meta only.
         listMode: 'unit', nameFields: ['RESERVOIR'],
-        nameSuffix: ' (TVA)', splitByZone: true, drawOnMap: true, maxOffset: 0.00008
+        nameSuffix: '', splitByZone: true, drawOnMap: true, maxOffset: 0.00008,
+        forceDisplayName: 'TVA'
       },
       {
         // Official FWS “Public Hunt Units” (50 CFR Part 32, 2025–2026 season layer).
@@ -16895,7 +16914,10 @@
     function buildAdcnrPopup(layer, attrs, opts) {
       attrs = attrs || {};
       opts = opts || {};
-      var name = attrName(attrs, layer.nameFields || ['Name']) || layer.label;
+      var name = (layer && layer.key === 'tva')
+        ? tvaDisplayName(attrs, 'TVA')
+        : (attrName(attrs, layer.nameFields || ['Name']) || layer.label);
+      if (layer && layer.forceDisplayName && layer.key !== 'tva') name = layer.forceDisplayName;
       // WMA permit zone: only when caller already knows it (zone poly) or opts.lat/lng
       // (never scan all zone rings for every polygon during bulk map draw — freezes overlay paint)
       var wmaHere = null;
@@ -16921,6 +16943,10 @@
       }
       var acres = attrs.Acres != null ? attrs.Acres : (attrs.Acreage != null ? attrs.Acreage : attrs.gis_acres);
       var html = '<strong style="color:' + layer.color + ';">' + layer.label + '</strong><br><strong>' + name + '</strong>';
+      // TVA: reservoir is a secondary tag only (not the unit name) (#47)
+      if (layer && layer.key === 'tva' && attrs.RESERVOIR && String(attrs.RESERVOIR).trim()) {
+        html += '<br><span style="color:var(--muted);">Near: ' + String(attrs.RESERVOIR).trim() + ' reservoir</span>';
+      }
       // FWS hunt-unit subunit (e.g. Wheeler → Main Hunt Area / Flint Creek West)
       if (attrs.Hunt_Unit_Name && String(attrs.Hunt_Unit_Name).trim() &&
           String(attrs.Hunt_Unit_Name).trim().toLowerCase() !== String(name || '').toLowerCase()) {
@@ -17561,8 +17587,17 @@
         (layer.features || []).forEach(function(feat) {
           var attrs = feat.attributes || {};
           var name = attrName(attrs, layer.nameFields || ['Name']);
-          if (!name) return;
-          name = normalizeUnitName(name);
+          if (!name && !(layer.forceDisplayName || layer.key === 'tva')) return;
+          name = normalizeUnitName(name || layer.forceDisplayName || layer.label || 'Public land');
+
+          // TVA (#47): list as "TVA", not Wheeler/Guntersville — reservoir is only a tag
+          if (layer.key === 'tva') {
+            name = tvaDisplayName(attrs, 'TVA');
+            // Group by reservoir tag so one pin per reservoir shore complex, labeled TVA
+            var resKey = String(attrs.RESERVOIR || attrs.OBJECTID || name).toLowerCase();
+            // Stash for unit key below via attrs
+            attrs._tvaUnitKey = 'tva_' + resKey.replace(/\W+/g, '_').slice(0, 40);
+          }
 
           // Never list non-huntable refuges (or any NWR not on the deer-hunt whitelist)
           if (layer.key === 'nwr' || layer.typeLabel === 'NWR') {
@@ -17594,10 +17629,24 @@
           var c = geometryCentroid(feat.geometry);
           if (!c || !isInAlabama(c.lat, c.lng)) return;
 
-          // If a non-WMA GIS unit sits inside a WMA polygon, list only the WMA (not the nested tract)
-          if (layer.key !== 'wma' && pointInAnyWma(c.lat, c.lng, wmaRings)) return;
+          // #45 Upper / Bear Creek TVA must not pin in Mud Creek (Jackson Co)
+          try {
+            var nameForFix = name + ' ' + String(attrs.RESERVOIR || attrs.Unit_Nm || attrs.Loc_Nm || '');
+            var fixBear = correctMisplacedPublicLandCoords(nameForFix, c.lat, c.lng);
+            if (fixBear) {
+              c = { lat: fixBear.lat, lng: fixBear.lng };
+              // Keep TVA primary label; only override if still a bare Bear Creek marketing name
+              if (fixBear.name && /bear\s*creek/i.test(name)) name = fixBear.name;
+              else if (layer.key === 'tva') name = 'TVA';
+            }
+          } catch (eFix) {}
 
-          var unitKey = name.toLowerCase();
+          // If a non-WMA GIS unit sits inside a WMA polygon, list only the WMA (not the nested tract)
+          // Exception: corrected TVA Bear Creek coords are outside Mud Creek WMA — keep
+          if (layer.key !== 'wma' && layer.key !== 'tva' && pointInAnyWma(c.lat, c.lng, wmaRings)) return;
+          if (layer.key === 'tva' && pointInAnyWma(c.lat, c.lng, wmaRings) && !/bear\s*creek/i.test(name)) return;
+
+          var unitKey = (attrs._tvaUnitKey || name).toLowerCase();
           if (!units[unitKey]) {
             units[unitKey] = { name: name, attrs: attrs, zones: {}, totalAcres: 0 };
           }
@@ -18924,7 +18973,54 @@
     }
 
     function featureDisplayName(layer, attrs) {
+      if (layer && layer.forceDisplayName) return String(layer.forceDisplayName);
       return attrName(attrs || {}, layer.nameFields || ['Name']) || '';
+    }
+
+    /**
+     * Correct known mis-placed public-land list pins (#45).
+     * Upper Bear Creek (TVA Bear Creek lakes) is NW Alabama (Franklin/Marion/Winston),
+     * NOT Jackson County Mud Creek / Scottsboro waterfowl complex.
+     * @returns {{lat:number,lng:number,name?:string}|null} corrected centroid or null
+     */
+    function correctMisplacedPublicLandCoords(name, lat, lng) {
+      if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) return null;
+      var n = String(name || '');
+      // True Upper / Little / Bear Creek TVA lakes ~34.28, -87.68 (NW AL)
+      var isBearCreekTva = /bear\s*creek/i.test(n) && !/raccoon|mud\s*creek|crow\s*creek|north\s*sauty|sauty/i.test(n);
+      if (!isBearCreekTva) return null;
+      // Jackson Co Mud Creek / Wannville corridor (wrong place for Bear Creek)
+      var inMudCreekCorridor = lat > 34.55 && lat < 34.95 && lng > -86.25 && lng < -85.45;
+      // Also fix if way off from NW Bear Creek lakes (> ~40 mi from true centroid)
+      var trueLat = 34.2784;
+      var trueLng = -87.6847;
+      var dLat = lat - trueLat;
+      var dLng = lng - trueLng;
+      var approxMi = Math.sqrt(dLat * dLat + dLng * dLng) * 69;
+      if (inMudCreekCorridor || approxMi > 45) {
+        return {
+          lat: trueLat,
+          lng: trueLng,
+          name: /upper\s*bear/i.test(n) ? 'Upper Bear Creek (TVA)' :
+            (/little\s*bear/i.test(n) ? 'Little Bear Creek (TVA)' : 'Bear Creek (TVA)')
+        };
+      }
+      return null;
+    }
+
+    /**
+     * TVA list/popup display name (#47): never market as Wheeler/Guntersville NWR-style names.
+     * Reservoir attribute is secondary only.
+     */
+    function tvaDisplayName(attrs, fallback) {
+      attrs = attrs || {};
+      var res = String(attrs.RESERVOIR || '').replace(/\s+/g, ' ').trim();
+      // Named special parcels (rare) — keep if clearly not just a big lake brand
+      if (res && !/^(wheeler|guntersville|pickwick|wilson|nickajack|chickamauga|kentucky|bear\s*creek|little\s*bear|cedar\s*creek)$/i.test(res)) {
+        return 'TVA · ' + res;
+      }
+      if (res) return 'TVA';
+      return fallback || 'TVA';
     }
 
     /**
@@ -35912,6 +36008,8 @@ function togglePinIconPicker() {
       set('set-def-ov-roads', ov.roads);
       set('set-def-ov-topo', ov.topo);
       set('set-def-ov-hunts', ov.pastHunts);
+      set('set-def-ov-soa', !!ov.soa);
+      set('set-def-ov-pdha', !!ov.pdha);
       var w = appSettings.defaults.weather;
       set('set-weather-enabled', w.enabled);
       set('set-weather-map-fs', w.mapFullscreen);
@@ -35972,6 +36070,19 @@ function togglePinIconPicker() {
       appSettings.defaults.overlays.roads = g('set-def-ov-roads');
       appSettings.defaults.overlays.topo = g('set-def-ov-topo');
       appSettings.defaults.overlays.pastHunts = g('set-def-ov-hunts');
+      appSettings.defaults.overlays.soa = g('set-def-ov-soa');
+      appSettings.defaults.overlays.pdha = g('set-def-ov-pdha');
+      // Keep Layers toggles in sync with Settings defaults when user saves
+      try {
+        if (typeof publicLandTypeVisible !== 'undefined') {
+          publicLandTypeVisible.soa = !!appSettings.defaults.overlays.soa;
+          publicLandTypeVisible.pdha = !!appSettings.defaults.overlays.pdha;
+          if (typeof updatePublicLandToggleUI === 'function') updatePublicLandToggleUI();
+          if (typeof refreshPublicLandsOverlayIfOn === 'function') refreshPublicLandsOverlayIfOn();
+          else if (typeof syncPublicLandsOverlay === 'function') syncPublicLandsOverlay();
+          if (typeof renderLocations === 'function') renderLocations();
+        }
+      } catch (ePlSync) {}
       appSettings.defaults.weather.enabled = g('set-weather-enabled');
       appSettings.defaults.weather.mapFullscreen = g('set-weather-map-fs');
       appSettings.defaults.weather.autoSpotPopup = g('set-weather-spot-popup');
@@ -36381,7 +36492,7 @@ function togglePinIconPicker() {
     }
 
     function applyDefaultOverlaysOnLaunch() {
-      var ov = appSettings.defaults.overlays;
+      var ov = appSettings.defaults.overlays || {};
       if (ov.parcels) togglePropertyLines(true);
       if (ov.roads) toggleRoadsOverlay(true);
       if (ov.topo) toggleTopoOverlay(true);
@@ -36389,6 +36500,14 @@ function togglePinIconPicker() {
         var chk = document.getElementById('toggle-prev-hunts-chk');
         if (chk) { chk.checked = true; if (typeof drawHuntsOnMap === 'function') drawHuntsOnMap(); }
       }
+      // SOA / PDHA defaults (#46) — off unless user checked Settings
+      try {
+        if (typeof publicLandTypeVisible !== 'undefined') {
+          publicLandTypeVisible.soa = !!ov.soa;
+          publicLandTypeVisible.pdha = !!ov.pdha;
+          if (typeof updatePublicLandToggleUI === 'function') updatePublicLandToggleUI();
+        }
+      } catch (eSoa) {}
     }
 
     function applyAppSettings(opts) {

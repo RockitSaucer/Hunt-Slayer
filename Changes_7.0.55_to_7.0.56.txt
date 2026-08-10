@@ -1,0 +1,19 @@
+Hunt Slayer V7.0.55 → V7.0.56
+=============================
+
+Site issues #45–#47 (ready-for-review, authorized ship):
+
+#45 Upper Bear Creek wrong place
+- Bear Creek / Upper Bear Creek TVA list pins near Mud Creek (Jackson Co)
+  are re-snapped to NW AL (Franklin/Marion/Winston ~34.28, -87.68).
+
+#46 SOA / PDHA in map Settings defaults
+- Settings → Overlay defaults: “Show Special Opportunity Areas (SOA)” and
+  “Show Disabled Hunt Areas (PDHA)” — unchecked by default.
+- Launch applies these to Layers; saving Settings syncs Layers toggles.
+
+#47 TVA labels
+- TVA list/popup primary name is “TVA” (not Wheeler/Guntersville).
+- Reservoir kept as secondary “Near: … reservoir” note only.
+
+Shell: reg-slayer-shell-v116 · APP_VERSION 7.0.56-beta
