@@ -5859,6 +5859,52 @@
       background: rgba(15, 18, 14, 0.98);
       box-sizing: border-box;
     }
+
+    /* Plan list viewer sheet (Hunt/Reg — mirrors Plan mobile list popup) */
+    .slayer-view-list-sheet {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 20050;
+      background: var(--bg, #0a0c09);
+      flex-direction: column;
+      padding: max(10px, env(safe-area-inset-top, 0px)) 12px max(12px, env(safe-area-inset-bottom, 0px));
+      box-sizing: border-box;
+    }
+    .slayer-view-list-sheet.is-open { display: flex !important; }
+    .svl-head {
+      display: flex; align-items: center; gap: 10px;
+      flex: 0 0 auto; margin: 0 0 10px;
+      border-bottom: 1px solid var(--border); padding-bottom: 8px;
+    }
+    .svl-head h3 {
+      flex: 1 1 auto; margin: 0; font-size: 16px; color: #fff;
+      min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    #svl-close { flex: 0 0 auto; margin-left: auto; }
+    .svl-tabs {
+      display: flex; flex-wrap: nowrap; gap: 6px; overflow-x: auto;
+      flex: 0 0 auto; padding-bottom: 8px; margin-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .svl-tab {
+      flex: 0 0 auto; padding: 8px 14px; font-size: 12px; font-weight: 800;
+      border-radius: 999px; border: 1px solid var(--border);
+      background: var(--panel); color: var(--ink); cursor: pointer; font-family: inherit;
+    }
+    .svl-tab.is-active {
+      outline: 2px solid var(--accent); color: #fff;
+      background: linear-gradient(180deg, #4a6a2a 0%, #2f4a1c 100%);
+    }
+    .svl-body { flex: 1 1 auto; min-height: 0; overflow: auto; }
+    .svl-item {
+      border: 1px solid #1a2014; border-radius: 10px; margin-bottom: 8px;
+      padding: 10px 12px; background: linear-gradient(180deg,#2a3224 0%,#1a2018 100%);
+      color: var(--ink); font-weight: 700; font-size: 15px;
+    }
+    .svl-item .svl-qty { color: var(--muted); font-size: 12px; margin-left: 6px; }
+    .svl-empty { color: var(--muted); font-size: 13px; padding: 12px 4px; }
+
     /* Pin editor → event list (closest first + search) */
     #pin-editor-sheet.event-picking .pes-scroll { display: none !important; }
     #pin-editor-sheet.event-picking .pes-actions { display: none !important; }
@@ -10731,7 +10777,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.57 Beta">V7.0.57 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.58 Beta">V7.0.58 Beta</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-sister-link" id="brand-other-slay-btn" title="Open Hunt, Reg, or Plan Slayer">
@@ -10901,7 +10947,8 @@
                 </label>
                 <p style="font-size:10px;color:var(--muted);margin:4px 0 0;line-height:1.35;">Pick a Hunt/Reg map you’re on. Opening this event (Quick Load) switches to that map and its pins.</p>
                 <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px;">
-                  <button type="button" id="event-add-location-btn" onclick="startEventLocationPick()" style="background:var(--panel);border:1px solid var(--border);color:var(--accent);padding:5px 8px;border-radius:6px;font-weight:bold;cursor:pointer;font-size:11px;">Add location</button>
+                  <button type="button" id="event-add-people-btn" onclick="openEventAddPeople()" style="width:100%;margin-top:6px;background:var(--panel);border:1px solid var(--accent);color:var(--accent);padding:6px 10px;border-radius:6px;font-weight:800;cursor:pointer;font-size:11px;">Add people</button>
+                <button type="button" id="event-add-location-btn" onclick="startEventLocationPick()" style="background:var(--panel);border:1px solid var(--border);color:var(--accent);padding:5px 8px;border-radius:6px;font-weight:bold;cursor:pointer;font-size:11px;">Add location</button>
                   <span id="event-location-label" style="font-size:10px;color:var(--muted);"></span>
                   <button type="button" id="event-clear-location-btn" onclick="clearEventLocationDraft()" style="display:none;background:none;border:none;color:var(--danger);font-size:11px;cursor:pointer;">Clear pin</button>
                 </div>
@@ -11721,6 +11768,30 @@
     </div>
   </div>
 
+  <!-- PlanSlayer event packing list viewer (full-screen sheet, mirrors Plan mobile list popup) -->
+  <div id="slayer-view-list-sheet" class="slayer-view-list-sheet" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="svl-title">
+    <div class="svl-head">
+      <h3 id="svl-title">List</h3>
+      <button type="button" id="svl-close" class="cal-nav-btn" style="padding:6px 12px;font-weight:800;cursor:pointer;">Close</button>
+    </div>
+    <div class="svl-tabs" id="svl-tabs" role="tablist" aria-label="List sections"></div>
+    <div class="svl-body" id="svl-body"></div>
+  </div>
+
+  <!-- Event share: Copy event → Copy code or Add members (map partners) -->
+  <div id="event-share-people-modal" class="app-prompt-modal" hidden style="display:none;" role="dialog" aria-modal="true" aria-labelledby="event-share-people-title" onclick="if(event.target===this)closeEventSharePeople()">
+    <div class="shape-save-card" onclick="event.stopPropagation()" style="max-width:380px;">
+      <h3 id="event-share-people-title">Copy event</h3>
+      <div class="ss-meta">Share this event with others, or copy an invite code.</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+        <button type="button" class="ss-save" style="width:100%;" onclick="copyEventShareCode()">Copy</button>
+        <button type="button" class="ss-save" style="width:100%;background:var(--panel);color:var(--accent);border:1px solid var(--accent);" onclick="openEventMapPartners()">Add members</button>
+        <button type="button" class="ss-cancel" style="width:100%;" onclick="closeEventSharePeople()">Cancel</button>
+      </div>
+      <div id="event-map-partners-box" style="display:none;margin-top:12px;max-height:240px;overflow:auto;"></div>
+    </div>
+  </div>
+
 
   <!-- Distance origin: street address lookup -->
   <div id="dist-address-modal" class="app-prompt-modal" hidden style="display:none;" onclick="if(event.target===this)closeDistAddressModal()">
@@ -12250,7 +12321,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.57-beta';
+    const APP_VERSION = '7.0.58-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -32752,6 +32823,7 @@ function togglePinIconPicker() {
             '<div style="font-size:10px;color:var(--muted);margin-top:2px;">' + escHtml(range) + ' · ' + escHtml(scopeLabel) + '</div></span>' +
             '<div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;">' +
             (ev.lat != null ? '<button type="button" onclick="goToEventLocation(\'' + String(ev.id).replace(/'/g, '') + '\')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:11px;">Map</button>' : '') +
+            (findSlayerEventListPack(ev) ? '<button type="button" onclick="openSlayerViewList(window.RegSlayerCalendarEvents.getById(\'' + String(ev.id).replace(/'/g, '') + '\'))" style="background:var(--accent);border:none;color:#111;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px;font-weight:800;">View list</button>' : '') +
             (isCreator ? '<button type="button" onclick="startEditEventById(\'' + String(ev.id).replace(/'/g, '') + '\')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:11px;">Edit</button>' : '') +
             '<button type="button" onclick="hideEventFromMyCalendar(\'' + String(ev.id).replace(/'/g, '') + '\')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;" title="Hide on my calendar only (not deleted)">Hide</button>' +
             (isCreator ? '<button type="button" onclick="deleteEventForEveryone(\'' + String(ev.id).replace(/'/g, '') + '\')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:11px;">Delete</button>' : '') +
@@ -32790,6 +32862,244 @@ function togglePinIconPicker() {
       }
       list.innerHTML = htmlOut || (hiddenDay.length ? htmlOut : '');
     }
+
+    /* --- PlanSlayer event list viewer (slayer_event_lists_v1) --- */
+    var _svlPack = null;
+    var _svlTab = null;
+    function loadSlayerEventListBag() {
+      try {
+        var bag = JSON.parse(localStorage.getItem('slayer_event_lists_v1') || '{}') || {};
+        return bag && typeof bag === 'object' ? bag : {};
+      } catch (e) { return {}; }
+    }
+    function findSlayerEventListPack(ev) {
+      if (!ev) return null;
+      // Embedded on calendar event (local dual-write or cloud hunt_link)
+      if (ev.listPack && (ev.listPack.columns || ev.listPack.name)) return ev.listPack;
+      var bag = loadSlayerEventListBag();
+      if (ev.planListId && bag['list:' + ev.planListId]) return bag['list:' + ev.planListId];
+      if (bag['hunt:' + ev.id]) return bag['hunt:' + ev.id];
+      if (bag[String(ev.id)]) return bag[String(ev.id)];
+      if (ev.planEventId && bag[String(ev.planEventId)]) return bag[String(ev.planEventId)];
+      // name match last resort
+      var name = String(ev.text || ev.name || '').toLowerCase();
+      if (name) {
+        var keys = Object.keys(bag);
+        for (var i = 0; i < keys.length; i++) {
+          var p = bag[keys[i]];
+          if (p && p.eventName && String(p.eventName).toLowerCase() === name) return p;
+          if (p && p.name && String(p.name).toLowerCase().indexOf(name) >= 0) return p;
+        }
+      }
+      return null;
+    }
+    function openSlayerViewList(ev) {
+      var pack = findSlayerEventListPack(ev);
+      if (!pack) {
+        if (typeof showAppCopyToast === 'function') {
+          showAppCopyToast('<span class="act">No list yet</span><br>Open this event in PlanSlayer and add items first.');
+        } else {
+          try { alert('No packing list found. Create/open the event in PlanSlayer first.'); } catch (e) {}
+        }
+        return;
+      }
+      _svlPack = pack;
+      _svlTab = (pack.columns && pack.columns[0] && pack.columns[0].id) || 'todo';
+      renderSlayerViewList();
+      var sheet = document.getElementById('slayer-view-list-sheet');
+      if (sheet) {
+        sheet.classList.add('is-open');
+        sheet.setAttribute('aria-hidden', 'false');
+      }
+    }
+    function closeSlayerViewList() {
+      var sheet = document.getElementById('slayer-view-list-sheet');
+      if (sheet) {
+        sheet.classList.remove('is-open');
+        sheet.setAttribute('aria-hidden', 'true');
+      }
+      _svlPack = null;
+    }
+    function renderSlayerViewList() {
+      if (!_svlPack) return;
+      var title = document.getElementById('svl-title');
+      var tabs = document.getElementById('svl-tabs');
+      var body = document.getElementById('svl-body');
+      if (title) title.textContent = (_svlPack.eventName || _svlPack.name || 'List') + ' · list';
+      var cols = _svlPack.columns || [];
+      if (tabs) {
+        tabs.innerHTML = cols.map(function (c) {
+          var on = String(c.id) === String(_svlTab);
+          return '<button type="button" class="svl-tab' + (on ? ' is-active' : '') +
+            '" data-svl-tab="' + String(c.id).replace(/"/g, '') + '">' +
+            String(c.name || c.id).replace(/</g, '&lt;') + '</button>';
+        }).join('') || '';
+      }
+      var col = cols.find(function (c) { return String(c.id) === String(_svlTab); }) || cols[0];
+      if (body) {
+        if (!col || !(col.items || []).length) {
+          body.innerHTML = '<p class="svl-empty">Nothing in this section yet.</p>';
+        } else {
+          body.innerHTML = (col.items || []).map(function (it) {
+            var q = (it.qty && Number(it.qty) > 1) ? ('<span class="svl-qty">×' + it.qty + '</span>') : '';
+            return '<div class="svl-item">' + String(it.title || 'Item').replace(/</g, '&lt;') + q + '</div>';
+          }).join('');
+        }
+      }
+    }
+    function wireSlayerViewListUi() {
+      if (document._svlWired) return;
+      document._svlWired = true;
+      var closeBtn = document.getElementById('svl-close');
+      if (closeBtn) closeBtn.addEventListener('click', closeSlayerViewList);
+      var tabs = document.getElementById('svl-tabs');
+      if (tabs) {
+        tabs.addEventListener('click', function (e) {
+          var t = e.target && e.target.closest && e.target.closest('[data-svl-tab]');
+          if (!t) return;
+          _svlTab = t.getAttribute('data-svl-tab');
+          renderSlayerViewList();
+        });
+      }
+    }
+    window.openSlayerViewList = openSlayerViewList;
+    window.closeSlayerViewList = closeSlayerViewList;
+    window.findSlayerEventListPack = findSlayerEventListPack;
+    try { wireSlayerViewListUi(); } catch (eW) {}
+
+
+    var _eventShareId = null;
+    function openEventAddPeople() {
+      var id = editingEventId || _quickLoadEventId;
+      if (!id && window.RegSlayerCalendarEvents) {
+        /* form open for new event — need save first */
+      }
+      _eventShareId = id || editingEventId;
+      if (!_eventShareId) {
+        if (typeof showAppCopyToast === 'function') showAppCopyToast('Save the event first, then Add people');
+        else try { alert('Save the event first, then Add people'); } catch (e) {}
+        return;
+      }
+      var modal = document.getElementById('event-share-people-modal');
+      var box = document.getElementById('event-map-partners-box');
+      if (box) box.style.display = 'none';
+      if (modal) {
+        modal.hidden = false;
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+      }
+    }
+    function closeEventSharePeople() {
+      var modal = document.getElementById('event-share-people-modal');
+      if (modal) {
+        modal.hidden = true;
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+      }
+    }
+    function copyEventShareCode() {
+      var ev = window.RegSlayerCalendarEvents && window.RegSlayerCalendarEvents.getById(_eventShareId);
+      var code = (ev && (ev.inviteCode || ev.invite_code)) || String(_eventShareId).slice(-6).toUpperCase();
+      if (ev && !ev.inviteCode) {
+        ev.inviteCode = code;
+        try { window.RegSlayerCalendarEvents.upsert(ev); } catch (e) {}
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).then(function () {
+          if (typeof showAppCopyToast === 'function') showAppCopyToast('Event code copied: ' + code);
+        }).catch(function () {
+          if (typeof showAppCopyToast === 'function') showAppCopyToast(code);
+        });
+      } else if (typeof showAppCopyToast === 'function') showAppCopyToast(code);
+      closeEventSharePeople();
+    }
+    function openEventMapPartners() {
+      var box = document.getElementById('event-map-partners-box');
+      if (!box) return;
+      box.style.display = 'block';
+      box.innerHTML = '<p class="ss-meta">Loading people from your shared maps…</p>';
+      var partners = [];
+      try {
+        partners = JSON.parse(localStorage.getItem('slayer_map_partners_v1') || '[]') || [];
+      } catch (e) { partners = []; }
+      var friends = [];
+      try {
+        friends = JSON.parse(localStorage.getItem('slayer_friends_v1') || '[]') || [];
+      } catch (e2) { friends = []; }
+      var by = {};
+      var list = [];
+      function add(p) {
+        if (!p) return;
+        var id = String(p.user_id || p.display_name || '');
+        if (!id || by[id]) return;
+        by[id] = true;
+        list.push(p);
+      }
+      partners.forEach(add);
+      friends.forEach(add);
+      function renderPick() {
+        if (!list.length) {
+          box.innerHTML = '<p class="ss-meta">No map partners yet. Share a map on Hunt/Reg first.</p>';
+          return;
+        }
+        box.innerHTML = list.slice(0, 40).map(function (p) {
+          var name = (p.display_name || p.username || 'Member').replace(/</g, '&lt;');
+          var id = String(p.user_id || p.display_name || '').replace(/'/g, '');
+          return '<button type="button" onclick="addMemberToHuntEvent(\'' + id + '\',\'' + name.replace(/'/g, '') +
+            '\')" style="width:100%;text-align:left;margin:0 0 6px;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--ink);cursor:pointer;font-weight:700">' +
+            name + '</button>';
+        }).join('');
+      }
+      // Refresh from cloud when possible
+      try {
+        var sb = window.RegSlayerCloud && window.RegSlayerCloud.getClient && window.RegSlayerCloud.getClient();
+        if (sb) {
+          sb.rpc('list_my_shared_maps').then(function (res) {
+            var maps = (res && res.data) || [];
+            var chain = Promise.resolve();
+            (Array.isArray(maps) ? maps : []).forEach(function (m) {
+              if (!m || !m.id) return;
+              chain = chain.then(function () {
+                return sb.rpc('list_shared_map_members', { p_map_id: m.id }).then(function (r2) {
+                  ((r2 && r2.data) || []).forEach(function (mem) {
+                    if (!mem) return;
+                    add({
+                      user_id: mem.user_id || mem.id,
+                      display_name: mem.display_name || mem.username || mem.name,
+                      username: mem.username
+                    });
+                  });
+                }).catch(function () {});
+              });
+            });
+            return chain;
+          }).then(function () {
+            try {
+              localStorage.setItem('slayer_map_partners_v1', JSON.stringify(list.slice(0, 200)));
+            } catch (eS) {}
+            renderPick();
+          }).catch(function () { renderPick(); });
+        } else renderPick();
+      } catch (eC) { renderPick(); }
+    }
+    function addMemberToHuntEvent(uid, name) {
+      var ev = window.RegSlayerCalendarEvents && window.RegSlayerCalendarEvents.getById(_eventShareId);
+      if (!ev) return;
+      if (!Array.isArray(ev.members)) ev.members = [];
+      if (ev.members.some(function (m) { return String(m.user_id) === String(uid); })) {
+        if (typeof showAppCopyToast === 'function') showAppCopyToast('Already a member');
+        return;
+      }
+      ev.members.push({ user_id: uid, display_name: name || 'Member', role: 'member' });
+      try { window.RegSlayerCalendarEvents.upsert(ev); } catch (e) {}
+      if (typeof showAppCopyToast === 'function') showAppCopyToast('Added ' + (name || 'member'));
+    }
+    window.openEventAddPeople = openEventAddPeople;
+    window.closeEventSharePeople = closeEventSharePeople;
+    window.copyEventShareCode = copyEventShareCode;
+    window.openEventMapPartners = openEventMapPartners;
+    window.addMemberToHuntEvent = addMemberToHuntEvent;
+
     window.loadSavedEventHuntDataById = loadSavedEventHuntDataById;
 
     // ========== RULES & LIST ==========

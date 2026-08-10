@@ -59,6 +59,8 @@
     var end = ev.endDate || ev.end_date || start;
     if (!start) return null;
     if (!end || end < start) end = start;
+    var hl = ev.hunt_link || ev.huntLink || null;
+    var listPack = ev.listPack || ev.list_pack || (hl && hl.listPack) || null;
     return {
       id: String(ev.id || uid()),
       text: String(ev.text || ev.name || ev.title || 'Event'),
@@ -78,6 +80,12 @@
       creatorUserId: ev.creatorUserId || ev.creator_user_id || null,
       createdAt: ev.createdAt || ev.created_at || new Date().toISOString(),
       updatedAt: ev.updatedAt || ev.updated_at || new Date().toISOString(),
+      planEventId: ev.planEventId || ev.plan_event_id || (hl && hl.planEventId) || null,
+      planListId: ev.planListId || ev.plan_list_id || (hl && hl.planListId) || null,
+      inviteCode: ev.inviteCode || ev.invite_code || (hl && hl.inviteCode) || null,
+      members: Array.isArray(ev.members) ? ev.members : (hl && Array.isArray(hl.members) ? hl.members : []),
+      listPack: listPack,
+      _fromPlanSlayer: !!(ev._fromPlanSlayer || (hl && hl.fromPlanSlayer)),
       _localOnly: !!ev._localOnly
     };
   }
@@ -228,7 +236,7 @@
 
   function rowToEvent(row) {
     if (!row) return null;
-    return normalize({
+    var n = normalize({
       id: row.id,
       text: row.name || row.text,
       color: row.color,
@@ -245,8 +253,28 @@
       land: row.hunt_link && row.hunt_link.land,
       creatorUserId: row.creator_user_id,
       createdAt: row.created_at,
-      updatedAt: row.updated_at
+      updatedAt: row.updated_at,
+      hunt_link: row.hunt_link || null,
+      planEventId: row.hunt_link && row.hunt_link.planEventId,
+      planListId: row.hunt_link && row.hunt_link.planListId,
+      inviteCode: row.hunt_link && row.hunt_link.inviteCode,
+      members: row.hunt_link && row.hunt_link.members,
+      listPack: row.hunt_link && row.hunt_link.listPack,
+      _fromPlanSlayer: row.hunt_link && row.hunt_link.fromPlanSlayer
     });
+    // Mirror Plan list pack into local bridge so View list works after cloud pull
+    if (n && n.listPack) {
+      try {
+        var bag = JSON.parse(localStorage.getItem('slayer_event_lists_v1') || '{}') || {};
+        var pack = n.listPack;
+        if (n.planEventId) bag[String(n.planEventId)] = pack;
+        bag['hunt:' + String(n.id)] = pack;
+        if (n.planListId) bag['list:' + String(n.planListId)] = pack;
+        bag[String(n.id)] = pack;
+        localStorage.setItem('slayer_event_lists_v1', JSON.stringify(bag));
+      } catch (eBag) {}
+    }
+    return n;
   }
 
   function eventToRow(ev) {
@@ -267,7 +295,13 @@
         locationId: ev.locationId,
         weapon: ev.weapon,
         land: ev.land,
-        privateMapId: ev.privateMapId || null
+        privateMapId: ev.privateMapId || null,
+        planEventId: ev.planEventId || null,
+        planListId: ev.planListId || null,
+        inviteCode: ev.inviteCode || null,
+        members: Array.isArray(ev.members) ? ev.members : [],
+        listPack: ev.listPack || null,
+        fromPlanSlayer: !!ev._fromPlanSlayer
       },
       updated_at: new Date().toISOString()
     };
