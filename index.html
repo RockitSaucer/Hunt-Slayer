@@ -3739,38 +3739,62 @@
       isolation: isolate;
     }
     /*
-     * Popup-open: keep stacking INSIDE the map column only.
-     * Planner (steps 1–3 / weather) always stays above the map column.
+     * Min-mode pin/info menus: let the popup paint over the brand banner
+     * (JS sets map-popup-covers-brand). Keep planner above the map so tiles
+     * never cover steps 1–3. clip-path opens only the top edge so side/bottom
+     * tile slip cannot bury the planner or dashboard.
      */
     html.map-popup-covers-brand .brand-header {
-      z-index: 6;
+      z-index: 4;
       position: relative;
     }
     html.map-popup-covers-brand .app-shell {
       position: relative;
-      z-index: 2;
+      z-index: 5;
     }
     html.map-popup-covers-brand .card-planner {
-      z-index: 5 !important;
+      z-index: 30 !important;
       isolation: isolate;
+      position: relative;
     }
     html.map-popup-covers-brand .card-map {
-      overflow: hidden !important;
-      z-index: 1 !important;
+      overflow: visible !important;
+      z-index: 20 !important; /* above brand (4), below planner (30) */
       isolation: isolate !important;
-      contain: layout style;
+      contain: none !important;
+      position: relative;
     }
     html.map-popup-covers-brand .card-map .map-section-block {
-      overflow: hidden !important;
+      overflow: visible !important;
+      contain: none !important;
     }
     html.map-popup-covers-brand .map-wrapper:not(.fullscreen) {
-      overflow: hidden !important;
-      z-index: 0 !important;
-      contain: layout style paint !important;
+      overflow: visible !important;
+      z-index: 20 !important;
+      contain: none !important;
+      /* ~banner + tall popup room above map; sides/bottom stay clipped */
+      clip-path: inset(-420px 0 0 0);
     }
     html.map-popup-covers-brand .map-wrapper:not(.fullscreen) #leaflet-map,
     html.map-popup-covers-brand .map-wrapper:not(.fullscreen) .leaflet-container {
-      overflow: hidden !important;
+      /* Popup pane is inside container — must not clip upward overflow */
+      overflow: visible !important;
+    }
+    html.map-popup-covers-brand .map-wrapper:not(.fullscreen) .leaflet-popup-pane {
+      z-index: 710 !important;
+    }
+    /* Phone: same restack while a cover-brand popup is open */
+    html.map-popup-covers-brand.layout-phone .card-map {
+      overflow: visible !important;
+      z-index: 20 !important;
+      contain: none !important;
+    }
+    html.map-popup-covers-brand.layout-phone .card-planner > .planner-row {
+      z-index: 30 !important;
+    }
+    html.map-popup-covers-brand.layout-phone #dashboard-container,
+    html.map-popup-covers-brand.layout-phone .dashboard-under-steps {
+      z-index: 25 !important;
     }
     /* Phone: map stays between planner and dashboard — never paint outside its card */
     html.layout-phone .card-map {
@@ -6509,21 +6533,21 @@
       pointer-events: none;
     }
 
-    /* LiDAR basemaps: readable without topo overlay (#19) */
+    /* LiDAR basemaps: imagery under + hillshade (never blank at deep zoom) */
     .leaflet-layer.basemap-lidar-under {
-      filter: saturate(0.7) contrast(1.05);
+      filter: saturate(0.85) contrast(1.02) brightness(0.98);
     }
     .leaflet-layer.basemap-lidar-under2 {
       filter: none;
       pointer-events: none;
     }
     .leaflet-layer.basemap-lidar-tiles {
-      filter: contrast(1.18) brightness(1.05);
-      /* soft multiply so terrain still shows if hillshade is light */
-      mix-blend-mode: multiply;
+      /* No multiply blend — it punched black holes when hillshade/under failed */
+      filter: contrast(1.12) brightness(1.08) saturate(0.95);
+      opacity: 1;
       pointer-events: none;
     }
-    /* Smooth scale when overzooming past native LiDAR tile depth */
+    /* Smooth scale when overzooming past native hillshade depth */
     .leaflet-layer.basemap-lidar-tiles .leaflet-tile,
     .leaflet-layer.basemap-lidar-blend .leaflet-tile,
     .leaflet-layer.basemap-lidar-under .leaflet-tile,
@@ -10704,15 +10728,27 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.50 Beta">V7.0.50 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.52 Beta">V7.0.52 Beta</span>
     </div>
     <div class="brand-header-actions">
-      <a class="brand-sister-link" id="brand-sister-link" href="https://www.regslayer.com" title="Open REG SLAYER (same account)">
-        <span class="brand-sister-label">Reg Slayer</span>
-      </a>
+      <button type="button" class="brand-sister-link" id="brand-other-slay-btn" title="Open Hunt, Reg, or Plan Slayer">
+        <span class="brand-sister-label">Other ways to slay</span>
+      </button>
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
     </div>
   </header>
+
+  <!-- Other ways to slay — jump to sister sites (SSO handoff when available) -->
+  <div id="other-slay-overlay" class="report-issue-overlay" aria-hidden="true">
+    <div class="report-issue-modal" role="dialog" aria-modal="true" aria-labelledby="other-slay-title" style="max-width:360px">
+      <h3 id="other-slay-title">Other ways to slay</h3>
+      <p class="ri-sub">Same account works across sites. Pick a tool:</p>
+      <div id="other-slay-list" style="display:flex;flex-direction:column;gap:8px;margin:0 0 12px"></div>
+      <div class="ri-actions">
+        <button type="button" id="other-slay-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Report an issue (posts to Hunt-Slayer GitHub via secure server API) -->
   <div id="report-issue-overlay" class="report-issue-overlay" aria-hidden="true">
@@ -12202,7 +12238,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.50-beta';
+    const APP_VERSION = '7.0.52-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -20988,16 +21024,47 @@
           }
         }
       } catch (eMz) {}
-      if (key === 'lidar' && !window._lidarZoomHintShown) {
-        window._lidarZoomHintShown = true;
+      if (key === 'lidar') {
+        // Keep map max zoom open; ensure hillshade overscales, imagery under stays deep
         try {
-          if (typeof showAppCopyToast === 'function') {
-            showAppCopyToast(
-              '<span class="act">LiDAR terrain on</span><br>' +
-              'Hillshade over imagery. Optional topo lines in Overlays. Best ~12–16× — overzooms instead of blanking.'
-            );
+          var mzLid = (typeof mz === 'number') ? mz : ((typeof window.__REG_SLAYER_MAP_MAX_ZOOM__ === 'number') ? window.__REG_SLAYER_MAP_MAX_ZOOM__ : 22);
+          if (map.setMaxZoom) map.setMaxZoom(mzLid);
+          if (addLayer && addLayer.eachLayer) {
+            addLayer.eachLayer(function (ch) {
+              if (!ch || !ch.options) return;
+              ch.options.maxZoom = mz;
+              var cn = String(ch.options.className || '');
+              if (cn.indexOf('basemap-lidar-tiles') >= 0) {
+                ch.options.maxNativeZoom = 16;
+                ch.options.opacity = ch.options.opacity != null ? ch.options.opacity : 0.58;
+              } else if (cn.indexOf('basemap-lidar-under') >= 0) {
+                ch.options.maxNativeZoom = 19;
+              }
+              try { wireSatTileRetry(ch); } catch (eRw) {}
+            });
           }
-        } catch (eTh) {}
+          // Nudge redraw after basemap swap (fixes stuck blank after layer switch)
+          setTimeout(function () {
+            try {
+              if (map) {
+                map.invalidateSize(false);
+                var z = map.getZoom();
+                map.setZoom(z, { animate: false });
+              }
+            } catch (eRd) {}
+          }, 60);
+        } catch (eLid) {}
+        if (!window._lidarZoomHintShown) {
+          window._lidarZoomHintShown = true;
+          try {
+            if (typeof showAppCopyToast === 'function') {
+              showAppCopyToast(
+                '<span class="act">LiDAR terrain on</span><br>' +
+                'Hillshade over satellite — zoom in freely; tiles overscale instead of blanking.'
+              );
+            }
+          } catch (eTh) {}
+        }
       }
       // GPS marker size depends on max zoom (LiDAR allows deeper zoom)
       if (userLat != null && userLng != null && typeof setGpsMarker === 'function') {
@@ -24239,50 +24306,48 @@
       } catch (eWb) {}
 
       /*
-       * LiDAR terrain (V6.4): always-visible relief (#19).
-       * - Terrain underlay (never blank when topo overlay is off)
-       * - Hillshade on top at high opacity (not multiply-only gray)
-       * - maxNativeZoom 16, maxZoom MAP_MAX_ZOOM — overzoom scales instead of disappearing
+       * LiDAR terrain: never-blank deep zoom
+       * - Under: Esri World Imagery (native ~19) so zoom-in never empties
+       * - Over: World Hillshade relief (native ~16, overscales to MAP_MAX_ZOOM)
+       * - CDN host services.arcgisonline.com; soft tile retry on both layers
+       * - Do not use multiply blend (black voids when a tile misses)
        */
       var LIDAR_MAX_ZOOM = MAP_MAX_ZOOM;
-      var LIDAR_NATIVE_ZOOM = 16;
+      var LIDAR_HILL_NATIVE = 16;
+      var LIDAR_IMG_NATIVE = 19;
       window.__REG_SLAYER_MAP_MAX_ZOOM__ = MAP_MAX_ZOOM;
       var lidarCommon = Object.assign({}, tilePerf, {
         maxZoom: LIDAR_MAX_ZOOM,
-        maxNativeZoom: LIDAR_NATIVE_ZOOM,
-        minZoom: 4,
-        keepBuffer: phoneTiles ? 4 : 8,
-        updateWhenIdle: false,
+        minZoom: 0,
+        keepBuffer: phoneTiles ? 6 : 12,
+        updateWhenIdle: true,
         updateWhenZooming: false,
         crossOrigin: false,
         errorTileUrl: ''
       });
+      // Solid underlay — same family as satellite so deep zoom always has pixels
       var lidarUnder = L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}',
+        'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         Object.assign({}, lidarCommon, {
+          maxNativeZoom: LIDAR_IMG_NATIVE,
           opacity: 1,
           className: 'basemap-lidar-under',
-          attribution: 'Esri Terrain + Hillshade · USGS 3DEP'
+          attribution: 'Esri World Imagery + Hillshade · USGS 3DEP'
         })
       );
-      // Fallback under if terrain base fails: light canvas-like street
-      var lidarUnder2 = L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-        Object.assign({}, lidarCommon, {
-          opacity: 0.55,
-          className: 'basemap-lidar-under2',
-          attribution: ''
-        })
-      );
+      // Hillshade relief on top (overscales past 16 instead of requesting empty z17+ tiles)
       var lidarHill = L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',
+        'https://services.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',
         Object.assign({}, lidarCommon, {
-          opacity: 0.72,
+          maxNativeZoom: LIDAR_HILL_NATIVE,
+          opacity: 0.58,
           className: 'basemap-lidar-tiles',
           attribution: 'Esri World Hillshade · USGS 3DEP LiDAR DEMs'
         })
       );
-      var lidar = L.layerGroup([lidarUnder, lidarUnder2, lidarHill]);
+      try { wireSatTileRetry(lidarUnder); } catch (eLr1) {}
+      try { wireSatTileRetry(lidarHill); } catch (eLr2) {}
+      var lidar = L.layerGroup([lidarUnder, lidarHill]);
 
       mapBasemaps = {
         topo: topo,
@@ -32296,6 +32361,26 @@ function togglePinIconPicker() {
       if (!window.RegSlayerCalendarEvents) return;
       window.RegSlayerCalendarEvents.hideForMe(id);
       renderCalendar(); updateEventsList(); clearEventForm();
+      if (typeof showAppCopyToast === 'function') {
+        showAppCopyToast('<span class="act">Hidden on your calendar</span><br>Open this day and use <b>Unhide</b> below to restore.');
+      }
+    }
+    function unhideEventOnMyCalendar(id) {
+      if (!window.RegSlayerCalendarEvents) return;
+      window.RegSlayerCalendarEvents.unhideForMe(id);
+      renderCalendar(); updateEventsList();
+      if (typeof showAppCopyToast === 'function') {
+        showAppCopyToast('<span class="act">Event restored</span> on your calendar');
+      }
+    }
+    function hiddenEventsOnDay(ds) {
+      if (!window.RegSlayerCalendarEvents || !window.RegSlayerCalendarEvents.all) return [];
+      return window.RegSlayerCalendarEvents.all().filter(function (ev) {
+        if (!ev || !window.RegSlayerCalendarEvents.isHidden(ev.id)) return false;
+        if (!ev.startDate) return false;
+        var end = ev.endDate || ev.startDate;
+        return ev.startDate <= ds && end >= ds;
+      });
     }
     function deleteEvent(ds, idx) {
       var list = eventsOnDay(ds);
@@ -32303,6 +32388,7 @@ function togglePinIconPicker() {
     }
     window.deleteEventForEveryone = deleteEventForEveryone;
     window.hideEventFromMyCalendar = hideEventFromMyCalendar;
+    window.unhideEventOnMyCalendar = unhideEventOnMyCalendar;
     window.startEditEventById = startEditEventById;
     function updateEventsList() {
       const list = document.getElementById('calendar-events-list');
@@ -32312,9 +32398,11 @@ function togglePinIconPicker() {
       const dateStr = calYmd(selectedDate);
       document.getElementById('events-title-date').innerText = 'Trips and Events: ' + selectedDate.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
       const dayEvents = eventsOnDay(dateStr);
-      if (!dayEvents.length) list.innerHTML = '';
+      const hiddenDay = hiddenEventsOnDay(dateStr);
+      var htmlOut = '';
+      if (!dayEvents.length) htmlOut = '';
       else {
-        list.innerHTML = dayEvents.map(function (ev) {
+        htmlOut = dayEvents.map(function (ev) {
           var range = ev.startDate === ev.endDate ? ev.startDate : (ev.startDate + ' → ' + ev.endDate);
           var isCreator = window.RegSlayerCalendarEvents ? window.RegSlayerCalendarEvents.isCreator(ev) : true;
           var scopeLabel = ev.mapScope === 'shared' ? 'Shared map' : (ev.mapScope === 'all' ? 'All my maps' : 'Personal');
@@ -32326,7 +32414,7 @@ function togglePinIconPicker() {
             '<div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;">' +
             (ev.lat != null ? '<button type="button" onclick="goToEventLocation(\'' + String(ev.id).replace(/'/g, '') + '\')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:11px;">Map</button>' : '') +
             (isCreator ? '<button type="button" onclick="startEditEventById(\'' + String(ev.id).replace(/'/g, '') + '\')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:11px;">Edit</button>' : '') +
-            '<button type="button" onclick="hideEventFromMyCalendar(\'' + String(ev.id).replace(/'/g, '') + '\')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;" title="Hide on my calendar only">Hide</button>' +
+            '<button type="button" onclick="hideEventFromMyCalendar(\'' + String(ev.id).replace(/'/g, '') + '\')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;" title="Hide on my calendar only (not deleted)">Hide</button>' +
             (isCreator ? '<button type="button" onclick="deleteEventForEveryone(\'' + String(ev.id).replace(/'/g, '') + '\')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:11px;">Delete</button>' : '') +
             '</div></div>';
           if (ev.locationId) {
@@ -32348,6 +32436,20 @@ function togglePinIconPicker() {
           return html + '</div>';
         }).join('');
       }
+      if (hiddenDay.length) {
+        htmlOut += '<div style="margin:12px 0 6px;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Hidden on your calendar (not deleted)</div>';
+        htmlOut += hiddenDay.map(function (ev) {
+          var range = ev.startDate === ev.endDate ? ev.startDate : (ev.startDate + ' → ' + ev.endDate);
+          return '<div style="margin-bottom:6px;background:rgba(0,0,0,0.25);padding:8px 10px;border-radius:6px;border:1px dashed var(--border);opacity:0.92;">' +
+            '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;">' +
+            '<span><strong style="color:var(--muted);">' + escHtml(ev.text) + '</strong>' +
+            '<div style="font-size:10px;color:var(--muted);margin-top:2px;">' + escHtml(range) + ' · hidden for you only</div></span>' +
+            '<button type="button" onclick="unhideEventOnMyCalendar(\'' + String(ev.id).replace(/'/g, '') +
+            '\')" style="background:var(--green);border:none;color:#fff;border-radius:6px;font-size:11px;padding:6px 10px;cursor:pointer;font-weight:800;">Unhide</button>' +
+            '</div></div>';
+        }).join('');
+      }
+      list.innerHTML = htmlOut || (hiddenDay.length ? htmlOut : '');
     }
     window.loadSavedEventHuntDataById = loadSavedEventHuntDataById;
 
@@ -36936,37 +37038,54 @@ function togglePinIconPicker() {
       });
     })();
 
-    // Sister-site header button: hand off Supabase session so no re-login
-    (function wireSisterSiteLink() {
-      var a = document.getElementById('brand-sister-link');
-      if (!a || a._rsSisterWired) return;
-      a._rsSisterWired = true;
-      a.addEventListener('click', function(ev) {
-        // Allow modified clicks (new tab) without blocking — still pass SSO in URL when we can
-        var target = a.getAttribute('href') || (SITE_ID === 'hunt' ? 'https://www.regslayer.com' : 'https://www.huntslayer.com');
-        var go = function(url) {
-          if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button === 1) {
-            // Let browser open new tab with handoff URL
-            a.setAttribute('href', url);
-            return;
-          }
-          ev.preventDefault();
-          window.location.href = url;
-        };
+    // Other ways to slay — chooser for sister sites (SSO handoff when available)
+    (function wireOtherWaysToSlay() {
+      var btn = document.getElementById('brand-other-slay-btn');
+      var overlay = document.getElementById('other-slay-overlay');
+      var list = document.getElementById('other-slay-list');
+      var cancel = document.getElementById('other-slay-cancel');
+      if (!btn || !overlay || !list || btn._rsOtherSlayWired) return;
+      btn._rsOtherSlayWired = true;
+      var ALL = [
+        { id: 'hunt', name: 'Hunt Slayer', url: 'https://www.huntslayer.com', blurb: 'Hunt maps, zones & regs' },
+        { id: 'reg', name: 'Reg Slayer', url: 'https://www.regslayer.com', blurb: 'Reg-first defaults · same maps' },
+        { id: 'plan', name: 'Plan Slayer', url: 'https://www.planslayer.com', blurb: 'Lists, events & packing' }
+      ];
+      var me = (typeof SITE_ID !== 'undefined' && SITE_ID) ? String(SITE_ID) : 'hunt';
+      function close() {
+        overlay.classList.remove('is-open');
+        overlay.setAttribute('aria-hidden', 'true');
+      }
+      function open() {
+        list.innerHTML = ALL.filter(function (s) { return s.id !== me; }).map(function (s) {
+          return '<button type="button" class="btn btn-primary" data-slay-go="' + s.url + '" style="width:100%;text-align:left;padding:12px 14px">' +
+            '<strong style="display:block;font-size:14px">' + s.name + '</strong>' +
+            '<span style="font-size:11px;opacity:0.85;font-weight:600">' + s.blurb + '</span></button>';
+        }).join('');
+        overlay.classList.add('is-open');
+        overlay.setAttribute('aria-hidden', 'false');
+      }
+      function goTo(target) {
+        close();
         if (window.RegSlayerCloud && typeof window.RegSlayerCloud.buildSisterHandoffUrl === 'function') {
-          ev.preventDefault();
-          window.RegSlayerCloud.buildSisterHandoffUrl(target).then(function(url) {
-            if (ev.metaKey || ev.ctrlKey || ev.shiftKey) {
-              window.open(url, '_blank', 'noopener');
-            } else {
-              window.location.href = url;
-            }
-          }).catch(function() {
-            window.location.href = target;
-          });
+          window.RegSlayerCloud.buildSisterHandoffUrl(target).then(function (url) {
+            window.location.href = url || target;
+          }).catch(function () { window.location.href = target; });
         } else {
-          go(target);
+          window.location.href = target;
         }
+      }
+      btn.addEventListener('click', function (ev) { ev.preventDefault(); open(); });
+      if (cancel) cancel.addEventListener('click', function (ev) { ev.preventDefault(); close(); });
+      overlay.addEventListener('click', function (ev) { if (ev.target === overlay) close(); });
+      list.addEventListener('click', function (ev) {
+        var b = ev.target && ev.target.closest && ev.target.closest('[data-slay-go]');
+        if (!b) return;
+        ev.preventDefault();
+        goTo(b.getAttribute('data-slay-go'));
+      });
+      document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape' && overlay.classList.contains('is-open')) close();
       });
     })();
 

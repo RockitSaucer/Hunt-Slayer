@@ -1,0 +1,7 @@
+﻿V7.0.52 — Min-mode pin popups over brand banner (#34)
+
+- map-popup-covers-brand restack: map column above brand, planner stays above map
+- Allow upward popup overflow only (clip-path top open); sides/bottom stay clipped
+- Leaflet container overflow visible so pin/info menus are not clipped under banner
+- Phone: same restack while cover-brand popup is open
+- Hunt + Reg; shell cache v112
