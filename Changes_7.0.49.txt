@@ -1,0 +1,9 @@
+V7.0.49 — Pin “Add pin to event” is an in-sheet list (no type-a-number prompt)
+
+- Tapping **Add pin to event** turns the pin editor into an event list
+- Sorted **closest → furthest** from the pin (events without a map location last)
+- **Search** box filters by event name / dates
+- Tap an event to link; **← Back** returns to the pin editor
+- Shell v109
+
+Both Hunt + Reg.

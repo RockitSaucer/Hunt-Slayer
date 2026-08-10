@@ -5832,6 +5832,69 @@
       background: rgba(15, 18, 14, 0.98);
       box-sizing: border-box;
     }
+    /* Pin editor → event list (closest first + search) */
+    #pin-editor-sheet.event-picking .pes-scroll { display: none !important; }
+    #pin-editor-sheet.event-picking .pes-actions { display: none !important; }
+    #pin-editor-sheet.event-picking #pes-event-picker { display: flex !important; }
+    #pin-editor-sheet .pes-event-picker {
+      display: none;
+      flex-direction: column;
+      flex: 1 1 auto;
+      min-height: 0;
+      padding: 0;
+      background: rgba(15, 18, 14, 0.98);
+    }
+    #pin-editor-sheet .pes-event-picker-toolbar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    #pin-editor-sheet .pes-event-back {
+      flex: 0 0 auto; background: var(--panel-light); border: 1px solid var(--border);
+      color: var(--ink); font-weight: 800; font-size: 12px; border-radius: 8px;
+      padding: 8px 10px; cursor: pointer; font-family: inherit;
+    }
+    #pin-editor-sheet .pes-event-search {
+      flex: 1 1 auto; min-width: 0; box-sizing: border-box;
+      background: #0c0f0a; border: 1px solid var(--border); color: var(--ink);
+      border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: inherit;
+    }
+    #pin-editor-sheet .pes-event-picker-hint {
+      margin: 0; padding: 6px 12px 4px; font-size: 10px; font-weight: 700;
+      color: var(--muted); letter-spacing: 0.03em; text-transform: uppercase; flex-shrink: 0;
+    }
+    #pin-editor-sheet .pes-event-list {
+      flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 4px 8px 12px;
+      scrollbar-width: thin; scrollbar-color: #3a4234 rgba(0,0,0,0.25);
+    }
+    #pin-editor-sheet .pes-event-item {
+      display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+      width: 100%; text-align: left; box-sizing: border-box;
+      margin: 0 0 6px; padding: 10px 12px; border-radius: 10px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, #1c2216 0%, #141910 100%);
+      color: var(--ink); font-family: inherit; cursor: pointer;
+    }
+    #pin-editor-sheet .pes-event-item:hover,
+    #pin-editor-sheet .pes-event-item:focus-visible {
+      border-color: var(--accent); outline: none; filter: brightness(1.06);
+    }
+    #pin-editor-sheet .pes-event-item.is-selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(229,154,24,0.35);
+    }
+    #pin-editor-sheet .pes-event-item .pei-name {
+      font-size: 13px; font-weight: 800; color: #fff;
+    }
+    #pin-editor-sheet .pes-event-item .pei-meta {
+      font-size: 11px; font-weight: 600; color: var(--muted);
+    }
+    #pin-editor-sheet .pes-event-item .pei-dist {
+      font-size: 11px; font-weight: 800; color: var(--accent); margin-top: 2px;
+    }
+    #pin-editor-sheet .pes-event-empty {
+      padding: 20px 12px; text-align: center; color: var(--muted);
+      font-size: 12px; font-weight: 600;
+    }
     #pin-editor-sheet .pes-actions .pes-save,
     #pin-editor-sheet .pes-actions .pes-cancel {
       flex: 1;
@@ -10626,7 +10689,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.48 Beta">V7.0.48 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.49 Beta">V7.0.49 Beta</span>
     </div>
     <div class="brand-header-actions">
       <a class="brand-sister-link" id="brand-sister-link" href="https://www.regslayer.com" title="Open REG SLAYER (same account)">
@@ -11460,7 +11523,16 @@
               </details>
             </div>
             </div><!-- /.pes-scroll -->
-            <div class="pes-actions">
+            <!-- Event picker view (replaces pin form while choosing) -->
+            <div id="pes-event-picker" class="pes-event-picker" style="display:none;" aria-hidden="true">
+              <div class="pes-event-picker-toolbar">
+                <button type="button" class="pes-event-back" id="pes-event-back" onclick="closePinEventLinkPicker()">← Back</button>
+                <input type="search" id="pes-event-search" class="pes-event-search" placeholder="Search events…" autocomplete="off" oninput="renderPinEventPickerList()" />
+              </div>
+              <p class="pes-event-picker-hint" id="pes-event-picker-hint">Closest to this pin first</p>
+              <div id="pes-event-list" class="pes-event-list" role="listbox" aria-label="Events"></div>
+            </div>
+            <div class="pes-actions" id="pes-actions">
               <button type="button" class="pes-save" onclick="savePinFromMap()">Save</button>
               <button type="button" class="pes-cancel" onclick="cancelPinEditorSheet()">Cancel</button>
             </div>
@@ -12090,7 +12162,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.48-beta';
+    const APP_VERSION = '7.0.49-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -21210,15 +21282,53 @@
     /** Active "just show event pins" filter (null = normal all pins) */
     var eventPinsFilter = null; // { eventId, startDate, endDate, name }
 
+    function pinLatLngForEventSort() {
+      var la = (typeof clickLat === 'number' && isFinite(clickLat)) ? clickLat : null;
+      var lo = (typeof clickLng === 'number' && isFinite(clickLng)) ? clickLng : null;
+      if (la == null && editingPinId) {
+        try {
+          var loc = locations.find(function (l) { return String(l.id) === String(editingPinId); });
+          if (loc && isFinite(Number(loc.lat)) && isFinite(Number(loc.lng))) {
+            la = Number(loc.lat); lo = Number(loc.lng);
+          }
+        } catch (e) {}
+      }
+      return { lat: la, lng: lo };
+    }
+    function formatEventDistLabel(mi) {
+      if (mi == null || !isFinite(mi)) return 'No location on event';
+      if (mi < 0.1) return Math.round(mi * 5280) + ' ft away';
+      if (mi < 10) return mi.toFixed(1) + ' mi away';
+      return Math.round(mi) + ' mi away';
+    }
     function listEventsForPinLink() {
+      var pin = pinLatLngForEventSort();
+      var list = [];
       try {
         if (window.RegSlayerCalendarEvents && typeof window.RegSlayerCalendarEvents.all === 'function') {
-          return window.RegSlayerCalendarEvents.all().slice().sort(function (a, b) {
-            return String(b.startDate || '').localeCompare(String(a.startDate || ''));
-          });
+          list = window.RegSlayerCalendarEvents.all().slice();
         }
       } catch (e) {}
-      return [];
+      list.forEach(function (ev) {
+        var d = null;
+        if (pin.lat != null && pin.lng != null && ev.lat != null && ev.lng != null &&
+            isFinite(Number(ev.lat)) && isFinite(Number(ev.lng)) &&
+            typeof haversineMiles === 'function') {
+          d = haversineMiles(pin.lat, pin.lng, Number(ev.lat), Number(ev.lng));
+        }
+        ev._distMi = d;
+      });
+      // Closest first; events without location last, then by start date
+      list.sort(function (a, b) {
+        var da = a._distMi, db = b._distMi;
+        var aHas = da != null && isFinite(da);
+        var bHas = db != null && isFinite(db);
+        if (aHas && bHas && da !== db) return da - db;
+        if (aHas && !bHas) return -1;
+        if (!aHas && bHas) return 1;
+        return String(a.startDate || '').localeCompare(String(b.startDate || ''));
+      });
+      return list;
     }
     function setPinEventLinkUi(eventId) {
       var hid = document.getElementById('pin-event-id');
@@ -21248,6 +21358,71 @@
       setPinEventLinkUi(null);
       try { if (typeof markPinEditorDirty === 'function') markPinEditorDirty(); } catch (e) {}
     }
+    function isPinEventPickerOpen() {
+      var sheet = document.getElementById('pin-editor-sheet');
+      return !!(sheet && sheet.classList.contains('event-picking'));
+    }
+    function closePinEventLinkPicker() {
+      var sheet = document.getElementById('pin-editor-sheet');
+      var picker = document.getElementById('pes-event-picker');
+      if (sheet) sheet.classList.remove('event-picking');
+      if (picker) {
+        picker.style.display = 'none';
+        picker.setAttribute('aria-hidden', 'true');
+      }
+      var title = document.getElementById('pes-title');
+      if (title) title.textContent = editingPinId ? 'Edit pin' : 'Add pin';
+      var search = document.getElementById('pes-event-search');
+      if (search) search.value = '';
+    }
+    function renderPinEventPickerList() {
+      var box = document.getElementById('pes-event-list');
+      var hint = document.getElementById('pes-event-picker-hint');
+      if (!box) return;
+      var q = ((document.getElementById('pes-event-search') && document.getElementById('pes-event-search').value) || '')
+        .toLowerCase().trim();
+      var events = listEventsForPinLink();
+      var selectedId = (document.getElementById('pin-event-id') && document.getElementById('pin-event-id').value) || '';
+      var pin = pinLatLngForEventSort();
+      if (hint) {
+        hint.textContent = (pin.lat != null)
+          ? 'Closest to this pin first'
+          : 'By start date (pin location unknown)';
+      }
+      var filtered = events.filter(function (ev) {
+        if (!q) return true;
+        var hay = [
+          ev.text || '',
+          ev.startDate || '',
+          ev.endDate || '',
+          ev.locationLabel || '',
+          ev.mapScope || ''
+        ].join(' ').toLowerCase();
+        return hay.indexOf(q) >= 0;
+      });
+      if (!filtered.length) {
+        box.innerHTML = '<div class="pes-event-empty">' +
+          (events.length ? 'No events match your search.' : 'No events yet. Create a trip on the calendar first.') +
+          '</div>';
+        return;
+      }
+      box.innerHTML = filtered.map(function (ev) {
+        var range = (ev.startDate === ev.endDate)
+          ? (ev.startDate || '')
+          : ((ev.startDate || '') + ' → ' + (ev.endDate || ''));
+        var dist = formatEventDistLabel(ev._distMi);
+        var sel = String(ev.id) === String(selectedId) ? ' is-selected' : '';
+        var safeId = String(ev.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        return '<button type="button" class="pes-event-item' + sel + '" role="option" data-event-id="' +
+          escHtml(String(ev.id)) + '" onclick="pickPinEventLink(\'' + safeId + '\')">' +
+          '<span class="pei-name">' + escHtml(ev.text || 'Event') + '</span>' +
+          '<span class="pei-meta">' + escHtml(range) +
+          (ev.mapScope === 'shared' ? ' · Shared map' : (ev.mapScope === 'all' ? ' · All maps' : ' · Personal')) +
+          '</span>' +
+          '<span class="pei-dist">' + escHtml(dist) + '</span>' +
+          '</button>';
+      }).join('');
+    }
     function openPinEventLinkPicker() {
       var events = listEventsForPinLink();
       if (!events.length) {
@@ -21258,27 +21433,36 @@
         }
         return;
       }
-      // Simple chooser via prompt list numbers (reliable in-app) + prefer custom modal if present
-      var lines = events.map(function (ev, i) {
-        var range = (ev.startDate === ev.endDate) ? ev.startDate : (ev.startDate + ' → ' + ev.endDate);
-        return (i + 1) + '. ' + (ev.text || 'Event') + '  (' + range + ')';
-      });
-      var pick = window.prompt(
-        'Add pin to which event?\nEnter number (or blank to cancel):\n\n' + lines.join('\n')
-      );
-      if (pick == null || String(pick).trim() === '') return;
-      var n = parseInt(String(pick).trim(), 10);
-      if (isNaN(n) || n < 1 || n > events.length) {
-        alert('Invalid choice.');
-        return;
+      var sheet = document.getElementById('pin-editor-sheet');
+      var picker = document.getElementById('pes-event-picker');
+      if (!sheet || !picker) return;
+      sheet.classList.add('event-picking');
+      picker.style.display = 'flex';
+      picker.setAttribute('aria-hidden', 'false');
+      var title = document.getElementById('pes-title');
+      if (title) title.textContent = 'Add pin to event';
+      var search = document.getElementById('pes-event-search');
+      if (search) {
+        search.value = '';
+        setTimeout(function () { try { search.focus(); } catch (e) {} }, 40);
       }
-      setPinEventLinkUi(events[n - 1].id);
+      renderPinEventPickerList();
+    }
+    function pickPinEventLink(eventId) {
+      setPinEventLinkUi(eventId);
       try { if (typeof markPinEditorDirty === 'function') markPinEditorDirty(); } catch (e) {}
+      closePinEventLinkPicker();
+      var ev = null;
+      try { ev = window.RegSlayerCalendarEvents && window.RegSlayerCalendarEvents.getById(eventId); } catch (e2) {}
       if (typeof showAppCopyToast === 'function') {
-        showAppCopyToast('<span class="act">Event linked</span><br>' + escHtml(events[n - 1].text || 'Event'));
+        showAppCopyToast('<span class="act">Event linked</span><br>' +
+          escHtml((ev && ev.text) || 'Event'));
       }
     }
     window.openPinEventLinkPicker = openPinEventLinkPicker;
+    window.closePinEventLinkPicker = closePinEventLinkPicker;
+    window.renderPinEventPickerList = renderPinEventPickerList;
+    window.pickPinEventLink = pickPinEventLink;
     window.clearPinEventLink = clearPinEventLink;
     window.setPinEventLinkUi = setPinEventLinkUi;
 
@@ -21479,9 +21663,11 @@
       } catch (eL) {}
     }
     function closePinEditorSheet() {
+      try { if (typeof closePinEventLinkPicker === 'function') closePinEventLinkPicker(); } catch (eEp) {}
       var sheet = document.getElementById('pin-editor-sheet');
       if (sheet) {
         sheet.classList.remove('open');
+        sheet.classList.remove('event-picking');
         sheet.setAttribute('aria-hidden', 'true');
       }
       editingPinId = null;
@@ -21491,6 +21677,13 @@
       try {
         if (typeof isPinPhotoBusy === 'function' && isPinPhotoBusy()) return false;
       } catch (eB) {}
+      // If choosing an event, Back instead of auto-save
+      try {
+        if (typeof isPinEventPickerOpen === 'function' && isPinEventPickerOpen()) {
+          closePinEventLinkPicker();
+          return true;
+        }
+      } catch (ePick) {}
       // Click-away / implicit dismiss: place pin if user chose an icon or customized
       try {
         if (pinEditorHasPlaceableContent() && clickLat != null && typeof savePinFromMap === 'function') {
