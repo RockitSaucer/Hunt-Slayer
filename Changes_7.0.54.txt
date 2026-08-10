@@ -1,0 +1,11 @@
+﻿V7.0.54 — #43 Jackson Co. tract seasons + #41 Reg resync
+
+Hunt:
+- UNIT_DEER_PROFILES for Coon Gulf (gun windows), Crow/Mud/Raccoon WMAs +
+  North Sauty / Crow Creek waterfowl refuges (archery+primitive only; no modern gun)
+- Source: OA 2026-27 D2 Jackson Co. WMA ADA PDF
+- Full sub-polygon digitize still follow-up if GIS names blob together
+
+Reg:
+- Resynced from Hunt with SITE_ID=reg + Reg branding/logo/manifest
+- shell v114
