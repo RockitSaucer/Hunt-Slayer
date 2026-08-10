@@ -7263,6 +7263,21 @@
     }
     .shape-save-card h3 { margin: 0 0 6px; color: #fff; font-size: 16px; }
     .shape-save-card .ss-meta { font-size: 11px; color: var(--muted); margin-bottom: 12px; line-height: 1.4; }
+    .quick-load-options { display: flex; flex-direction: column; gap: 8px; }
+    .ql-option-btn {
+      display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+      width: 100%; text-align: left; box-sizing: border-box;
+      padding: 12px 14px; border-radius: 10px; cursor: pointer; font-family: inherit;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, #1c2216 0%, #141910 100%);
+      color: var(--ink);
+    }
+    .ql-option-btn:hover, .ql-option-btn:focus-visible {
+      border-color: var(--accent); outline: none; filter: brightness(1.06);
+    }
+    .ql-option-btn .ql-title { font-size: 13px; font-weight: 800; color: #fff; }
+    .ql-option-btn .ql-sub { font-size: 11px; font-weight: 600; color: var(--muted); line-height: 1.35; }
+    .ql-option-btn[hidden] { display: none !important; }
     .shape-save-card label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin: 10px 0 5px; }
     .shape-save-card input[type="text"] {
       width: 100%; box-sizing: border-box; background: var(--panel-light); border: 1px solid var(--border);
@@ -10689,7 +10704,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.49 Beta">V7.0.49 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.50 Beta">V7.0.50 Beta</span>
     </div>
     <div class="brand-header-actions">
       <a class="brand-sister-link" id="brand-sister-link" href="https://www.regslayer.com" title="Open REG SLAYER (same account)">
@@ -11641,6 +11656,31 @@
     </div>
   </div>
 
+  <!-- Quick Load event options (in-app, not browser prompt) -->
+  <div id="quick-load-modal" class="app-prompt-modal" hidden style="display:none;" role="dialog" aria-modal="true" aria-labelledby="quick-load-title" onclick="if(event.target===this)closeQuickLoadModal()">
+    <div class="shape-save-card" onclick="event.stopPropagation()">
+      <h3 id="quick-load-title">Quick Load</h3>
+      <div class="ss-meta" id="quick-load-meta">Choose how to open this event.</div>
+      <div class="quick-load-options" id="quick-load-options">
+        <button type="button" class="ql-option-btn" id="ql-btn-pins" onclick="runQuickLoadChoice('pins')">
+          <span class="ql-title">Just show event pins</span>
+          <span class="ql-sub" id="ql-pins-sub">Only pins linked to this event</span>
+        </button>
+        <button type="button" class="ql-option-btn" id="ql-btn-load" onclick="runQuickLoadChoice('load')">
+          <span class="ql-title">Load event on map</span>
+          <span class="ql-sub">Go to location / linked hunt data</span>
+        </button>
+        <button type="button" class="ql-option-btn" id="ql-btn-both" onclick="runQuickLoadChoice('both')">
+          <span class="ql-title">Both</span>
+          <span class="ql-sub">Show event pins and load on map</span>
+        </button>
+      </div>
+      <div class="shape-save-actions" style="margin-top:12px;">
+        <button type="button" class="ss-cancel" onclick="closeQuickLoadModal()" style="width:100%;">Cancel</button>
+      </div>
+    </div>
+  </div>
+
 
   <!-- Distance origin: street address lookup -->
   <div id="dist-address-modal" class="app-prompt-modal" hidden style="display:none;" onclick="if(event.target===this)closeDistAddressModal()">
@@ -12162,7 +12202,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.49-beta';
+    const APP_VERSION = '7.0.50-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -32106,35 +32146,81 @@ function togglePinIconPicker() {
         return l && l.isPin && String(l.eventId || l.calendarEventId || '') === String(eventId);
       }).length;
     }
+    var _quickLoadEventId = null;
+    function closeQuickLoadModal() {
+      _quickLoadEventId = null;
+      var modal = document.getElementById('quick-load-modal');
+      if (!modal) return;
+      modal.classList.remove('active');
+      modal.hidden = true;
+      modal.style.display = 'none';
+      modal.setAttribute('aria-hidden', 'true');
+    }
     function openQuickLoadMenu(eventId) {
       var ev = window.RegSlayerCalendarEvents ? window.RegSlayerCalendarEvents.getById(eventId) : null;
       if (!ev) return;
+      _quickLoadEventId = String(eventId);
       var pinCount = countPinsForEvent(eventId);
       var hasLoc = !!(ev.locationId || (ev.lat != null && ev.lng != null));
-      var msg = 'Quick Load — “' + (ev.text || 'Event') + '”\n\n' +
-        '1. Just show event pins' + (pinCount ? ' (' + pinCount + ')' : ' (0 linked)') + '\n' +
-        (hasLoc ? '2. Load event on map / hunt data\n' : '') +
-        (hasLoc ? '3. Both (pins + load)\n' : '') +
-        '0. Cancel\n\nEnter number:';
-      var choice = window.prompt(msg, pinCount ? '1' : (hasLoc ? '2' : '1'));
-      if (choice == null) return;
-      choice = String(choice).trim();
-      if (choice === '0' || choice === '') return;
-      if (choice === '1') {
+      var modal = document.getElementById('quick-load-modal');
+      var meta = document.getElementById('quick-load-meta');
+      var pinsSub = document.getElementById('ql-pins-sub');
+      var btnLoad = document.getElementById('ql-btn-load');
+      var btnBoth = document.getElementById('ql-btn-both');
+      if (meta) {
+        meta.textContent = '“' + (ev.text || 'Event') + '” — choose how to open it.';
+      }
+      if (pinsSub) {
+        pinsSub.textContent = pinCount
+          ? (pinCount + ' pin' + (pinCount === 1 ? '' : 's') + ' linked to this event')
+          : 'No pins linked yet — you can still turn the filter on';
+      }
+      if (btnLoad) {
+        if (hasLoc) btnLoad.removeAttribute('hidden');
+        else btnLoad.setAttribute('hidden', 'hidden');
+      }
+      if (btnBoth) {
+        if (hasLoc) btnBoth.removeAttribute('hidden');
+        else btnBoth.setAttribute('hidden', 'hidden');
+      }
+      if (!modal) {
+        // Fallback if DOM missing
+        setEventPinsFilter(ev);
+        return;
+      }
+      modal.hidden = false;
+      modal.style.display = 'flex';
+      modal.classList.add('active');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+    function runQuickLoadChoice(choice) {
+      var eventId = _quickLoadEventId;
+      var ev = eventId && window.RegSlayerCalendarEvents
+        ? window.RegSlayerCalendarEvents.getById(eventId)
+        : null;
+      closeQuickLoadModal();
+      if (!ev) return;
+      if (choice === 'pins') {
         setEventPinsFilter(ev);
         if (ev.lat != null && ev.lng != null) goToEventLocation(eventId);
-        else if (typeof ensureMap === 'function') ensureMap().then(function () { if (typeof drawPinsOnMap === 'function') drawPinsOnMap(); });
+        else if (typeof ensureMap === 'function') {
+          ensureMap().then(function () { if (typeof drawPinsOnMap === 'function') drawPinsOnMap(); });
+        }
         return;
       }
-      if (choice === '2' || choice === '3') {
-        if (choice === '3') setEventPinsFilter(ev);
-        else clearEventPinsFilter({ silent: true, skipRedraw: true });
+      if (choice === 'load') {
+        clearEventPinsFilter({ silent: true, skipRedraw: true });
         doLoadEventHuntData(ev);
-        if (choice === '3' && typeof drawPinsOnMap === 'function') drawPinsOnMap();
         return;
       }
-      alert('Invalid choice.');
+      if (choice === 'both') {
+        setEventPinsFilter(ev);
+        doLoadEventHuntData(ev);
+        if (typeof drawPinsOnMap === 'function') drawPinsOnMap();
+      }
     }
+    window.closeQuickLoadModal = closeQuickLoadModal;
+    window.runQuickLoadChoice = runQuickLoadChoice;
     function doLoadEventHuntData(ev) {
       if (!ev) return;
       if (ev.lat != null && ev.lng != null) {

@@ -1,0 +1,9 @@
+V7.0.50 — Quick Load uses in-app modal (no browser prompt)
+
+- Quick Load opens a custom popup with buttons:
+  - Just show event pins
+  - Load event on map (when location exists)
+  - Both
+  - Cancel
+- Tap outside or Cancel closes the modal
+- Shell v110 · Hunt + Reg
