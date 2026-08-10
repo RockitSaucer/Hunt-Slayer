@@ -1,0 +1,6 @@
+﻿V7.0.55 — #44 SOA/PDHA off by default + list filter
+
+- Layers: SOA and PDHA start OFF on first launch
+- Available Hunts only includes land types currently ON in Layers
+- Toggling SOA/PDHA (or any public land type) refreshes the list
+- Hunt only

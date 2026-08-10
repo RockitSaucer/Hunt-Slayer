@@ -10731,7 +10731,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.54 Beta">V7.0.54 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.55 Beta">V7.0.55 Beta</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-sister-link" id="brand-other-slay-btn" title="Open Hunt, Reg, or Plan Slayer">
@@ -11341,8 +11341,8 @@
                               <button type="button" class="pl-toggle-btn on" id="pl-btn-forestNwr" data-pl="forestNwr" style="background:#2f9e4f;color:#fff;" onclick="togglePublicLandType('forestNwr')" title="National Forests &amp; NWR" aria-pressed="true">Forest/NWR<span class="pl-sub">on</span></button>
                               <button type="button" class="pl-toggle-btn on" id="pl-btn-tva" data-pl="tva" style="background:#2d8fd9;color:#fff;" onclick="togglePublicLandType('tva')" title="TVA Undeveloped" aria-pressed="true">TVA<span class="pl-sub">on</span></button>
                               <button type="button" class="pl-toggle-btn on" id="pl-btn-foreverWild" data-pl="foreverWild" style="background:#9b59b6;color:#fff;" onclick="togglePublicLandType('foreverWild')" title="Forever Wild" aria-pressed="true">FW<span class="pl-sub">on</span></button>
-                              <button type="button" class="pl-toggle-btn on" id="pl-btn-soa" data-pl="soa" style="background:#c026d3;color:#fff;" onclick="togglePublicLandType('soa')" title="Special Opportunity Areas" aria-pressed="true">SOA<span class="pl-sub">on</span></button>
-                              <button type="button" class="pl-toggle-btn on" id="pl-btn-pdha" data-pl="pdha" style="background:#14b8a6;color:#fff;" onclick="togglePublicLandType('pdha')" title="Disabled Hunt Areas (PDHA)" aria-pressed="true">PDHA<span class="pl-sub">on</span></button>
+                              <button type="button" class="pl-toggle-btn" id="pl-btn-soa" data-pl="soa" style="background:#c026d3;color:#fff;" onclick="togglePublicLandType('soa')" title="Special Opportunity Areas" aria-pressed="false">SOA<span class="pl-sub">off</span></button>
+                              <button type="button" class="pl-toggle-btn" id="pl-btn-pdha" data-pl="pdha" style="background:#14b8a6;color:#fff;" onclick="togglePublicLandType('pdha')" title="Disabled Hunt Areas (PDHA)" aria-pressed="false">PDHA<span class="pl-sub">off</span></button>
                               <button type="button" class="pl-toggle-btn on" id="pl-btn-usace" data-pl="usace" style="background:#6b7c3a;color:#fff;" onclick="togglePublicLandType('usace')" title="U.S. Army Corps of Engineers open recreation / hunting project lands" aria-pressed="true">USACE<span class="pl-sub">on</span></button>
                               <button type="button" class="pl-toggle-btn on" id="pl-btn-listPins" data-pl="listPins" style="background:#486a2f;color:#fff;" onclick="togglePublicLandType('listPins')" title="Green ✓ pins for Available Hunts list" aria-pressed="true">✓ List<span class="pl-sub">on</span></button>
                               <button type="button" class="pl-toggle-btn on" id="pl-btn-custom" data-pl="custom" style="background:#c47a0f;color:#fff;" onclick="togglePublicLandType('custom')" title="Custom areas drawn with the Draw tool" aria-pressed="true">Custom<span class="pl-sub">on</span></button>
@@ -12241,7 +12241,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.54-beta';
+    const APP_VERSION = '7.0.55-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -12598,17 +12598,18 @@
     }
 
     /**
-     * Per public-land type visibility — all ON at launch.
+     * Per public-land type visibility.
      * forestNwr controls both USFS outlines and NWR fills (same green key).
      * listPins = green ✓ for Available Hunts list rows.
+     * SOA / PDHA default OFF on first launch (#44) — user can turn on via Layers.
      */
     var publicLandTypeVisible = {
       wma: true,
       forestNwr: true,
       tva: true,
       foreverWild: true,
-      soa: true,
-      pdha: true,
+      soa: false,
+      pdha: false,
       usace: true,
       listPins: true,
       custom: true // user-drawn shapes (Draw tool)
@@ -12620,6 +12621,33 @@
       if (layerKey === 'custom') return !!publicLandTypeVisible.custom;
       return !!publicLandTypeVisible[layerKey];
     }
+
+    /** Map a list/GIS loc to the Layers toggle key (for Available Hunts filter #44). */
+    function layerKeyForPublicLoc(loc) {
+      if (!loc) return null;
+      if (loc.isCustomArea || loc.landSource === 'custom') return 'custom';
+      var ls = String(loc.landSource || '').toLowerCase();
+      var ty = String(loc.type || '');
+      if (ls === 'usfs' || ls === 'nwr' || ty === 'NWR' || ty === 'Refuge') return 'forestNwr';
+      if (ls === 'soa' || ty === 'SOA') return 'soa';
+      if (ls === 'pdha' || ty === 'PDHA') return 'pdha';
+      if (ls === 'tva' || ty === 'TVA') return 'tva';
+      if (ls === 'foreverwild' || ty === 'Forever Wild') return 'foreverWild';
+      if (ls === 'usace' || ty === 'USACE') return 'usace';
+      if (ls === 'wma' || ty === 'WMA') return 'wma';
+      if (ls === 'nps') return 'nps';
+      return ls || null;
+    }
+
+    /** Available Hunts: only include land types currently ON in Layers overlays. */
+    function isPublicLocListAllowed(loc) {
+      if (!loc) return false;
+      if (!loc.isPublicLand && !loc.isCustomArea) return true;
+      var key = layerKeyForPublicLoc(loc);
+      if (!key) return true;
+      return isPublicLandLayerKeyVisible(key);
+    }
+    window.isPublicLocListAllowed = isPublicLocListAllowed;
 
     function anyPublicLandFillVisible() {
       return !!(publicLandTypeVisible.wma || publicLandTypeVisible.forestNwr ||
@@ -12662,6 +12690,10 @@
       updatePublicLandToggleUI();
       if (key === 'custom') {
         if (typeof drawCustomAreasOnMap === 'function') drawCustomAreasOnMap();
+        // Refresh Available Hunts so custom rows follow toggle (#44)
+        try {
+          if (typeof updateAvailableList === 'function' && selectedDate && selectedWeapon) updateAvailableList();
+        } catch (eListC) {}
         return;
       }
       // Redraw GIS fills and/or list pins
@@ -12675,6 +12707,10 @@
         if (publicLandTypeVisible.listPins) drawListedHuntCheckmarks();
         else adcnrOpenPinGroup.clearLayers();
       }
+      // Available Hunts dropdown follows Layers toggles (#44)
+      try {
+        if (typeof updateAvailableList === 'function' && selectedDate && selectedWeapon) updateAvailableList();
+      } catch (eList) {}
     }
     window.togglePublicLandType = togglePublicLandType;
 
@@ -33656,6 +33692,8 @@ function togglePinIconPicker() {
     // NEVER inherit another WMA's gun seasons (that caused Mallard-Fox Creek to show gun deer).
     function findRulesForPublicLand(loc, date, weapon, land, ds) {
       if (!loc || land === 'Private') return [];
+      // Layers overlay OFF → not in Available Hunts even if date/weapon would match (#44)
+      if (typeof isPublicLocListAllowed === 'function' && !isPublicLocListAllowed(loc)) return [];
       if (loc.landSource === 'nps' || loc.landSource === 'usfs' || loc.landSource === 'foreverWild') return [];
       if (loc.type === 'Forever Wild') return [];
       if (loc.noSunday && date.getDay() === 0) return [];
@@ -33916,6 +33954,8 @@ function togglePinIconPicker() {
           }
         }
         if (loc.isPublicLand || loc.isCustomArea) {
+          // Layers overlay OFF → skip entirely (#44)
+          if (typeof isPublicLocListAllowed === 'function' && !isPublicLocListAllowed(loc)) return;
           // Forever Wild never appears as a hunt destination; use the containing WMA instead
           if (!loc.isCustomArea && (loc.landSource === 'foreverWild' || loc.type === 'Forever Wild')) return;
           if (loc.gisAttrs && isForeverWildInWmaAttr(loc.gisAttrs)) return;
