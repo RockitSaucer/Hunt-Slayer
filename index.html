@@ -933,8 +933,8 @@
       max-height: 100%;
       height: 100%;
       overflow-x: hidden;
-      /* Outer planner does not scroll on desktop — only Available tracts list */
-      overflow-y: hidden;
+      /* Side-by-side: allow left planner to scroll so bottom options stay reachable (#55) */
+      overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
     }
@@ -2103,11 +2103,15 @@
       min-height: 0;
       max-height: 100%;
       overflow-x: hidden;
-      overflow-y: hidden;
+      overflow-y: auto; /* reach bottom options in side-by-side (#55) */
       overscroll-behavior: contain;
       scrollbar-width: thin;
       scrollbar-color: #2a3224 #0a0c09;
       color-scheme: dark;
+    }
+    html.layout-desktop .card-planner > .planner-row {
+      max-height: none;
+      overflow: visible;
     }
     html.layout-desktop .card-planner::-webkit-scrollbar {
       width: 8px !important;
@@ -3214,7 +3218,52 @@
       width: 100%;
       box-sizing: border-box;
     }
+    /* Empty day: compact header only (~⅓ height) — no filler copy (#56) */
+    .events-box.events-box--empty {
+      padding: 6px 10px;
+      margin-top: 8px;
+      min-height: 0;
+    }
+    .events-box.events-box--empty #calendar-events-list {
+      display: none;
+    }
+    .events-box.events-box--empty > div:first-child {
+      margin-bottom: 0 !important;
+    }
+    @media (max-width: 950px) {
+      .events-box.events-box--empty {
+        padding: 4px 8px;
+        margin-top: 6px;
+      }
+      .events-box.events-box--empty #events-title-date {
+        font-size: 10px;
+      }
+      .events-box.events-box--empty #add-event-tab-btn {
+        padding: 2px 6px;
+        font-size: 10px;
+      }
+    }
     .event-form-row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; background: rgba(0,0,0,0.15); padding: 10px; border-radius: 8px; border: 1px solid var(--border); }
+    /* Event form: roughly half-width fields + people/location row (#55) */
+    .event-form-row > input[type="text"],
+    .event-form-row > label {
+      max-width: 52%;
+    }
+    .event-form-row .event-people-loc-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      margin-top: 6px;
+      max-width: 100%;
+    }
+    .event-form-row .event-people-loc-row #event-add-people-btn,
+    .event-form-row .event-people-loc-row #event-add-location-btn {
+      width: auto !important;
+      flex: 1 1 140px;
+      margin-top: 0 !important;
+      max-width: 48%;
+    }
     .color-dot-btn { width: 18px; height: 18px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
     .color-dot-btn.selected { border-color: #fff; transform: scale(1.1); }
     .btn-group { display: flex; gap: 8px; }
@@ -9275,10 +9324,13 @@
     }
     .ml-fold-body.open { display: block; }
     .map-layers-panel .zone-toggle-hint { display: none !important; }
+    /* Max/Min: bottom-right above toolbar — never covers top-left map name (#55) */
     .map-fs-btn {
       position: absolute;
-      top: 10px;
+      top: auto;
+      bottom: calc(var(--mbb-bar-h, 45px) + env(safe-area-inset-bottom, 0px) + 8px);
       right: 10px;
+      left: auto;
       z-index: 90; /* above bottom bar; always reachable */
       background: var(--panel);
       border: 1px solid var(--border);
@@ -9296,7 +9348,8 @@
     .map-fs-btn:hover { border-color: var(--accent); }
     .map-wrapper.fullscreen .map-fs-btn {
       z-index: 90;
-      top: max(12px, env(safe-area-inset-top, 0px));
+      top: auto;
+      bottom: calc(var(--mbb-bar-h, 45px) + env(safe-area-inset-bottom, 0px) + 10px);
       right: max(12px, env(safe-area-inset-right, 0px));
     }
     .stand-place-banner {
@@ -10777,7 +10830,7 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 7.0.60 Beta">V7.0.60 Beta</span>
+      <span class="brand-version" aria-label="Version 7.0.61 Beta">V7.0.61 Beta</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-sister-link" id="brand-other-slay-btn" title="Open Hunt, Reg, or Plan Slayer">
@@ -10939,16 +10992,15 @@
                     <input type="date" id="event-end-date" style="width:100%;margin-top:2px;padding:5px 6px;font-size:12px;box-sizing:border-box;">
                   </label>
                 </div>
-                <label style="display:block;font-size:10px;color:var(--muted);font-weight:700;margin-top:6px;">Select map
+                <label style="display:block;font-size:10px;color:var(--muted);font-weight:700;margin-top:6px;max-width:52%;">Select map
                   <select id="event-map-scope" style="width:100%;margin-top:2px;padding:8px 8px;font-size:12px;box-sizing:border-box;font-weight:700;border:1px solid var(--accent);border-radius:6px;background:var(--panel);color:var(--ink);" title="Map that opens when you load this event">
                     <option value="personal">My personal map</option>
                     <option value="all">All my maps (no auto-switch)</option>
                   </select>
                 </label>
-                <p style="font-size:10px;color:var(--muted);margin:4px 0 0;line-height:1.35;">Pick a Hunt/Reg map you’re on. Opening this event (Quick Load) switches to that map and its pins.</p>
-                <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px;">
-                  <button type="button" id="event-add-people-btn" onclick="openEventAddPeople()" style="width:100%;margin-top:6px;background:var(--panel);border:1px solid var(--accent);color:var(--accent);padding:6px 10px;border-radius:6px;font-weight:800;cursor:pointer;font-size:11px;">Add people</button>
-                <button type="button" id="event-add-location-btn" onclick="startEventLocationPick()" style="background:var(--panel);border:1px solid var(--border);color:var(--accent);padding:5px 8px;border-radius:6px;font-weight:bold;cursor:pointer;font-size:11px;">Add location</button>
+                <div class="event-people-loc-row">
+                  <button type="button" id="event-add-people-btn" onclick="openEventAddPeople()" style="background:var(--panel);border:1px solid var(--accent);color:var(--accent);padding:6px 10px;border-radius:6px;font-weight:800;cursor:pointer;font-size:11px;">Add people</button>
+                  <button type="button" id="event-add-location-btn" onclick="startEventLocationPick()" style="background:var(--panel);border:1px solid var(--border);color:var(--accent);padding:6px 10px;border-radius:6px;font-weight:bold;cursor:pointer;font-size:11px;">Add location</button>
                   <span id="event-location-label" style="font-size:10px;color:var(--muted);"></span>
                   <button type="button" id="event-clear-location-btn" onclick="clearEventLocationDraft()" style="display:none;background:none;border:none;color:var(--danger);font-size:11px;cursor:pointer;">Clear pin</button>
                 </div>
@@ -12324,7 +12376,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '7.0.60-beta';
+    const APP_VERSION = '7.0.61-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -32540,6 +32592,16 @@ function togglePinIconPicker() {
         creatorUserId: window.RegSlayerCalendarEvents ? window.RegSlayerCalendarEvents.myId() : null
       };
       if (window.RegSlayerCalendarEvents) {
+        // Apply people chosen before save (#55)
+        if (_eventDraftPeople && _eventDraftPeople.length) {
+          if (!Array.isArray(obj.members)) obj.members = [];
+          _eventDraftPeople.forEach(function (p) {
+            if (!p || !p.user_id) return;
+            if (obj.members.some(function (m) { return String(m.user_id) === String(p.user_id); })) return;
+            obj.members.push({ user_id: p.user_id, display_name: p.display_name || 'Member', role: p.role || 'member' });
+          });
+          _eventDraftPeople = [];
+        }
         window.RegSlayerCalendarEvents.upsert(obj);
       } else {
         // fallback single-day
@@ -32548,6 +32610,7 @@ function togglePinIconPicker() {
       }
       editingEventId = null;
       window._eventDraftId = null;
+      _eventDraftPeople = [];
       clearEventLocationDraft();
       document.getElementById('event-title-input').value = '';
       document.getElementById('save-event-btn').innerText = 'Add Event';
@@ -32812,6 +32875,11 @@ function togglePinIconPicker() {
       const dayEvents = eventsOnDay(dateStr);
       const hiddenDay = hiddenEventsOnDay(dateStr);
       var htmlOut = '';
+      // Compact empty day panel (~⅓ height, no filler copy) (#56)
+      try {
+        if (!dayEvents.length && !hiddenDay.length) box.classList.add('events-box--empty');
+        else box.classList.remove('events-box--empty');
+      } catch (eEmpty) {}
       if (!dayEvents.length) htmlOut = '';
       else {
         htmlOut = dayEvents.map(function (ev) {
@@ -32972,17 +33040,12 @@ function togglePinIconPicker() {
 
     var _eventShareId = null;
     var _eventShareSelected = [];
+    /** People picked before first save — applied on saveEvent (#55) */
+    var _eventDraftPeople = [];
     function openEventAddPeople() {
       var id = editingEventId || _quickLoadEventId;
-      if (!id && window.RegSlayerCalendarEvents) {
-        /* form open for new event — need save first */
-      }
-      _eventShareId = id || editingEventId;
-      if (!_eventShareId) {
-        if (typeof showAppCopyToast === 'function') showAppCopyToast('Save the event first, then Add people');
-        else try { alert('Save the event first, then Add people'); } catch (e) {}
-        return;
-      }
+      // Allow planning people before the event exists; stash as draft
+      _eventShareId = id || editingEventId || '__draft__';
       _eventShareSelected = [];
       var modal = document.getElementById('event-share-people-modal');
       var box = document.getElementById('event-map-partners-box');
@@ -32993,6 +33056,9 @@ function togglePinIconPicker() {
         modal.hidden = false;
         modal.style.display = 'flex';
         modal.classList.add('active');
+      }
+      if (_eventShareId === '__draft__' && typeof showAppCopyToast === 'function') {
+        showAppCopyToast('Pick people now — they join when you save the event');
       }
     }
     function closeEventSharePeople() {
@@ -33105,6 +33171,17 @@ function togglePinIconPicker() {
       if (typeof window._eventShareRenderPick === 'function') window._eventShareRenderPick();
     }
     function addMemberToHuntEvent(uid, name, quiet) {
+      // Pre-save draft: store until saveEvent (#55)
+      if (String(_eventShareId) === '__draft__') {
+        if (!_eventDraftPeople) _eventDraftPeople = [];
+        if (_eventDraftPeople.some(function (m) { return String(m.user_id) === String(uid); })) {
+          if (!quiet && typeof showAppCopyToast === 'function') showAppCopyToast('Already selected');
+          return false;
+        }
+        _eventDraftPeople.push({ user_id: uid, display_name: name || 'Member', role: 'member' });
+        if (!quiet && typeof showAppCopyToast === 'function') showAppCopyToast('Will add ' + (name || 'member') + ' on save');
+        return true;
+      }
       var ev = window.RegSlayerCalendarEvents && window.RegSlayerCalendarEvents.getById(_eventShareId);
       if (!ev) return false;
       if (!Array.isArray(ev.members)) ev.members = [];
@@ -33128,7 +33205,11 @@ function togglePinIconPicker() {
       });
       _eventShareSelected = [];
       if (typeof showAppCopyToast === 'function') {
-        showAppCopyToast(n ? ('Added ' + n + ' member' + (n === 1 ? '' : 's')) : 'Already members');
+        if (String(_eventShareId) === '__draft__') {
+          showAppCopyToast(n ? (n + ' person' + (n === 1 ? '' : 's') + ' ready — save the event to add them') : 'Already selected');
+        } else {
+          showAppCopyToast(n ? ('Added ' + n + ' member' + (n === 1 ? '' : 's')) : 'Already members');
+        }
       }
       closeEventSharePeople();
     }
