@@ -2,7 +2,7 @@
  * Caches app shell for return visits with no signal.
  * Map tiles: cache-first when already stored; network otherwise (then cache).
  */
-const SHELL_CACHE = 'reg-slayer-shell-v125';
+const SHELL_CACHE = 'reg-slayer-shell-v130';
 const TILE_CACHE = 'reg-slayer-tiles-v2';
 const DATA_CACHE = 'reg-slayer-data-v1';
 /** Soft cap on cached map tiles (~18KB avg → ~45MB). Oldest entries dropped first. */
@@ -29,6 +29,8 @@ const SHELL_ASSETS = [
   './auth-sync.js',
   './party-maps.js',
   './calendar-events.js',
+  './plan-kit/plan-ui.css',
+  './plan-kit/plan-events-lists.js',
   // WMA permit Zone A/B rings (required offline / hard-refresh)
   './wma-zones-data.js',
   './icons/tools/measure.png',

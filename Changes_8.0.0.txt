@@ -1,0 +1,15 @@
+Hunt Slayer V8.0.0 (shell reg-slayer-shell-v130)
+
+Plan lists kit on Hunt
+- plan-kit/plan-events-lists.js + plan-ui.css
+- Day event cards: Plan-style with Edit + ✓ List
+- Floating list window: section ⚙ / share / minimize, My checklist, Sync
+- List Settings (near Sync): name, expenses, members, share code, delete
+- Tap member chip → color popup (dots + color wheel); claim bars use member colors
+- Auto-import PlanSlayer events/chores from shared localStorage keys
+
+Site defaults unchanged
+- SITE_ID = 'hunt'
+- Existing first-launch / map Min defaults preserved (v702 migration keys)
+
+Does not alter Reg defaults (Reg has its own SITE_ID='reg' push).
