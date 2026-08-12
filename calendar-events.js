@@ -263,6 +263,123 @@
     return events.find(function (e) { return String(e.id) === String(id); }) || null;
   }
 
+  function isUuidLike(id) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(id || ''));
+  }
+
+  function ymdToIsoNoon(ymd) {
+    if (!ymd) return null;
+    var s = String(ymd);
+    if (s.length === 10) return s + 'T12:00:00';
+    return s;
+  }
+
+  /**
+   * Dual-write Hunt/Reg calendar → PlanSlayer plan_events (same Supabase account).
+   * Plan loadEvents uses plan_events as source of truth, so Hunt-only map_calendar
+   * rows never appear there without this.
+   */
+  function pushPlanCloud(ev) {
+    try {
+      var sb = global.RegSlayerCloud && global.RegSlayerCloud.getClient && global.RegSlayerCloud.getClient();
+      var uid = myId();
+      if (!sb || !uid || !ev || ev._localOnly) return;
+      // Skip pure demos / empty titles
+      if (!ev.text && !ev.name) return;
+
+      function stampLocalPlanId(planId, inviteCode) {
+        if (!planId) return;
+        var id = String(ev.id);
+        var idx = events.findIndex(function (e) { return e && String(e.id) === id; });
+        if (idx < 0) return;
+        events[idx].planEventId = String(planId);
+        if (inviteCode) events[idx].inviteCode = inviteCode;
+        saveLocal();
+        // Refresh map_calendar hunt_link with planEventId
+        try { pushCloud(events[idx]); } catch (eP) {}
+      }
+
+      function applyPlanRow(planId, baseState) {
+        if (!planId || !isUuidLike(planId)) return Promise.resolve();
+        // Merge — never wipe Plan packing lists / expenses already on the row
+        var stateObj = Object.assign({}, (baseState && typeof baseState === 'object') ? baseState : {}, {
+          color: ev.color || (baseState && baseState.color) || '#e59a18',
+          hunt_event_id: String(ev.id),
+          fromHuntSlayer: true,
+          mapScope: ev.mapScope || (baseState && baseState.mapScope) || 'personal',
+          sharedMapId: ev.sharedMapId != null ? ev.sharedMapId : ((baseState && baseState.sharedMapId) || null),
+          privateMapId: ev.privateMapId != null ? ev.privateMapId : ((baseState && baseState.privateMapId) || null),
+          weapon: ev.weapon || (baseState && baseState.weapon) || null,
+          land: ev.land || (baseState && baseState.land) || null
+        });
+        if (ev.listPack && ev.listPack.columns) {
+          stateObj.namedListPack = ev.listPack;
+        }
+        if (!stateObj.lists) {
+          stateObj.lists = {
+            todo: { group: [], personal: {} },
+            buy: { group: [], personal: {} },
+            bring: { group: [], personal: {} }
+          };
+        }
+        if (!Array.isArray(stateObj.expenses)) stateObj.expenses = [];
+        if (!Array.isArray(stateObj.mapPins)) stateObj.mapPins = [];
+        return sb.from('plan_events').update({
+          name: ev.text || 'Event',
+          event_type: ev.weapon ? String(ev.weapon).toLowerCase() : 'hunt',
+          start_at: ymdToIsoNoon(ev.startDate),
+          end_at: ymdToIsoNoon(ev.endDate || ev.startDate),
+          location_label: ev.locationLabel || null,
+          lat: ev.lat != null && !isNaN(Number(ev.lat)) ? Number(ev.lat) : null,
+          lng: ev.lng != null && !isNaN(Number(ev.lng)) ? Number(ev.lng) : null,
+          state: stateObj,
+          updated_at: new Date().toISOString()
+        }).eq('id', planId).then(function (res) {
+          if (res && res.error) {
+            try { console.warn('[calendar] plan_events update', res.error); } catch (e0) {}
+          }
+        }).catch(function (e1) {
+          try { console.warn('[calendar] plan_events update', e1); } catch (e2) {}
+        });
+      }
+
+      var existingPlanId = (ev.planEventId && isUuidLike(ev.planEventId))
+        ? String(ev.planEventId)
+        : null;
+
+      if (existingPlanId) {
+        sb.from('plan_events').select('state').eq('id', existingPlanId).maybeSingle()
+          .then(function (res) {
+            var st = (res && res.data && res.data.state) || {};
+            return applyPlanRow(existingPlanId, st);
+          })
+          .catch(function () { return applyPlanRow(existingPlanId, {}); });
+        return;
+      }
+
+      // Create on Plan (owner + invite code + membership)
+      sb.rpc('create_plan_event', {
+        p_name: ev.text || 'Event',
+        p_event_type: 'hunt',
+        p_start_at: ymdToIsoNoon(ev.startDate)
+      }).then(function (res) {
+        if (!res || res.error || !res.data) {
+          try { console.warn('[calendar] create_plan_event', res && res.error); } catch (e3) {}
+          return;
+        }
+        var row = Array.isArray(res.data) ? res.data[0] : res.data;
+        if (!row || !row.id) return;
+        stampLocalPlanId(row.id, row.invite_code || null);
+        // create_plan_event already seeded state.lists — merge into that
+        return applyPlanRow(row.id, row.state || {});
+      }).catch(function (e4) {
+        try { console.warn('[calendar] create_plan_event', e4); } catch (e5) {}
+      });
+    } catch (e) {
+      try { console.warn('[calendar] pushPlanCloud', e); } catch (e6) {}
+    }
+  }
+
   function upsert(ev) {
     var n = normalize(ev);
     if (!n) return null;
@@ -274,14 +391,25 @@
     if (!n.creatorUserId) n.creatorUserId = myId();
     n.updatedAt = new Date().toISOString();
     var idx = events.findIndex(function (e) { return String(e.id) === String(n.id); });
-    if (idx >= 0) events[idx] = Object.assign({}, events[idx], n);
-    else {
+    if (idx >= 0) {
+      var prev = events[idx] || {};
+      var merged = Object.assign({}, prev, n);
+      // Preserve Plan link if save form omitted it (edit path)
+      if (!merged.planEventId && prev.planEventId) merged.planEventId = prev.planEventId;
+      if (!merged.inviteCode && prev.inviteCode) merged.inviteCode = prev.inviteCode;
+      if (!merged.planListId && prev.planListId) merged.planListId = prev.planListId;
+      if (!merged.listPack && prev.listPack) merged.listPack = prev.listPack;
+      events[idx] = merged;
+    } else {
       n.createdAt = n.createdAt || new Date().toISOString();
       events.push(n);
     }
     saveLocal();
-    pushCloud(n);
-    return getById(n.id);
+    var saved = getById(n.id);
+    pushCloud(saved || n);
+    // Dual-write to PlanSlayer plan_events so Plan calendar/list sees Hunt events
+    try { pushPlanCloud(saved || n); } catch (eDp) {}
+    return saved;
   }
 
   function hardDelete(id) {

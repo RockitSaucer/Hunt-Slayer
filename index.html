@@ -11118,7 +11118,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.23">V8.0.23</span>
+      <span class="brand-version" aria-label="Version 8.0.24">V8.0.24</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -12695,7 +12695,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.23';
+    const APP_VERSION = '8.0.24';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -33302,6 +33302,21 @@ function togglePinIconPicker() {
         land: (link && selectedLand) ? selectedLand : null,
         creatorUserId: window.RegSlayerCalendarEvents ? window.RegSlayerCalendarEvents.myId() : null
       };
+      // Keep Plan dual-write link when editing (form does not re-submit planEventId)
+      if (editingEventId && window.RegSlayerCalendarEvents) {
+        try {
+          var prevEv = window.RegSlayerCalendarEvents.getById(editingEventId);
+          if (prevEv) {
+            if (prevEv.planEventId) obj.planEventId = prevEv.planEventId;
+            if (prevEv.inviteCode) obj.inviteCode = prevEv.inviteCode;
+            if (prevEv.planListId) obj.planListId = prevEv.planListId;
+            if (prevEv.listPack) obj.listPack = prevEv.listPack;
+            if (prevEv.members && prevEv.members.length && !(_eventDraftPeople && _eventDraftPeople.length)) {
+              obj.members = prevEv.members.slice();
+            }
+          }
+        } catch (ePrev) {}
+      }
       if (window.RegSlayerCalendarEvents) {
         // Apply people chosen before save (#55)
         if (_eventDraftPeople && _eventDraftPeople.length) {
