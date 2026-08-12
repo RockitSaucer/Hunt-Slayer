@@ -9565,14 +9565,21 @@
     }
     .ml-fold-body.open { display: block; }
     .map-layers-panel .zone-toggle-hint { display: none !important; }
-    /* Max/Min: top-right of map — free bottom-right for info popups (#81) */
-    .map-fs-btn {
-      position: absolute;
-      top: max(8px, env(safe-area-inset-top, 0px));
-      bottom: auto;
-      right: max(10px, env(safe-area-inset-right, 0px));
-      left: auto;
-      z-index: 90; /* above map chrome; always reachable */
+    /* #106: Max/Min ALWAYS top-right of map (mini + max, phone + desktop) */
+    .map-wrapper .map-fs-btn,
+    .map-wrapper.fullscreen .map-fs-btn,
+    #map-maximize-btn.map-fs-btn,
+    #map-minimize-btn.map-fs-btn,
+    #map-maximize-btn,
+    #map-minimize-btn {
+      position: absolute !important;
+      top: max(8px, env(safe-area-inset-top, 0px)) !important;
+      bottom: auto !important;
+      right: max(8px, env(safe-area-inset-right, 0px)) !important;
+      left: auto !important;
+      z-index: 500 !important;
+      margin: 0 !important;
+      transform: none !important;
       background: var(--panel);
       border: 1px solid var(--border);
       color: var(--accent);
@@ -9587,22 +9594,14 @@
       letter-spacing: 0.02em;
     }
     .map-fs-btn:hover { border-color: var(--accent); }
-    .map-wrapper.fullscreen .map-fs-btn {
-      z-index: 90;
-      top: max(10px, env(safe-area-inset-top, 0px));
-      bottom: auto;
-      right: max(12px, env(safe-area-inset-right, 0px));
-    }
-    /* #98: mobile Max/Min hard top-right of map (no bottom chrome drift) */
     html.layout-phone .map-wrapper .map-fs-btn,
-    html.layout-phone .map-wrapper.fullscreen .map-fs-btn,
     html.layout-phone #map-maximize-btn,
     html.layout-phone #map-minimize-btn {
       top: max(8px, env(safe-area-inset-top, 0px)) !important;
       right: max(8px, env(safe-area-inset-right, 0px)) !important;
       bottom: auto !important;
       left: auto !important;
-      z-index: 120 !important;
+      z-index: 500 !important;
     }
     .stand-place-banner {
       position: absolute;
@@ -11098,7 +11097,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.5">V8.0.5</span>
+      <span class="brand-version" aria-label="Version 8.0.6">V8.0.6</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -12673,7 +12672,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.5';
+    const APP_VERSION = '8.0.6';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -20535,8 +20534,8 @@
         stateMaskSvgRenderer = L.svg({ padding: 0.5 });
       }
       var outer = [[-90, -180], [-90, 180], [90, 180], [90, -180], [-90, -180]];
-      // #99: soft fade outside AL — concentric buffers ~5 / 10 / 15 mi (opacity ramps to ~0.82)
-      // ~1° lat ≈ 69 mi → 15 mi ≈ 0.217°
+      // #105: smoother outside-AL fade — many thin concentric bands (~15 mi)
+      // ~1° lat ≈ 69 mi
       function inflateRing(src, deg) {
         if (!src || src.length < 3 || !deg) return src;
         var cx = 0, cy = 0, n = 0;
@@ -20557,36 +20556,40 @@
         });
       }
       var miToDeg = 1 / 69;
-      var ring5 = inflateRing(ring, 5 * miToDeg);
-      var ring10 = inflateRing(ring, 10 * miToDeg);
-      var ring15 = inflateRing(ring, 15 * miToDeg);
-      // Outer dark to 15mi, then stepped holes for fade (far → near lighter bands)
-      var bandFar = L.polygon([outer, ring15], {
+      // #105: many thin bands — gradual opacity 0→0.82 over ~15 mi
+      var fadeSteps = [
+        { mi: 1.5, op: 0.05 },
+        { mi: 3, op: 0.10 },
+        { mi: 4.5, op: 0.16 },
+        { mi: 6, op: 0.23 },
+        { mi: 7.5, op: 0.31 },
+        { mi: 9, op: 0.40 },
+        { mi: 10.5, op: 0.50 },
+        { mi: 12, op: 0.60 },
+        { mi: 13.5, op: 0.71 },
+        { mi: 15, op: 0.82 }
+      ];
+      var rings = [ring];
+      fadeSteps.forEach(function (step) {
+        rings.push(inflateRing(ring, step.mi * miToDeg));
+      });
+      // Beyond 15 mi: full dark
+      stateMaskGroup.addLayer(L.polygon([outer, rings[rings.length - 1]], {
         stroke: false, fillColor: '#0e110d', fillOpacity: 0.82,
         interactive: false, bubblingMouseEvents: false,
         className: 'state-outside-mask state-outside-mask-far',
         smoothFactor: 0, renderer: stateMaskSvgRenderer
-      });
-      var bandMid = L.polygon([ring15, ring10], {
-        stroke: false, fillColor: '#0e110d', fillOpacity: 0.55,
-        interactive: false, bubblingMouseEvents: false,
-        className: 'state-outside-mask state-outside-mask-mid',
-        smoothFactor: 0, renderer: stateMaskSvgRenderer
-      });
-      var bandNear = L.polygon([ring10, ring5], {
-        stroke: false, fillColor: '#0e110d', fillOpacity: 0.32,
-        interactive: false, bubblingMouseEvents: false,
-        className: 'state-outside-mask state-outside-mask-near',
-        smoothFactor: 0, renderer: stateMaskSvgRenderer
-      });
-      var bandEdge = L.polygon([ring5, ring], {
-        stroke: false, fillColor: '#0e110d', fillOpacity: 0.12,
-        interactive: false, bubblingMouseEvents: false,
-        className: 'state-outside-mask state-outside-mask-edge',
-        smoothFactor: 0, renderer: stateMaskSvgRenderer
-      });
-      var mask = bandFar; // keep name for any later refs
-      // Black border traces the state line; dark shade begins beyond this stroke
+      }));
+      // Annuli border → 15 mi (opacity ramps up)
+      for (var bi = 1; bi < rings.length; bi++) {
+        stateMaskGroup.addLayer(L.polygon([rings[bi], rings[bi - 1]], {
+          stroke: false, fillColor: '#0e110d', fillOpacity: fadeSteps[bi - 1].op,
+          interactive: false, bubblingMouseEvents: false,
+          className: 'state-outside-mask state-outside-mask-b' + bi,
+          smoothFactor: 0, renderer: stateMaskSvgRenderer
+        }));
+      }
+      // Black border traces the state line
       var border = L.polyline(ring, {
         color: '#000000',
         weight: 2.5,
@@ -20599,7 +20602,6 @@
         lineCap: 'round',
         renderer: stateMaskSvgRenderer
       });
-      // Thin amber accent just inside black line (reads on dark basemap)
       var borderAccent = L.polyline(ring, {
         color: '#d4a84b',
         weight: 1.25,
@@ -20612,11 +20614,6 @@
         lineCap: 'round',
         renderer: stateMaskSvgRenderer
       });
-      // #99: add fade bands from far (full dark) → edge (light)
-      stateMaskGroup.addLayer(bandFar);
-      stateMaskGroup.addLayer(bandMid);
-      stateMaskGroup.addLayer(bandNear);
-      stateMaskGroup.addLayer(bandEdge);
       stateMaskGroup.addLayer(border);
       stateMaskGroup.addLayer(borderAccent);
       try { stateMaskGroup.bringToBack(); } catch (eBk) {}
@@ -36787,6 +36784,19 @@ function togglePinIconPicker() {
         }
         document.getElementById('map-maximize-btn').style.display = full ? 'none' : 'block';
         document.getElementById('map-minimize-btn').style.display = full ? 'block' : 'none';
+        // #106: pin Max/Min to map top-right (inline styles beat any stale bottom rules)
+        try {
+          ['map-maximize-btn', 'map-minimize-btn'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            el.style.position = 'absolute';
+            el.style.top = '8px';
+            el.style.right = '8px';
+            el.style.bottom = 'auto';
+            el.style.left = 'auto';
+            el.style.zIndex = '500';
+          });
+        } catch (eFs) {}
         if (!full) {
           fitPhoneMapSize();
           if (typeof fitDesktopMapHeight === 'function') fitDesktopMapHeight();
