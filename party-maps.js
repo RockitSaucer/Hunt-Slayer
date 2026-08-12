@@ -25,17 +25,18 @@
   var DIR_ICON_CATALOG = [
     // Tip of broadhead = look direction. PNG tip is "up" at rest → frontDeg 0 (180 was reverse).
     { id: 'arrow_head', name: 'Arrow head', src: 'icons/dir/arrow_head.png', frontDeg: 0 },
-    { id: 'boat', name: 'Boat', src: 'icons/dir/boat.png', frontDeg: 0 },
+    { id: 'boat', name: 'Boat', src: 'icons/dir/boat.png', frontDeg: 270 },
     // PNG is diagonal: nose lower-left (~225°). Rotate −225° so tip points up.
     { id: 'bomb', name: 'Bomb', src: 'icons/dir/bomb.png', frontDeg: 225 },
     { id: 'bullet', name: 'Bullet', src: 'icons/dir/bullet.png', frontDeg: 0 },
     { id: 'capture', name: 'Capture', src: 'icons/dir/capture.png', frontDeg: 0 },
     { id: 'car', name: 'Car', src: 'icons/dir/car.png', frontDeg: 0 },
     { id: 'helicopter', name: 'Helicopter', src: 'icons/dir/helicopter.png', frontDeg: 0 },
+    { id: 'kayak', name: 'Kayak', src: 'icons/dir/kayak.png', frontDeg: 90 },
     { id: 'prop_plane', name: 'Prop plane', src: 'icons/dir/prop_plane.png', frontDeg: 180 },
     { id: 'rocket', name: 'Rocket', src: 'icons/dir/rocket.png', frontDeg: 0 },
     { id: 'shuttle', name: 'Shuttle', src: 'icons/dir/shuttle.png', frontDeg: 0 },
-    { id: 'speed_boat', name: 'Speed Boat', src: 'icons/dir/speed_boat.png', frontDeg: 0 },
+    { id: 'ski_boat', name: 'Ski boat', src: 'icons/dir/ski_boat.png', frontDeg: 90 },
     { id: 'truck', name: 'Truck', src: 'icons/dir/truck.png', frontDeg: 0 },
     // Upright profile (head at top). frontDeg 0 = head leads with device heading
     // (same model as default arrow tip). Do not use 90 — that laid the figure on its side.
@@ -44,7 +45,17 @@
     // Procedural SVG (no PNG): solid fill + opposite-wheel eyes/mouth. frontDeg 0 = upright when heading north.
     { id: 'smiley', name: 'Smiley', frontDeg: 0, render: 'svg-smiley' }
   ];
-  var DIR_ICON_BUST = 'dir8';
+  var DIR_ICON_BUST = 'dir9';
+
+  /** Old Speed Boat → Ski boat (icon replaced 2026-08). */
+  var LEGACY_DIR_ICON_MAP = { speed_boat: 'ski_boat' };
+  function normalizeDirIconId(id) {
+    if (!id) return id;
+    var s = String(id);
+    if (LEGACY_DIR_ICON_MAP[s]) return LEGACY_DIR_ICON_MAP[s];
+    return s;
+  }
+
   /**
    * Presence cadence tiers (GPS share only — does not change pins/weather/map_state).
    * Moving → burst; still → slower heartbeat; background → ~20s; large parties slightly slower.
@@ -239,7 +250,7 @@
   function getDirIconById(id) {
     if (!id) return null;
     for (var i = 0; i < DIR_ICON_CATALOG.length; i++) {
-      if (DIR_ICON_CATALOG[i].id === id) return DIR_ICON_CATALOG[i];
+      if (DIR_ICON_CATALOG[i].id === normalizeDirIconId(id)) return DIR_ICON_CATALOG[i];
     }
     return null;
   }

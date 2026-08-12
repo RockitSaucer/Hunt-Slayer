@@ -2,7 +2,7 @@
  * Caches app shell for return visits with no signal.
  * Map tiles: cache-first when already stored; network otherwise (then cache).
  */
-const SHELL_CACHE = 'reg-slayer-shell-v152';
+const SHELL_CACHE = 'reg-slayer-shell-v153';
 const TILE_CACHE = 'reg-slayer-tiles-v2';
 const DATA_CACHE = 'reg-slayer-data-v1';
 /** Soft cap on cached map tiles (~18KB avg → ~45MB). Oldest entries dropped first. */
@@ -70,6 +70,8 @@ const SHELL_ASSETS = [
   // Directional location icons (party / GPS)
   './icons/dir/arrow_head.png',
   './icons/dir/boat.png',
+  './icons/dir/kayak.png',
+  './icons/dir/ski_boat.png',
   './icons/dir/bomb.png',
   './icons/dir/bullet.png',
   './icons/dir/capture.png',
@@ -78,7 +80,6 @@ const SHELL_ASSETS = [
   './icons/dir/prop_plane.png',
   './icons/dir/rocket.png',
   './icons/dir/shuttle.png',
-  './icons/dir/speed_boat.png',
   './icons/dir/truck.png',
   './icons/dir/dobbs.png',
   './icons/dir/x_wing.png',

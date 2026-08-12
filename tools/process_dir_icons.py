@@ -27,7 +27,9 @@ OUT_DIR = Path(r"C:\Users\Rockit\Desktop\HuntApp\_push_hunt_slayer\icons\dir")
 # Checked against source art silhouettes (top = 0°, right = 90°, bottom = 180°).
 FRONT_OVERRIDES: dict[str, float] = {
     "arrow_head": 0,      # tip up
-    "boat": 0,            # bow up (tweak if side-profile)
+    "boat": 270,          # bow left in art
+    "kayak": 90,          # tip right
+    "ski_boat": 90,       # bow right
     "bomb": 225,          # diagonal art: nose lower-left; tip-up needs ~135° CCW
     "bullet": 0,          # tip up / forward
     "capture": 0,
@@ -36,7 +38,6 @@ FRONT_OVERRIDES: dict[str, float] = {
     "prop_plane": 180,    # prop (nose) at bottom of top-down art
     "rocket": 0,          # tip up
     "shuttle": 0,
-    "speed_boat": 0,
     "truck": 0,
     "dobbs": 0,           # dir PNG rebaked nose-up (head at top)
     "x_wing": 0,          # nose up
