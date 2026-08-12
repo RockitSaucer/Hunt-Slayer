@@ -2,7 +2,7 @@
  * Caches app shell for return visits with no signal.
  * Map tiles: cache-first when already stored; network otherwise (then cache).
  */
-const SHELL_CACHE = 'reg-slayer-shell-v158';
+const SHELL_CACHE = 'reg-slayer-shell-v159';
 const TILE_CACHE = 'reg-slayer-tiles-v2';
 const DATA_CACHE = 'reg-slayer-data-v1';
 /** Soft cap on cached map tiles (~18KB avg → ~45MB). Oldest entries dropped first. */
@@ -210,6 +210,9 @@ function isShellAppScript(url) {
       p.endsWith('/party-maps.js') ||
       p.endsWith('/calendar-events.js') ||
       p.endsWith('/wma-zones-data.js') ||
+      p.endsWith('/plan-kit/plan-events-lists.js') ||
+      p.endsWith('/plan-kit/plan-ui.css') ||
+      p.includes('/plan-kit/') ||
       p.endsWith('/sw.js') ||
       p.endsWith('/manifest.webmanifest')
     );

@@ -630,24 +630,36 @@
   function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return Promise.resolve(null);
 
-    // V7.0.24: do NOT auto-reload on controllerchange.
-    // That hard reload was snapping the page back to top and wiping login fields
-    // ~1s after open (desktop, browser, phone). New shell assets apply on the
-    // next natural navigation / hard refresh; map data uses Settings → Display
-    // "Load map from cloud" instead.
+    // Shell bump: keep in sync with sw.js SHELL_CACHE so phones re-fetch the worker script
+    var SW_SCRIPT = './sw.js?v=shell159';
+
+    // One safe reload when a new SW takes over (once per tab session).
+    // Skips if user is typing so login fields aren't wiped mid-keystroke.
+    try {
+      if (!navigator.serviceWorker._rsCtrlHooked) {
+        navigator.serviceWorker._rsCtrlHooked = true;
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+          try {
+            if (sessionStorage.getItem('rs_sw_reloaded_shell159')) return;
+            var ae = document.activeElement;
+            if (ae && ae.tagName && /^(INPUT|TEXTAREA|SELECT)$/i.test(ae.tagName)) return;
+            if (ae && ae.isContentEditable) return;
+            sessionStorage.setItem('rs_sw_reloaded_shell159', '1');
+            location.reload();
+          } catch (eR) {}
+        });
+      }
+    } catch (eH) {}
 
     return navigator.serviceWorker
-      // Cache-bust query forces mobile browsers to re-check SW script on each deploy bump
-      .register('./sw.js?v=shell97', { scope: './' })
+      .register(SW_SCRIPT, { scope: './' })
       .then(function (reg) {
         console.info('[Offline] SW registered', reg.scope);
-        // Force update check every launch (critical for iOS/Android home-screen / PWA)
         try {
           if (reg && typeof reg.update === 'function') {
             reg.update().catch(function () {});
           }
         } catch (eU) {}
-        // Activate waiting worker in the background (no page reload)
         try {
           if (reg.waiting) {
             reg.waiting.postMessage({ type: 'SKIP_WAITING' });
@@ -664,8 +676,6 @@
             });
           });
         } catch (eUf) {}
-        // Periodic update checks while the tab is open (mobile often freezes SW checks)
-        // Phase A: 15 min (was 5) and only when tab is visible
         try {
           setInterval(function () {
             try {
