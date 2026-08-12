@@ -1588,9 +1588,19 @@
 
   // Auto-import Plan events/chores into Hunt calendar on load (same browser profile)
   // Delayed passes: host may assign window.renderCalendar after first paint (#78)
+  // Also force calendar cloud pull so cross-origin Plan events appear when signed in
+  function bootSyncCalendar() {
+    try { syncPlanIntoHuntCalendar(); } catch (e1) {}
+    try {
+      if (global.RegSlayerCalendarEvents && typeof global.RegSlayerCalendarEvents.pullCloud === 'function') {
+        global.RegSlayerCalendarEvents.pullCloud();
+      }
+    } catch (e2) {}
+  }
   try {
-    setTimeout(function () { syncPlanIntoHuntCalendar(); }, 800);
-    setTimeout(function () { syncPlanIntoHuntCalendar(); }, 2200);
+    setTimeout(bootSyncCalendar, 800);
+    setTimeout(bootSyncCalendar, 2200);
+    setTimeout(bootSyncCalendar, 5000);
   } catch (eBoot) {}
 
   global.PlanEventsListsKit = {

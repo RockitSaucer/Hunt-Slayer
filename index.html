@@ -195,30 +195,41 @@
       display: flex;
       flex-direction: column;
       align-items: flex-start;
-      justify-content: flex-end;
-      line-height: 0;
+      justify-content: center;
+      line-height: 1.1;
       flex: 1 1 auto;
       min-width: 0;
       height: 100%;
       padding-right: 8px;
       box-sizing: border-box;
       margin: 0;
-      overflow: hidden;
+      overflow: visible;
+      text-align: left;
     }
-    .brand-logo {
-      display: block;
-      width: auto;
-      height: 148px;
-      max-height: none;
-      max-width: min(420px, 70vw);
-      object-fit: contain;
-      object-position: left center;
-      flex-shrink: 0;
+    /* #91 Plan-style text title (no clipped logo art) */
+    .brand-title {
+      font-size: clamp(20px, 3vw, 30px);
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #fff;
+      margin: 0;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.55);
+      line-height: 1.05;
     }
-    /* Version under logo (Plan-style) (#86) */
+    .brand-title span { color: var(--accent, #e59a18); }
+    .brand-tagline {
+      margin: 4px 0 0;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(200, 210, 190, 0.92);
+    }
+    .brand-logo { display: none !important; }
     .brand-version {
       position: static;
-      margin-top: 2px;
+      margin-top: 4px;
       font-size: 10px;
       font-weight: 700;
       letter-spacing: 0.08em;
@@ -228,18 +239,18 @@
       user-select: none;
       text-shadow: 0 1px 3px rgba(0,0,0,0.85);
     }
-    /* Report · Other ways · User — bottom band, user far right (#86) */
+    /* Compact side-by-side actions (#91) */
     .brand-header-actions {
       position: static;
       transform: none;
       z-index: 2;
       display: flex;
       flex-direction: row;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       align-items: center;
       justify-content: flex-end;
-      gap: 6px;
-      max-width: min(420px, 55vw);
+      gap: 4px;
+      max-width: none;
       flex: 0 0 auto;
       align-self: flex-end;
       padding-bottom: 2px;
@@ -249,33 +260,35 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      padding: 8px 12px;
-      border-radius: 8px;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 6px;
       border: 1px solid rgba(229, 154, 24, 0.55);
       background: rgba(13, 15, 12, 0.72);
       color: #f0f4ee;
-      font-size: 12px;
+      font-size: 10px;
       font-weight: 700;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.03em;
       text-decoration: none;
-      text-transform: uppercase;
+      text-transform: none;
       white-space: nowrap;
-      line-height: 1.1;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+      line-height: 1.15;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.35);
       backdrop-filter: blur(4px);
       -webkit-backdrop-filter: blur(4px);
       transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
       cursor: pointer;
       font-family: inherit;
       box-sizing: border-box;
-      width: 100%;
+      width: auto;
+      max-width: none;
+      flex: 0 0 auto;
     }
     .brand-report-btn {
       border-color: rgba(160, 175, 150, 0.45);
       font-size: 10px;
-      letter-spacing: 0.04em;
-      padding: 6px 10px;
+      letter-spacing: 0.02em;
+      padding: 4px 8px;
       text-transform: none;
       font-weight: 650;
       color: rgba(220, 230, 210, 0.95);
@@ -11070,9 +11083,11 @@
   <!-- Brand header: logo + version badge + sister-site link -->
   <header class="brand-header" role="banner">
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
+    <!-- #91: Plan-style text brand (full title visible; no clipped PNG) -->
     <div class="brand-logo-wrap">
-      <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 8.0.3">V8.0.3</span>
+      <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
+      <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
+      <span class="brand-version" aria-label="Version 8.0.4">V8.0.4</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -11080,9 +11095,10 @@
         <span class="brand-sister-label">Other ways to slay</span>
       </button>
       <button type="button" class="brand-report-btn" id="brand-user-btn" title="Account / settings" aria-label="Account">Account</button>
-      <button type="button" class="brand-report-btn" id="brand-homescreen-btn" title="Add this app to your phone home screen" style="display:none">Share to home screen</button>
     </div>
   </header>
+  <!-- Share to home screen control moved to Settings → Defaults (#91); keep hidden hook for install API -->
+  <button type="button" id="brand-homescreen-btn" style="display:none !important" aria-hidden="true" tabindex="-1">Share to home screen</button>
 
   <!-- Add to Home Screen (Android install prompt / iOS instructions) -->
   <div id="homescreen-overlay" class="report-issue-overlay" aria-hidden="true">
@@ -12442,6 +12458,16 @@
 
           <section class="settings-section">
             <div class="settings-section-head">
+              <h4 class="settings-section-title">Home screen</h4>
+              <button type="button" class="settings-info-btn" data-title="Home screen" data-info="Add this app to your phone home screen (iOS guided steps or Android install when available)." aria-label="About home screen" onclick="return showSettingsInfo(this,event)">i</button>
+            </div>
+            <div class="settings-row">
+              <button type="button" class="settings-subbtn" id="set-homescreen-btn" style="width:100%;text-align:left">Share to home screen…</button>
+            </div>
+          </section>
+
+          <section class="settings-section">
+            <div class="settings-section-head">
               <h4 class="settings-section-title">Weather</h4>
               <button type="button" class="settings-info-btn" data-title="Weather defaults" data-info="Temperature unit and whether weather features run in the planner and on the map." aria-label="About Weather defaults" onclick="return showSettingsInfo(this,event)">i</button>
             </div>
@@ -12636,9 +12662,21 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.3';
+    const APP_VERSION = '8.0.4';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
+    // #91 Plan-style text brand by site
+    try {
+      var _bt = document.getElementById('brand-title-text');
+      var _tg = document.getElementById('brand-tagline-text');
+      if (SITE_ID === 'reg') {
+        if (_bt) _bt.innerHTML = 'Reg <span>Slayer</span>';
+        if (_tg) _tg.textContent = 'Know before you go';
+      } else {
+        if (_bt) _bt.innerHTML = 'Hunt <span>Slayer</span>';
+        if (_tg) _tg.textContent = 'Know before you go';
+      }
+    } catch (eBrand) {}
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
     /** One-shot site default upgrades for older saved prefs. */
     const SITE_DEFAULTS_MIG_KEY = 'reg_slayer_site_defaults_v701';
@@ -30564,6 +30602,34 @@
       var layer =
         'position:relative;z-index:2;display:block;width:100%;height:100%;' +
         'box-sizing:border-box;pointer-events:none;flex-shrink:0;';
+      // #89: boat = solid black hull + detail lines in custom color (not hollow/see-through)
+      if (iconId === 'boat' || iconId === 'speed_boat') {
+        var detail = pinGlyphIsNatural(g, iconId)
+          ? '#e59a18'
+          : ((typeof normalizeHexColor === 'function' ? (normalizeHexColor(g) || '#e59a18') : String(g)));
+        return (
+          '<svg class="pin-glyph-svg" width="' + s + '" height="' + s + '" viewBox="0 0 64 64" ' +
+            'xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="' + layer + 'overflow:visible;">' +
+            '<path d="M8 36 L18 28 L46 28 L56 36 L52 44 L12 44 Z" fill="#0a0a0a" stroke="' + detail + '" stroke-width="2.2" stroke-linejoin="round"/>' +
+            '<path d="M22 28 L26 18 L38 18 L42 28" fill="#0a0a0a" stroke="' + detail + '" stroke-width="2" stroke-linejoin="round"/>' +
+            '<path d="M32 18 L32 12" fill="none" stroke="' + detail + '" stroke-width="2.2" stroke-linecap="round"/>' +
+            '<path d="M14 40 H50" fill="none" stroke="' + detail + '" stroke-width="1.6" stroke-linecap="round" opacity="0.95"/>' +
+          '</svg>'
+        );
+      }
+      if (iconId === 'boat_ramp') {
+        var detailR = pinGlyphIsNatural(g, iconId)
+          ? '#e59a18'
+          : ((typeof normalizeHexColor === 'function' ? (normalizeHexColor(g) || '#e59a18') : String(g)));
+        return (
+          '<svg class="pin-glyph-svg" width="' + s + '" height="' + s + '" viewBox="0 0 64 64" ' +
+            'xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="' + layer + 'overflow:visible;">' +
+            '<path d="M10 48 L28 20 L54 20 L54 48 Z" fill="#0a0a0a" stroke="' + detailR + '" stroke-width="2" stroke-linejoin="round"/>' +
+            '<path d="M16 48 L30 28 L48 28" fill="none" stroke="' + detailR + '" stroke-width="2" stroke-linecap="round"/>' +
+            '<path d="M12 48 H52" fill="none" stroke="' + detailR + '" stroke-width="2.2" stroke-linecap="round"/>' +
+          '</svg>'
+        );
+      }
       if (pinGlyphIsNatural(g, iconId)) {
         return '<img class="pin-glyph-img" src="' + img + '" width="' + s + '" height="' + s +
           '" alt="" draggable="false" style="' + layer +
@@ -38332,15 +38398,17 @@ function togglePinIconPicker() {
     })();
 
     // Share to home screen — Android install prompt + iOS / desktop instructions
+    // #91: triggered from Settings → Defaults (header button is a hidden hook)
     (function wireHomescreenUi() {
       var btn = document.getElementById('brand-homescreen-btn');
+      var setBtn = document.getElementById('set-homescreen-btn');
       var overlay = document.getElementById('homescreen-overlay');
       var closeBtn = document.getElementById('homescreen-close');
       var installBtn = document.getElementById('homescreen-install');
       var bodyEl = document.getElementById('homescreen-body');
       var titleEl = document.getElementById('homescreen-title');
-      if (!btn || !overlay || btn._rsHomescreenWired) return;
-      btn._rsHomescreenWired = true;
+      if (!overlay || (btn && btn._rsHomescreenWired)) return;
+      if (btn) btn._rsHomescreenWired = true;
 
       var deferredPrompt = null;
       var site = (typeof SITE_ID !== 'undefined' && SITE_ID === 'reg') ? 'reg'
@@ -38412,8 +38480,6 @@ function togglePinIconPicker() {
       window.addEventListener('beforeinstallprompt', function (e) {
         try { e.preventDefault(); } catch (err) {}
         deferredPrompt = e;
-        // Keep the button visible so user can still open the modal
-        try { btn.style.display = ''; } catch (eB) {}
       });
       window.addEventListener('appinstalled', function () {
         deferredPrompt = null;
@@ -38423,11 +38489,13 @@ function togglePinIconPicker() {
         close();
       });
 
-      btn.addEventListener('click', function (ev) {
-        ev.preventDefault();
-        // If we already have a deferred prompt and user prefers one-tap, still show modal first on iOS
+      function onOpenClick(ev) {
+        if (ev) ev.preventDefault();
         open();
-      });
+      }
+      if (btn) btn.addEventListener('click', onOpenClick);
+      if (setBtn) setBtn.addEventListener('click', onOpenClick);
+      window.openHomescreenShareModal = open;
       if (installBtn) {
         installBtn.addEventListener('click', function (ev) {
           ev.preventDefault();

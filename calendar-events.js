@@ -337,6 +337,25 @@
     } catch (e) {}
   }
 
+  function mergeEvent(n) {
+    if (!n || !n.id) return;
+    // Prefer match by id, then by planEventId (Plan dual-write may rewrite UUID) (#78)
+    var idx = events.findIndex(function (e) {
+      if (!e) return false;
+      if (String(e.id) === String(n.id)) return true;
+      if (n.planEventId && e.planEventId && String(e.planEventId) === String(n.planEventId)) return true;
+      return false;
+    });
+    if (idx >= 0) {
+      var local = events[idx];
+      if (new Date(n.updatedAt || 0) >= new Date(local.updatedAt || 0)) {
+        events[idx] = Object.assign({}, local, n, { id: n.id || local.id });
+      }
+    } else {
+      events.push(n);
+    }
+  }
+
   function pullCloud() {
     try {
       var sb = global.RegSlayerCloud && global.RegSlayerCloud.getClient && global.RegSlayerCloud.getClient();
@@ -346,14 +365,41 @@
         if (res.error || !res.data) return;
         res.data.forEach(function (row) {
           var n = rowToEvent(row);
-          if (!n) return;
-          var idx = events.findIndex(function (e) { return String(e.id) === String(n.id); });
-          if (idx >= 0) {
-            var local = events[idx];
-            if (new Date(n.updatedAt || 0) >= new Date(local.updatedAt || 0)) events[idx] = n;
-          } else events.push(n);
+          mergeEvent(n);
         });
         saveLocal();
+      }).then(function () {
+        // Also pull Plan cloud events into Hunt calendar (#78 account link)
+        return sb.rpc('list_my_plan_events').then(function (res) {
+          if (!res || res.error || !res.data) return;
+          (res.data || []).forEach(function (pev) {
+            if (!pev || !pev.id) return;
+            function ymd(iso) {
+              if (!iso) return null;
+              var d = new Date(iso);
+              if (isNaN(d.getTime())) return null;
+              return localYmd(d);
+            }
+            var start = ymd(pev.start_at) || ymd(pev.created_at);
+            if (!start) return;
+            var huntId = pev.hunt_event_id || ('plan_' + pev.id);
+            mergeEvent(normalize({
+              id: huntId,
+              text: pev.name || 'Event',
+              color: (pev.state && pev.state.color) || '#e59a18',
+              startDate: start,
+              endDate: ymd(pev.end_at) || start,
+              lat: pev.lat != null ? pev.lat : null,
+              lng: pev.lng != null ? pev.lng : null,
+              locationLabel: pev.location_label || null,
+              planEventId: String(pev.id),
+              mapScope: 'personal',
+              _fromPlanSlayer: true,
+              updatedAt: pev.updated_at || new Date().toISOString()
+            }));
+          });
+          saveLocal();
+        }).catch(function () {});
       }).then(function () {
         return sb.from('map_calendar_event_hides').select('event_id').eq('user_id', uid);
       }).then(function (res) {
