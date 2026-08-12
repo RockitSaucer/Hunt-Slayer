@@ -1,0 +1,4 @@
+# 8.0.12→8.0.13
+- #131 flatter event map list (no group labels)
+- #137 Reg resync from Hunt + REG brand
+Shell v143
