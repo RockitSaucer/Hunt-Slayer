@@ -1263,6 +1263,15 @@
 
   /* ——— Float window ——— */
   function ensureFloatDom() {
+    // Rebuild head if an older shell is cached without Share/Sync/Close trio
+    var existing = $('ps-list-float');
+    if (existing && !$('ps-list-float-share')) {
+      try {
+        existing.remove();
+        var bd0 = $('ps-list-float-backdrop');
+        if (bd0) bd0.remove();
+      } catch (eRm) {}
+    }
     if ($('ps-list-float')) return;
     var backdrop = document.createElement('div');
     backdrop.id = 'ps-list-float-backdrop';
@@ -1276,15 +1285,17 @@
     el.innerHTML =
       '<div class="ps-float-head" id="ps-list-float-head">' +
         '<div style="min-width:0;flex:1">' +
-          '<div class="ps-float-title" id="ps-list-float-title">Lists</div>' +
-          '<div class="ps-float-sub" id="ps-list-float-sub">Same list as PlanSlayer · Got it! · sections · Sync</div>' +
+          '<div class="ps-float-title" id="ps-list-float-title">List</div>' +
+          '<div class="ps-float-sub" id="ps-list-float-sub">Same list as PlanSlayer</div>' +
         '</div>' +
-        '<button type="button" class="ps-float-settings" id="ps-list-float-settings" title="List settings">Settings</button>' +
-        '<button type="button" class="ps-float-sync" id="ps-list-float-sync" title="Sync lists &amp; events from PlanSlayer">Sync</button>' +
-        '<button type="button" class="ps-float-close" id="ps-list-float-close" title="Minimize back to List">×</button>' +
+        '<div class="ps-float-head-actions">' +
+          '<button type="button" class="ps-float-share" id="ps-list-float-share" title="Share list">Share</button>' +
+          '<button type="button" class="ps-float-sync" id="ps-list-float-sync" title="Sync from cloud">Sync</button>' +
+          '<button type="button" class="ps-float-close" id="ps-list-float-close" title="Close list">Close</button>' +
+        '</div>' +
       '</div>' +
       '<div class="ps-float-body">' +
-        '<nav class="ps-float-nav" id="ps-list-float-nav"></nav>' +
+        '<nav class="ps-float-nav" id="ps-list-float-nav" aria-hidden="true"></nav>' +
         '<div class="ps-float-main" id="ps-list-float-main"></div>' +
       '</div>';
     document.body.appendChild(el);
@@ -1295,10 +1306,18 @@
       e.stopPropagation();
       runFullSync();
     });
-    $('ps-list-float-settings').addEventListener('click', function (e) {
+    $('ps-list-float-share').addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
-      openListSettings();
+      // Open list settings share (invite) or section share for active tab
+      try {
+        var list = getActiveList();
+        if (!list) { toast('Open a list first'); return; }
+        var colId = state.activeColId || 'todo';
+        shareSection(list.id, colId);
+      } catch (eSh) {
+        try { openListSettings(); } catch (e2) {}
+      }
     });
     // Drag float by head
     var drag = null;
@@ -1334,50 +1353,10 @@
   function renderFloatNav(preferListId) {
     var nav = $('ps-list-float-nav');
     if (!nav) return;
-    var personal = personalListsOnly();
-    var eventLists = eventLinkedLists();
-    // From event List button: only that event's pack (no other lists in the rail)
-    if (state.floatOnlyEventList) {
-      personal = [];
-      var focus = state.focusEventId != null ? String(state.focusEventId) : '';
-      var active = state.activeListId != null ? String(state.activeListId) : '';
-      eventLists = eventLists.filter(function (n) {
-        if (!n) return false;
-        if (active && String(n.id) === active) return true;
-        if (!focus || !n.eventId) return false;
-        var eid = String(n.eventId);
-        return eid === focus || eid === 'plan_' + focus ||
-          focus === 'plan_' + eid || eid === focus.replace(/^plan_/, '');
-      });
-      if (!eventLists.length && active) {
-        var one = findNamedListById(active);
-        if (one) eventLists = [one];
-      }
-    }
-    var html = '';
-    if (!state.floatOnlyEventList) {
-      html += '<div class="ps-nav-label">Personal lists</div>';
-      if (!personal.length) html += '<p class="empty" style="padding:6px">None yet — create in PlanSlayer or open an event List.</p>';
-      else {
-        personal.forEach(function (n) {
-          var on = String(n.id) === String(state.activeListId);
-          html += '<button type="button" class="ps-nav-item' + (on ? ' is-active' : '') +
-            '" data-open-list="' + esc(n.id) + '">' + esc(n.name || 'List') + '</button>';
-        });
-      }
-      html += '<div class="ps-nav-label">Event lists</div>';
-    } else {
-      html += '<div class="ps-nav-label">This event</div>';
-    }
-    if (!eventLists.length) html += '<p class="empty" style="padding:6px">None yet</p>';
-    else {
-      eventLists.forEach(function (n) {
-        var on = String(n.id) === String(state.activeListId);
-        html += '<button type="button" class="ps-nav-item' + (on ? ' is-active' : '') +
-          '" data-open-list="' + esc(n.id) + '">' + esc(n.name || 'List') + '</button>';
-      });
-    }
-    nav.innerHTML = html;
+    // Hunt: no “other lists” rail — open another event to switch packs (Plan mobile parity)
+    nav.innerHTML = '';
+    nav.style.display = 'none';
+    nav.setAttribute('aria-hidden', 'true');
   }
 
   function renderMembersBar(list) {
@@ -1422,8 +1401,8 @@
         if (ev) cd = countdownHtml(huntEventStartIso(ev), huntEventEndIso(ev));
       } catch (e) {}
     }
+    // Title lives in head (Plan mobile). Keep countdown + members, then triad/tabs.
     main.innerHTML =
-      '<div class="ps-float-main-title">' + esc(list.name || 'List') + '</div>' +
       (cd ? ('<div class="ps-float-main-cd">' + cd + '</div>') : '') +
       renderMembersBar(list) +
       '<div class="ps-float-triad-wrap">' + renderTriad(list) + '</div>';
@@ -1639,9 +1618,8 @@
     opts = opts || {};
     ensureFloatDom();
     state.floatOpen = true;
-    // Event card List → only that pack. Explicit allLists:true shows full rail.
-    state.floatOnlyEventList = opts.onlyEventList !== false && !!(opts.event || opts.onlyEventList);
-    if (opts.allLists) state.floatOnlyEventList = false;
+    // Always event-only on Hunt (no other-lists rail). Other packs = open other events.
+    state.floatOnlyEventList = true;
     if (opts.event) {
       state.focusEventId = opts.event.id || (opts.event.planEventId ? ('plan_' + opts.event.planEventId) : null);
     }

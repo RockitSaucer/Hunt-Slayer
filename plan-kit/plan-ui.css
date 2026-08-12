@@ -303,8 +303,16 @@
   color: var(--muted, #8a9488);
   font-weight: 600;
 }
-#ps-list-float .ps-float-settings,
-#ps-list-float .ps-float-sync {
+#ps-list-float .ps-float-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+#ps-list-float .ps-float-share,
+#ps-list-float .ps-float-sync,
+#ps-list-float .ps-float-close {
   flex: 0 0 auto;
   height: 36px;
   padding: 0 12px;
@@ -317,18 +325,24 @@
   letter-spacing: 0.04em;
   cursor: pointer;
   font-family: inherit;
-  margin-right: 4px;
+  white-space: nowrap;
 }
-#ps-list-float .ps-float-settings {
+#ps-list-float .ps-float-close {
   border-color: var(--border, #2a3224);
   background: #1a2018;
   color: #f0f4ee;
+  min-width: 36px;
 }
-#ps-list-float .ps-float-settings:hover,
-#ps-list-float .ps-float-sync:hover {
+#ps-list-float .ps-float-share:hover,
+#ps-list-float .ps-float-sync:hover,
+#ps-list-float .ps-float-close:hover {
   filter: brightness(1.08);
   border-color: var(--accent, #e59a18);
   color: var(--accent, #e59a18);
+}
+/* No multi-list rail — event List opens that pack only */
+#ps-list-float .ps-float-nav {
+  display: none !important;
 }
 #ps-list-float .ps-list-members-bar {
   display: flex;
@@ -388,23 +402,7 @@
   border-color: rgba(229,154,24,0.45);
   color: var(--accent, #e59a18);
 }
-#ps-list-float .ps-float-close {
-  flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  border: 1px solid var(--border, #2a3224);
-  background: #1a2018;
-  color: #f0f4ee;
-  font-size: 18px;
-  font-weight: 800;
-  cursor: pointer;
-  line-height: 1;
-}
-#ps-list-float .ps-float-close:hover {
-  border-color: var(--accent, #e59a18);
-  color: var(--accent, #e59a18);
-}
+/* Close button styles live with .ps-float-head-actions above (Share | Sync | Close) */
 /* Column head actions (⚙ share −) — Plan parity */
 #ps-list-float .list-col-head {
   display: flex;
@@ -746,26 +744,43 @@
     flex-direction: column;
   }
   #ps-list-float .ps-float-nav {
-    flex: 0 0 auto;
-    width: 100%;
-    max-height: 88px;
-    border-right: 0;
-    border-bottom: 1px solid var(--border, #2a3224);
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
-    gap: 6px;
-    padding: 8px;
+    display: none !important;
   }
-  #ps-list-float .ps-float-nav .ps-nav-label { display: none; }
-  #ps-list-float .ps-float-nav .ps-nav-item {
-    flex: 0 0 auto;
-    white-space: nowrap;
-  }
+  /* Plan mobile: section tabs as pills under title */
   #ps-list-float .ps-col-tabs {
     display: flex !important;
+    flex-wrap: nowrap;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex: 0 0 auto;
+    width: 100%;
+    margin: 0 0 10px;
+    padding: 6px 2px 10px;
+    border-bottom: 1px solid var(--border, #2a3224);
+    -webkit-overflow-scrolling: touch;
+    background: transparent;
+  }
+  #ps-list-float .ps-col-tab {
+    flex: 0 0 auto;
+    padding: 8px 14px !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    border-radius: 999px !important;
+    white-space: nowrap;
+  }
+  #ps-list-float .ps-float-main-title { display: none; }
+  #ps-list-float .ps-float-sub { display: none; }
+  #ps-list-float .ps-float-main {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+  #ps-list-float .ps-float-triad-wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
   }
   #ps-list-float .list-triad {
     flex-direction: column;
