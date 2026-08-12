@@ -3886,18 +3886,7 @@
     .state-border-line {
       pointer-events: none;
     }
-    /* Fade ImageOverlay must never paint a white rect under transparent PNG */
-    .state-fade-overlay,
-    .leaflet-image-layer.state-fade-overlay,
-    .leaflet-pane[name="stateFadePane"] img,
-    .leaflet-pane.stateFadePane img {
-      background: transparent !important;
-      background-color: transparent !important;
-      border: 0 !important;
-      outline: none !important;
-      box-shadow: none !important;
-      -webkit-user-drag: none;
-    }
+
     .mdm-rut-line {
       margin-top: 4px;
       font-size: 11px;
@@ -11129,7 +11118,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.20">V8.0.20</span>
+      <span class="brand-version" aria-label="Version 8.0.21">V8.0.21</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -12706,7 +12695,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.20';
+    const APP_VERSION = '8.0.21';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -20738,11 +20727,9 @@
     var ACTIVE_STATE_RING = AL_STATE_RING;
 
     /**
-     * Dim everything outside the selected state + draw a single crisp border.
-     *
-     * Border = exact AL_STATE_RING (red, on the state line).
-     * Fade = true distance-from-border field (canvas), so the gradient is the
-     * same all the way around — no stacked polygon bands that darken at folds.
+     * Dim everything outside Alabama + red border on the state line.
+     * No distance fade — even dim so neighbors stay readable near the border.
+     * Outside fill ~50% brighter than the old heavy mask (~0.82 → ~0.41).
      */
     function closedStateRing(ring) {
       if (!ring || !ring.length) return [];
@@ -20752,241 +20739,6 @@
       if (a0[0] !== aN[0] || a0[1] !== aN[1]) r.push([a0[0], a0[1]]);
       return r;
     }
-    function decimateRingPts(src, maxPts) {
-      if (!src || src.length <= maxPts) return src.slice();
-      var step = Math.ceil(src.length / maxPts);
-      var out = [];
-      for (var di = 0; di < src.length; di += step) {
-        if (src[di]) out.push([src[di][0], src[di][1]]);
-      }
-      return out.length >= 4 ? out : src.slice();
-    }
-    /** Point-in-ring, pts are [lat,lng]; ray cast on lng */
-    function pointInLatLngRing(lat, lng, ring) {
-      if (!ring || ring.length < 3) return false;
-      var inside = false;
-      for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-        var yi = ring[i][0], xi = ring[i][1];
-        var yj = ring[j][0], xj = ring[j][1];
-        var hit = ((yi > lat) !== (yj > lat)) &&
-          (lng < (xj - xi) * (lat - yi) / ((yj - yi) || 1e-15) + xi);
-        if (hit) inside = !inside;
-      }
-      return inside;
-    }
-    /** Min distance in miles from (lat,lng) to polyline ring [lat,lng][] */
-    function distMilesToRing(lat, lng, ring) {
-      if (!ring || ring.length < 2) return 1e9;
-      var cosLat = Math.cos((lat * Math.PI) / 180) || 0.85;
-      var mLat = 69, mLng = 69 * cosLat; // mi per degree
-      var best = 1e18;
-      for (var i = 0; i < ring.length - 1; i++) {
-        var a = ring[i], b = ring[i + 1];
-        if (!a || !b) continue;
-        // Project into local mi plane around sample point
-        var ax = (a[1] - lng) * mLng, ay = (a[0] - lat) * mLat;
-        var bx = (b[1] - lng) * mLng, by = (b[0] - lat) * mLat;
-        var abx = bx - ax, aby = by - ay;
-        var t = 0;
-        var ab2 = abx * abx + aby * aby;
-        if (ab2 > 1e-12) {
-          // vector from A to origin (0,0) is (-ax,-ay)
-          t = (-ax * abx - ay * aby) / ab2;
-          if (t < 0) t = 0;
-          else if (t > 1) t = 1;
-        }
-        var px = ax + abx * t, py = ay + aby * t;
-        var d = Math.sqrt(px * px + py * py);
-        if (d < best) best = d;
-      }
-      // Also last→first if not closed
-      var a0 = ring[0], aN = ring[ring.length - 1];
-      if (a0 && aN && (a0[0] !== aN[0] || a0[1] !== aN[1])) {
-        var ax2 = (aN[1] - lng) * mLng, ay2 = (aN[0] - lat) * mLat;
-        var bx2 = (a0[1] - lng) * mLng, by2 = (a0[0] - lat) * mLat;
-        var abx2 = bx2 - ax2, aby2 = by2 - ay2;
-        var ab22 = abx2 * abx2 + aby2 * aby2;
-        var t2 = 0;
-        if (ab22 > 1e-12) {
-          t2 = (-ax2 * abx2 - ay2 * aby2) / ab22;
-          if (t2 < 0) t2 = 0;
-          else if (t2 > 1) t2 = 1;
-        }
-        var px2 = ax2 + abx2 * t2, py2 = ay2 + aby2 * t2;
-        var d2 = Math.sqrt(px2 * px2 + py2 * py2);
-        if (d2 < best) best = d2;
-      }
-      return best;
-    }
-
-    // Cached distance field: one sample per cell over AL + fade pad (built once per ring)
-    var _alFadeField = null;
-    var FADE_MAX_MI = 20;
-    var FADE_FAR_OP = 0.84;
-
-    function buildAlFadeField(ring) {
-      var pts = decimateRingPts(closedStateRing(ring), 180);
-      // Drop closing duplicate for edge loop
-      if (pts.length > 1 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1]) {
-        pts = pts.slice(0, -1);
-      }
-      var minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
-      for (var i = 0; i < pts.length; i++) {
-        if (pts[i][0] < minLat) minLat = pts[i][0];
-        if (pts[i][0] > maxLat) maxLat = pts[i][0];
-        if (pts[i][1] < minLng) minLng = pts[i][1];
-        if (pts[i][1] > maxLng) maxLng = pts[i][1];
-      }
-      // Pad ~22 mi so field covers full fade
-      var padLat = 22 / 69;
-      var padLng = 22 / (69 * Math.cos((((minLat + maxLat) / 2) * Math.PI) / 180) || 0.85);
-      minLat -= padLat; maxLat += padLat;
-      minLng -= padLng; maxLng += padLng;
-      // ~1.5 mi per cell — smooth enough, fast enough
-      var cols = 200;
-      var rows = Math.max(120, Math.round(cols * ((maxLat - minLat) / Math.max(0.01, maxLng - minLng))));
-      if (rows > 280) rows = 280;
-      var field = new Float32Array(cols * rows); // miles outside edge; 0 = inside/on border
-      var closed = closedStateRing(pts);
-      for (var r = 0; r < rows; r++) {
-        var lat = maxLat - ((r + 0.5) / rows) * (maxLat - minLat);
-        for (var c = 0; c < cols; c++) {
-          var lng = minLng + ((c + 0.5) / cols) * (maxLng - minLng);
-          var idx = r * cols + c;
-          if (pointInLatLngRing(lat, lng, closed)) {
-            field[idx] = 0;
-          } else {
-            field[idx] = distMilesToRing(lat, lng, closed);
-          }
-        }
-      }
-      return {
-        field: field,
-        cols: cols,
-        rows: rows,
-        minLat: minLat,
-        maxLat: maxLat,
-        minLng: minLng,
-        maxLng: maxLng,
-        closed: closed
-      };
-    }
-
-    function sampleAlFadeMiles(field, lat, lng) {
-      if (!field) return FADE_MAX_MI + 1;
-      if (lat < field.minLat || lat > field.maxLat || lng < field.minLng || lng > field.maxLng) {
-        return FADE_MAX_MI + 1; // outside field → full dark
-      }
-      var u = (lng - field.minLng) / (field.maxLng - field.minLng);
-      var v = (field.maxLat - lat) / (field.maxLat - field.minLat);
-      var x = u * (field.cols - 1);
-      var y = v * (field.rows - 1);
-      var x0 = Math.floor(x), y0 = Math.floor(y);
-      var x1 = Math.min(field.cols - 1, x0 + 1);
-      var y1 = Math.min(field.rows - 1, y0 + 1);
-      var fx = x - x0, fy = y - y0;
-      var f00 = field.field[y0 * field.cols + x0];
-      var f10 = field.field[y0 * field.cols + x1];
-      var f01 = field.field[y1 * field.cols + x0];
-      var f11 = field.field[y1 * field.cols + x1];
-      var a = f00 * (1 - fx) + f10 * fx;
-      var b = f01 * (1 - fx) + f11 * fx;
-      return a * (1 - fy) + b * fy;
-    }
-
-    /** Opacity 0..FADE_FAR_OP from miles past the border (smooth, single channel) */
-    function fadeOpacityFromMiles(mi) {
-      if (mi <= 0) return 0;
-      if (mi >= FADE_MAX_MI) return FADE_FAR_OP;
-      var t = mi / FADE_MAX_MI;
-      // Smooth ease — no hard steps; same curve everywhere
-      var ease = t * t * (3 - 2 * t);
-      // Soft start near border, full dark by 20 mi
-      return FADE_FAR_OP * (0.08 + 0.92 * ease);
-    }
-
-    /**
-     * Geographic ImageOverlay for fade — zooms/pans with the map like tiles
-     * (no screen-space canvas that stretches during zoom).
-     */
-    var _stateFadeImage = null;
-    var _stateFadeImageUrl = null;
-    var _stateFarMask = null;
-
-    /** Simple outward inflate in miles (for far-mask hole only — not the red border). */
-    function inflateRingMilesSimple(src, miles) {
-      if (!src || src.length < 4 || !miles) return closedStateRing(src);
-      var pts = src.slice();
-      if (pts.length > 1 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1]) {
-        pts = pts.slice(0, -1);
-      }
-      if (pts.length < 3) return closedStateRing(src);
-      var area = 0;
-      for (var ai = 0; ai < pts.length; ai++) {
-        var aj = (ai + 1) % pts.length;
-        area += pts[ai][1] * pts[aj][0] - pts[aj][1] * pts[ai][0];
-      }
-      var sign = area >= 0 ? 1 : -1;
-      var out = [];
-      for (var i = 0; i < pts.length; i++) {
-        var prev = pts[(i - 1 + pts.length) % pts.length];
-        var cur = pts[i];
-        var next = pts[(i + 1) % pts.length];
-        var cosLat = Math.cos((cur[0] * Math.PI) / 180) || 0.85;
-        var mPerDegLat = 69 * 1609.344;
-        var mPerDegLng = 69 * 1609.344 * cosLat;
-        var e1x = (cur[1] - prev[1]) * mPerDegLng, e1y = (cur[0] - prev[0]) * mPerDegLat;
-        var e2x = (next[1] - cur[1]) * mPerDegLng, e2y = (next[0] - cur[0]) * mPerDegLat;
-        var nx = sign * (-(e1y + e2y));
-        var ny = sign * (e1x + e2x);
-        var len = Math.sqrt(nx * nx + ny * ny) || 1e-9;
-        nx /= len; ny /= len;
-        var meters = miles * 1609.344;
-        out.push([cur[0] + (ny * meters) / mPerDegLat, cur[1] + (nx * meters) / mPerDegLng]);
-      }
-      out.push([out[0][0], out[0][1]]);
-      return out;
-    }
-
-    function buildFadeImageFromField(field) {
-      if (!field || !field.field) return null;
-      var c = document.createElement('canvas');
-      c.width = field.cols;
-      c.height = field.rows;
-      var ctx = c.getContext('2d');
-      if (!ctx) return null;
-      // Fully clear — never leave white opaque pixels
-      ctx.clearRect(0, 0, c.width, c.height);
-      var img = ctx.createImageData(field.cols, field.rows);
-      var data = img.data;
-      var R = 14, G = 17, B = 13;
-      for (var i = 0; i < field.field.length; i++) {
-        var mi = field.field[i];
-        var op = fadeOpacityFromMiles(mi);
-        var o = i * 4;
-        if (op < 0.002) {
-          // Fully transparent (inside AL) — no RGB flash
-          data[o] = 0;
-          data[o + 1] = 0;
-          data[o + 2] = 0;
-          data[o + 3] = 0;
-        } else {
-          data[o] = R;
-          data[o + 1] = G;
-          data[o + 2] = B;
-          data[o + 3] = Math.round(op * 255);
-        }
-      }
-      ctx.putImageData(img, 0, 0);
-      var url = '';
-      try { url = c.toDataURL('image/png'); } catch (e) { return null; }
-      var bounds = L.latLngBounds(
-        [field.minLat, field.minLng],
-        [field.maxLat, field.maxLng]
-      );
-      return { url: url, bounds: bounds };
-    }
-
     function drawActiveStateMask() {
       if (!map || typeof L === 'undefined') return;
       var ringSrc = (typeof ACTIVE_STATE_RING !== 'undefined' && ACTIVE_STATE_RING && ACTIVE_STATE_RING.length)
@@ -20994,6 +20746,20 @@
         : AL_STATE_RING;
       var ring = closedStateRing(ringSrc);
       if (ring.length < 4) return;
+
+      // Remove any old fade image overlay from the experimental fade work
+      try {
+        if (typeof _stateFadeImage !== 'undefined' && _stateFadeImage) {
+          try { map.removeLayer(_stateFadeImage); } catch (e0) {}
+          _stateFadeImage = null;
+        }
+      } catch (e1) {}
+      try {
+        if (map.getPane && map.getPane('stateFadePane')) {
+          var pane = map.getPane('stateFadePane');
+          while (pane && pane.firstChild) pane.removeChild(pane.firstChild);
+        }
+      } catch (e2) {}
 
       if (!stateMaskGroup) {
         stateMaskGroup = L.layerGroup();
@@ -21006,79 +20772,28 @@
         stateMaskSvgRenderer = L.svg({ padding: 0.5 });
       }
 
-      // Build / reuse distance field once per ring
-      if (!_alFadeField || _alFadeField._ringLen !== ring.length) {
-        _alFadeField = buildAlFadeField(ring);
-        _alFadeField._ringLen = ring.length;
-        _stateFadeImageUrl = null;
-        if (_stateFadeImage) {
-          try { map.removeLayer(_stateFadeImage); } catch (eR) {}
-          _stateFadeImage = null;
-        }
-      }
-
-      // Geographic fade image — scales correctly with zoom (same as map tiles)
-      if (!_stateFadeImage || !map.hasLayer(_stateFadeImage)) {
-        var built = buildFadeImageFromField(_alFadeField);
-        if (built && built.url) {
-          _stateFadeImageUrl = built.url;
-          if (!map.getPane('stateFadePane')) {
-            map.createPane('stateFadePane');
-            map.getPane('stateFadePane').style.zIndex = 350;
-            map.getPane('stateFadePane').style.pointerEvents = 'none';
-            map.getPane('stateFadePane').style.background = 'transparent';
-          }
-          _stateFadeImage = L.imageOverlay(built.url, built.bounds, {
-            opacity: 1,
-            interactive: false,
-            className: 'state-fade-overlay',
-            pane: 'stateFadePane'
-          });
-          try {
-            _stateFadeImage.addTo(map);
-            // Kill any browser/Leaflet white rect under transparent PNG
-            var el = _stateFadeImage.getElement && _stateFadeImage.getElement();
-            if (el) {
-              el.style.background = 'transparent';
-              el.style.backgroundColor = 'transparent';
-              el.style.border = '0';
-              el.style.outline = 'none';
-              el.setAttribute('draggable', 'false');
-            }
-            _stateFadeImage.on('load', function () {
-              var e2 = _stateFadeImage.getElement && _stateFadeImage.getElement();
-              if (e2) {
-                e2.style.background = 'transparent';
-                e2.style.backgroundColor = 'transparent';
-              }
-            });
-          } catch (eAdd) {}
-        }
-      }
-
-      // Beyond 20 mi: solid dark. Hole follows state outline (NOT a rectangle) so no white box.
       var outer = [[-90, -180], [-90, 180], [90, 180], [90, -180], [-90, -180]];
-      var fadeBase = decimateRingPts(ring, 200);
-      var farHole = inflateRingMilesSimple(fadeBase, FADE_MAX_MI + 0.5);
-      stateMaskGroup.addLayer(L.polygon([outer, farHole], {
+      // Even dim outside AL (no gradient, no bands). ~0.41 ≈ 50% brighter than old ~0.82 mask.
+      var OUTSIDE_DIM = 0.41;
+      stateMaskGroup.addLayer(L.polygon([outer, ring], {
         stroke: false,
         color: 'transparent',
         weight: 0,
         fillColor: '#0e110d',
-        fillOpacity: FADE_FAR_OP,
+        fillOpacity: OUTSIDE_DIM,
         fillRule: 'evenodd',
         interactive: false,
         bubblingMouseEvents: false,
-        className: 'state-outside-mask state-outside-mask-far',
+        className: 'state-outside-mask',
         smoothFactor: 0,
         renderer: stateMaskSvgRenderer
       }));
 
-      // Red border on the true state line (full-res) — drawn above fade
+      // Red border exactly on the Alabama state line
       var borderHalo = L.polyline(ring, {
         color: '#1a0a0a',
         weight: 4.5,
-        opacity: 0.55,
+        opacity: 0.5,
         interactive: false,
         bubblingMouseEvents: false,
         className: 'state-border-halo',
@@ -21101,8 +20816,7 @@
       });
       stateMaskGroup.addLayer(borderHalo);
       stateMaskGroup.addLayer(border);
-      try { stateMaskGroup.bringToFront(); } catch (eBk) {}
-      // Keep pan locked to active state (+ small pad) whenever mask is redrawn
+      try { stateMaskGroup.bringToBack(); } catch (eBk) {}
       if (typeof applyActiveStateMapBounds === 'function') {
         try { applyActiveStateMapBounds(); } catch (eB) {}
       }
@@ -33484,12 +33198,34 @@ function togglePinIconPicker() {
     }
     function selectEventColor(c, el) { currentSelectedColor = c; document.querySelectorAll('.color-dot-btn').forEach(b => b.classList.remove('selected')); el.classList.add('selected'); }
     function setEventFormVisibility(v) {
-      document.getElementById('event-form-container').style.display = v ? 'flex' : 'none';
-      document.getElementById('add-event-tab-btn').style.display = v ? 'none' : 'inline-block';
+      var form = document.getElementById('event-form-container');
+      var addBtn = document.getElementById('add-event-tab-btn');
+      var box = document.getElementById('calendar-events-section');
+      var calAddBtn = document.getElementById('cal-add-event-btn');
+      // Form lives inside #calendar-events-section — must show parent or Add Event looks broken
+      if (v) {
+        if (box) {
+          box.style.display = 'block';
+          try { box.classList.remove('events-box--empty'); } catch (eB) {}
+        }
+        if (calAddBtn) calAddBtn.style.display = 'none';
+        if (form) form.style.display = 'flex';
+        if (addBtn) addBtn.style.display = 'none';
+      } else {
+        if (form) form.style.display = 'none';
+        if (addBtn) addBtn.style.display = 'inline-block';
+      }
       // #109: Cancel always visible while form is open (add or edit)
       var cancelBtn = document.getElementById('cancel-edit-btn');
       if (cancelBtn) cancelBtn.style.display = v ? 'inline-block' : 'none';
       if (v) {
+        // Ensure a day is selected so Save works
+        if (!selectedDate) {
+          try {
+            selectedDate = new Date();
+            selectedDate.setHours(0, 0, 0, 0);
+          } catch (eD) {}
+        }
         var base = selectedDate ? calYmd(selectedDate) : calYmd(new Date());
         var sd = document.getElementById('event-start-date');
         var ed = document.getElementById('event-end-date');
@@ -33501,10 +33237,22 @@ function togglePinIconPicker() {
           if (sd && !sd.value) sd.value = base;
           if (ed && !ed.value) ed.value = base;
         }
-        populateEventMapScopeSelect(document.getElementById('event-map-scope') && document.getElementById('event-map-scope').value);
-        updateEventLocationLabelUi();
+        try {
+          populateEventMapScopeSelect(document.getElementById('event-map-scope') && document.getElementById('event-map-scope').value);
+        } catch (eP) {}
+        try { updateEventLocationLabelUi(); } catch (eU) {}
+        try { if (typeof wireEventMapScopeBtn === 'function') wireEventMapScopeBtn(); } catch (eW) {}
+        // Focus title so user sees the form opened
+        try {
+          var ti = document.getElementById('event-title-input');
+          if (ti) setTimeout(function () { try { ti.focus(); } catch (eF) {} }, 30);
+        } catch (eF2) {}
+      } else {
+        // Restore empty-day chrome (Add on calendar vs trips box)
+        try { if (typeof updateEventsList === 'function') updateEventsList(); } catch (eR) {}
       }
     }
+    window.setEventFormVisibility = setEventFormVisibility;
     function saveEvent() {
       if (!selectedDate && !(document.getElementById('event-start-date') && document.getElementById('event-start-date').value)) {
         alert('Pick a calendar day first.');
@@ -33912,12 +33660,26 @@ function togglePinIconPicker() {
       const hiddenDay = hiddenEventsOnDay(dateStr);
       // #83: hide trips/events box entirely when day has no events; Add lives on calendar
       var hasAny = (dayEvents && dayEvents.length) || (hiddenDay && hiddenDay.length);
-      if (!hasAny) {
+      // Keep section visible while Add/Edit form is open (form lives inside the box)
+      var formOpen = false;
+      try {
+        var formEl = document.getElementById('event-form-container');
+        formOpen = !!(formEl && formEl.style.display === 'flex');
+      } catch (eFo) {}
+      if (!hasAny && !formOpen) {
         if (box) {
           box.style.display = 'none';
           try { box.classList.add('events-box--empty'); } catch (e0) {}
         }
         if (calAddBtn) calAddBtn.style.display = '';
+        return;
+      }
+      if (!hasAny && formOpen) {
+        if (box) {
+          box.style.display = 'block';
+          try { box.classList.remove('events-box--empty'); } catch (e1) {}
+        }
+        if (calAddBtn) calAddBtn.style.display = 'none';
         return;
       }
       if (box) {
