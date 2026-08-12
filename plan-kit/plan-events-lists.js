@@ -329,63 +329,231 @@
     return { lists: nLists, bridge: bagN };
   }
 
-  function runFullSync() {
+  function countPackItems(cols) {
     var n = 0;
-    try { n = syncPlanIntoHuntCalendar(); } catch (e1) { console.warn(e1); }
-    try { syncListsFromStorage(); } catch (e2) {}
-    if (state.floatOpen) {
-      renderFloatNav();
-      renderFloatMain();
-    }
-    toast('Synced Plan events & lists' + (n ? (' · ' + n + ' calendar rows') : ''));
+    (cols || []).forEach(function (c) { n += (c && c.items ? c.items.length : 0); });
     return n;
   }
-  function findListForHuntEvent(ev) {
+
+  /** Resolve best listPack for a Hunt event from event row + bridge bag. */
+  function resolvePackForEvent(ev) {
     if (!ev) return null;
-    var store = loadFreeListsStore();
-    var named = store.named || [];
-    // Direct eventId link
+    var bag = loadSlayerBag();
+    var pack = null;
+    if (ev.listPack && (ev.listPack.columns || ev.listPack.name)) pack = ev.listPack;
+    else if (ev.planListId && bag['list:' + ev.planListId]) pack = bag['list:' + ev.planListId];
+    else if (bag['hunt:' + ev.id]) pack = bag['hunt:' + ev.id];
+    else if (bag[String(ev.id)]) pack = bag[String(ev.id)];
+    else if (ev.planEventId && bag[String(ev.planEventId)]) pack = bag[String(ev.planEventId)];
+    else if (ev.planEventId && bag['list:' + ev.planEventId]) pack = bag['list:' + ev.planEventId];
+    return pack && (pack.columns || pack.name) ? pack : null;
+  }
+
+  /** Write pack into bridge bag under stable keys for cross-site / re-open. */
+  function writePackToBag(ev, pack) {
+    if (!ev || !pack) return;
+    try {
+      var bag = loadSlayerBag();
+      if (ev.planEventId) bag[String(ev.planEventId)] = pack;
+      bag['hunt:' + String(ev.id)] = pack;
+      if (ev.planListId) bag['list:' + String(ev.planListId)] = pack;
+      if (pack.listId) bag['list:' + String(pack.listId)] = pack;
+      bag[String(ev.id)] = pack;
+      saveJson(SLAYER_EVENT_LISTS_KEY, bag);
+    } catch (eB) {}
+  }
+
+  /**
+   * Merge cloud/local pack into free-lists store (prefer richer / newer pack).
+   * #107: never keep a stale empty list when bag/cloud has items.
+   */
+  function mergePackIntoNamedList(existing, pack, ev) {
+    if (!pack) return existing || null;
+    var personalCol = null;
+    if (existing && existing.columns) {
+      personalCol = existing.columns.find(function (c) { return c && String(c.id) === 'personal'; }) || null;
+    }
+    var packTs = pack.updated_at ? new Date(pack.updated_at).getTime() : 0;
+    var localTs = existing && existing.updated_at ? new Date(existing.updated_at).getTime() : 0;
+    var packItems = countPackItems(pack.columns);
+    var localItems = existing ? countPackItems(existing.columns) : 0;
+    var preferPack = !existing || packItems > localItems || (packTs && packTs >= localTs && packItems >= localItems);
+    if (!preferPack && existing) return ensureColumns(existing);
+
+    var list = {
+      id: (existing && existing.id) || pack.listId || (ev && ('bridge_' + ev.id)) || uid(),
+      name: pack.name || (existing && existing.name) || (ev ? huntEventName(ev) + ' · lists' : 'List'),
+      eventId: (pack.eventId || (existing && existing.eventId) || (ev && (ev.planEventId || ev.id))) || null,
+      members: pack.members || (existing && existing.members) || [],
+      invite_code: pack.invite_code || (existing && existing.invite_code) || null,
+      columns: (pack.columns || []).map(function (c) {
+        return {
+          id: c.id || uid(),
+          name: c.name || c.id,
+          items: (c.items || []).map(function (it) {
+            return Object.assign({ id: it.id || uid(), claims: it.claims || {} }, it);
+          }),
+          minimized: !!c.minimized,
+          colors: c.colors || null
+        };
+      }),
+      updated_at: pack.updated_at || (existing && existing.updated_at) || new Date().toISOString()
+    };
+    // Keep private My checklist if pack omitted it
+    if (personalCol) {
+      var hasP = (list.columns || []).some(function (c) { return c && String(c.id) === 'personal'; });
+      if (!hasP) list.columns.push(personalCol);
+    }
+    ensureColumns(list);
+    saveNamedList(list);
+    if (ev) writePackToBag(ev, {
+      listId: list.id,
+      name: list.name,
+      eventId: list.eventId,
+      columns: list.columns.filter(function (c) { return c && String(c.id) !== 'personal'; }),
+      updated_at: list.updated_at
+    });
+    return list;
+  }
+
+  function findExistingListForEvent(ev) {
+    if (!ev) return null;
+    var named = allNamedLists();
     var hit = named.find(function (n) {
       return n && n.eventId && String(n.eventId) === String(ev.id);
     });
-    if (hit) return ensureColumns(hit);
+    if (hit) return hit;
     if (ev.planListId) {
       hit = named.find(function (n) { return String(n.id) === String(ev.planListId); });
-      if (hit) return ensureColumns(hit);
+      if (hit) return hit;
     }
     if (ev.planEventId) {
       hit = named.find(function (n) {
         return n && n.eventId && String(n.eventId) === String(ev.planEventId);
       });
-      if (hit) return ensureColumns(hit);
+      if (hit) return hit;
     }
-    // Bridge bag → materialize into free lists for editing
-    var bag = loadSlayerBag();
-    var pack = null;
-    if (ev.listPack) pack = ev.listPack;
-    else if (ev.planListId && bag['list:' + ev.planListId]) pack = bag['list:' + ev.planListId];
-    else if (bag['hunt:' + ev.id]) pack = bag['hunt:' + ev.id];
-    else if (bag[String(ev.id)]) pack = bag[String(ev.id)];
-    else if (ev.planEventId && bag[String(ev.planEventId)]) pack = bag[String(ev.planEventId)];
-    if (pack && (pack.columns || pack.name)) {
-      var list = {
-        id: pack.listId || ('bridge_' + ev.id),
-        name: pack.name || (huntEventName(ev) + ' · lists'),
-        eventId: pack.eventId || ev.planEventId || ev.id,
-        columns: (pack.columns || []).map(function (c) {
-          return {
-            id: c.id || uid(),
-            name: c.name || c.id,
-            items: (c.items || []).map(function (it) {
-              return Object.assign({ id: it.id || uid(), claims: it.claims || {} }, it);
-            })
+    return null;
+  }
+
+  /** #107: pull plan_events.state.namedListPack into bag + free lists */
+  function pullPlanNamedListPacks() {
+    try {
+      var sb = global.RegSlayerCloud && global.RegSlayerCloud.getClient && global.RegSlayerCloud.getClient();
+      if (!sb) return Promise.resolve(0);
+      return sb.rpc('list_my_plan_events').then(function (res) {
+        if (!res || res.error || !res.data) return 0;
+        var n = 0;
+        (res.data || []).forEach(function (pev) {
+          if (!pev || !pev.id) return;
+          var pack = (pev.state && pev.state.namedListPack) || null;
+          if (!pack || !pack.columns) return;
+          var fakeEv = {
+            id: pev.hunt_event_id || ('plan_' + pev.id),
+            planEventId: String(pev.id),
+            planListId: pack.listId || null,
+            text: pev.name || 'Event',
+            listPack: pack
           };
-        })
-      };
-      ensureColumns(list);
-      saveNamedList(list);
-      return list;
+          writePackToBag(fakeEv, pack);
+          mergePackIntoNamedList(findExistingListForEvent(fakeEv), pack, fakeEv);
+          n++;
+        });
+        return n;
+      }).catch(function () { return 0; });
+    } catch (e) {
+      return Promise.resolve(0);
     }
+  }
+
+  /** After calendar cloud pull: re-merge every event listPack into free lists */
+  function materializeAllEventListPacks() {
+    var n = 0;
+    try {
+      var CE = global.RegSlayerCalendarEvents;
+      var all = CE && typeof CE.all === 'function' ? CE.all() : [];
+      (all || []).forEach(function (ev) {
+        if (!ev) return;
+        var pack = resolvePackForEvent(ev);
+        if (!pack) return;
+        mergePackIntoNamedList(findExistingListForEvent(ev), pack, ev);
+        n++;
+      });
+    } catch (eM) {}
+    return n;
+  }
+
+  function refreshFloatAfterSync() {
+    try {
+      if (state.focusEventId && global.RegSlayerCalendarEvents &&
+          typeof global.RegSlayerCalendarEvents.getById === 'function') {
+        var fev = global.RegSlayerCalendarEvents.getById(state.focusEventId);
+        if (fev) {
+          var fl = findListForHuntEvent(fev);
+          if (fl) state.activeListId = fl.id;
+        }
+      }
+    } catch (eF) {}
+    if (state.floatOpen) {
+      renderFloatNav();
+      renderFloatMain();
+    }
+    try {
+      if (typeof global.renderCalendar === 'function') global.renderCalendar();
+      if (typeof global.updateEventsList === 'function') global.updateEventsList();
+    } catch (eR) {}
+  }
+
+  /**
+   * #107 Sync on list float: pull cloud calendar + Plan namedListPack,
+   * merge into free lists, refresh open float for this event.
+   */
+  function runFullSync() {
+    toast('Syncing lists from cloud…');
+    var nCal = 0;
+    var cloudOk = false;
+    function afterLocal() {
+      try { nCal = syncPlanIntoHuntCalendar(); } catch (e1) { console.warn(e1); }
+      try { syncListsFromStorage(); } catch (e2) {}
+      try { materializeAllEventListPacks(); } catch (e3) {}
+      refreshFloatAfterSync();
+      toast(
+        (cloudOk ? 'Synced from cloud' : 'Synced local Plan data') +
+        (nCal ? (' · ' + nCal + ' calendar rows') : '')
+      );
+      return nCal;
+    }
+    var chain = Promise.resolve();
+    try {
+      if (global.RegSlayerCalendarEvents && typeof global.RegSlayerCalendarEvents.pullCloud === 'function') {
+        chain = chain.then(function () {
+          return Promise.resolve(global.RegSlayerCalendarEvents.pullCloud()).then(function () {
+            cloudOk = true;
+          }).catch(function () {});
+        });
+      }
+    } catch (eP) {}
+    chain = chain.then(function () {
+      return pullPlanNamedListPacks().then(function (nP) {
+        if (nP) cloudOk = true;
+      });
+    });
+    return chain.then(function () { return afterLocal(); }).catch(function (err) {
+      console.warn('runFullSync', err);
+      afterLocal();
+      toast('Sync finished with errors — check connection');
+      return nCal;
+    });
+  }
+  function findListForHuntEvent(ev) {
+    if (!ev) return null;
+    var existing = findExistingListForEvent(ev);
+    var pack = resolvePackForEvent(ev);
+    // Prefer merge when pack has data (stale local empty list fix — #107)
+    if (pack) {
+      return mergePackIntoNamedList(existing, pack, ev);
+    }
+    if (existing) return ensureColumns(existing);
     // Create empty packing list linked to this Hunt event
     var created = {
       id: uid(),

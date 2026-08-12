@@ -7839,25 +7839,22 @@
     .water-card strong { font-size: 15px; color: #fff; display: block; margin-top: 2px; }
     .flooding-tag { color: var(--danger) !important; font-weight: 900 !important; animation: blink 1.2s infinite; }
 
-    /* NWS weather alerts — same footprint zone as water panel; red; max 3×3 then scroll */
+    /* NWS weather alerts — chips only (#108: no tall “Weather Alerts” header) */
     .weather-alerts-panel {
-      background: rgba(180, 28, 28, 0.1);
+      background: rgba(180, 28, 28, 0.08);
       border: 1px solid #e53935;
-      border-radius: 10px;
-      padding: 10px 12px;
-      /* Cap height near a typical water-level block so it never dominates the dashboard */
-      max-height: 168px;
+      border-radius: 8px;
+      padding: 4px 6px;
+      max-height: 112px;
       box-sizing: border-box;
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 0;
     }
+    /* #108: hide section title + NWS badge — chips only */
     .weather-alerts-panel .wx-alerts-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-shrink: 0;
+      display: none !important;
     }
     .weather-alerts-panel .wx-alerts-head strong {
       color: #ef4444;
@@ -7877,7 +7874,7 @@
       gap: 4px;
       flex: 1 1 auto;
       min-height: 0;
-      max-height: 120px; /* ~3 rows */
+      max-height: 104px; /* ~3 rows of chips */
       overflow-x: hidden;
       overflow-y: auto;
       align-content: start;
@@ -11097,7 +11094,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.6">V8.0.6</span>
+      <span class="brand-version" aria-label="Version 8.0.7">V8.0.7</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -11278,9 +11275,8 @@
                   </label>
                 </div>
                 <label style="display:block;font-size:10px;color:var(--muted);font-weight:700;margin-top:6px;max-width:52%;">Select map
-                  <select id="event-map-scope" style="width:100%;margin-top:2px;padding:8px 8px;font-size:12px;box-sizing:border-box;font-weight:700;border:1px solid var(--accent);border-radius:6px;background:var(--panel);color:var(--ink);" title="Map that opens when you load this event">
+                  <select id="event-map-scope" style="width:100%;margin-top:2px;padding:8px 8px;font-size:12px;box-sizing:border-box;font-weight:700;border:1px solid var(--accent);border-radius:6px;background:var(--panel);color:var(--ink);" title="Map that opens when you load this event (My Maps only)">
                     <option value="personal">My personal map</option>
-                    <option value="all">All my maps (no auto-switch)</option>
                   </select>
                 </label>
                 <div class="event-people-loc-row">
@@ -11306,7 +11302,8 @@
                 </div>
                 <div style="display:flex;gap:6px;margin-top:6px;">
                   <button type="button" id="save-event-btn" onclick="saveEvent()" style="flex:1;background:var(--accent);border:none;color:#000;font-weight:bold;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;">Add Event</button>
-                  <button type="button" id="cancel-edit-btn" onclick="clearEventForm()" style="background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;display:none;">Cancel</button>
+                  <!-- #109: Cancel always available for add + edit -->
+                  <button type="button" id="cancel-edit-btn" onclick="clearEventForm()" style="background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;">Cancel</button>
                 </div>
               </div>
               <div id="calendar-events-list" style="font-size:12px;"></div>
@@ -12672,7 +12669,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.6';
+    const APP_VERSION = '8.0.7';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -20556,19 +20553,17 @@
         });
       }
       var miToDeg = 1 / 69;
-      // #105: many thin bands — gradual opacity 0→0.82 over ~15 mi
-      var fadeSteps = [
-        { mi: 1.5, op: 0.05 },
-        { mi: 3, op: 0.10 },
-        { mi: 4.5, op: 0.16 },
-        { mi: 6, op: 0.23 },
-        { mi: 7.5, op: 0.31 },
-        { mi: 9, op: 0.40 },
-        { mi: 10.5, op: 0.50 },
-        { mi: 12, op: 0.60 },
-        { mi: 13.5, op: 0.71 },
-        { mi: 15, op: 0.82 }
-      ];
+      // #112: double fade steps vs #105 — ~20 thin bands over ~15 mi (0.75 mi steps)
+      var fadeSteps = [];
+      for (var fi = 1; fi <= 20; fi++) {
+        var t = fi / 20;
+        // Gentle ease-in so near-border stays clearer longer
+        var ease = t * t;
+        fadeSteps.push({
+          mi: Math.round(fi * 0.75 * 100) / 100,
+          op: Math.round((0.03 + 0.79 * ease) * 1000) / 1000
+        });
+      }
       var rings = [ring];
       fadeSteps.forEach(function (step) {
         rings.push(inflateRing(ring, step.mi * miToDeg));
@@ -32605,11 +32600,12 @@ function togglePinIconPicker() {
       var sel = document.getElementById('event-map-scope');
       if (!sel) return;
       var cur = selected || sel.value || 'personal';
-      sel.innerHTML =
-        '<option value="personal">My personal map</option>' +
-        '<option value="all">All my maps (no auto-switch)</option>' +
-        '<option value="" disabled>—— Shared maps you are on ——</option>';
+      // #111: only Settings → My Maps (personal default + private named + shared membership)
+      // No "all maps" / visit history clutter.
+      sel.innerHTML = '<option value="personal">My personal map</option>';
       function finishSelect() {
+        // If saved scope was "all" or missing, fall back to personal
+        if (cur === 'all') cur = 'personal';
         var found = false;
         for (var i = 0; i < sel.options.length; i++) {
           if (sel.options[i].value === cur) { sel.selectedIndex = i; found = true; break; }
@@ -32626,34 +32622,42 @@ function togglePinIconPicker() {
           pending--;
           if (pending <= 0) finishSelect();
         }
-        // Private named maps
+        // Same sources as Settings → My Maps → Not shared
         sb.rpc('list_my_private_maps').then(function (res) {
           var rows = (res && res.data) || [];
           if (!Array.isArray(rows) || !rows.length) { doneOne(); return; }
+          rows = rows.slice().sort(function (a, b) {
+            return String((a && a.name) || '').localeCompare(String((b && b.name) || ''));
+          });
           var grp = document.createElement('option');
           grp.disabled = true;
-          grp.textContent = '—— My private maps ——';
-          // Insert after first two options
-          if (sel.options.length >= 2) sel.add(grp, 2);
-          else sel.appendChild(grp);
+          grp.textContent = '—— My Maps · Not shared ——';
+          sel.appendChild(grp);
           rows.forEach(function (m) {
             if (!m || !m.id) return;
             var opt = document.createElement('option');
             opt.value = 'private:' + m.id;
-            opt.textContent = 'Private: ' + (m.name || 'Map');
+            opt.textContent = (m.name || 'Private map') + (m.is_default ? ' (default)' : '');
             sel.appendChild(opt);
           });
           doneOne();
         }).catch(function () { doneOne(); });
-        // Shared / party maps
+        // Same sources as Settings → My Maps → Shared
         sb.rpc('list_my_shared_maps').then(function (res) {
           var rows = (res && res.data) || [];
-          if (!Array.isArray(rows)) rows = [];
+          if (!Array.isArray(rows) || !rows.length) { doneOne(); return; }
+          rows = rows.slice().sort(function (a, b) {
+            return String((a && a.name) || '').localeCompare(String((b && b.name) || ''));
+          });
+          var grpS = document.createElement('option');
+          grpS.disabled = true;
+          grpS.textContent = '—— My Maps · Shared ——';
+          sel.appendChild(grpS);
           rows.forEach(function (m) {
             if (!m || !m.id) return;
             var opt = document.createElement('option');
             opt.value = 'shared:' + m.id;
-            opt.textContent = 'Shared: ' + (m.name || 'Map') + (m.code ? (' · ' + m.code) : '');
+            opt.textContent = (m.name || 'Shared map') + (m.code ? (' · ' + m.code) : '');
             sel.appendChild(opt);
           });
           doneOne();
@@ -32927,6 +32931,9 @@ function togglePinIconPicker() {
     function setEventFormVisibility(v) {
       document.getElementById('event-form-container').style.display = v ? 'flex' : 'none';
       document.getElementById('add-event-tab-btn').style.display = v ? 'none' : 'inline-block';
+      // #109: Cancel always visible while form is open (add or edit)
+      var cancelBtn = document.getElementById('cancel-edit-btn');
+      if (cancelBtn) cancelBtn.style.display = v ? 'inline-block' : 'none';
       if (v) {
         var base = selectedDate ? calYmd(selectedDate) : calYmd(new Date());
         var sd = document.getElementById('event-start-date');

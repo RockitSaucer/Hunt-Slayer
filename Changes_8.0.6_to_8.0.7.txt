@@ -1,0 +1,11 @@
+﻿# Changes 8.0.6 → 8.0.7 (site issues #107–#112)
+
+## Hunt / Reg
+- **#112 map fade:** double outside-state fade bands (~20 steps @ 0.75 mi) for smoother edge.
+- **#111 event map picker:** only Settings → My Maps (personal + private named + shared membership); removed “All my maps” clutter.
+- **#109 cancel add event:** Cancel always visible while Add/Edit form open.
+- **#108 weather alerts:** hide tall “Weather Alerts” header; chips-only compact panel.
+- **#107 list Sync:** Sync pulls map_calendar_events + Plan 
+amedListPack, merges into free lists (stale empty-list fix), refreshes float.
+
+Shell cache: reg-slayer-shell-v137
