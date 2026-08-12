@@ -11118,7 +11118,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.25">V8.0.25</span>
+      <span class="brand-version" aria-label="Version 8.0.26">V8.0.26</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -12695,7 +12695,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.25';
+    const APP_VERSION = '8.0.26';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -31953,8 +31953,28 @@ function togglePinIconPicker() {
               '</button>' +
             '</div>' +
           '</div>';
+        // Event location pick: tap an existing pin to use it (before popup / reveal)
+        function tryEventLocationFromPin(e) {
+          try {
+            if (!window.RegSlayerCalendarEvents ||
+                !window.RegSlayerCalendarEvents.getPendingLocationPick ||
+                !window.RegSlayerCalendarEvents.getPendingLocationPick()) {
+              return false;
+            }
+            try { if (e) L.DomEvent.stop(e); } catch (eS0) {}
+            try { if (m.closePopup) m.closePopup(); } catch (eCp) {}
+            var label = (loc.name && String(loc.name).trim()) ? String(loc.name).trim() : 'Saved pin';
+            if (typeof window.confirmEventLocationAt === 'function') {
+              window.confirmEventLocationAt(Number(loc.lat), Number(loc.lng), label);
+            }
+            return true;
+          } catch (ePickPin) {
+            return false;
+          }
+        }
         if (loc.hidden && !loc._tempReveal) {
           m.on('click', function(e) {
+            if (tryEventLocationFromPin(e)) return;
             try { L.DomEvent.stop(e); } catch (eS) {}
             loc._tempReveal = true;
             window._rsRevealPinId = String(loc.id);
@@ -31962,7 +31982,21 @@ function togglePinIconPicker() {
           });
         } else {
           m.bindPopup(popupHtml, { className: 'saved-item-popup map-dot-popup', closeButton: true, autoPan: false, maxWidth: 280, closeOnClick: false });
+          m.on('click', function(e) {
+            if (tryEventLocationFromPin(e)) {
+              try { m.closePopup(); } catch (eC2) {}
+            }
+          });
           m.on('popupopen', function() {
+            // Don't open popup while assigning event location
+            try {
+              if (window.RegSlayerCalendarEvents &&
+                  window.RegSlayerCalendarEvents.getPendingLocationPick &&
+                  window.RegSlayerCalendarEvents.getPendingLocationPick()) {
+                m.closePopup();
+                return;
+              }
+            } catch (ePo) {}
             var el = m.getPopup() && m.getPopup().getElement();
             if (el) {
               L.DomEvent.disableClickPropagation(el);
@@ -33007,45 +33041,38 @@ function togglePinIconPicker() {
         });
       }
       if (typeof showAppCopyToast === 'function') {
-        showAppCopyToast('<span class="act">Add location</span><br>Tap the map, then confirm for “' +
+        showAppCopyToast('<span class="act">Add location</span><br>Tap the map <strong>or an existing pin</strong> for “' +
           (name.replace(/</g, '&lt;')) + '”');
       } else {
-        try { alert('Tap the map to place a location for “' + name + '”'); } catch (eA) {}
+        try { alert('Tap the map or an existing pin for “' + name + '”'); } catch (eA) {}
       }
     }
     window.startEventLocationPick = startEventLocationPick;
     window.clearEventLocationDraft = clearEventLocationDraft;
-    window.confirmEventLocationAt = function (lat, lng) {
+    window.confirmEventLocationAt = function (lat, lng, labelHint) {
       if (!window.RegSlayerCalendarEvents) return false;
       var pick = window.RegSlayerCalendarEvents.getPendingLocationPick();
       if (!pick) return false;
       var name = pick.name || 'this event';
-      var ok = true;
-      try {
-        if (typeof showAppConfirm === 'function') {
-          // sync path may not exist — fall through to confirm
-        }
-        ok = window.confirm('Add this as location for “' + name + '”?');
-      } catch (e) { ok = true; }
-      if (!ok) {
-        window.RegSlayerCalendarEvents.cancelLocationPick();
-        return true; // consumed pick intent
-      }
-      var res = window.RegSlayerCalendarEvents.applyLocationPick(lat, lng, 'Map pin');
+      var locLabel = (labelHint && String(labelHint).trim()) ? String(labelHint).trim() : 'Map pin';
+      // Apply immediately (toast confirms) — no browser confirm
+      var res = window.RegSlayerCalendarEvents.applyLocationPick(lat, lng, locLabel);
       if (res && res.draft) {
-        eventLocationDraft = { lat: res.lat, lng: res.lng, label: res.locationLabel || 'Map pin' };
+        eventLocationDraft = { lat: res.lat, lng: res.lng, label: res.locationLabel || locLabel };
         var la = document.getElementById('event-lat');
         var lo = document.getElementById('event-lng');
         if (la) la.value = String(res.lat);
         if (lo) lo.value = String(res.lng);
         updateEventLocationLabelUi();
       } else if (res) {
-        eventLocationDraft = { lat: res.lat, lng: res.lng, label: res.locationLabel || 'Map pin' };
+        eventLocationDraft = { lat: res.lat, lng: res.lng, label: res.locationLabel || locLabel };
         updateEventLocationLabelUi();
         if (typeof updateEventsList === 'function') updateEventsList();
       }
       if (typeof showAppCopyToast === 'function') {
-        showAppCopyToast('<span class="act">Location set</span><br>for “' + name.replace(/</g, '&lt;') + '”');
+        var safeLab = String(locLabel || 'Map pin').replace(/</g, '&lt;');
+        showAppCopyToast('<span class="act">Location set</span><br>' +
+          safeLab + ' · “' + name.replace(/</g, '&lt;') + '”');
       }
       return true;
     };
@@ -33806,8 +33833,12 @@ function togglePinIconPicker() {
       return null;
     }
     function openSlayerViewList(ev) {
+      // Prefer Plan kit float with only this event's list
       if (window.PlanEventsListsKit && typeof window.PlanEventsListsKit.openListFloat === 'function' && ev) {
-        try { window.PlanEventsListsKit.openListFloat({ event: ev }); return; } catch (eFl) {}
+        try {
+          window.PlanEventsListsKit.openListFloat({ event: ev, onlyEventList: true });
+          return;
+        } catch (eFl0) {}
       }
       var pack = findSlayerEventListPack(ev);
       if (!pack) {

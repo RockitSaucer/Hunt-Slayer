@@ -30,9 +30,59 @@
     expandedItemId: null,
     floatOpen: false,
     focusEventId: null,
+    floatOnlyEventList: false, // List from event card → only that pack in left nav
     activeColId: null, // #122 mobile: single active section tab
     colOpts: { listId: null, colId: null, slot: 'tab' }
   };
+
+  /** In-app confirm (never browser confirm/alert for list chrome). */
+  function kitConfirm(msg, title) {
+    return new Promise(function (resolve) {
+      ensureKitConfirmDom();
+      var ov = $('ps-kit-confirm');
+      if (!ov) { resolve(false); return; }
+      if (ov._resolve) {
+        try { ov._resolve(false); } catch (eR) {}
+        ov._resolve = null;
+      }
+      ov._resolve = resolve;
+      var tEl = $('ps-kit-confirm-title');
+      var mEl = $('ps-kit-confirm-msg');
+      if (tEl) tEl.textContent = title || 'Confirm';
+      if (mEl) mEl.textContent = String(msg || '');
+      ov.classList.add('is-open');
+      ov.setAttribute('aria-hidden', 'false');
+    });
+  }
+  function ensureKitConfirmDom() {
+    if ($('ps-kit-confirm')) return;
+    var ov = document.createElement('div');
+    ov.id = 'ps-kit-confirm';
+    ov.className = 'ps-modal-overlay';
+    ov.setAttribute('aria-hidden', 'true');
+    ov.innerHTML =
+      '<div class="ps-modal" role="dialog" aria-modal="true" style="max-width:360px">' +
+        '<h3 id="ps-kit-confirm-title">Confirm</h3>' +
+        '<p id="ps-kit-confirm-msg" style="margin:0 0 14px;font-size:13px;line-height:1.4;color:#e8efe4"></p>' +
+        '<div class="ps-modal-actions">' +
+          '<button type="button" class="btn" id="ps-kit-confirm-cancel">Cancel</button>' +
+          '<button type="button" class="btn btn-primary" id="ps-kit-confirm-ok" style="border-color:#6b2424;background:linear-gradient(180deg,#7a3030 0%,#5a2020 100%);">Delete</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(ov);
+    function finish(ok) {
+      var r = ov._resolve;
+      ov._resolve = null;
+      ov.classList.remove('is-open');
+      ov.setAttribute('aria-hidden', 'true');
+      if (typeof r === 'function') r(!!ok);
+    }
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov) finish(false);
+    });
+    $('ps-kit-confirm-cancel').onclick = function () { finish(false); };
+    $('ps-kit-confirm-ok').onclick = function () { finish(true); };
+  }
 
   function $(id) { return document.getElementById(id); }
   function esc(s) {
@@ -1101,12 +1151,14 @@
         toast('Can’t delete classic sections');
         return;
       }
-      if (!window.confirm('Delete this section and its items?')) return;
-      list.columns = (list.columns || []).filter(function (c) { return String(c.id) !== String(cid); });
-      saveNamedList(list);
-      closeColOptions();
-      renderFloatMain();
-      toast('Section deleted');
+      kitConfirm('Delete this section and its items?', 'Delete section').then(function (ok) {
+        if (!ok) return;
+        list.columns = (list.columns || []).filter(function (c) { return String(c.id) !== String(cid); });
+        saveNamedList(list);
+        closeColOptions();
+        renderFloatMain();
+        toast('Section deleted');
+      });
     };
     ov.querySelectorAll('[data-ps-color-slot]').forEach(function (b) {
       b.addEventListener('click', function () {
@@ -1284,17 +1336,39 @@
     if (!nav) return;
     var personal = personalListsOnly();
     var eventLists = eventLinkedLists();
-    var html = '';
-    html += '<div class="ps-nav-label">Personal lists</div>';
-    if (!personal.length) html += '<p class="empty" style="padding:6px">None yet — create in PlanSlayer or open an event List.</p>';
-    else {
-      personal.forEach(function (n) {
-        var on = String(n.id) === String(state.activeListId);
-        html += '<button type="button" class="ps-nav-item' + (on ? ' is-active' : '') +
-          '" data-open-list="' + esc(n.id) + '">' + esc(n.name || 'List') + '</button>';
+    // From event List button: only that event's pack (no other lists in the rail)
+    if (state.floatOnlyEventList) {
+      personal = [];
+      var focus = state.focusEventId != null ? String(state.focusEventId) : '';
+      var active = state.activeListId != null ? String(state.activeListId) : '';
+      eventLists = eventLists.filter(function (n) {
+        if (!n) return false;
+        if (active && String(n.id) === active) return true;
+        if (!focus || !n.eventId) return false;
+        var eid = String(n.eventId);
+        return eid === focus || eid === 'plan_' + focus ||
+          focus === 'plan_' + eid || eid === focus.replace(/^plan_/, '');
       });
+      if (!eventLists.length && active) {
+        var one = findNamedListById(active);
+        if (one) eventLists = [one];
+      }
     }
-    html += '<div class="ps-nav-label">Event lists</div>';
+    var html = '';
+    if (!state.floatOnlyEventList) {
+      html += '<div class="ps-nav-label">Personal lists</div>';
+      if (!personal.length) html += '<p class="empty" style="padding:6px">None yet — create in PlanSlayer or open an event List.</p>';
+      else {
+        personal.forEach(function (n) {
+          var on = String(n.id) === String(state.activeListId);
+          html += '<button type="button" class="ps-nav-item' + (on ? ' is-active' : '') +
+            '" data-open-list="' + esc(n.id) + '">' + esc(n.name || 'List') + '</button>';
+        });
+      }
+      html += '<div class="ps-nav-label">Event lists</div>';
+    } else {
+      html += '<div class="ps-nav-label">This event</div>';
+    }
     if (!eventLists.length) html += '<p class="empty" style="padding:6px">None yet</p>';
     else {
       eventLists.forEach(function (n) {
@@ -1399,17 +1473,19 @@
     $('ps-list-set-delete').onclick = function () {
       var list = getActiveList();
       if (!list) return;
-      if (!window.confirm('Delete “' + (list.name || 'list') + '” permanently?')) return;
-      var store = loadFreeListsStore();
-      store.named = (store.named || []).filter(function (n) {
-        return n && String(n.id) !== String(list.id);
+      kitConfirm('Delete “' + (list.name || 'list') + '” permanently?', 'Delete list').then(function (ok) {
+        if (!ok) return;
+        var store = loadFreeListsStore();
+        store.named = (store.named || []).filter(function (n) {
+          return n && String(n.id) !== String(list.id);
+        });
+        saveFreeListsStore(store);
+        state.activeListId = (store.named[0] && store.named[0].id) || null;
+        closeListSettings();
+        renderFloatNav();
+        renderFloatMain();
+        toast('List deleted');
       });
-      saveFreeListsStore(store);
-      state.activeListId = (store.named[0] && store.named[0].id) || null;
-      closeListSettings();
-      renderFloatNav();
-      renderFloatMain();
-      toast('List deleted');
     };
     $('ps-list-set-share').onclick = function () {
       var list = getActiveList();
@@ -1563,6 +1639,9 @@
     opts = opts || {};
     ensureFloatDom();
     state.floatOpen = true;
+    // Event card List → only that pack. Explicit allLists:true shows full rail.
+    state.floatOnlyEventList = opts.onlyEventList !== false && !!(opts.event || opts.onlyEventList);
+    if (opts.allLists) state.floatOnlyEventList = false;
     if (opts.event) {
       state.focusEventId = opts.event.id || (opts.event.planEventId ? ('plan_' + opts.event.planEventId) : null);
     }
@@ -1886,11 +1965,13 @@
       return;
     }
     if (action === 'del') {
-      if (!confirm('Delete “' + (item.title || 'item') + '”?')) return;
-      hit.col.items.splice(hit.index, 1);
-      if (state.expandedItemId === itemId) state.expandedItemId = null;
-      saveNamedList(list);
-      renderFloatMain();
+      kitConfirm('Delete “' + (item.title || 'item') + '”?', 'Delete item').then(function (ok) {
+        if (!ok) return;
+        hit.col.items.splice(hit.index, 1);
+        if (state.expandedItemId === itemId) state.expandedItemId = null;
+        saveNamedList(list);
+        renderFloatMain();
+      });
       return;
     }
     if (action === 'save-detail') {
@@ -1974,9 +2055,12 @@
   }
 
   function wireDayListClicks(root) {
-    if (!root || root._psWired) return;
-    root._psWired = true;
-    root.addEventListener('click', function (e) {
+    if (!root) return;
+    // Replace handler every paint — never stack listeners (caused double-fire / flaky expand)
+    if (root._psClickHandler) {
+      try { root.removeEventListener('click', root._psClickHandler); } catch (eRm) {}
+    }
+    root._psClickHandler = function (e) {
       var t = e.target;
       if (!t || !t.closest) return;
 
@@ -1994,7 +2078,7 @@
         e.stopPropagation();
         var idL = openList.getAttribute('data-ps-open-list');
         var evL = global.RegSlayerCalendarEvents && global.RegSlayerCalendarEvents.getById(idL);
-        openListFloat({ event: evL || { id: idL, text: 'Event' } });
+        openListFloat({ event: evL || { id: idL, text: 'Event' }, onlyEventList: true });
         return;
       }
       var hide = t.closest('[data-ps-hide]');
@@ -2026,10 +2110,12 @@
       }
       var card = t.closest('[data-ps-open-event]');
       if (card) {
+        e.preventDefault();
+        e.stopPropagation();
         var id = card.getAttribute('data-ps-open-event');
-        var wasActive = String(state.activeEventId) === String(id);
+        var wasActive = String(state.activeEventId || '') === String(id || '');
+        // Re-click same card → collapse hide/delete strip
         state.activeEventId = wasActive ? null : id;
-        // Selecting an event with a focus pin → jump map there (no Quick Load menu)
         if (!wasActive && global.RegSlayerCalendarEvents) {
           try {
             var evOpen = global.RegSlayerCalendarEvents.getById(id);
@@ -2039,14 +2125,20 @@
             }
           } catch (eGo) {}
         }
+        // Toggle class in-place first (snappy); then repaint for countdown / other cards
+        try {
+          root.querySelectorAll('.ps-event-card').forEach(function (el) {
+            var eid2 = el.getAttribute('data-ps-open-event');
+            el.classList.toggle('is-active', !!(state.activeEventId && String(eid2) === String(state.activeEventId)));
+          });
+        } catch (eCls) {}
         if (typeof global.updateEventsList === 'function') {
-          try { global.updateEventsList(); return; } catch (eU) {}
+          try { global.updateEventsList(); } catch (eU) {}
         }
-        root.querySelectorAll('.ps-event-card').forEach(function (el) {
-          el.classList.toggle('is-active', el.getAttribute('data-ps-open-event') === state.activeEventId);
-        });
       }
-    });
+    };
+    root.addEventListener('click', root._psClickHandler);
+    root._psWired = true;
   }
 
   /**
@@ -2064,8 +2156,6 @@
         box.classList.remove('events-box--empty');
       } catch (eB) {}
     }
-    // Allow re-wire after full list HTML replace
-    list._psWired = false;
     list.innerHTML = renderDayEventsHtml(dayEvents || [], hiddenDay || []) ||
       '<p class="empty" style="color:var(--muted);font-size:12px">No trips on this day.</p>';
     wireDayListClicks(list);
