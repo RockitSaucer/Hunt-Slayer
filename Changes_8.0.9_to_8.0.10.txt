@@ -1,0 +1,4 @@
+# 8.0.9 → 8.0.10
+- #118 High-res AL state boundary (~1117 pts, Census 500k cartographic)
+- #120/#122 List float Plan parity: mobile full-screen, section tabs, claim styling, camera/file import
+Shell v140

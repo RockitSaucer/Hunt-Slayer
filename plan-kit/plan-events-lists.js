@@ -30,6 +30,7 @@
     expandedItemId: null,
     floatOpen: false,
     focusEventId: null,
+    activeColId: null, // #122 mobile: single active section tab
     colOpts: { listId: null, colId: null, slot: 'tab' }
   };
 
@@ -836,13 +837,33 @@
 
   function renderTriad(list) {
     list = ensureColumns(list);
-    var html = '<div class="list-triad" data-list-id="' + esc(list.id) + '">';
+    // #122: pick active column for mobile tab layout (Plan parity)
+    var cols = (list.columns || []).filter(function (c) { return c && !c.minimized; });
+    if (!cols.length) cols = list.columns || [];
+    if (!state.activeColId || !cols.some(function (c) { return String(c.id) === String(state.activeColId); })) {
+      state.activeColId = cols[0] ? cols[0].id : 'todo';
+    }
+    var tabsHtml = '<div class="ps-col-tabs" role="tablist" aria-label="List sections">';
+    (list.columns || []).forEach(function (col) {
+      if (!col || col.minimized) return;
+      var cid = col.id || 'todo';
+      var on = String(cid) === String(state.activeColId);
+      tabsHtml +=
+        '<button type="button" role="tab" class="ps-col-tab' + (on ? ' is-active' : '') +
+          '" data-ps-col-tab="' + esc(cid) + '" aria-selected="' + (on ? 'true' : 'false') + '">' +
+          esc(col.name || listKindLabel(cid)) +
+        '</button>';
+    });
+    tabsHtml += '</div>';
+
+    var html = tabsHtml + '<div class="list-triad" data-list-id="' + esc(list.id) + '">';
     (list.columns || []).forEach(function (col) {
       if (!col) return;
       var cid = col.id || 'todo';
       var colors = col.colors || DEFAULT_COL_COLORS;
       var isClassic = cid === 'todo' || cid === 'buy' || cid === 'bring';
       var isPersonal = String(cid) === 'personal';
+      var isActiveCol = String(cid) === String(state.activeColId);
       // Minimized section → thin restore tab
       if (col.minimized) {
         html +=
@@ -884,7 +905,9 @@
       var titleColor = sectionDone ? '#4ade80' : (isClassic ? 'var(--accent, #e59a18)' : (colors.font || '#f0f4ee'));
       html +=
         '<div class="list-col' + (isPersonal ? ' list-col-personal' : '') +
-          (isClassic ? ' list-col-classic' : '') + '" data-col-kind="' + esc(cid) + '" ' +
+          (isClassic ? ' list-col-classic' : '') +
+          (isActiveCol ? ' is-active-col' : '') +
+          '" data-col-kind="' + esc(cid) + '" ' +
           'style="--col-font:' + esc(colors.font || '#f0f4ee') + ';--col-tab:' + esc(colors.tab || '#2a3222') +
           ';--col-bg:' + esc(colors.bg || '#0a0c09') + ';">' +
           '<div class="list-col-head" style="background:' +
@@ -910,6 +933,9 @@
             '<input type="text" class="list-col-add-input" data-col-add-input="' + esc(cid) +
               '" placeholder="' + (isPersonal ? 'Add private item…' : 'Type item, press Enter…') +
               '" autocomplete="off" />' +
+            /* #120/#122 Plan parity: camera on every section incl. My checklist */
+            '<button type="button" class="btn-icon list-ocr-cam" data-ocr-list="' + esc(cid) +
+              '" title="Photo / file → list items">📷</button>' +
             '<button type="button" class="list-col-add-btn" data-col-add="' + esc(cid) + '">Add</button>' +
           '</div>' +
         '</div>';
@@ -1101,7 +1127,7 @@
       '<div class="ps-float-head" id="ps-list-float-head">' +
         '<div style="min-width:0;flex:1">' +
           '<div class="ps-float-title" id="ps-list-float-title">Lists</div>' +
-          '<div class="ps-float-sub" id="ps-list-float-sub">PlanSlayer lists · same options</div>' +
+          '<div class="ps-float-sub" id="ps-list-float-sub">Same list as PlanSlayer · Got it! · sections · Sync</div>' +
         '</div>' +
         '<button type="button" class="ps-float-settings" id="ps-list-float-settings" title="List settings">Settings</button>' +
         '<button type="button" class="ps-float-sync" id="ps-list-float-sync" title="Sync lists &amp; events from PlanSlayer">Sync</button>' +
@@ -1527,6 +1553,72 @@
       state.expandedItemId = null;
       renderFloatNav();
       renderFloatMain();
+      return;
+    }
+
+    // #122 mobile section tabs (Plan single-column layout)
+    var colTab = t.closest('[data-ps-col-tab]');
+    if (colTab) {
+      e.preventDefault();
+      state.activeColId = colTab.getAttribute('data-ps-col-tab');
+      state.expandedItemId = null;
+      renderFloatMain();
+      return;
+    }
+
+    // Camera / photo → items (Plan parity; OCR best on PlanSlayer)
+    var ocrBtn = t.closest('[data-ocr-list]');
+    if (ocrBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      var ocrCol = ocrBtn.getAttribute('data-ocr-list');
+      try {
+        if (typeof global.planListOcrFromPhoto === 'function') {
+          global.planListOcrFromPhoto(state.activeListId, ocrCol);
+          return;
+        }
+      } catch (eO) {}
+      // Lightweight file pick: each line of a .txt becomes an item; images → toast to Plan OCR
+      var inp = document.createElement('input');
+      inp.type = 'file';
+      inp.accept = 'image/*,text/plain';
+      inp.style.display = 'none';
+      document.body.appendChild(inp);
+      inp.onchange = function () {
+        var file = inp.files && inp.files[0];
+        inp.remove();
+        if (!file) return;
+        if (file.type && file.type.indexOf('image') === 0) {
+          toast('Photo OCR: open this list on PlanSlayer and use the camera for handwriting. Text files work here.');
+          return;
+        }
+        var reader = new FileReader();
+        reader.onload = function () {
+          var text = String(reader.result || '');
+          var lines = text.split(/\r?\n/).map(function (s) { return s.trim(); }).filter(Boolean);
+          if (!lines.length) { toast('No lines found'); return; }
+          var list = getActiveList();
+          if (!list) return;
+          ensureColumns(list);
+          var col = (list.columns || []).find(function (c) { return String(c.id) === String(ocrCol); });
+          if (!col) return;
+          if (!col.items) col.items = [];
+          lines.forEach(function (line) {
+            col.items.push({
+              id: uid(),
+              title: line.charAt(0).toUpperCase() + line.slice(1),
+              qty: 1,
+              claims: {},
+              created_at: new Date().toISOString()
+            });
+          });
+          saveNamedList(list);
+          renderFloatMain();
+          toast('Added ' + lines.length + ' item' + (lines.length === 1 ? '' : 's') + ' from file');
+        };
+        reader.readAsText(file);
+      };
+      inp.click();
       return;
     }
 
