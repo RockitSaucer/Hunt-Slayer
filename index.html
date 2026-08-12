@@ -3886,6 +3886,18 @@
     .state-border-line {
       pointer-events: none;
     }
+    /* Fade ImageOverlay must never paint a white rect under transparent PNG */
+    .state-fade-overlay,
+    .leaflet-image-layer.state-fade-overlay,
+    .leaflet-pane[name="stateFadePane"] img,
+    .leaflet-pane.stateFadePane img {
+      background: transparent !important;
+      background-color: transparent !important;
+      border: 0 !important;
+      outline: none !important;
+      box-shadow: none !important;
+      -webkit-user-drag: none;
+    }
     .mdm-rut-line {
       margin-top: 4px;
       font-size: 11px;
@@ -11117,7 +11129,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.19">V8.0.19</span>
+      <span class="brand-version" aria-label="Version 8.0.20">V8.0.20</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -12694,7 +12706,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.19';
+    const APP_VERSION = '8.0.20';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -20901,6 +20913,41 @@
     var _stateFadeImageUrl = null;
     var _stateFarMask = null;
 
+    /** Simple outward inflate in miles (for far-mask hole only — not the red border). */
+    function inflateRingMilesSimple(src, miles) {
+      if (!src || src.length < 4 || !miles) return closedStateRing(src);
+      var pts = src.slice();
+      if (pts.length > 1 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1]) {
+        pts = pts.slice(0, -1);
+      }
+      if (pts.length < 3) return closedStateRing(src);
+      var area = 0;
+      for (var ai = 0; ai < pts.length; ai++) {
+        var aj = (ai + 1) % pts.length;
+        area += pts[ai][1] * pts[aj][0] - pts[aj][1] * pts[ai][0];
+      }
+      var sign = area >= 0 ? 1 : -1;
+      var out = [];
+      for (var i = 0; i < pts.length; i++) {
+        var prev = pts[(i - 1 + pts.length) % pts.length];
+        var cur = pts[i];
+        var next = pts[(i + 1) % pts.length];
+        var cosLat = Math.cos((cur[0] * Math.PI) / 180) || 0.85;
+        var mPerDegLat = 69 * 1609.344;
+        var mPerDegLng = 69 * 1609.344 * cosLat;
+        var e1x = (cur[1] - prev[1]) * mPerDegLng, e1y = (cur[0] - prev[0]) * mPerDegLat;
+        var e2x = (next[1] - cur[1]) * mPerDegLng, e2y = (next[0] - cur[0]) * mPerDegLat;
+        var nx = sign * (-(e1y + e2y));
+        var ny = sign * (e1x + e2x);
+        var len = Math.sqrt(nx * nx + ny * ny) || 1e-9;
+        nx /= len; ny /= len;
+        var meters = miles * 1609.344;
+        out.push([cur[0] + (ny * meters) / mPerDegLat, cur[1] + (nx * meters) / mPerDegLng]);
+      }
+      out.push([out[0][0], out[0][1]]);
+      return out;
+    }
+
     function buildFadeImageFromField(field) {
       if (!field || !field.field) return null;
       var c = document.createElement('canvas');
@@ -20908,6 +20955,8 @@
       c.height = field.rows;
       var ctx = c.getContext('2d');
       if (!ctx) return null;
+      // Fully clear — never leave white opaque pixels
+      ctx.clearRect(0, 0, c.width, c.height);
       var img = ctx.createImageData(field.cols, field.rows);
       var data = img.data;
       var R = 14, G = 17, B = 13;
@@ -20915,10 +20964,18 @@
         var mi = field.field[i];
         var op = fadeOpacityFromMiles(mi);
         var o = i * 4;
-        data[o] = R;
-        data[o + 1] = G;
-        data[o + 2] = B;
-        data[o + 3] = Math.round(op * 255);
+        if (op < 0.002) {
+          // Fully transparent (inside AL) — no RGB flash
+          data[o] = 0;
+          data[o + 1] = 0;
+          data[o + 2] = 0;
+          data[o + 3] = 0;
+        } else {
+          data[o] = R;
+          data[o + 1] = G;
+          data[o + 2] = B;
+          data[o + 3] = Math.round(op * 255);
+        }
       }
       ctx.putImageData(img, 0, 0);
       var url = '';
@@ -20969,6 +21026,7 @@
             map.createPane('stateFadePane');
             map.getPane('stateFadePane').style.zIndex = 350;
             map.getPane('stateFadePane').style.pointerEvents = 'none';
+            map.getPane('stateFadePane').style.background = 'transparent';
           }
           _stateFadeImage = L.imageOverlay(built.url, built.bounds, {
             opacity: 1,
@@ -20976,23 +21034,39 @@
             className: 'state-fade-overlay',
             pane: 'stateFadePane'
           });
-          try { _stateFadeImage.addTo(map); } catch (eAdd) {}
+          try {
+            _stateFadeImage.addTo(map);
+            // Kill any browser/Leaflet white rect under transparent PNG
+            var el = _stateFadeImage.getElement && _stateFadeImage.getElement();
+            if (el) {
+              el.style.background = 'transparent';
+              el.style.backgroundColor = 'transparent';
+              el.style.border = '0';
+              el.style.outline = 'none';
+              el.setAttribute('draggable', 'false');
+            }
+            _stateFadeImage.on('load', function () {
+              var e2 = _stateFadeImage.getElement && _stateFadeImage.getElement();
+              if (e2) {
+                e2.style.background = 'transparent';
+                e2.style.backgroundColor = 'transparent';
+              }
+            });
+          } catch (eAdd) {}
         }
       }
 
-      // Beyond the fade image (world outside AL+20mi): solid dark with hole = image bounds
+      // Beyond 20 mi: solid dark. Hole follows state outline (NOT a rectangle) so no white box.
       var outer = [[-90, -180], [-90, 180], [90, 180], [90, -180], [-90, -180]];
-      var hole = [
-        [_alFadeField.minLat, _alFadeField.minLng],
-        [_alFadeField.minLat, _alFadeField.maxLng],
-        [_alFadeField.maxLat, _alFadeField.maxLng],
-        [_alFadeField.maxLat, _alFadeField.minLng],
-        [_alFadeField.minLat, _alFadeField.minLng]
-      ];
-      stateMaskGroup.addLayer(L.polygon([outer, hole], {
+      var fadeBase = decimateRingPts(ring, 200);
+      var farHole = inflateRingMilesSimple(fadeBase, FADE_MAX_MI + 0.5);
+      stateMaskGroup.addLayer(L.polygon([outer, farHole], {
         stroke: false,
+        color: 'transparent',
+        weight: 0,
         fillColor: '#0e110d',
         fillOpacity: FADE_FAR_OP,
+        fillRule: 'evenodd',
         interactive: false,
         bubblingMouseEvents: false,
         className: 'state-outside-mask state-outside-mask-far',
