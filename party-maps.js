@@ -5006,6 +5006,8 @@
     openEditOwnMarker: window.openEditOwnMarker,
     openMapSwitcher: openMapSwitcher,
     closeMapSwitcher: closeMapSwitcher,
+    fetchMapSwitcherLists: fetchMapSwitcherLists,
+    displayMapName: displayMapName,
     listPrivateMaps: listPrivateMaps,
     createPrivateMap: createPrivateMap,
     switchToPrivate: switchToPrivate,

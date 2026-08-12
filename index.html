@@ -11094,7 +11094,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.10">V8.0.10</span>
+      <span class="brand-version" aria-label="Version 8.0.11">V8.0.11</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -12669,7 +12669,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.10';
+    const APP_VERSION = '8.0.11';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -32800,73 +32800,107 @@ function togglePinIconPicker() {
     function populateEventMapScopeSelect(selected) {
       var sel = document.getElementById('event-map-scope');
       if (!sel) return;
-      var cur = selected || sel.value || 'personal';
-      // #111: only Settings → My Maps (personal default + private named + shared membership)
-      // No "all maps" / visit history clutter.
-      sel.innerHTML = '<option value="personal">My personal map</option>';
+      var cur = selected || sel.value || '';
+      // #124: same list as “Currently viewing” map switcher (fetchMapSwitcherLists + displayMapName)
+      sel.innerHTML = '';
       function finishSelect() {
-        // If saved scope was "all" or missing, fall back to personal
-        if (cur === 'all') cur = 'personal';
+        if (cur === 'all' || cur === 'personal') {
+          // Map legacy personal → default private if present
+          var defOpt = sel.querySelector('option[data-default-private="1"]');
+          if (defOpt) cur = defOpt.value;
+          else if (sel.options.length) cur = sel.options[0].value;
+        }
         var found = false;
         for (var i = 0; i < sel.options.length; i++) {
           if (sel.options[i].value === cur) { sel.selectedIndex = i; found = true; break; }
         }
-        if (!found) {
-          try { sel.value = 'personal'; } catch (eF) {}
+        if (!found && sel.options.length) {
+          try { sel.selectedIndex = 0; } catch (eF) {}
         }
       }
-      try {
-        var sb = window.RegSlayerCloud && window.RegSlayerCloud.getClient && window.RegSlayerCloud.getClient();
-        if (!sb) { finishSelect(); return; }
-        var pending = 2;
-        function doneOne() {
-          pending--;
-          if (pending <= 0) finishSelect();
-        }
-        // Same sources as Settings → My Maps → Not shared
-        sb.rpc('list_my_private_maps').then(function (res) {
-          var rows = (res && res.data) || [];
-          if (!Array.isArray(rows) || !rows.length) { doneOne(); return; }
-          rows = rows.slice().sort(function (a, b) {
-            return String((a && a.name) || '').localeCompare(String((b && b.name) || ''));
-          });
+      function nameOf(kind, m) {
+        try {
+          if (window.RegSlayerParty && typeof window.RegSlayerParty.displayMapName === 'function') {
+            return window.RegSlayerParty.displayMapName(kind, m.id, m.name || (kind === 'shared' ? 'Shared map' : 'Private map'));
+          }
+        } catch (eN) {}
+        return (m && m.name) || (kind === 'shared' ? 'Shared map' : 'Private map');
+      }
+      function fillFromLists(pmaps, smaps) {
+        pmaps = Array.isArray(pmaps) ? pmaps.slice() : [];
+        smaps = Array.isArray(smaps) ? smaps.slice() : [];
+        // Same order as map switcher groups
+        pmaps.sort(function (a, b) {
+          return String(nameOf('private', a) || '').localeCompare(String(nameOf('private', b) || ''));
+        });
+        smaps.sort(function (a, b) {
+          return String(nameOf('shared', a) || '').localeCompare(String(nameOf('shared', b) || ''));
+        });
+        var seen = {};
+        if (pmaps.length) {
           var grp = document.createElement('option');
           grp.disabled = true;
-          grp.textContent = '—— My Maps · Not shared ——';
+          grp.textContent = '—— Not shared ——';
           sel.appendChild(grp);
-          rows.forEach(function (m) {
-            if (!m || !m.id) return;
+          pmaps.forEach(function (m) {
+            if (!m || !m.id || seen['p:' + m.id]) return;
+            seen['p:' + m.id] = true;
             var opt = document.createElement('option');
             opt.value = 'private:' + m.id;
-            // #119: name only (match Viewing map switcher — no codes / no clutter labels)
-            opt.textContent = (m.name || 'Private map');
+            opt.textContent = nameOf('private', m);
+            if (m.is_default) opt.setAttribute('data-default-private', '1');
             sel.appendChild(opt);
           });
-          doneOne();
-        }).catch(function () { doneOne(); });
-        // Same sources as Settings → My Maps → Shared
-        sb.rpc('list_my_shared_maps').then(function (res) {
-          var rows = (res && res.data) || [];
-          if (!Array.isArray(rows) || !rows.length) { doneOne(); return; }
-          rows = rows.slice().sort(function (a, b) {
-            return String((a && a.name) || '').localeCompare(String((b && b.name) || ''));
-          });
+        }
+        if (smaps.length) {
           var grpS = document.createElement('option');
           grpS.disabled = true;
-          grpS.textContent = '—— My Maps · Shared ——';
+          grpS.textContent = '—— Shared ——';
           sel.appendChild(grpS);
-          rows.forEach(function (m) {
-            if (!m || !m.id) return;
+          smaps.forEach(function (m) {
+            if (!m || !m.id || seen['s:' + m.id]) return;
+            seen['s:' + m.id] = true;
             var opt = document.createElement('option');
             opt.value = 'shared:' + m.id;
-            // #119: name only — invite codes stay hidden unless actively sharing
-            opt.textContent = (m.name || 'Shared map');
+            opt.textContent = nameOf('shared', m);
             sel.appendChild(opt);
           });
+        }
+        if (!sel.options.length) {
+          var fb = document.createElement('option');
+          fb.value = 'personal';
+          fb.textContent = 'My personal map';
+          sel.appendChild(fb);
+        }
+        finishSelect();
+      }
+      try {
+        var P = window.RegSlayerParty;
+        if (P && typeof P.fetchMapSwitcherLists === 'function') {
+          Promise.resolve(P.fetchMapSwitcherLists()).then(function (lists) {
+            fillFromLists(lists && lists.pmaps, lists && lists.smaps);
+          }).catch(function () {
+            fillFromLists([], []);
+          });
+          return;
+        }
+        var sb = window.RegSlayerCloud && window.RegSlayerCloud.getClient && window.RegSlayerCloud.getClient();
+        if (!sb) { fillFromLists([], []); return; }
+        var pmaps = [], smaps = [], pending = 2;
+        function doneOne() {
+          pending--;
+          if (pending <= 0) fillFromLists(pmaps, smaps);
+        }
+        sb.rpc('list_my_private_maps').then(function (res) {
+          pmaps = (res && res.data) || [];
+          doneOne();
+        }).catch(function () { doneOne(); });
+        sb.rpc('list_my_shared_maps').then(function (res) {
+          smaps = (res && res.data) || [];
           doneOne();
         }).catch(function () { doneOne(); });
       } catch (e2) {
-        finishSelect();
+        fillFromLists([], []);
       }
     }
     function parseEventMapScopeValue(v) {
