@@ -706,7 +706,7 @@
 #ps-list-float .list-item.is-expanded .li-detail { display: block; }
 
 @media (max-width: 900px) {
-  /* #122: full-screen Plan-style mobile list sheet */
+  /* #122 / #126: full-screen Plan-style mobile list sheet */
   #ps-list-float {
     width: 100vw !important;
     height: 100vh !important;
@@ -719,6 +719,22 @@
     bottom: 0 !important;
     transform: none !important;
     border-radius: 0 !important;
+    position: fixed !important;
+  }
+  #ps-list-float .ps-float-head {
+    padding: 12px 12px calc(10px + env(safe-area-inset-top, 0px));
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  }
+  #ps-list-float .ps-float-title {
+    font-size: 17px;
+  }
+  #ps-list-float .ps-float-main {
+    padding: 8px 10px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+  #ps-list-float .list-item .li-actions .btn-got {
+    min-height: 40px;
+    padding: 8px 12px !important;
+    font-size: 13px !important;
   }
   #ps-list-float .ps-float-body {
     flex-direction: column;

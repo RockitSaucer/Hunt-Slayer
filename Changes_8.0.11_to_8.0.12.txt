@@ -1,0 +1,5 @@
+# 8.0.11 → 8.0.12
+- #127/#128: fade uses decimated ring (perf); 20 mi / 24 bands smoothstep; hi-res border kept
+- #129: Open Tracts min button absolute top-right
+- #126: mobile list float safe-area + larger Got it
+Shell v142

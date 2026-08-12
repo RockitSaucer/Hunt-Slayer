@@ -1714,9 +1714,22 @@
       margin-bottom: 12px;
       flex-shrink: 0;
     }
-    /* Room for the desktop − minimize control over step 3 */
+    /* #129: Open Tracts min button top-right (align with other section min buttons) */
+    #step-3-section {
+      position: relative;
+    }
+    #step-3-section .step-header {
+      padding-right: 40px !important;
+    }
+    #sec-min-step3.sec-minmax-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      margin-left: 0 !important;
+      z-index: 3;
+    }
     html.layout-desktop .planner-loc-col #step-3-section .step-header {
-      padding-right: 34px;
+      padding-right: 40px !important;
     }
     .planner-wpn-col #step-2-section .step-title,
     .planner-loc-col #step-3-section .step-title {
@@ -11094,7 +11107,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.11">V8.0.11</span>
+      <span class="brand-version" aria-label="Version 8.0.12">V8.0.12</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -11332,7 +11345,9 @@
             <div class="step-header">
               <div class="step-num">3</div>
               <span class="step-title section-qual" id="list-label">Open Tracts</span>
-              <button type="button" class="sec-minmax-btn" id="sec-min-step3" onclick="toggleSectionMin('step3')" title="Minimize hunt locations filters" aria-label="Minimize hunt locations filters" aria-expanded="true">−</button>
+              <div class="step-header-actions">
+                <button type="button" class="sec-minmax-btn" id="sec-min-step3" onclick="toggleSectionMin('step3')" title="Minimize hunt locations filters" aria-label="Minimize hunt locations filters" aria-expanded="true">−</button>
+              </div>
             </div>
             <!-- Land + distance filters (list stays full-width under steps) -->
             <div class="location-filters-box" id="location-filters-box">
@@ -12669,7 +12684,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.11';
+    const APP_VERSION = '8.0.12';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -20732,7 +20747,6 @@
         stateMaskSvgRenderer = L.svg({ padding: 0.5 });
       }
       var outer = [[-90, -180], [-90, 180], [90, 180], [90, -180], [-90, -180]];
-      // #105: smoother outside-AL fade — many thin concentric bands (~15 mi)
       // ~1° lat ≈ 69 mi
       function inflateRing(src, deg) {
         if (!src || src.length < 3 || !deg) return src;
@@ -20753,30 +20767,46 @@
           return [p[0] + (dy / len) * deg, p[1] + (dx / len) * deg];
         });
       }
+      // #127: decimate ring for fill bands only (hi-res border keeps full ring) — stops freeze
+      function decimateRing(src, maxPts) {
+        if (!src || src.length <= maxPts) return src.slice();
+        var step = Math.ceil(src.length / maxPts);
+        var out = [];
+        for (var di = 0; di < src.length; di += step) {
+          if (src[di]) out.push(src[di]);
+        }
+        if (out.length < 4) return src.slice();
+        var a0 = out[0], aN = out[out.length - 1];
+        if (a0 && aN && (a0[0] !== aN[0] || a0[1] !== aN[1])) out.push([a0[0], a0[1]]);
+        return out;
+      }
       var miToDeg = 1 / 69;
-      // #112: double fade steps vs #105 — ~20 thin bands over ~15 mi (0.75 mi steps)
+      // #128: ~20 mi fade, more bands, smoother ease; use simplified ring for fills
+      var fadeRing = decimateRing(ring, 160);
+      var fadeMaxMi = 20;
+      var fadeBandN = 24;
       var fadeSteps = [];
-      for (var fi = 1; fi <= 20; fi++) {
-        var t = fi / 20;
-        // Gentle ease-in so near-border stays clearer longer
-        var ease = t * t;
+      for (var fi = 1; fi <= fadeBandN; fi++) {
+        var t = fi / fadeBandN;
+        // Smoother ease-in-out-ish: stay clearer near border, darken further out
+        var ease = t * t * (3 - 2 * t); // smoothstep
         fadeSteps.push({
-          mi: Math.round(fi * 0.75 * 100) / 100,
-          op: Math.round((0.03 + 0.79 * ease) * 1000) / 1000
+          mi: Math.round(fi * (fadeMaxMi / fadeBandN) * 100) / 100,
+          op: Math.round((0.02 + 0.80 * ease) * 1000) / 1000
         });
       }
-      var rings = [ring];
+      var rings = [fadeRing];
       fadeSteps.forEach(function (step) {
-        rings.push(inflateRing(ring, step.mi * miToDeg));
+        rings.push(inflateRing(fadeRing, step.mi * miToDeg));
       });
-      // Beyond 15 mi: full dark
+      // Beyond 20 mi: full dark
       stateMaskGroup.addLayer(L.polygon([outer, rings[rings.length - 1]], {
         stroke: false, fillColor: '#0e110d', fillOpacity: 0.82,
         interactive: false, bubblingMouseEvents: false,
         className: 'state-outside-mask state-outside-mask-far',
         smoothFactor: 0, renderer: stateMaskSvgRenderer
       }));
-      // Annuli border → 15 mi (opacity ramps up)
+      // Annuli border → 20 mi (opacity ramps up)
       for (var bi = 1; bi < rings.length; bi++) {
         stateMaskGroup.addLayer(L.polygon([rings[bi], rings[bi - 1]], {
           stroke: false, fillColor: '#0e110d', fillOpacity: fadeSteps[bi - 1].op,
@@ -20785,7 +20815,7 @@
           smoothFactor: 0, renderer: stateMaskSvgRenderer
         }));
       }
-      // Black border traces the state line
+      // Black border traces the hi-res state line
       var border = L.polyline(ring, {
         color: '#000000',
         weight: 2.5,
