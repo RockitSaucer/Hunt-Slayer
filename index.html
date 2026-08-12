@@ -11117,7 +11117,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.18">V8.0.18</span>
+      <span class="brand-version" aria-label="Version 8.0.19">V8.0.19</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -12694,7 +12694,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.18';
+    const APP_VERSION = '8.0.19';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -20893,85 +20893,41 @@
       return FADE_FAR_OP * (0.08 + 0.92 * ease);
     }
 
-    var _stateFadeLayer = null;
-    var _stateFadeWired = false;
+    /**
+     * Geographic ImageOverlay for fade — zooms/pans with the map like tiles
+     * (no screen-space canvas that stretches during zoom).
+     */
+    var _stateFadeImage = null;
+    var _stateFadeImageUrl = null;
+    var _stateFarMask = null;
 
-    function ensureStateFadeLayer() {
-      if (_stateFadeLayer || typeof L === 'undefined') return _stateFadeLayer;
-      var FadeLayer = L.Layer.extend({
-        onAdd: function (mapInst) {
-          this._map = mapInst;
-          // Below markers (600) and default overlay vectors (400); above tiles (200)
-          if (!mapInst.getPane('stateFadePane')) {
-            mapInst.createPane('stateFadePane');
-            mapInst.getPane('stateFadePane').style.zIndex = 350;
-            mapInst.getPane('stateFadePane').style.pointerEvents = 'none';
-          }
-          this._canvas = L.DomUtil.create('canvas', 'state-fade-canvas');
-          this._canvas.style.position = 'absolute';
-          this._canvas.style.left = '0';
-          this._canvas.style.top = '0';
-          this._canvas.style.pointerEvents = 'none';
-          mapInst.getPane('stateFadePane').appendChild(this._canvas);
-          this._onMove = this._redraw.bind(this);
-          mapInst.on('moveend zoomend resize viewreset', this._onMove);
-          this._redraw();
-        },
-        onRemove: function (mapInst) {
-          mapInst.off('moveend zoomend resize viewreset', this._onMove);
-          if (this._canvas && this._canvas.parentNode) {
-            this._canvas.parentNode.removeChild(this._canvas);
-          }
-          this._canvas = null;
-          this._map = null;
-        },
-        _redraw: function () {
-          if (!this._map || !this._canvas || !_alFadeField) return;
-          var mapInst = this._map;
-          var size = mapInst.getSize();
-          var dpr = Math.min(window.devicePixelRatio || 1, 2);
-          // Half-res for speed; CSS scales up smoothly
-          var scale = 0.5;
-          var w = Math.max(2, Math.round(size.x * scale));
-          var h = Math.max(2, Math.round(size.y * scale));
-          var canvas = this._canvas;
-          if (canvas.width !== w || canvas.height !== h) {
-            canvas.width = w;
-            canvas.height = h;
-          }
-          canvas.style.width = size.x + 'px';
-          canvas.style.height = size.y + 'px';
-          // Align with map pane
-          var topLeft = mapInst.containerPointToLayerPoint([0, 0]);
-          L.DomUtil.setPosition(canvas, topLeft);
-
-          var ctx = canvas.getContext('2d');
-          if (!ctx) return;
-          var img = ctx.createImageData(w, h);
-          var data = img.data;
-          var field = _alFadeField;
-          // RGB for #0e110d
-          var R = 14, G = 17, B = 13;
-          for (var py = 0; py < h; py++) {
-            for (var px = 0; px < w; px++) {
-              // Map canvas pixel → container point → latlng
-              var cx = (px + 0.5) / scale;
-              var cy = (py + 0.5) / scale;
-              var ll = mapInst.containerPointToLatLng([cx, cy]);
-              var mi = sampleAlFadeMiles(field, ll.lat, ll.lng);
-              var op = fadeOpacityFromMiles(mi);
-              var i = (py * w + px) * 4;
-              data[i] = R;
-              data[i + 1] = G;
-              data[i + 2] = B;
-              data[i + 3] = Math.round(op * 255);
-            }
-          }
-          ctx.putImageData(img, 0, 0);
-        }
-      });
-      _stateFadeLayer = new FadeLayer();
-      return _stateFadeLayer;
+    function buildFadeImageFromField(field) {
+      if (!field || !field.field) return null;
+      var c = document.createElement('canvas');
+      c.width = field.cols;
+      c.height = field.rows;
+      var ctx = c.getContext('2d');
+      if (!ctx) return null;
+      var img = ctx.createImageData(field.cols, field.rows);
+      var data = img.data;
+      var R = 14, G = 17, B = 13;
+      for (var i = 0; i < field.field.length; i++) {
+        var mi = field.field[i];
+        var op = fadeOpacityFromMiles(mi);
+        var o = i * 4;
+        data[o] = R;
+        data[o + 1] = G;
+        data[o + 2] = B;
+        data[o + 3] = Math.round(op * 255);
+      }
+      ctx.putImageData(img, 0, 0);
+      var url = '';
+      try { url = c.toDataURL('image/png'); } catch (e) { return null; }
+      var bounds = L.latLngBounds(
+        [field.minLat, field.minLng],
+        [field.maxLat, field.maxLng]
+      );
+      return { url: url, bounds: bounds };
     }
 
     function drawActiveStateMask() {
@@ -20993,21 +20949,56 @@
         stateMaskSvgRenderer = L.svg({ padding: 0.5 });
       }
 
-      // Build / reuse distance field for smooth even fade
+      // Build / reuse distance field once per ring
       if (!_alFadeField || _alFadeField._ringLen !== ring.length) {
         _alFadeField = buildAlFadeField(ring);
         _alFadeField._ringLen = ring.length;
-      }
-
-      // Canvas fade layer (single-channel, no band stacking)
-      var fadeLayer = ensureStateFadeLayer();
-      if (fadeLayer) {
-        if (!map.hasLayer(fadeLayer)) {
-          try { map.addLayer(fadeLayer); } catch (eAdd) {}
-        } else if (fadeLayer._redraw) {
-          fadeLayer._redraw();
+        _stateFadeImageUrl = null;
+        if (_stateFadeImage) {
+          try { map.removeLayer(_stateFadeImage); } catch (eR) {}
+          _stateFadeImage = null;
         }
       }
+
+      // Geographic fade image — scales correctly with zoom (same as map tiles)
+      if (!_stateFadeImage || !map.hasLayer(_stateFadeImage)) {
+        var built = buildFadeImageFromField(_alFadeField);
+        if (built && built.url) {
+          _stateFadeImageUrl = built.url;
+          if (!map.getPane('stateFadePane')) {
+            map.createPane('stateFadePane');
+            map.getPane('stateFadePane').style.zIndex = 350;
+            map.getPane('stateFadePane').style.pointerEvents = 'none';
+          }
+          _stateFadeImage = L.imageOverlay(built.url, built.bounds, {
+            opacity: 1,
+            interactive: false,
+            className: 'state-fade-overlay',
+            pane: 'stateFadePane'
+          });
+          try { _stateFadeImage.addTo(map); } catch (eAdd) {}
+        }
+      }
+
+      // Beyond the fade image (world outside AL+20mi): solid dark with hole = image bounds
+      var outer = [[-90, -180], [-90, 180], [90, 180], [90, -180], [-90, -180]];
+      var hole = [
+        [_alFadeField.minLat, _alFadeField.minLng],
+        [_alFadeField.minLat, _alFadeField.maxLng],
+        [_alFadeField.maxLat, _alFadeField.maxLng],
+        [_alFadeField.maxLat, _alFadeField.minLng],
+        [_alFadeField.minLat, _alFadeField.minLng]
+      ];
+      stateMaskGroup.addLayer(L.polygon([outer, hole], {
+        stroke: false,
+        fillColor: '#0e110d',
+        fillOpacity: FADE_FAR_OP,
+        interactive: false,
+        bubblingMouseEvents: false,
+        className: 'state-outside-mask state-outside-mask-far',
+        smoothFactor: 0,
+        renderer: stateMaskSvgRenderer
+      }));
 
       // Red border on the true state line (full-res) — drawn above fade
       var borderHalo = L.polyline(ring, {
