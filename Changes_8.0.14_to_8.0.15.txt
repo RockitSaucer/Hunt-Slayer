@@ -1,0 +1,12 @@
+V8.0.15
+
+#138 / #140 Event Select map
+- Replaced native <select> with button that opens the same map switcher as Currently viewing
+- No duplicate maps (uses fetchMapSwitcherLists)
+- Save associates the map currently being viewed
+- Edit event opens the event’s linked map
+
+#141 Day event cards
+- Stronger Plan-style 3D green cards; no dates on face; active highlight
+
+Shell: reg-slayer-shell-v145

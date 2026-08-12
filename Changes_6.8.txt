@@ -1,0 +1,14 @@
+﻿REG SLAYER 6.8 — WMA internal zones (Black Warrior Zone A/B)
+
+Since 6.7.1:
+- WMA permit zones (not Alabama deer zones A–E) for Black Warrior
+- Zone A (green) / Zone B (tan) polygons on map when WMA layer is on
+- Available tracts always lists each open WMA zone as ""Black Warrior WMA (WMA Zone A/B)"" — never collapses to plain unit name
+- Black Warrior 2026–27 gun seasons zone-specific (e.g. Nov 19 gun = Zone B only)
+- Official AREA map (PDF) button for all ADCNR WMAs in Rules & regs
+- Zone rings embedded in wma-zones-data.js so file:// and offline work (fetch no longer required)
+- GPS: single browser permission prompt on boot
+
+Open via: Desktop\HuntApp\_push_hunt_slayer\index.html (or Start Hunt App 6.8.cmd for single-file — zones map needs wma-zones-data.js beside the HTML)
+
+Confirm official Outdoor Alabama AREA permit before hunting.

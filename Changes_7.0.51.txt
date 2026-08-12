@@ -1,0 +1,9 @@
+V7.0.51 — Calendar hide is soft + Unhide
+
+- Hide still only hides for you (not delete)
+- Selected day now shows a “Hidden on your calendar” section with Unhide
+- Toast after hide explains restore path
+- unhideForMe also clears cloud map_calendar_event_hides row when possible
+- Reg Slayer index + calendar-events.js synced
+
+Also related PlanSlayer V1.2.7 (separate app): auto list packs, Hunt event import, no Quick Load popup on event click, map stays button, Event pins only toggle.

@@ -1,0 +1,18 @@
+V8.0.1 (Hunt + Reg mirror)
+
+Compass drag (mobile)
+- Enlarged dial drag no longer steals / gets stolen by map pan or page scroll.
+- touch-action: none while expanded/dragging; Leaflet map.dragging disabled during drag.
+- Pointer capture + non-passive touch handlers; shrink-on-tap still works.
+
+Mobile scroll snap / long "loading"
+- Boot quiet window (10s): never force-scroll the page while GPS/weather settle.
+- User touchmove/wheel/scroll immediately cancels map-in-view lock (was fighting scroll for ~3s).
+- skipScroll weather paths no longer inject tall #db-loading or hide→show dashboard flash.
+
+Share to home screen
+- Header button near Other ways to slay / Report an issue.
+- Android: uses beforeinstallprompt when available (Install app).
+- iOS: in-app steps (Safari Share → Add to Home Screen). Icons use site-specific hunt/reg art via existing manifest + apple-touch-icon.
+
+Shell cache: reg-slayer-shell-v131

@@ -11117,7 +11117,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.14">V8.0.14</span>
+      <span class="brand-version" aria-label="Version 8.0.15">V8.0.15</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -11297,10 +11297,10 @@
                     <input type="date" id="event-end-date" style="width:100%;margin-top:2px;padding:5px 6px;font-size:12px;box-sizing:border-box;">
                   </label>
                 </div>
-                <label style="display:block;font-size:10px;color:var(--muted);font-weight:700;margin-top:6px;max-width:52%;">Select map
-                  <select id="event-map-scope" style="width:100%;margin-top:2px;padding:8px 8px;font-size:12px;box-sizing:border-box;font-weight:700;border:1px solid var(--accent);border-radius:6px;background:var(--panel);color:var(--ink);" title="Map that opens when you load this event (My Maps only)">
-                    <option value="personal">My personal map</option>
-                  </select>
+                <label style="display:block;font-size:10px;color:var(--muted);font-weight:700;margin-top:6px;max-width:min(100%,280px);">Select map
+                  <button type="button" id="event-map-scope-btn" class="event-map-scope-btn" title="Same list as Currently viewing — pick a map"
+                    style="display:block;width:100%;margin-top:2px;padding:8px 10px;font-size:12px;box-sizing:border-box;font-weight:800;border:1px solid var(--accent);border-radius:8px;background:linear-gradient(180deg,#323c28 0%,#262e1e 45%,#1a2014 100%);color:var(--ink);cursor:pointer;text-align:left;font-family:inherit;box-shadow:0 1px 0 rgba(255,255,255,0.06) inset,0 2px 0 #0a0c09,0 3px 8px rgba(0,0,0,0.3);">My Map</button>
+                  <input type="hidden" id="event-map-scope" value="personal" />
                 </label>
                 <div class="event-people-loc-row">
                   <button type="button" id="event-add-people-btn" onclick="openEventAddPeople()" style="background:var(--panel);border:1px solid var(--accent);color:var(--accent);padding:6px 10px;border-radius:6px;font-weight:800;cursor:pointer;font-size:11px;">Add people</button>
@@ -12694,7 +12694,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.14';
+    const APP_VERSION = '8.0.15';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -32868,108 +32868,127 @@ function togglePinIconPicker() {
       if (window.RegSlayerCalendarEvents) return window.RegSlayerCalendarEvents.eventsForDay(ds);
       return calendarEvents[ds] || [];
     }
-    function populateEventMapScopeSelect(selected) {
-      var sel = document.getElementById('event-map-scope');
-      if (!sel) return;
-      var cur = selected || sel.value || '';
-      // #124: same list as “Currently viewing” map switcher (fetchMapSwitcherLists + displayMapName)
-      sel.innerHTML = '';
-      function finishSelect() {
-        if (cur === 'all' || cur === 'personal') {
-          // Map legacy personal → default private if present
-          var defOpt = sel.querySelector('option[data-default-private="1"]');
-          if (defOpt) cur = defOpt.value;
-          else if (sel.options.length) cur = sel.options[0].value;
-        }
-        var found = false;
-        for (var i = 0; i < sel.options.length; i++) {
-          if (sel.options[i].value === cur) { sel.selectedIndex = i; found = true; break; }
-        }
-        if (!found && sel.options.length) {
-          try { sel.selectedIndex = 0; } catch (eF) {}
-        }
-      }
-      function nameOf(kind, m) {
-        try {
-          if (window.RegSlayerParty && typeof window.RegSlayerParty.displayMapName === 'function') {
-            return window.RegSlayerParty.displayMapName(kind, m.id, m.name || (kind === 'shared' ? 'Shared map' : 'Private map'));
+    /**
+     * #138/#140: Event form map picker = same UI as Currently viewing (map switcher).
+     * Hidden #event-map-scope stores private:id | shared:id; save prefers live view state.
+     */
+    function eventMapScopeFromViewState() {
+      try {
+        var vs = window.RegSlayerCloud && window.RegSlayerCloud.getViewState && window.RegSlayerCloud.getViewState();
+        if (vs) {
+          if (vs.mode === 'shared' && vs.sharedMapId) {
+            return {
+              value: 'shared:' + vs.sharedMapId,
+              mapScope: 'shared',
+              sharedMapId: vs.sharedMapId,
+              privateMapId: null,
+              label: vs.sharedMapName || 'Shared map'
+            };
           }
-        } catch (eN) {}
-        return (m && m.name) || (kind === 'shared' ? 'Shared map' : 'Private map');
+          if (vs.privateMapId) {
+            return {
+              value: 'private:' + vs.privateMapId,
+              mapScope: 'private',
+              sharedMapId: null,
+              privateMapId: vs.privateMapId,
+              label: vs.privateMapName || 'My Map'
+            };
+          }
+        }
+      } catch (e) {}
+      return null;
+    }
+    function displayNameForEventMapValue(value) {
+      var v = String(value || '');
+      try {
+        if (window.RegSlayerParty && typeof window.RegSlayerParty.displayMapName === 'function') {
+          if (v.indexOf('shared:') === 0) {
+            return window.RegSlayerParty.displayMapName('shared', v.slice(7), 'Shared map');
+          }
+          if (v.indexOf('private:') === 0) {
+            return window.RegSlayerParty.displayMapName('private', v.slice(8), 'My Map');
+          }
+        }
+      } catch (eN) {}
+      if (v.indexOf('shared:') === 0 || v.indexOf('private:') === 0) return 'Map';
+      return 'My Map';
+    }
+    function setEventMapScopeValue(value, label) {
+      var hid = document.getElementById('event-map-scope');
+      var btn = document.getElementById('event-map-scope-btn');
+      if (hid) hid.value = value || 'personal';
+      if (btn) {
+        btn.textContent = label || displayNameForEventMapValue(value) || 'My Map';
+        btn.setAttribute('data-map-value', value || 'personal');
       }
-      function fillFromLists(pmaps, smaps) {
-        pmaps = Array.isArray(pmaps) ? pmaps.slice() : [];
-        smaps = Array.isArray(smaps) ? smaps.slice() : [];
-        // Same order as map switcher groups
-        pmaps.sort(function (a, b) {
-          return String(nameOf('private', a) || '').localeCompare(String(nameOf('private', b) || ''));
-        });
-        smaps.sort(function (a, b) {
-          return String(nameOf('shared', a) || '').localeCompare(String(nameOf('shared', b) || ''));
-        });
-        var seen = {};
-        if (pmaps.length) {
-          var grp = document.createElement('option');
-          grp.disabled = true;
-                    pmaps.forEach(function (m) {
-            if (!m || !m.id || seen['p:' + m.id]) return;
-            seen['p:' + m.id] = true;
-            var opt = document.createElement('option');
-            opt.value = 'private:' + m.id;
-            opt.textContent = nameOf('private', m);
-            if (m.is_default) opt.setAttribute('data-default-private', '1');
-            sel.appendChild(opt);
-          });
-        }
-        if (smaps.length) {
-          var grpS = document.createElement('option');
-          grpS.disabled = true;
-                    smaps.forEach(function (m) {
-            if (!m || !m.id || seen['s:' + m.id]) return;
-            seen['s:' + m.id] = true;
-            var opt = document.createElement('option');
-            opt.value = 'shared:' + m.id;
-            opt.textContent = nameOf('shared', m);
-            sel.appendChild(opt);
-          });
-        }
-        if (!sel.options.length) {
-          var fb = document.createElement('option');
-          fb.value = 'personal';
-          fb.textContent = 'My personal map';
-          sel.appendChild(fb);
-        }
-        finishSelect();
+    }
+    function syncEventMapScopeFromView() {
+      var fromView = eventMapScopeFromViewState();
+      if (fromView) {
+        setEventMapScopeValue(fromView.value, fromView.label);
+        return fromView;
       }
+      var hid = document.getElementById('event-map-scope');
+      var cur = (hid && hid.value) || 'personal';
+      setEventMapScopeValue(cur, displayNameForEventMapValue(cur));
+      return parseEventMapScopeValue(cur);
+    }
+    function populateEventMapScopeSelect(selected) {
+      // Prefer explicit selection (edit form); else currently viewing map
+      var cur = selected || '';
+      if (!cur || cur === 'personal' || cur === 'all') {
+        var vs = eventMapScopeFromViewState();
+        if (vs) cur = vs.value;
+        else cur = 'personal';
+      }
+      setEventMapScopeValue(cur, displayNameForEventMapValue(cur));
+      // Keep label fresh after lists load
       try {
         var P = window.RegSlayerParty;
         if (P && typeof P.fetchMapSwitcherLists === 'function') {
-          Promise.resolve(P.fetchMapSwitcherLists()).then(function (lists) {
-            fillFromLists(lists && lists.pmaps, lists && lists.smaps);
-          }).catch(function () {
-            fillFromLists([], []);
-          });
-          return;
+          Promise.resolve(P.fetchMapSwitcherLists()).then(function () {
+            setEventMapScopeValue(cur, displayNameForEventMapValue(cur));
+          }).catch(function () {});
         }
-        var sb = window.RegSlayerCloud && window.RegSlayerCloud.getClient && window.RegSlayerCloud.getClient();
-        if (!sb) { fillFromLists([], []); return; }
-        var pmaps = [], smaps = [], pending = 2;
-        function doneOne() {
-          pending--;
-          if (pending <= 0) fillFromLists(pmaps, smaps);
+      } catch (eF) {}
+    }
+    function wireEventMapScopeBtn() {
+      var btn = document.getElementById('event-map-scope-btn');
+      if (!btn || btn._rsMapWired) return;
+      btn._rsMapWired = true;
+      btn.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        // Open the exact same dropdown as Currently viewing / bottom map name
+        if (window.RegSlayerParty && typeof window.RegSlayerParty.openMapSwitcher === 'function') {
+          window.RegSlayerParty.openMapSwitcher(btn);
+        } else if (typeof window.openMapSwitcher === 'function') {
+          window.openMapSwitcher(btn);
+        } else if (typeof showAppCopyToast === 'function') {
+          showAppCopyToast('Sign in to pick from My Maps');
         }
-        sb.rpc('list_my_private_maps').then(function (res) {
-          pmaps = (res && res.data) || [];
-          doneOne();
-        }).catch(function () { doneOne(); });
-        sb.rpc('list_my_shared_maps').then(function (res) {
-          smaps = (res && res.data) || [];
-          doneOne();
-        }).catch(function () { doneOne(); });
-      } catch (e2) {
-        fillFromLists([], []);
+      });
+      // After any map switch, refresh button label if event form is open
+      if (!window._rsEventMapViewHook) {
+        window._rsEventMapViewHook = true;
+        var prevBn = window.RegSlayerParty && window.RegSlayerParty.updateBrandName;
+        // Poll lightly while form open (map switch is async)
+        setInterval(function () {
+          try {
+            var form = document.getElementById('event-form-container');
+            if (!form || form.style.display === 'none') return;
+            syncEventMapScopeFromView();
+          } catch (e) {}
+        }, 800);
       }
     }
+    try {
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', wireEventMapScopeBtn);
+      } else {
+        wireEventMapScopeBtn();
+      }
+    } catch (eW) { setTimeout(wireEventMapScopeBtn, 200); }
     function parseEventMapScopeValue(v) {
       v = String(v || 'personal');
       if (v.indexOf('shared:') === 0) {
@@ -33279,8 +33298,19 @@ function togglePinIconPicker() {
       var end = (document.getElementById('event-end-date') && document.getElementById('event-end-date').value) || start;
       if (end < start) { alert('End date must be on or after start date.'); return; }
       const link = document.getElementById('link-hunt-state-chk').checked;
-      var scopeSel = document.getElementById('event-map-scope') ? document.getElementById('event-map-scope').value : 'personal';
-      var scope = parseEventMapScopeValue(scopeSel);
+      // #138: map linked = whichever map you're viewing when you Save
+      var scope = null;
+      try {
+        var live = eventMapScopeFromViewState();
+        if (live) {
+          scope = { mapScope: live.mapScope, sharedMapId: live.sharedMapId, privateMapId: live.privateMapId };
+          setEventMapScopeValue(live.value, live.label);
+        }
+      } catch (eLv) {}
+      if (!scope) {
+        var scopeSel = document.getElementById('event-map-scope') ? document.getElementById('event-map-scope').value : 'personal';
+        scope = parseEventMapScopeValue(scopeSel);
+      }
       var lat = eventLocationDraft.lat;
       var lng = eventLocationDraft.lng;
       if (lat == null && document.getElementById('event-lat') && document.getElementById('event-lat').value) {
@@ -33359,6 +33389,20 @@ function togglePinIconPicker() {
           ? ('private:' + ev.privateMapId)
           : (ev.mapScope || 'personal');
       populateEventMapScopeSelect(scopeVal);
+      // Open the event's linked map so Select map matches Currently viewing
+      try {
+        if (ev.mapScope === 'shared' && ev.sharedMapId &&
+            window.RegSlayerCloud && typeof window.RegSlayerCloud.switchToShared === 'function') {
+          window.RegSlayerCloud.switchToShared(ev.sharedMapId).then(function () {
+            syncEventMapScopeFromView();
+          }).catch(function () {});
+        } else if (ev.privateMapId && window.RegSlayerCloud &&
+            typeof window.RegSlayerCloud.switchToPrivateMap === 'function') {
+          window.RegSlayerCloud.switchToPrivateMap(ev.privateMapId).then(function () {
+            syncEventMapScopeFromView();
+          }).catch(function () {});
+        }
+      } catch (eOpen) {}
       document.getElementById('link-hunt-state-chk').checked = !!ev.locationId;
       eventLocationDraft = { lat: ev.lat, lng: ev.lng, label: ev.locationLabel || null };
       if (document.getElementById('event-lat')) document.getElementById('event-lat').value = ev.lat != null ? String(ev.lat) : '';

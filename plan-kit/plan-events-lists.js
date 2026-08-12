@@ -1782,11 +1782,6 @@
         var startIso = huntEventStartIso(ev);
         var endIso = huntEventEndIso(ev);
         var cd = countdownHtml(startIso, endIso);
-        var range = (ev.startDate === ev.endDate || !ev.endDate)
-          ? (ev.startDate || '')
-          : ((ev.startDate || '') + ' → ' + (ev.endDate || ''));
-        var scopeLabel = ev.mapScope === 'shared' ? 'Shared map'
-          : (ev.mapScope === 'all' ? 'All my maps' : 'Personal');
         var isCreator = true;
         try {
           if (global.RegSlayerCalendarEvents && global.RegSlayerCalendarEvents.isCreator) {
@@ -1794,7 +1789,7 @@
           }
         } catch (eC) {}
         var color = ev.color || '#e59a18';
-        // #136 / #141: Plan-style card — name + countdown + List/Edit; no date text (calendar has it)
+        // #141: Plan-style 3D green card — name + countdown + List/Edit only (no dates on face)
         return (
           '<div class="ps-event-card-wrap">' +
             '<div class="ps-event-card' + (active ? ' is-active' : '') + '" data-ps-open-event="' + esc(id) +
@@ -1815,7 +1810,6 @@
                 (ev.lat != null
                   ? '<div class="ps-loc-hint">📍 Location set — opens on map when you select this event</div>'
                   : '<div class="ps-loc-hint muted">No pin yet — Edit event → Add location</div>') +
-                (scopeLabel ? ('<div class="ec-meta">' + esc(scopeLabel) + '</div>') : '') +
                 '<div class="ps-action-row">' +
                   '<button type="button" data-ps-hide="' + esc(id) + '">Hide</button>' +
                   (isCreator
