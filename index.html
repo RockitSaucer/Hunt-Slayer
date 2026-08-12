@@ -11117,7 +11117,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.17">V8.0.17</span>
+      <span class="brand-version" aria-label="Version 8.0.18">V8.0.18</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -12694,7 +12694,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.17';
+    const APP_VERSION = '8.0.18';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -20727,10 +20727,10 @@
 
     /**
      * Dim everything outside the selected state + draw a single crisp border.
-     * Uses SVG renderer so the mask/border do not flicker with Canvas tile redraws.
      *
      * Border = exact AL_STATE_RING (red, on the state line).
-     * Fade = 20 mi outward from that same ring (darkens away from Alabama).
+     * Fade = true distance-from-border field (canvas), so the gradient is the
+     * same all the way around — no stacked polygon bands that darken at folds.
      */
     function closedStateRing(ring) {
       if (!ring || !ring.length) return [];
@@ -20740,6 +20740,240 @@
       if (a0[0] !== aN[0] || a0[1] !== aN[1]) r.push([a0[0], a0[1]]);
       return r;
     }
+    function decimateRingPts(src, maxPts) {
+      if (!src || src.length <= maxPts) return src.slice();
+      var step = Math.ceil(src.length / maxPts);
+      var out = [];
+      for (var di = 0; di < src.length; di += step) {
+        if (src[di]) out.push([src[di][0], src[di][1]]);
+      }
+      return out.length >= 4 ? out : src.slice();
+    }
+    /** Point-in-ring, pts are [lat,lng]; ray cast on lng */
+    function pointInLatLngRing(lat, lng, ring) {
+      if (!ring || ring.length < 3) return false;
+      var inside = false;
+      for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        var yi = ring[i][0], xi = ring[i][1];
+        var yj = ring[j][0], xj = ring[j][1];
+        var hit = ((yi > lat) !== (yj > lat)) &&
+          (lng < (xj - xi) * (lat - yi) / ((yj - yi) || 1e-15) + xi);
+        if (hit) inside = !inside;
+      }
+      return inside;
+    }
+    /** Min distance in miles from (lat,lng) to polyline ring [lat,lng][] */
+    function distMilesToRing(lat, lng, ring) {
+      if (!ring || ring.length < 2) return 1e9;
+      var cosLat = Math.cos((lat * Math.PI) / 180) || 0.85;
+      var mLat = 69, mLng = 69 * cosLat; // mi per degree
+      var best = 1e18;
+      for (var i = 0; i < ring.length - 1; i++) {
+        var a = ring[i], b = ring[i + 1];
+        if (!a || !b) continue;
+        // Project into local mi plane around sample point
+        var ax = (a[1] - lng) * mLng, ay = (a[0] - lat) * mLat;
+        var bx = (b[1] - lng) * mLng, by = (b[0] - lat) * mLat;
+        var abx = bx - ax, aby = by - ay;
+        var t = 0;
+        var ab2 = abx * abx + aby * aby;
+        if (ab2 > 1e-12) {
+          // vector from A to origin (0,0) is (-ax,-ay)
+          t = (-ax * abx - ay * aby) / ab2;
+          if (t < 0) t = 0;
+          else if (t > 1) t = 1;
+        }
+        var px = ax + abx * t, py = ay + aby * t;
+        var d = Math.sqrt(px * px + py * py);
+        if (d < best) best = d;
+      }
+      // Also last→first if not closed
+      var a0 = ring[0], aN = ring[ring.length - 1];
+      if (a0 && aN && (a0[0] !== aN[0] || a0[1] !== aN[1])) {
+        var ax2 = (aN[1] - lng) * mLng, ay2 = (aN[0] - lat) * mLat;
+        var bx2 = (a0[1] - lng) * mLng, by2 = (a0[0] - lat) * mLat;
+        var abx2 = bx2 - ax2, aby2 = by2 - ay2;
+        var ab22 = abx2 * abx2 + aby2 * aby2;
+        var t2 = 0;
+        if (ab22 > 1e-12) {
+          t2 = (-ax2 * abx2 - ay2 * aby2) / ab22;
+          if (t2 < 0) t2 = 0;
+          else if (t2 > 1) t2 = 1;
+        }
+        var px2 = ax2 + abx2 * t2, py2 = ay2 + aby2 * t2;
+        var d2 = Math.sqrt(px2 * px2 + py2 * py2);
+        if (d2 < best) best = d2;
+      }
+      return best;
+    }
+
+    // Cached distance field: one sample per cell over AL + fade pad (built once per ring)
+    var _alFadeField = null;
+    var FADE_MAX_MI = 20;
+    var FADE_FAR_OP = 0.84;
+
+    function buildAlFadeField(ring) {
+      var pts = decimateRingPts(closedStateRing(ring), 180);
+      // Drop closing duplicate for edge loop
+      if (pts.length > 1 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1]) {
+        pts = pts.slice(0, -1);
+      }
+      var minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+      for (var i = 0; i < pts.length; i++) {
+        if (pts[i][0] < minLat) minLat = pts[i][0];
+        if (pts[i][0] > maxLat) maxLat = pts[i][0];
+        if (pts[i][1] < minLng) minLng = pts[i][1];
+        if (pts[i][1] > maxLng) maxLng = pts[i][1];
+      }
+      // Pad ~22 mi so field covers full fade
+      var padLat = 22 / 69;
+      var padLng = 22 / (69 * Math.cos((((minLat + maxLat) / 2) * Math.PI) / 180) || 0.85);
+      minLat -= padLat; maxLat += padLat;
+      minLng -= padLng; maxLng += padLng;
+      // ~1.5 mi per cell — smooth enough, fast enough
+      var cols = 200;
+      var rows = Math.max(120, Math.round(cols * ((maxLat - minLat) / Math.max(0.01, maxLng - minLng))));
+      if (rows > 280) rows = 280;
+      var field = new Float32Array(cols * rows); // miles outside edge; 0 = inside/on border
+      var closed = closedStateRing(pts);
+      for (var r = 0; r < rows; r++) {
+        var lat = maxLat - ((r + 0.5) / rows) * (maxLat - minLat);
+        for (var c = 0; c < cols; c++) {
+          var lng = minLng + ((c + 0.5) / cols) * (maxLng - minLng);
+          var idx = r * cols + c;
+          if (pointInLatLngRing(lat, lng, closed)) {
+            field[idx] = 0;
+          } else {
+            field[idx] = distMilesToRing(lat, lng, closed);
+          }
+        }
+      }
+      return {
+        field: field,
+        cols: cols,
+        rows: rows,
+        minLat: minLat,
+        maxLat: maxLat,
+        minLng: minLng,
+        maxLng: maxLng,
+        closed: closed
+      };
+    }
+
+    function sampleAlFadeMiles(field, lat, lng) {
+      if (!field) return FADE_MAX_MI + 1;
+      if (lat < field.minLat || lat > field.maxLat || lng < field.minLng || lng > field.maxLng) {
+        return FADE_MAX_MI + 1; // outside field → full dark
+      }
+      var u = (lng - field.minLng) / (field.maxLng - field.minLng);
+      var v = (field.maxLat - lat) / (field.maxLat - field.minLat);
+      var x = u * (field.cols - 1);
+      var y = v * (field.rows - 1);
+      var x0 = Math.floor(x), y0 = Math.floor(y);
+      var x1 = Math.min(field.cols - 1, x0 + 1);
+      var y1 = Math.min(field.rows - 1, y0 + 1);
+      var fx = x - x0, fy = y - y0;
+      var f00 = field.field[y0 * field.cols + x0];
+      var f10 = field.field[y0 * field.cols + x1];
+      var f01 = field.field[y1 * field.cols + x0];
+      var f11 = field.field[y1 * field.cols + x1];
+      var a = f00 * (1 - fx) + f10 * fx;
+      var b = f01 * (1 - fx) + f11 * fx;
+      return a * (1 - fy) + b * fy;
+    }
+
+    /** Opacity 0..FADE_FAR_OP from miles past the border (smooth, single channel) */
+    function fadeOpacityFromMiles(mi) {
+      if (mi <= 0) return 0;
+      if (mi >= FADE_MAX_MI) return FADE_FAR_OP;
+      var t = mi / FADE_MAX_MI;
+      // Smooth ease — no hard steps; same curve everywhere
+      var ease = t * t * (3 - 2 * t);
+      // Soft start near border, full dark by 20 mi
+      return FADE_FAR_OP * (0.08 + 0.92 * ease);
+    }
+
+    var _stateFadeLayer = null;
+    var _stateFadeWired = false;
+
+    function ensureStateFadeLayer() {
+      if (_stateFadeLayer || typeof L === 'undefined') return _stateFadeLayer;
+      var FadeLayer = L.Layer.extend({
+        onAdd: function (mapInst) {
+          this._map = mapInst;
+          // Below markers (600) and default overlay vectors (400); above tiles (200)
+          if (!mapInst.getPane('stateFadePane')) {
+            mapInst.createPane('stateFadePane');
+            mapInst.getPane('stateFadePane').style.zIndex = 350;
+            mapInst.getPane('stateFadePane').style.pointerEvents = 'none';
+          }
+          this._canvas = L.DomUtil.create('canvas', 'state-fade-canvas');
+          this._canvas.style.position = 'absolute';
+          this._canvas.style.left = '0';
+          this._canvas.style.top = '0';
+          this._canvas.style.pointerEvents = 'none';
+          mapInst.getPane('stateFadePane').appendChild(this._canvas);
+          this._onMove = this._redraw.bind(this);
+          mapInst.on('moveend zoomend resize viewreset', this._onMove);
+          this._redraw();
+        },
+        onRemove: function (mapInst) {
+          mapInst.off('moveend zoomend resize viewreset', this._onMove);
+          if (this._canvas && this._canvas.parentNode) {
+            this._canvas.parentNode.removeChild(this._canvas);
+          }
+          this._canvas = null;
+          this._map = null;
+        },
+        _redraw: function () {
+          if (!this._map || !this._canvas || !_alFadeField) return;
+          var mapInst = this._map;
+          var size = mapInst.getSize();
+          var dpr = Math.min(window.devicePixelRatio || 1, 2);
+          // Half-res for speed; CSS scales up smoothly
+          var scale = 0.5;
+          var w = Math.max(2, Math.round(size.x * scale));
+          var h = Math.max(2, Math.round(size.y * scale));
+          var canvas = this._canvas;
+          if (canvas.width !== w || canvas.height !== h) {
+            canvas.width = w;
+            canvas.height = h;
+          }
+          canvas.style.width = size.x + 'px';
+          canvas.style.height = size.y + 'px';
+          // Align with map pane
+          var topLeft = mapInst.containerPointToLayerPoint([0, 0]);
+          L.DomUtil.setPosition(canvas, topLeft);
+
+          var ctx = canvas.getContext('2d');
+          if (!ctx) return;
+          var img = ctx.createImageData(w, h);
+          var data = img.data;
+          var field = _alFadeField;
+          // RGB for #0e110d
+          var R = 14, G = 17, B = 13;
+          for (var py = 0; py < h; py++) {
+            for (var px = 0; px < w; px++) {
+              // Map canvas pixel → container point → latlng
+              var cx = (px + 0.5) / scale;
+              var cy = (py + 0.5) / scale;
+              var ll = mapInst.containerPointToLatLng([cx, cy]);
+              var mi = sampleAlFadeMiles(field, ll.lat, ll.lng);
+              var op = fadeOpacityFromMiles(mi);
+              var i = (py * w + px) * 4;
+              data[i] = R;
+              data[i + 1] = G;
+              data[i + 2] = B;
+              data[i + 3] = Math.round(op * 255);
+            }
+          }
+          ctx.putImageData(img, 0, 0);
+        }
+      });
+      _stateFadeLayer = new FadeLayer();
+      return _stateFadeLayer;
+    }
+
     function drawActiveStateMask() {
       if (!map || typeof L === 'undefined') return;
       var ringSrc = (typeof ACTIVE_STATE_RING !== 'undefined' && ACTIVE_STATE_RING && ACTIVE_STATE_RING.length)
@@ -20755,141 +20989,28 @@
         stateMaskGroup.clearLayers();
         if (!map.hasLayer(stateMaskGroup)) stateMaskGroup.addTo(map);
       }
-      // Dedicated SVG renderer: stable stroke (no Canvas pan/zoom flash)
       if (!stateMaskSvgRenderer) {
         stateMaskSvgRenderer = L.svg({ padding: 0.5 });
       }
-      var outer = [[-90, -180], [-90, 180], [90, 180], [90, -180], [-90, -180]];
 
-      // Thin ring for fade bands only (border always uses full-res ring)
-      function decimateRing(src, maxPts) {
-        if (!src || src.length <= maxPts) return closedStateRing(src);
-        var step = Math.ceil(src.length / maxPts);
-        var out = [];
-        for (var di = 0; di < src.length; di += step) {
-          if (src[di]) out.push([src[di][0], src[di][1]]);
-        }
-        return closedStateRing(out.length >= 4 ? out : src);
+      // Build / reuse distance field for smooth even fade
+      if (!_alFadeField || _alFadeField._ringLen !== ring.length) {
+        _alFadeField = buildAlFadeField(ring);
+        _alFadeField._ringLen = ring.length;
       }
 
-      /**
-       * Offset ring outward by `miles` using edge normals.
-       * Geographic scaling: 1° lat ≈ 69 mi; 1° lng ≈ 69·cos(lat) mi
-       * so the buffer stays a true distance (not a lat/lng ellipse).
-       */
-      function inflateRingMiles(src, miles) {
-        if (!src || src.length < 4 || !miles) return closedStateRing(src);
-        var pts = src.slice();
-        if (pts.length > 1 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1]) {
-          pts = pts.slice(0, -1);
+      // Canvas fade layer (single-channel, no band stacking)
+      var fadeLayer = ensureStateFadeLayer();
+      if (fadeLayer) {
+        if (!map.hasLayer(fadeLayer)) {
+          try { map.addLayer(fadeLayer); } catch (eAdd) {}
+        } else if (fadeLayer._redraw) {
+          fadeLayer._redraw();
         }
-        if (pts.length < 3) return closedStateRing(src);
-
-        // Signed area with x=lng, y=lat (pts are [lat,lng])
-        var area = 0;
-        for (var ai = 0; ai < pts.length; ai++) {
-          var aj = (ai + 1) % pts.length;
-          area += pts[ai][1] * pts[aj][0] - pts[aj][1] * pts[ai][0];
-        }
-        // CW (negative) is typical for our AL ring — outward = right normal
-        var sign = area >= 0 ? 1 : -1;
-
-        // AL interior test point (Montgomery) — used to force outward if winding is ambiguous
-        var testLat = 32.3777, testLng = -86.3000;
-        function dist2(a, b) {
-          var dLat = a[0] - b[0], dLng = a[1] - b[1];
-          return dLat * dLat + dLng * dLng;
-        }
-
-        var out = [];
-        for (var i = 0; i < pts.length; i++) {
-          var prev = pts[(i - 1 + pts.length) % pts.length];
-          var cur = pts[i];
-          var next = pts[(i + 1) % pts.length];
-          // Work in approx-meters so lat/lng scale matches
-          var cosLat = Math.cos((cur[0] * Math.PI) / 180) || 0.85;
-          var mPerDegLat = 69 * 1609.344;
-          var mPerDegLng = 69 * 1609.344 * cosLat;
-          // Edges in meters (x=east/lng, y=north/lat)
-          var e1x = (cur[1] - prev[1]) * mPerDegLng, e1y = (cur[0] - prev[0]) * mPerDegLat;
-          var e2x = (next[1] - cur[1]) * mPerDegLng, e2y = (next[0] - cur[0]) * mPerDegLat;
-          // Left normal of travel: (-ey, ex); flip with sign for outward
-          var nx = sign * (-(e1y + e2y));
-          var ny = sign * (e1x + e2x);
-          var len = Math.sqrt(nx * nx + ny * ny) || 1e-9;
-          nx /= len; ny /= len;
-          var meters = miles * 1609.344;
-          var dLat = (ny * meters) / mPerDegLat;
-          var dLng = (nx * meters) / mPerDegLng;
-          out.push([cur[0] + dLat, cur[1] + dLng]);
-        }
-        // If we accidentally inflated inward, flip once
-        var mid = out[Math.floor(out.length / 2)];
-        var midSrc = pts[Math.floor(pts.length / 2)];
-        if (mid && midSrc && dist2(mid, [testLat, testLng]) < dist2(midSrc, [testLat, testLng])) {
-          out = out.map(function (p, idx) {
-            var cur2 = pts[idx];
-            return [2 * cur2[0] - p[0], 2 * cur2[1] - p[1]];
-          });
-        }
-        out.push([out[0][0], out[0][1]]);
-        return out;
       }
 
-      // Same geometric base for border + fade start (no offset between them)
-      var borderRing = ring;
-      // Fade bands: slightly simplified for perf, still starts on the state line
-      var fadeBase = decimateRing(borderRing, 240);
-      var fadeMaxMi = 20;
-      var fadeBandN = 24;
-      var fadeSteps = [];
-      for (var fi = 1; fi <= fadeBandN; fi++) {
-        var t = fi / fadeBandN;
-        // Smooth darken from the red border out to 20 mi
-        var ease = t * t * (3 - 2 * t); // smoothstep
-        fadeSteps.push({
-          mi: Math.round(fi * (fadeMaxMi / fadeBandN) * 100) / 100,
-          op: Math.round((0.04 + 0.78 * ease) * 1000) / 1000
-        });
-      }
-      // rings[0] = state edge (fadeBase ≈ border); rings[k] = +k steps outward
-      var rings = [fadeBase];
-      fadeSteps.forEach(function (step) {
-        rings.push(inflateRingMiles(fadeBase, step.mi));
-      });
-
-      // Beyond 20 mi: solid dark
-      stateMaskGroup.addLayer(L.polygon([outer, rings[rings.length - 1]], {
-        stroke: false, fillColor: '#0e110d', fillOpacity: 0.84,
-        interactive: false, bubblingMouseEvents: false,
-        className: 'state-outside-mask state-outside-mask-far',
-        smoothFactor: 0, renderer: stateMaskSvgRenderer
-      }));
-      // Annuli from state edge → 20 mi (opacity ramps with distance)
-      for (var bi = 1; bi < rings.length; bi++) {
-        stateMaskGroup.addLayer(L.polygon([rings[bi], rings[bi - 1]], {
-          stroke: false, fillColor: '#0e110d', fillOpacity: fadeSteps[bi - 1].op,
-          interactive: false, bubblingMouseEvents: false,
-          className: 'state-outside-mask state-outside-mask-b' + bi,
-          smoothFactor: 0, renderer: stateMaskSvgRenderer
-        }));
-      }
-
-      // Red border sits exactly on the Alabama state line (full-res ring)
-      var border = L.polyline(borderRing, {
-        color: '#c41e1e',
-        weight: 2.75,
-        opacity: 1,
-        interactive: false,
-        bubblingMouseEvents: false,
-        className: 'state-border-line',
-        smoothFactor: 0,
-        lineJoin: 'round',
-        lineCap: 'round',
-        renderer: stateMaskSvgRenderer
-      });
-      // Thin dark halo under red so it reads on light tiles
-      var borderHalo = L.polyline(borderRing, {
+      // Red border on the true state line (full-res) — drawn above fade
+      var borderHalo = L.polyline(ring, {
         color: '#1a0a0a',
         weight: 4.5,
         opacity: 0.55,
@@ -20901,9 +21022,21 @@
         lineCap: 'round',
         renderer: stateMaskSvgRenderer
       });
+      var border = L.polyline(ring, {
+        color: '#c41e1e',
+        weight: 2.75,
+        opacity: 1,
+        interactive: false,
+        bubblingMouseEvents: false,
+        className: 'state-border-line',
+        smoothFactor: 0,
+        lineJoin: 'round',
+        lineCap: 'round',
+        renderer: stateMaskSvgRenderer
+      });
       stateMaskGroup.addLayer(borderHalo);
       stateMaskGroup.addLayer(border);
-      try { stateMaskGroup.bringToBack(); } catch (eBk) {}
+      try { stateMaskGroup.bringToFront(); } catch (eBk) {}
       // Keep pan locked to active state (+ small pad) whenever mask is redrawn
       if (typeof applyActiveStateMapBounds === 'function') {
         try { applyActiveStateMapBounds(); } catch (eB) {}
