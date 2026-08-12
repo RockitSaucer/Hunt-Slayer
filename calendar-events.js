@@ -7,8 +7,11 @@
 
   var STORAGE_KEY = 'reg_slayer_cal_events_v2';
   var HIDES_KEY = 'reg_slayer_cal_event_hides_v1';
+  /** Tombstones so pullCloud never resurrects deleted events (cross-site dual-write) */
+  var DELETED_KEY = 'reg_slayer_cal_event_deleted_v1';
   var events = [];
   var localHides = {}; // eventId -> true
+  var localDeleted = {}; // eventId | planEventId -> timestamp
   var pendingLocationPick = null; // { draftId|eventId, name }
   var ready = false;
 
@@ -44,13 +47,48 @@
     } catch (e2) {
       localHides = {};
     }
+    try {
+      localDeleted = JSON.parse(localStorage.getItem(DELETED_KEY) || '{}') || {};
+    } catch (e3) {
+      localDeleted = {};
+    }
+    // Drop anything already tombstoned
+    events = events.filter(function (e) { return e && !isDeleted(e); });
   }
 
   function saveLocal() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
       localStorage.setItem(HIDES_KEY, JSON.stringify(localHides));
+      localStorage.setItem(DELETED_KEY, JSON.stringify(localDeleted));
     } catch (e) {}
+  }
+
+  function isDeleted(evOrId) {
+    if (evOrId == null) return false;
+    if (typeof evOrId === 'object') {
+      if (localDeleted[String(evOrId.id)]) return true;
+      if (evOrId.planEventId && localDeleted[String(evOrId.planEventId)]) return true;
+      if (evOrId.planEventId && localDeleted['plan_' + String(evOrId.planEventId)]) return true;
+      return false;
+    }
+    var id = String(evOrId);
+    if (localDeleted[id]) return true;
+    if (localDeleted['plan_' + id]) return true;
+    return false;
+  }
+
+  function markDeletedIds(ids) {
+    var now = Date.now();
+    (ids || []).forEach(function (id) {
+      if (id == null || id === '') return;
+      localDeleted[String(id)] = now;
+    });
+    // Prune tombstones older than 180 days
+    var cutoff = now - 180 * 24 * 60 * 60 * 1000;
+    Object.keys(localDeleted).forEach(function (k) {
+      if (Number(localDeleted[k]) < cutoff) delete localDeleted[k];
+    });
   }
 
   function normalize(ev) {
@@ -228,6 +266,11 @@
   function upsert(ev) {
     var n = normalize(ev);
     if (!n) return null;
+    if (isDeleted(n)) {
+      // Explicit user edit of a still-visible form shouldn't resurrect tombstones —
+      // only allow if caller clears tombstone (not used today)
+      return null;
+    }
     if (!n.creatorUserId) n.creatorUserId = myId();
     n.updatedAt = new Date().toISOString();
     var idx = events.findIndex(function (e) { return String(e.id) === String(n.id); });
@@ -243,15 +286,59 @@
 
   function hardDelete(id) {
     var ev = getById(id);
+    // Also try match by plan_ dual id
+    if (!ev) {
+      ev = events.find(function (e) {
+        return e && (String(e.planEventId) === String(id) || String(e.id) === 'plan_' + String(id));
+      }) || null;
+    }
     if (!ev) return false;
     if (!isCreator(ev)) return false;
-    events = events.filter(function (e) { return String(e.id) !== String(id); });
-    delete localHides[String(id)];
+    var delIds = [ev.id];
+    if (ev.planEventId) {
+      delIds.push(ev.planEventId);
+      delIds.push('plan_' + ev.planEventId);
+    }
+    markDeletedIds(delIds);
+    events = events.filter(function (e) {
+      if (!e) return false;
+      if (String(e.id) === String(ev.id)) return false;
+      if (ev.planEventId && e.planEventId && String(e.planEventId) === String(ev.planEventId)) return false;
+      if (ev.planEventId && String(e.id) === 'plan_' + String(ev.planEventId)) return false;
+      return !isDeleted(e);
+    });
+    delIds.forEach(function (d) { delete localHides[String(d)]; });
     saveLocal();
     try {
       var sb = global.RegSlayerCloud && global.RegSlayerCloud.getClient && global.RegSlayerCloud.getClient();
-      if (sb) sb.from('map_calendar_events').delete().eq('id', id).then(function () {});
+      if (sb) {
+        // Hunt/Reg calendar cloud row
+        sb.from('map_calendar_events').delete().eq('id', ev.id).then(function () {});
+        // Also delete any dual-write rows for this plan event (other id shapes)
+        if (ev.planEventId) {
+          sb.from('map_calendar_events').select('id, hunt_link').then(function (res) {
+            if (!res || !res.data) return;
+            res.data.forEach(function (row) {
+              if (!row || !row.id) return;
+              var pe = row.hunt_link && row.hunt_link.planEventId;
+              if (String(row.id) === String(ev.id) ||
+                  String(row.id) === 'plan_' + String(ev.planEventId) ||
+                  (pe && String(pe) === String(ev.planEventId))) {
+                sb.from('map_calendar_events').delete().eq('id', row.id).then(function () {});
+              }
+            });
+          }).catch(function () {});
+          // Plan cloud event (same account)
+          sb.from('plan_events').delete().eq('id', ev.planEventId).then(function () {}).catch(function () {});
+        }
+      }
     } catch (e) {}
+    // Host app: strip map pins + repaint
+    try {
+      if (typeof global.onCalendarEventHardDeleted === 'function') {
+        global.onCalendarEventHardDeleted(ev);
+      }
+    } catch (eH) {}
     return true;
   }
 
@@ -386,6 +473,8 @@
 
   function mergeEvent(n) {
     if (!n || !n.id) return;
+    // Never resurrect a deleted event
+    if (isDeleted(n)) return;
     // Prefer match by id, then by planEventId (Plan dual-write may rewrite UUID) (#78)
     var idx = events.findIndex(function (e) {
       if (!e) return false;
@@ -408,10 +497,16 @@
       var sb = global.RegSlayerCloud && global.RegSlayerCloud.getClient && global.RegSlayerCloud.getClient();
       var uid = myId();
       if (!sb || !uid) return Promise.resolve();
+      var liveMapIds = {};
+      var livePlanIds = {};
       return sb.from('map_calendar_events').select('*').then(function (res) {
         if (res.error || !res.data) return;
         res.data.forEach(function (row) {
           var n = rowToEvent(row);
+          if (!n) return;
+          if (isDeleted(n)) return;
+          liveMapIds[String(n.id)] = true;
+          if (n.planEventId) livePlanIds[String(n.planEventId)] = true;
           mergeEvent(n);
         });
         saveLocal();
@@ -421,6 +516,7 @@
           if (!res || res.error || !res.data) return;
           (res.data || []).forEach(function (pev) {
             if (!pev || !pev.id) return;
+            if (isDeleted(pev.id) || isDeleted('plan_' + pev.id)) return;
             function ymd(iso) {
               if (!iso) return null;
               var d = new Date(iso);
@@ -430,6 +526,8 @@
             var start = ymd(pev.start_at) || ymd(pev.created_at);
             if (!start) return;
             var huntId = pev.hunt_event_id || ('plan_' + pev.id);
+            livePlanIds[String(pev.id)] = true;
+            liveMapIds[String(huntId)] = true;
             mergeEvent(normalize({
               id: huntId,
               text: pev.name || 'Event',
@@ -441,12 +539,36 @@
               locationLabel: pev.location_label || null,
               planEventId: String(pev.id),
               mapScope: 'personal',
+              creatorUserId: pev.owner_user_id || pev.creator_user_id || null,
               _fromPlanSlayer: true,
               updatedAt: pev.updated_at || new Date().toISOString()
             }));
           });
           saveLocal();
         }).catch(function () {});
+      }).then(function () {
+        // Prune local events deleted remotely (stop ghost calendar dots / map pins)
+        var before = events.length;
+        events = events.filter(function (e) {
+          if (!e) return false;
+          if (isDeleted(e)) return false;
+          // Plan dual-writes: drop if no longer in plan_events cloud
+          if (e._fromPlanSlayer && e.planEventId && !livePlanIds[String(e.planEventId)]) {
+            return false;
+          }
+          // Our cloud map_calendar rows: if we know the live set and this is ours, drop if missing
+          if (e.creatorUserId && String(e.creatorUserId) === String(uid) &&
+              !e._localOnly && Object.keys(liveMapIds).length > 0 &&
+              !liveMapIds[String(e.id)] &&
+              !(e.planEventId && livePlanIds[String(e.planEventId)])) {
+            // Only prune UUID cloud ids (never prune un-pushed local drafts without plan link)
+            if (/^[0-9a-f]{8}-/i.test(String(e.id)) || String(e.id).indexOf('plan_') === 0) {
+              return false;
+            }
+          }
+          return true;
+        });
+        if (events.length !== before) saveLocal();
       }).then(function () {
         return sb.from('map_calendar_event_hides').select('event_id').eq('user_id', uid);
       }).then(function (res) {
@@ -461,6 +583,8 @@
         try {
           if (typeof global.renderCalendar === 'function') global.renderCalendar();
           if (typeof global.updateEventsList === 'function') global.updateEventsList();
+          if (typeof global.drawPinsOnMap === 'function') global.drawPinsOnMap();
+          if (typeof global.onCalendarEventsChanged === 'function') global.onCalendarEventsChanged();
         } catch (eRepaint) {}
       }).catch(function () {});
     } catch (e) {
@@ -534,6 +658,8 @@
     unhideForMe: unhideForMe,
     isCreator: isCreator,
     isHidden: isHidden,
+    isDeleted: isDeleted,
+    markDeletedIds: markDeletedIds,
     myId: myId,
     activeSharedMapId: activeSharedMapId,
     beginLocationPick: beginLocationPick,

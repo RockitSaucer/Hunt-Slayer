@@ -11117,7 +11117,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.15">V8.0.15</span>
+      <span class="brand-version" aria-label="Version 8.0.16">V8.0.16</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -12694,7 +12694,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.15';
+    const APP_VERSION = '8.0.16';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -33579,6 +33579,61 @@ function togglePinIconPicker() {
       });
     }
     window.goToEventLocation = goToEventLocation;
+    /** Remove map pins linked to a deleted calendar event (local + redraw). */
+    function removeMapPinsForCalendarEvent(ev) {
+      if (!ev) return;
+      var ids = {};
+      ids[String(ev.id)] = true;
+      if (ev.planEventId) {
+        ids[String(ev.planEventId)] = true;
+        ids['plan_' + String(ev.planEventId)] = true;
+      }
+      try {
+        var pins = JSON.parse(localStorage.getItem('alabama_hunt_custom_pins') || '[]') || [];
+        if (Array.isArray(pins)) {
+          var next = pins.filter(function (p) {
+            if (!p) return false;
+            var pe = p.eventId || p.calendarEventId || null;
+            if (pe != null && ids[String(pe)]) return false;
+            return true;
+          });
+          if (next.length !== pins.length) {
+            localStorage.setItem('alabama_hunt_custom_pins', JSON.stringify(next));
+          }
+        }
+      } catch (eP) {}
+      // Also strip from in-memory locations[]
+      try {
+        if (typeof locations !== 'undefined' && Array.isArray(locations)) {
+          for (var i = locations.length - 1; i >= 0; i--) {
+            var loc = locations[i];
+            if (!loc || !loc.isPin) continue;
+            var pe2 = loc.eventId || loc.calendarEventId || null;
+            if (pe2 != null && ids[String(pe2)]) locations.splice(i, 1);
+          }
+        }
+      } catch (eL) {}
+      try {
+        if (eventPinsFilter && ids[String(eventPinsFilter.eventId)]) {
+          if (typeof clearEventPinsFilter === 'function') clearEventPinsFilter({ skipRedraw: true });
+          else eventPinsFilter = null;
+        }
+      } catch (eF) {}
+      try { if (typeof drawPinsOnMap === 'function') drawPinsOnMap(); } catch (eD) {}
+      try {
+        if (typeof map !== 'undefined' && map && map.closePopup) map.closePopup();
+      } catch (eC) {}
+    }
+    window.onCalendarEventHardDeleted = function (ev) {
+      removeMapPinsForCalendarEvent(ev);
+      try { renderCalendar(); } catch (e1) {}
+      try { updateEventsList(); } catch (e2) {}
+    };
+    window.onCalendarEventsChanged = function () {
+      try { renderCalendar(); } catch (e1) {}
+      try { updateEventsList(); } catch (e2) {}
+      try { if (typeof drawPinsOnMap === 'function') drawPinsOnMap(); } catch (e3) {}
+    };
     function deleteEventForEveryone(id) {
       if (!window.RegSlayerCalendarEvents) return;
       var ev = window.RegSlayerCalendarEvents.getById(id);
@@ -33589,6 +33644,7 @@ function togglePinIconPicker() {
       }
       if (!confirm('Delete “' + ev.text + '” for everyone?')) return;
       window.RegSlayerCalendarEvents.hardDelete(id);
+      removeMapPinsForCalendarEvent(ev);
       renderCalendar(); updateEventsList(); clearEventForm();
     }
     function hideEventFromMyCalendar(id) {
