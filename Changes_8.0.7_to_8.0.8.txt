@@ -1,0 +1,8 @@
+﻿# Changes 8.0.7 → 8.0.8
+
+## Site issues
+- **#114** Hidden events: calendar dots remain (dimmed); list still collapsed.
+- **#113 Phase A** List dual-write: Hunt/Reg pack saves push listPack to calendar cloud + Plan namedListPack when linked.
+- **#121 soft** Stronger day-list dedupe (planEventId + name/date/creator) for double dots.
+
+Shell: reg-slayer-shell-v138

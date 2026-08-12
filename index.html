@@ -11094,7 +11094,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.7">V8.0.7</span>
+      <span class="brand-version" aria-label="Version 8.0.8">V8.0.8</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -12669,7 +12669,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.7';
+    const APP_VERSION = '8.0.8';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -32810,11 +32810,25 @@ function togglePinIconPicker() {
         var cell = document.createElement('div'); cell.className = 'cal-cell';
         var span = document.createElement('span'); span.innerText = day; span.style.fontWeight = 'bold'; cell.appendChild(span);
         var ds = y + '-' + String(m+1).padStart(2,'0') + '-' + String(day).padStart(2,'0');
-        var evs = eventsOnDay(ds);
+        // #114: dots include hidden events (list still uses eventsOnDay without hidden)
+        var evs = (window.RegSlayerCalendarEvents && typeof window.RegSlayerCalendarEvents.eventsForDayDots === 'function')
+          ? window.RegSlayerCalendarEvents.eventsForDayDots(ds)
+          : eventsOnDay(ds);
         if (evs.length) {
           var dots = document.createElement('div'); dots.className = 'cal-dots-container';
           for (var e = 0; e < evs.length; e++) {
-            var dot = document.createElement('span'); dot.className = 'cal-event-dot'; dot.style.backgroundColor = evs[e].color || '#e59a18'; dots.appendChild(dot);
+            var dot = document.createElement('span');
+            dot.className = 'cal-event-dot';
+            dot.style.backgroundColor = evs[e].color || '#e59a18';
+            // Dim dots that are only present because the event is hidden for me
+            try {
+              if (window.RegSlayerCalendarEvents && window.RegSlayerCalendarEvents.isHidden &&
+                  window.RegSlayerCalendarEvents.isHidden(evs[e].id)) {
+                dot.style.opacity = '0.45';
+                dot.title = 'Hidden event';
+              }
+            } catch (eDot) {}
+            dots.appendChild(dot);
           }
           cell.appendChild(dots);
         }

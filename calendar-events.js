@@ -152,11 +152,14 @@
     return null;
   }
 
-  function eventVisibleOnDay(ev, ymd, mapContextId) {
-    if (!ev || isHidden(ev.id)) return false;
+  function eventVisibleOnDay(ev, ymd, mapContextId, opts) {
+    opts = opts || {};
+    if (!ev) return false;
+    // #114: calendar dots keep hidden events; day list still filters them out
+    if (!opts.includeHidden && isHidden(ev.id)) return false;
     if (ev.startDate > ymd || ev.endDate < ymd) return false;
     var scope = ev.mapScope || 'personal';
-    if (scope === 'all' || scope === 'personal') return true;
+    if (scope === 'all' || scope === 'personal' || scope === 'private') return true;
     if (scope === 'shared') {
       // Visible when viewing that shared map, or when no map context (planner home)
       if (!mapContextId) return true;
@@ -167,15 +170,13 @@
     return true;
   }
 
-  function eventsForDay(ymd, mapContextId) {
-    mapContextId = mapContextId != null ? mapContextId : activeSharedMapId();
-    var list = events.filter(function (ev) {
-      return eventVisibleOnDay(ev, ymd, mapContextId);
-    });
-    // #97: dedupe Plan dual-write (plan_* id + cloud UUID for same planEventId)
+  function dedupeDayEvents(list) {
+    // #97 / #121: dedupe Plan dual-write (plan_* id + cloud UUID for same planEventId)
+    // also collapse identical name+date rows without planEventId when same creator
     var byPlan = {};
+    var byNameKey = {};
     var out = [];
-    list.forEach(function (ev) {
+    (list || []).forEach(function (ev) {
       if (!ev) return;
       var pid = ev.planEventId ? String(ev.planEventId) : '';
       if (pid) {
@@ -192,10 +193,32 @@
           return;
         }
         byPlan[pid] = ev;
+        out.push(ev);
+        return;
       }
+      // Soft dedupe: same text + start/end + creator (Reg double-dot reports)
+      var nk = String(ev.text || '').toLowerCase().trim() + '|' +
+        String(ev.startDate || '') + '|' + String(ev.endDate || '') + '|' +
+        String(ev.creatorUserId || '');
+      if (nk.length > 4 && byNameKey[nk]) return;
+      if (nk.length > 4) byNameKey[nk] = ev;
       out.push(ev);
     });
     return out;
+  }
+
+  function eventsForDay(ymd, mapContextId, opts) {
+    opts = opts || {};
+    mapContextId = mapContextId != null ? mapContextId : activeSharedMapId();
+    var list = events.filter(function (ev) {
+      return eventVisibleOnDay(ev, ymd, mapContextId, opts);
+    });
+    return dedupeDayEvents(list);
+  }
+
+  /** #114: dots include hidden events (list view still uses eventsForDay without includeHidden) */
+  function eventsForDayDots(ymd, mapContextId) {
+    return eventsForDay(ymd, mapContextId, { includeHidden: true });
   }
 
   function getById(id) {
@@ -503,6 +526,7 @@
     uid: uid,
     all: function () { return events.slice(); },
     eventsForDay: eventsForDay,
+    eventsForDayDots: eventsForDayDots,
     getById: getById,
     upsert: upsert,
     hardDelete: hardDelete,

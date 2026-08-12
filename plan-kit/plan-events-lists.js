@@ -167,6 +167,101 @@
     if (!id) return null;
     return allNamedLists().find(function (n) { return String(n.id) === String(id); }) || null;
   }
+  function packSnapshotFromList(list) {
+    if (!list) return null;
+    return {
+      listId: list.id,
+      name: list.name,
+      eventId: list.eventId || null,
+      eventName: list.name,
+      members: list.members || [],
+      // Shared pack only — never put private My checklist rows in the cloud pack (#113)
+      columns: (list.columns || []).filter(function (c) {
+        return c && String(c.id) !== 'personal';
+      }).map(function (c) {
+        return {
+          id: c.id,
+          name: c.name,
+          items: (c.items || []).map(function (it) {
+            return {
+              id: it.id, title: it.title, qty: it.qty, claims: it.claims || {},
+              qualifier: it.qualifier, priority: it.priority, highlight: it.highlight,
+              highlight_color: it.highlight_color, notes: it.notes,
+              due_mode: it.due_mode, due_days: it.due_days
+            };
+          }),
+          minimized: !!c.minimized,
+          colors: c.colors || null
+        };
+      }),
+      invite_code: list.invite_code || null,
+      updated_at: list.updated_at || new Date().toISOString()
+    };
+  }
+
+  /**
+   * #113 Phase A: dual-write packing pack onto Hunt calendar cloud + Plan namedListPack
+   * so cross-origin sites share the same event list.
+   */
+  function pushListPackToCloud(list) {
+    if (!list || !list.id) return;
+    var snap = packSnapshotFromList(list);
+    if (!snap) return;
+    try {
+      var CE = global.RegSlayerCalendarEvents;
+      var ev = null;
+      if (CE && typeof CE.getById === 'function' && list.eventId) {
+        ev = CE.getById(list.eventId);
+      }
+      if (!ev && CE && typeof CE.all === 'function' && list.eventId) {
+        var all = CE.all() || [];
+        ev = all.find(function (e) {
+          if (!e) return false;
+          if (String(e.id) === String(list.eventId)) return true;
+          if (e.planEventId && String(e.planEventId) === String(list.eventId)) return true;
+          if (e.planListId && String(e.planListId) === String(list.id)) return true;
+        }) || null;
+      }
+      if (ev && typeof CE.upsert === 'function') {
+        ev.listPack = snap;
+        ev.planListId = list.id;
+        if (list.eventId && String(list.eventId).indexOf('plan_') !== 0 &&
+            /^[0-9a-f]{8}-/i.test(String(list.eventId)) === false &&
+            !ev.planEventId) {
+          // keep local link
+        }
+        try { CE.upsert(ev); } catch (eU) { console.warn('pushListPack calendar', eU); }
+      }
+    } catch (eCal) { console.warn('pushListPackToCloud cal', eCal); }
+
+    // Plan cloud: update plan_events.state.namedListPack when we know planEventId
+    try {
+      var sb = global.RegSlayerCloud && global.RegSlayerCloud.getClient && global.RegSlayerCloud.getClient();
+      if (!sb) return;
+      var planId = null;
+      if (ev && ev.planEventId) planId = String(ev.planEventId);
+      else if (list.eventId && String(list.eventId).indexOf('plan_') === 0) {
+        planId = String(list.eventId).slice(5);
+      }
+      // Do not treat Hunt calendar UUIDs as plan_events ids
+      if (!planId || !/^[0-9a-f]{8}-/i.test(planId)) return;
+      sb.from('plan_events').select('id,state').eq('id', planId).maybeSingle()
+        .then(function (res) {
+          if (!res || res.error || !res.data) {
+            // try match via hunt_event_id field if present
+            return;
+          }
+          var st = res.data.state || {};
+          if (typeof st !== 'object') st = {};
+          st.namedListPack = snap;
+          return sb.from('plan_events').update({
+            state: st,
+            updated_at: new Date().toISOString()
+          }).eq('id', planId);
+        }).catch(function (eP) { console.warn('pushListPack plan', eP); });
+    } catch (eSb) {}
+  }
+
   function saveNamedList(list) {
     if (!list || !list.id) return false;
     var store = loadFreeListsStore();
@@ -177,32 +272,17 @@
     // Mirror into slayer bridge for Hunt View list / Plan dual-read
     try {
       var bag = loadSlayerBag();
-      var snap = {
-        listId: list.id,
-        name: list.name,
-        eventId: list.eventId || null,
-        eventName: list.name,
-        columns: (list.columns || []).map(function (c) {
-          return {
-            id: c.id,
-            name: c.name,
-            items: (c.items || []).map(function (it) {
-              return {
-                id: it.id, title: it.title, qty: it.qty, claims: it.claims || {},
-                qualifier: it.qualifier, priority: it.priority, highlight: it.highlight,
-                highlight_color: it.highlight_color, notes: it.notes,
-                due_mode: it.due_mode, due_days: it.due_days
-              };
-            })
-          };
-        }),
-        updated_at: list.updated_at
-      };
+      var snap = packSnapshotFromList(list);
       bag['list:' + list.id] = snap;
       if (list.eventId) bag[String(list.eventId)] = snap;
       saveJson(SLAYER_EVENT_LISTS_KEY, bag);
     } catch (eM) {}
-    return saveFreeListsStore(store);
+    var ok = saveFreeListsStore(store);
+    // #113: push shared pack to cloud (best-effort)
+    try {
+      if (list.eventId) pushListPackToCloud(list);
+    } catch (ePush) {}
+    return ok;
   }
   function ensureColumns(list) {
     if (!list.columns || !list.columns.length) {
