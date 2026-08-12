@@ -6120,14 +6120,24 @@
     }
     .svl-item .svl-qty { color: var(--muted); font-size: 12px; margin-left: 6px; }
     .svl-empty { color: var(--muted); font-size: 13px; padding: 12px 4px; }
-    /* Event cards under calendar — Plan-like List + Edit (#68) */
+    /* Event cards under calendar — Plan 3D green shell (#136 / #141) */
     .hunt-ev-card {
       margin-bottom: 8px;
-      background: var(--panel);
+      background: linear-gradient(180deg, #323c28 0%, #262e1e 40%, #1a2014 100%);
       padding: 10px 12px;
       border-radius: 10px;
-      border: 1px solid var(--border);
+      border: 1px solid #1a2014;
       border-left: 4px solid var(--accent, #e59a18);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.06) inset,
+        0 2px 0 #0a0c09,
+        0 4px 10px rgba(0,0,0,0.35);
+      cursor: pointer;
+    }
+    .hunt-ev-card.is-active {
+      outline: 2px solid rgba(229,154,24,0.75);
+      border-color: rgba(229,154,24,0.65);
+      filter: brightness(1.08);
     }
     .hunt-ev-card-top {
       display: flex;
@@ -11107,7 +11117,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.13">V8.0.13</span>
+      <span class="brand-version" aria-label="Version 8.0.14">V8.0.14</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -12684,7 +12694,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.13';
+    const APP_VERSION = '8.0.14';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -20780,24 +20790,55 @@
         if (a0 && aN && (a0[0] !== aN[0] || a0[1] !== aN[1])) out.push([a0[0], a0[1]]);
         return out;
       }
+      // #128: inflate along edge normals so fade follows rivers/coast (not centroid balloon)
+      function inflateRingAlongNormals(src, deg) {
+        if (!src || src.length < 4 || !deg) return src;
+        var pts = src.slice();
+        if (pts.length > 1 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1]) {
+          pts = pts.slice(0, -1);
+        }
+        if (pts.length < 3) return src;
+        // Ensure outward: use signed area (CCW → left normal outward for screen Y-up; lat increases N)
+        var area = 0;
+        for (var ai = 0; ai < pts.length; ai++) {
+          var aj = (ai + 1) % pts.length;
+          area += pts[ai][1] * pts[aj][0] - pts[aj][1] * pts[ai][0];
+        }
+        var sign = area >= 0 ? 1 : -1; // flip normal if clockwise
+        var out = [];
+        for (var i = 0; i < pts.length; i++) {
+          var prev = pts[(i - 1 + pts.length) % pts.length];
+          var cur = pts[i];
+          var next = pts[(i + 1) % pts.length];
+          var dLat1 = cur[0] - prev[0], dLng1 = cur[1] - prev[1];
+          var dLat2 = next[0] - cur[0], dLng2 = next[1] - cur[1];
+          // Perp of edge (dLat, dLng) → (dLng, -dLat) then scale by sign for outward
+          var nLat = sign * (dLng1 + dLng2);
+          var nLng = sign * (-(dLat1 + dLat2));
+          var len = Math.sqrt(nLat * nLat + nLng * nLng) || 1e-9;
+          out.push([cur[0] + (nLat / len) * deg, cur[1] + (nLng / len) * deg]);
+        }
+        out.push([out[0][0], out[0][1]]);
+        return out;
+      }
       var miToDeg = 1 / 69;
-      // #128: ~20 mi fade, more bands, smoother ease; use simplified ring for fills
-      var fadeRing = decimateRing(ring, 160);
+      // #128 rework: 20 mi, 36 thin bands, normal-based inflate, denser fill ring
+      var fadeRing = decimateRing(ring, 280);
       var fadeMaxMi = 20;
-      var fadeBandN = 24;
+      var fadeBandN = 36;
       var fadeSteps = [];
       for (var fi = 1; fi <= fadeBandN; fi++) {
         var t = fi / fadeBandN;
-        // Smoother ease-in-out-ish: stay clearer near border, darken further out
-        var ease = t * t * (3 - 2 * t); // smoothstep
+        // Gentler start, strong darken past ~half radius (quintic smoothstep)
+        var ease = t * t * t * (t * (t * 6 - 15) + 10);
         fadeSteps.push({
           mi: Math.round(fi * (fadeMaxMi / fadeBandN) * 100) / 100,
-          op: Math.round((0.02 + 0.80 * ease) * 1000) / 1000
+          op: Math.round((0.015 + 0.805 * ease) * 1000) / 1000
         });
       }
       var rings = [fadeRing];
       fadeSteps.forEach(function (step) {
-        rings.push(inflateRing(fadeRing, step.mi * miToDeg));
+        rings.push(inflateRingAlongNormals(fadeRing, step.mi * miToDeg));
       });
       // Beyond 20 mi: full dark
       stateMaskGroup.addLayer(L.polygon([outer, rings[rings.length - 1]], {

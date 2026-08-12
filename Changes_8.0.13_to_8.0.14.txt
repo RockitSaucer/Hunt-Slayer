@@ -1,0 +1,4 @@
+# 8.0.13 → 8.0.14
+- #128: 20mi fade with edge-normal inflate + 36 bands (follows boundary)
+- #136: Plan 3D list/event card chrome in plan-kit; sync on list open
+Shell v144

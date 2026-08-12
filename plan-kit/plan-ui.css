@@ -1,5 +1,52 @@
 /* PlanSlayer event cards + floating lists — TestOfflineHunt merge kit
-   Source of truth: Desktop/PlanSlayer (pin APP_VERSION there). */
+   Source of truth: Desktop/PlanSlayer (pin APP_VERSION there).
+   #136: match Plan 3D controls + list chrome for merge readiness. */
+
+/* Plan-style raised 3D controls inside float + day list */
+#ps-list-float .btn,
+#ps-list-float button.btn,
+#ps-list-float .btn-got,
+#ps-list-float .btn-icon,
+#ps-list-float .list-col-add-btn,
+#calendar-events-list .ps-event-card,
+#calendar-events-list .ec-edit-btn,
+#calendar-events-list .ec-list-btn {
+  appearance: none;
+  border: 1px solid #1a2014;
+  background: linear-gradient(180deg, #323c28 0%, #262e1e 40%, #1a2014 100%);
+  color: var(--ink, #f0f4ee);
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.06) inset,
+    0 2px 0 #0a0c09,
+    0 4px 10px rgba(0,0,0,0.35);
+  transition: filter 0.12s ease, border-color 0.12s ease, transform 0.08s ease, box-shadow 0.08s ease;
+}
+#ps-list-float .btn:hover,
+#ps-list-float .btn-got:hover,
+#calendar-events-list .ec-list-btn:hover,
+#calendar-events-list .ec-edit-btn:hover {
+  border-color: rgba(229,154,24,0.55);
+  filter: brightness(1.08);
+}
+#ps-list-float .btn:active,
+#ps-list-float .btn-got:active {
+  transform: translateY(1px);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.04) inset,
+    0 1px 0 #0a0c09,
+    0 2px 4px rgba(0,0,0,0.3);
+}
+#ps-list-float .list-col-add-btn,
+#ps-list-float .btn-primary {
+  background: linear-gradient(180deg, #5a8a3a 0%, #486a2f 45%, #2f4a1c 100%) !important;
+  border-color: #1e3014 !important;
+  color: #fff !important;
+}
 
 /* —— Event cards (calendar day list) —— */
 #calendar-events-list .ps-event-card-wrap {
@@ -10,18 +57,26 @@
   width: 100%;
   text-align: left;
   cursor: pointer;
-  background: var(--panel, #161a12);
-  border: 1px solid var(--border, #2a3224);
+  background: linear-gradient(180deg, #323c28 0%, #262e1e 40%, #1a2014 100%);
+  border: 1px solid #1a2014;
   border-radius: 10px;
   padding: 10px 12px;
   border-left: 4px solid var(--accent, #e59a18);
   color: var(--ink, #f0f4ee);
   font-family: inherit;
-  box-shadow: 0 2px 0 #0a0c09, 0 4px 10px rgba(0,0,0,0.3);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.06) inset,
+    0 2px 0 #0a0c09,
+    0 4px 10px rgba(0,0,0,0.35);
 }
 #calendar-events-list .ps-event-card.is-active {
-  outline: 1px solid rgba(229,154,24,0.55);
-  border-color: rgba(229,154,24,0.5);
+  outline: 2px solid rgba(229,154,24,0.75);
+  border-color: rgba(229,154,24,0.65);
+  filter: brightness(1.1);
+  box-shadow:
+    0 0 0 1px rgba(229,154,24,0.35),
+    0 2px 0 #0a0c09,
+    0 6px 14px rgba(0,0,0,0.4);
 }
 #calendar-events-list .ps-event-card .ec-top {
   display: flex;
@@ -74,18 +129,14 @@
 #calendar-events-list .ps-event-card .ec-list-btn {
   font-size: 11px;
   font-weight: 800;
-  padding: 5px 10px;
+  padding: 6px 11px;
   border-radius: 8px;
-  border: 1px solid var(--border, #2a3224);
-  background: linear-gradient(180deg, #2a3224 0%, #1a2018 100%);
-  color: var(--ink, #f0f4ee);
-  cursor: pointer;
-  font-family: inherit;
   white-space: nowrap;
 }
 #calendar-events-list .ps-event-card .ec-list-btn {
-  border-color: rgba(229, 154, 24, 0.5);
-  color: var(--accent, #e59a18);
+  background: linear-gradient(180deg, #e59a18 0%, #c47e10 55%, #a3680c 100%) !important;
+  border-color: #b87a12 !important;
+  color: #111 !important;
   letter-spacing: 0.02em;
 }
 #calendar-events-list .ps-event-card .ec-edit-btn:hover,

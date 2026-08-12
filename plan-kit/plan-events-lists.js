@@ -1475,6 +1475,12 @@
       var all = allNamedLists();
       if (all[0]) state.activeListId = all[0].id;
     }
+    // #136: pull latest pack before paint (cross-site parity with Plan)
+    try {
+      if (typeof runFullSync === 'function') {
+        Promise.resolve(runFullSync()).catch(function () {});
+      }
+    } catch (eSync) {}
     renderFloatNav();
     renderFloatMain();
     var box = $('ps-list-float');
@@ -1482,6 +1488,14 @@
     if (box) {
       box.classList.add('is-open');
       box.setAttribute('aria-hidden', 'false');
+      // Mobile: force full-screen Plan sheet class
+      try {
+        if (window.matchMedia && window.matchMedia('(max-width: 900px)').matches) {
+          box.classList.add('is-mobile-sheet');
+        } else {
+          box.classList.remove('is-mobile-sheet');
+        }
+      } catch (eM) {}
     }
     if (bd) {
       bd.classList.add('is-open');
@@ -1780,9 +1794,7 @@
           }
         } catch (eC) {}
         var color = ev.color || '#e59a18';
-        var metaBits = [];
-        if (range) metaBits.push(range);
-        if (scopeLabel) metaBits.push(scopeLabel);
+        // #136 / #141: Plan-style card — name + countdown + List/Edit; no date text (calendar has it)
         return (
           '<div class="ps-event-card-wrap">' +
             '<div class="ps-event-card' + (active ? ' is-active' : '') + '" data-ps-open-event="' + esc(id) +
@@ -1793,17 +1805,17 @@
                 '<span class="ec-actions">' +
                   (isCreator
                     ? ('<button type="button" class="ec-edit-btn" data-ps-edit-event="' + esc(id) +
-                      '">Edit event</button>')
+                      '">Edit</button>')
                     : '') +
                   '<button type="button" class="ec-list-btn" data-ps-open-list="' + esc(id) +
-                    '" title="Open packing list">\u2713 List</button>' +
+                    '" title="Open packing list">List</button>' +
                 '</span>' +
               '</div>' +
-              (metaBits.length ? ('<div class="ec-meta">' + esc(metaBits.join(' · ')) + '</div>') : '') +
               '<div class="ps-event-detail" data-ps-detail="' + esc(id) + '">' +
                 (ev.lat != null
                   ? '<div class="ps-loc-hint">📍 Location set — opens on map when you select this event</div>'
                   : '<div class="ps-loc-hint muted">No pin yet — Edit event → Add location</div>') +
+                (scopeLabel ? ('<div class="ec-meta">' + esc(scopeLabel) + '</div>') : '') +
                 '<div class="ps-action-row">' +
                   '<button type="button" data-ps-hide="' + esc(id) + '">Hide</button>' +
                   (isCreator
