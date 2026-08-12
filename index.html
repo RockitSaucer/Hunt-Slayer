@@ -11117,7 +11117,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.16">V8.0.16</span>
+      <span class="brand-version" aria-label="Version 8.0.17">V8.0.17</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -12694,7 +12694,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.16';
+    const APP_VERSION = '8.0.17';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -20728,6 +20728,9 @@
     /**
      * Dim everything outside the selected state + draw a single crisp border.
      * Uses SVG renderer so the mask/border do not flicker with Canvas tile redraws.
+     *
+     * Border = exact AL_STATE_RING (red, on the state line).
+     * Fade = 20 mi outward from that same ring (darkens away from Alabama).
      */
     function closedStateRing(ring) {
       if (!ring || !ring.length) return [];
@@ -20757,97 +20760,112 @@
         stateMaskSvgRenderer = L.svg({ padding: 0.5 });
       }
       var outer = [[-90, -180], [-90, 180], [90, 180], [90, -180], [-90, -180]];
-      // ~1° lat ≈ 69 mi
-      function inflateRing(src, deg) {
-        if (!src || src.length < 3 || !deg) return src;
-        var cx = 0, cy = 0, n = 0;
-        for (var i = 0; i < src.length; i++) {
-          if (!src[i]) continue;
-          cy += src[i][0];
-          cx += src[i][1];
-          n++;
-        }
-        if (!n) return src;
-        cx /= n; cy /= n;
-        return src.map(function (p) {
-          if (!p) return p;
-          var dy = p[0] - cy;
-          var dx = p[1] - cx;
-          var len = Math.sqrt(dx * dx + dy * dy) || 1e-9;
-          return [p[0] + (dy / len) * deg, p[1] + (dx / len) * deg];
-        });
-      }
-      // #127: decimate ring for fill bands only (hi-res border keeps full ring) — stops freeze
+
+      // Thin ring for fade bands only (border always uses full-res ring)
       function decimateRing(src, maxPts) {
-        if (!src || src.length <= maxPts) return src.slice();
+        if (!src || src.length <= maxPts) return closedStateRing(src);
         var step = Math.ceil(src.length / maxPts);
         var out = [];
         for (var di = 0; di < src.length; di += step) {
-          if (src[di]) out.push(src[di]);
+          if (src[di]) out.push([src[di][0], src[di][1]]);
         }
-        if (out.length < 4) return src.slice();
-        var a0 = out[0], aN = out[out.length - 1];
-        if (a0 && aN && (a0[0] !== aN[0] || a0[1] !== aN[1])) out.push([a0[0], a0[1]]);
-        return out;
+        return closedStateRing(out.length >= 4 ? out : src);
       }
-      // #128: inflate along edge normals so fade follows rivers/coast (not centroid balloon)
-      function inflateRingAlongNormals(src, deg) {
-        if (!src || src.length < 4 || !deg) return src;
+
+      /**
+       * Offset ring outward by `miles` using edge normals.
+       * Geographic scaling: 1° lat ≈ 69 mi; 1° lng ≈ 69·cos(lat) mi
+       * so the buffer stays a true distance (not a lat/lng ellipse).
+       */
+      function inflateRingMiles(src, miles) {
+        if (!src || src.length < 4 || !miles) return closedStateRing(src);
         var pts = src.slice();
         if (pts.length > 1 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1]) {
           pts = pts.slice(0, -1);
         }
-        if (pts.length < 3) return src;
-        // Ensure outward: use signed area (CCW → left normal outward for screen Y-up; lat increases N)
+        if (pts.length < 3) return closedStateRing(src);
+
+        // Signed area with x=lng, y=lat (pts are [lat,lng])
         var area = 0;
         for (var ai = 0; ai < pts.length; ai++) {
           var aj = (ai + 1) % pts.length;
           area += pts[ai][1] * pts[aj][0] - pts[aj][1] * pts[ai][0];
         }
-        var sign = area >= 0 ? 1 : -1; // flip normal if clockwise
+        // CW (negative) is typical for our AL ring — outward = right normal
+        var sign = area >= 0 ? 1 : -1;
+
+        // AL interior test point (Montgomery) — used to force outward if winding is ambiguous
+        var testLat = 32.3777, testLng = -86.3000;
+        function dist2(a, b) {
+          var dLat = a[0] - b[0], dLng = a[1] - b[1];
+          return dLat * dLat + dLng * dLng;
+        }
+
         var out = [];
         for (var i = 0; i < pts.length; i++) {
           var prev = pts[(i - 1 + pts.length) % pts.length];
           var cur = pts[i];
           var next = pts[(i + 1) % pts.length];
-          var dLat1 = cur[0] - prev[0], dLng1 = cur[1] - prev[1];
-          var dLat2 = next[0] - cur[0], dLng2 = next[1] - cur[1];
-          // Perp of edge (dLat, dLng) → (dLng, -dLat) then scale by sign for outward
-          var nLat = sign * (dLng1 + dLng2);
-          var nLng = sign * (-(dLat1 + dLat2));
-          var len = Math.sqrt(nLat * nLat + nLng * nLng) || 1e-9;
-          out.push([cur[0] + (nLat / len) * deg, cur[1] + (nLng / len) * deg]);
+          // Work in approx-meters so lat/lng scale matches
+          var cosLat = Math.cos((cur[0] * Math.PI) / 180) || 0.85;
+          var mPerDegLat = 69 * 1609.344;
+          var mPerDegLng = 69 * 1609.344 * cosLat;
+          // Edges in meters (x=east/lng, y=north/lat)
+          var e1x = (cur[1] - prev[1]) * mPerDegLng, e1y = (cur[0] - prev[0]) * mPerDegLat;
+          var e2x = (next[1] - cur[1]) * mPerDegLng, e2y = (next[0] - cur[0]) * mPerDegLat;
+          // Left normal of travel: (-ey, ex); flip with sign for outward
+          var nx = sign * (-(e1y + e2y));
+          var ny = sign * (e1x + e2x);
+          var len = Math.sqrt(nx * nx + ny * ny) || 1e-9;
+          nx /= len; ny /= len;
+          var meters = miles * 1609.344;
+          var dLat = (ny * meters) / mPerDegLat;
+          var dLng = (nx * meters) / mPerDegLng;
+          out.push([cur[0] + dLat, cur[1] + dLng]);
+        }
+        // If we accidentally inflated inward, flip once
+        var mid = out[Math.floor(out.length / 2)];
+        var midSrc = pts[Math.floor(pts.length / 2)];
+        if (mid && midSrc && dist2(mid, [testLat, testLng]) < dist2(midSrc, [testLat, testLng])) {
+          out = out.map(function (p, idx) {
+            var cur2 = pts[idx];
+            return [2 * cur2[0] - p[0], 2 * cur2[1] - p[1]];
+          });
         }
         out.push([out[0][0], out[0][1]]);
         return out;
       }
-      var miToDeg = 1 / 69;
-      // #128 rework: 20 mi, 36 thin bands, normal-based inflate, denser fill ring
-      var fadeRing = decimateRing(ring, 280);
+
+      // Same geometric base for border + fade start (no offset between them)
+      var borderRing = ring;
+      // Fade bands: slightly simplified for perf, still starts on the state line
+      var fadeBase = decimateRing(borderRing, 240);
       var fadeMaxMi = 20;
-      var fadeBandN = 36;
+      var fadeBandN = 24;
       var fadeSteps = [];
       for (var fi = 1; fi <= fadeBandN; fi++) {
         var t = fi / fadeBandN;
-        // Gentler start, strong darken past ~half radius (quintic smoothstep)
-        var ease = t * t * t * (t * (t * 6 - 15) + 10);
+        // Smooth darken from the red border out to 20 mi
+        var ease = t * t * (3 - 2 * t); // smoothstep
         fadeSteps.push({
           mi: Math.round(fi * (fadeMaxMi / fadeBandN) * 100) / 100,
-          op: Math.round((0.015 + 0.805 * ease) * 1000) / 1000
+          op: Math.round((0.04 + 0.78 * ease) * 1000) / 1000
         });
       }
-      var rings = [fadeRing];
+      // rings[0] = state edge (fadeBase ≈ border); rings[k] = +k steps outward
+      var rings = [fadeBase];
       fadeSteps.forEach(function (step) {
-        rings.push(inflateRingAlongNormals(fadeRing, step.mi * miToDeg));
+        rings.push(inflateRingMiles(fadeBase, step.mi));
       });
-      // Beyond 20 mi: full dark
+
+      // Beyond 20 mi: solid dark
       stateMaskGroup.addLayer(L.polygon([outer, rings[rings.length - 1]], {
-        stroke: false, fillColor: '#0e110d', fillOpacity: 0.82,
+        stroke: false, fillColor: '#0e110d', fillOpacity: 0.84,
         interactive: false, bubblingMouseEvents: false,
         className: 'state-outside-mask state-outside-mask-far',
         smoothFactor: 0, renderer: stateMaskSvgRenderer
       }));
-      // Annuli border → 20 mi (opacity ramps up)
+      // Annuli from state edge → 20 mi (opacity ramps with distance)
       for (var bi = 1; bi < rings.length; bi++) {
         stateMaskGroup.addLayer(L.polygon([rings[bi], rings[bi - 1]], {
           stroke: false, fillColor: '#0e110d', fillOpacity: fadeSteps[bi - 1].op,
@@ -20856,10 +20874,11 @@
           smoothFactor: 0, renderer: stateMaskSvgRenderer
         }));
       }
-      // Black border traces the hi-res state line
-      var border = L.polyline(ring, {
-        color: '#000000',
-        weight: 2.5,
+
+      // Red border sits exactly on the Alabama state line (full-res ring)
+      var border = L.polyline(borderRing, {
+        color: '#c41e1e',
+        weight: 2.75,
         opacity: 1,
         interactive: false,
         bubblingMouseEvents: false,
@@ -20869,20 +20888,21 @@
         lineCap: 'round',
         renderer: stateMaskSvgRenderer
       });
-      var borderAccent = L.polyline(ring, {
-        color: '#d4a84b',
-        weight: 1.25,
-        opacity: 0.85,
+      // Thin dark halo under red so it reads on light tiles
+      var borderHalo = L.polyline(borderRing, {
+        color: '#1a0a0a',
+        weight: 4.5,
+        opacity: 0.55,
         interactive: false,
         bubblingMouseEvents: false,
-        className: 'state-border-accent',
+        className: 'state-border-halo',
         smoothFactor: 0,
         lineJoin: 'round',
         lineCap: 'round',
         renderer: stateMaskSvgRenderer
       });
+      stateMaskGroup.addLayer(borderHalo);
       stateMaskGroup.addLayer(border);
-      stateMaskGroup.addLayer(borderAccent);
       try { stateMaskGroup.bringToBack(); } catch (eBk) {}
       // Keep pan locked to active state (+ small pad) whenever mask is redrawn
       if (typeof applyActiveStateMapBounds === 'function') {
