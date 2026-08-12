@@ -363,6 +363,12 @@
           });
           saveLocal();
         }
+      }).then(function () {
+        // Re-paint dots after cloud merge (#78 desktop parity)
+        try {
+          if (typeof global.renderCalendar === 'function') global.renderCalendar();
+          if (typeof global.updateEventsList === 'function') global.updateEventsList();
+        } catch (eRepaint) {}
       }).catch(function () {});
     } catch (e) {
       return Promise.resolve();

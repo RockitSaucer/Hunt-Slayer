@@ -147,6 +147,14 @@
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
     }
+    /* While dragging enlarged compass, lock page scroll so the app doesn't pan under the dial */
+    html.rs-dial-dragging,
+    html.rs-dial-dragging body,
+    body.rs-dial-dragging {
+      overflow: hidden !important;
+      touch-action: none !important;
+      overscroll-behavior: none !important;
+    }
 
     /*
      * Brand header (v4.5): 4.2 diagonal green stripes (22px / 22px).
@@ -924,8 +932,8 @@
       align-items: stretch;
       /* Side-by-side: planner ~15% narrower than prior 0.9fr (more map room) */
       grid-template-columns: minmax(0, 0.765fr) minmax(0, 1.235fr);
-      /* Whole-page horizontal scroll only if window is tiny (#16) */
-      overflow-x: auto;
+      /* No desktop bottom scrollbar into empty space (#79); tiny windows still clip cleanly */
+      overflow-x: hidden;
       overflow-y: hidden;
     }
     html.layout-desktop .card-planner {
@@ -946,8 +954,8 @@
       max-height: 100% !important;
       min-height: 0 !important;
       box-sizing: border-box;
-      /* Title strip + map — minimal chrome */
-      padding: 2px 6px 6px;
+      /* Title strip + map — flush bottom so toolbar has no dead gap (#81) */
+      padding: 2px 6px 0;
       display: flex;
       flex-direction: column;
     }
@@ -1084,13 +1092,22 @@
       letter-spacing: 0.06em;
     }
     html.layout-phone .brand-header-actions {
-      top: max(6px, env(safe-area-inset-top, 0px)) !important;
+      top: max(4px, env(safe-area-inset-top, 0px)) !important;
       bottom: auto !important;
-      right: 6px !important;
+      right: 4px !important;
       transform: none !important;
-      max-width: min(108px, 36vw);
-      gap: 3px;
+      max-width: min(118px, 40vw);
+      gap: 2px;
       z-index: 4;
+    }
+    html.layout-phone #brand-homescreen-btn {
+      font-size: 7.5px !important;
+      letter-spacing: 0.02em;
+      padding: 3px 5px !important;
+      min-height: 22px !important;
+      line-height: 1.1;
+      white-space: normal;
+      text-align: center;
     }
     html.layout-phone .brand-sister-link,
     html.layout-phone .brand-report-btn {
@@ -1927,7 +1944,7 @@
     html.layout-desktop .planner-cal-col #step-1-section .step-header .step-header-actions .sec-minmax-btn {
       margin-left: 0;
     }
-    /* ← on Solunar when wide; → on calendar when stacked */
+    /* #77: dock ←/→ always on calendar header (same plane as calendar −) */
     #sec-dock-left-host-solunar,
     #sec-dock-left-host-cal {
       display: none;
@@ -1935,11 +1952,11 @@
       gap: 0;
       flex: 0 0 auto;
     }
-    html.layout-desktop:not(.planner-dock-left) #sec-dock-left-host-solunar {
+    html.layout-desktop #sec-dock-left-host-cal {
       display: inline-flex;
     }
-    html.layout-desktop.planner-dock-left #sec-dock-left-host-cal {
-      display: inline-flex;
+    html.layout-desktop #sec-dock-left-host-solunar {
+      display: none !important;
     }
     #sec-dock-left-host-tracts {
       display: none !important;
@@ -2834,6 +2851,23 @@
       max-height: none !important;
       box-sizing: border-box;
       font-size: 12px;
+      overflow: visible !important;
+      justify-content: flex-start;
+      padding-top: 3px;
+    }
+    /* Desktop: keep Plan/Hunt event dots visible (were clipped on square cells) (#78) */
+    html.layout-desktop .cal-dots-container {
+      height: 6px;
+      min-height: 6px;
+      flex: 0 0 auto;
+      overflow: visible;
+      margin-top: 1px;
+    }
+    html.layout-desktop .cal-event-dot {
+      width: 5px;
+      height: 5px;
+      min-width: 5px;
+      min-height: 5px;
     }
     html.layout-desktop.planner-dock-left .calendar-grid,
     html.layout-desktop.planner-right-half-min .calendar-grid {
@@ -3821,8 +3855,9 @@
      * never cover steps 1–3. clip-path opens only the top edge so side/bottom
      * tile slip cannot bury the planner or dashboard.
      */
+    /* Drop brand under map popups while open (default brand z is 5000) (#80) */
     html.map-popup-covers-brand .brand-header {
-      z-index: 4;
+      z-index: 4 !important;
       position: relative;
     }
     html.map-popup-covers-brand .app-shell {
@@ -4924,9 +4959,12 @@
     .map-compass-radar.is-dragging {
       cursor: grabbing;
       opacity: 0.96;
+      z-index: 40 !important; /* stay above map tiles while finger is down */
+      touch-action: none !important;
     }
     .map-compass-radar.is-dragging .compass-dial {
       cursor: grabbing;
+      touch-action: none !important;
     }
     .map-compass-radar .map-wind-hud {
       display: none;
@@ -4985,7 +5023,16 @@
       cursor: pointer;
       pointer-events: auto;
       transition: width 0.2s ease, height 0.2s ease, box-shadow 0.2s ease;
+      /* Expanded/drag needs none so the page/map never steals the gesture */
       touch-action: manipulation;
+    }
+    .map-wind-hud.dial-expanded .compass-dial,
+    .map-compass-radar.is-dragging,
+    .map-compass-radar.is-dragging .compass-dial,
+    .map-compass-radar.is-dragging .map-wind-hud {
+      touch-action: none !important;
+      -webkit-user-select: none;
+      user-select: none;
     }
     .map-wind-hud.dial-expanded .compass-dial {
       --dial-size: 148px;
@@ -9472,14 +9519,14 @@
     }
     .ml-fold-body.open { display: block; }
     .map-layers-panel .zone-toggle-hint { display: none !important; }
-    /* Max/Min: bottom-right above toolbar — never covers top-left map name (#55) */
+    /* Max/Min: top-right of map — free bottom-right for info popups (#81) */
     .map-fs-btn {
       position: absolute;
-      top: auto;
-      bottom: calc(var(--mbb-bar-h, 45px) + env(safe-area-inset-bottom, 0px) + 8px);
-      right: 10px;
+      top: max(8px, env(safe-area-inset-top, 0px));
+      bottom: auto;
+      right: max(10px, env(safe-area-inset-right, 0px));
       left: auto;
-      z-index: 90; /* above bottom bar; always reachable */
+      z-index: 90; /* above map chrome; always reachable */
       background: var(--panel);
       border: 1px solid var(--border);
       color: var(--accent);
@@ -9496,8 +9543,8 @@
     .map-fs-btn:hover { border-color: var(--accent); }
     .map-wrapper.fullscreen .map-fs-btn {
       z-index: 90;
-      top: auto;
-      bottom: calc(var(--mbb-bar-h, 45px) + env(safe-area-inset-bottom, 0px) + 10px);
+      top: max(10px, env(safe-area-inset-top, 0px));
+      bottom: auto;
       right: max(12px, env(safe-area-inset-right, 0px));
     }
     .stand-place-banner {
@@ -10979,15 +11026,28 @@
     <div class="brand-map-name" id="brand-map-name" title="Active map">My Map</div>
     <div class="brand-logo-wrap">
       <img class="brand-logo" src="hunt-slayer-logo.png" alt="HUNT SLAYER - Know Before You Go" width="1440" height="720" />
-      <span class="brand-version" aria-label="Version 8.0">V8.0</span>
+      <span class="brand-version" aria-label="Version 8.0.2">V8.0.2</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-sister-link" id="brand-other-slay-btn" title="Open Hunt, Reg, or Plan Slayer">
         <span class="brand-sister-label">Other ways to slay</span>
       </button>
+      <button type="button" class="brand-report-btn" id="brand-homescreen-btn" title="Add this app to your phone home screen">Share to home screen</button>
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
     </div>
   </header>
+
+  <!-- Add to Home Screen (Android install prompt / iOS instructions) -->
+  <div id="homescreen-overlay" class="report-issue-overlay" aria-hidden="true">
+    <div class="report-issue-modal" role="dialog" aria-modal="true" aria-labelledby="homescreen-title" style="max-width:380px">
+      <h3 id="homescreen-title">Share to home screen</h3>
+      <p class="ri-sub" id="homescreen-body">Add a home-screen button for this app. Icon matches Hunt / Reg / Plan branding.</p>
+      <div class="ri-actions" style="flex-wrap:wrap;gap:8px">
+        <button type="button" class="ri-submit" id="homescreen-install" style="display:none">Install app</button>
+        <button type="button" id="homescreen-close">Close</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Other ways to slay — jump to sister sites (SSO handoff when available) -->
   <div id="other-slay-overlay" class="report-issue-overlay" aria-hidden="true">
@@ -11247,8 +11307,6 @@
       <!-- Right column (side-by-side): solunar + weather, height matches steps 1–3 -->
       <div class="planner-right-col" id="planner-right-col">
       <div id="dashboard-container" class="dashboard-under-steps">
-      <!-- Date tense banner lives outside #db-content so it stays visible while weather reloads -->
-      <div id="current-data-banner" class="current-data-banner"></div>
       <div id="db-blank" style="text-align:center;padding:120px 0;color:var(--muted);">
         <h3>Step 4: Weather & Water Dashboard</h3>
         <p>Select a date and weapon, then choose a location or use Current Location. Water levels appear only when within 3 miles of a USGS gauge.</p>
@@ -11289,14 +11347,6 @@
             <div class="water-card"><span>Discharge</span><strong id="water-flow-val">-- cfs</strong></div>
           </div>
         </div>
-        <!-- NWS watches/warnings for selected area (same dashboard zone as water; closer to weather below) -->
-        <div id="weather-alerts-container" class="weather-alerts-panel" style="display:none;" aria-live="polite">
-          <div class="wx-alerts-head">
-            <strong>Weather Alerts</strong>
-            <span class="wx-alerts-src">NWS</span>
-          </div>
-          <div id="weather-alerts-grid" class="wx-alerts-grid"></div>
-        </div>
         <div class="wx-section" id="wx-solunar-section">
           <div class="wx-section-header">
             <span class="section-qual step-title">Solunar &amp; Legal Hours</span>
@@ -11315,6 +11365,15 @@
               </div>
             </div>
           </div>
+        </div>
+        <!-- #77: data banner + NWS alerts sit ABOVE hourly (not above solunar) -->
+        <div id="current-data-banner" class="current-data-banner"></div>
+        <div id="weather-alerts-container" class="weather-alerts-panel" style="display:none;" aria-live="polite">
+          <div class="wx-alerts-head">
+            <strong>Weather Alerts</strong>
+            <span class="wx-alerts-src">NWS</span>
+          </div>
+          <div id="weather-alerts-grid" class="wx-alerts-grid"></div>
         </div>
         <!-- High wind only when sustained &gt;15 mph or gusts &gt;20 — sits directly above hourly -->
         <div id="high-wind-box" class="high-wind-box" style="display:none;" role="status">
@@ -12527,7 +12586,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.0';
+    const APP_VERSION = '8.0.2';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     const APP_SETTINGS_KEY = 'reg_slayer_app_settings_v1';
@@ -16028,9 +16087,8 @@
     }
 
     /**
-     * Dock arrow placement:
-     *  - Side-by-side: ← on Solunar & Legal Hours (enter stacked)
-     *  - Stacked: → on calendar step-1 (restore side-by-side)
+     * Dock arrow placement (#77): always on the calendar header next to calendar −
+     * so ←/→ and calendar minimize share the same plane (both side-by-side and stacked).
      */
     function placeDockLeftButton() {
       var btn = document.getElementById('sec-dock-left');
@@ -16038,15 +16096,13 @@
       var hostCal = document.getElementById('sec-dock-left-host-cal');
       var hostTracts = document.getElementById('sec-dock-left-host-tracts');
       if (!btn) return;
-      var target = plannerDockLeft
-        ? (hostCal || hostSol)
-        : (hostSol || hostCal);
+      var target = hostCal || hostSol;
       if (!target) return;
       if (btn.parentNode !== target) {
         try { target.appendChild(btn); } catch (eMv) {}
       }
-      if (hostSol) hostSol.setAttribute('aria-hidden', plannerDockLeft ? 'true' : 'false');
-      if (hostCal) hostCal.setAttribute('aria-hidden', plannerDockLeft ? 'false' : 'true');
+      if (hostSol) hostSol.setAttribute('aria-hidden', 'true');
+      if (hostCal) hostCal.setAttribute('aria-hidden', 'false');
       if (hostTracts) hostTracts.setAttribute('aria-hidden', 'true');
     }
 
@@ -25348,8 +25404,8 @@
         var needAbove = popH + tipH;
         var roomBelowToolbar = usableBottom - markerPt.y;
 
-        if (!isFs && isMapMenu) {
-          // Non-fullscreen: allow overflow over the logo banner; stay above the dot
+        if (!isFs) {
+          // Non-fullscreen: all map popups may extend over the brand header (#80)
           setMapPopupCoversBrand(true);
           offY = 0;
         } else if (roomAbove >= needAbove) {
@@ -25444,6 +25500,13 @@
         if (typeof lockMapInView === 'function') lockMapInView();
         // Popups above compass dial only — bottom toolbar stays on top (z-index 80)
         setMapPopupOpenStack(true);
+        // Desktop/min: always allow map popups to paint over brand header (#80)
+        try {
+          var isFsPop = typeof isMapFullscreen === 'function' && isMapFullscreen();
+          if (!isFsPop) setMapPopupCoversBrand(true);
+        } catch (eCbOpen) {
+          setMapPopupCoversBrand(true);
+        }
         ensureMapBottomBarVisible();
         // After layout, measure size and pin above the marker; then enable drag
         requestAnimationFrame(function() {
@@ -33093,6 +33156,9 @@ function togglePinIconPicker() {
       }
       list.innerHTML = htmlOut || (hiddenDay.length ? htmlOut : '');
     }
+    // Expose for Plan kit sync + cloud pull re-paint (#78)
+    window.renderCalendar = renderCalendar;
+    window.updateEventsList = updateEventsList;
 
     /* --- PlanSlayer event list viewer (slayer_event_lists_v1) --- */
     var _svlPack = null;
@@ -34213,10 +34279,24 @@ function togglePinIconPicker() {
       if (!hud || !stack || !wrap || stack._dragWired) return;
       stack._dragWired = true;
 
-      var drag = null; // { startX, startY, origL, origT, moved, pointerId }
+      var drag = null; // { startX, startY, origL, origT, moved, pointerId, mapDragWasOn }
 
       function dialExpanded() {
         return hud.classList.contains('dial-expanded');
+      }
+
+      function setMapDragEnabled(on) {
+        try {
+          if (typeof map !== 'undefined' && map && map.dragging) {
+            if (on) map.dragging.enable();
+            else map.dragging.disable();
+          }
+        } catch (eMd) {}
+        try {
+          // Also block page scroll under the dial while finger is down
+          document.documentElement.classList.toggle('rs-dial-dragging', !on);
+          document.body.classList.toggle('rs-dial-dragging', !on);
+        } catch (eBd) {}
       }
 
       function onPointerDown(ev) {
@@ -34224,6 +34304,9 @@ function togglePinIconPicker() {
         if (ev.target && ev.target.closest && ev.target.closest('.mwh-swap-btn')) return;
         // Only drag when enlarged
         if (!dialExpanded()) return;
+        // Stop map/page from stealing the gesture (mobile: pan + scroll were winning)
+        try { ev.preventDefault(); } catch (ePd) {}
+        try { ev.stopPropagation(); } catch (eSp) {}
         var wr = wrap.getBoundingClientRect();
         var sr = stack.getBoundingClientRect();
         // If not yet user-positioned, convert center layout to absolute coords first
@@ -34231,56 +34314,76 @@ function togglePinIconPicker() {
           applyDialStackPosition(sr.left - wr.left, sr.top - wr.top);
           sr = stack.getBoundingClientRect();
         }
+        var mapDragWasOn = false;
+        try {
+          mapDragWasOn = !!(typeof map !== 'undefined' && map && map.dragging && map.dragging.enabled && map.dragging.enabled());
+        } catch (eMe) { mapDragWasOn = true; }
+        setMapDragEnabled(false);
         drag = {
           startX: ev.clientX,
           startY: ev.clientY,
           origL: parseFloat(stack.style.left) || (sr.left - wr.left),
           origT: parseFloat(stack.style.top) || (sr.top - wr.top),
           moved: false,
-          pointerId: ev.pointerId
+          pointerId: ev.pointerId,
+          mapDragWasOn: mapDragWasOn
         };
-        // Do NOT preventDefault here — that kills the click needed to shrink (#60).
-        // Capture + prevent only after the user actually drags.
+        stack.classList.add('is-dragging');
         try { stack.setPointerCapture(ev.pointerId); } catch (eCap) {}
       }
 
       function onPointerMove(ev) {
         if (!drag) return;
+        try { ev.preventDefault(); } catch (eP) {}
+        try { ev.stopPropagation(); } catch (eS) {}
         var dx = ev.clientX - drag.startX;
         var dy = ev.clientY - drag.startY;
-        // ~10px threshold before counting as drag (was 6px — too easy to false-trigger)
-        if (!drag.moved && (dx * dx + dy * dy) > 100) {
+        // ~8px threshold — easier to start drag on phone without false shrink
+        if (!drag.moved && (dx * dx + dy * dy) > 64) {
           drag.moved = true;
-          stack.classList.add('is-dragging');
-          try { ev.preventDefault(); } catch (eP) {}
         }
         if (!drag.moved) return;
         applyDialStackPosition(drag.origL + dx, drag.origT + dy);
-        try { ev.preventDefault(); } catch (eP2) {}
       }
 
       function onPointerUp(ev) {
         if (!drag) return;
         var wasDrag = drag.moved;
+        var restoreMap = drag.mapDragWasOn !== false;
         stack.classList.remove('is-dragging');
         try { stack.releasePointerCapture(drag.pointerId); } catch (eRel) {}
+        try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (eU) {}
         drag = null;
+        setMapDragEnabled(restoreMap);
         // If user dragged, don't treat as expand/collapse click
         if (wasDrag) {
           stack._suppressDialClick = true;
-          setTimeout(function() { stack._suppressDialClick = false; }, 40);
+          setTimeout(function() { stack._suppressDialClick = false; }, 80);
         } else {
           // Tap while large (no drag): shrink — click may be missing on some browsers (#60)
           stack._suppressDialClick = true;
-          setTimeout(function() { stack._suppressDialClick = false; }, 40);
+          setTimeout(function() { stack._suppressDialClick = false; }, 80);
           try { setDialExpanded(false); } catch (eSh) {}
         }
       }
 
-      stack.addEventListener('pointerdown', onPointerDown);
-      stack.addEventListener('pointermove', onPointerMove);
-      stack.addEventListener('pointerup', onPointerUp);
-      stack.addEventListener('pointercancel', onPointerUp);
+      // Capture + non-passive so preventDefault can stop map/page pan
+      var peOpts = { capture: true, passive: false };
+      stack.addEventListener('pointerdown', onPointerDown, peOpts);
+      stack.addEventListener('pointermove', onPointerMove, peOpts);
+      stack.addEventListener('pointerup', onPointerUp, peOpts);
+      stack.addEventListener('pointercancel', onPointerUp, peOpts);
+      // iOS fallbacks when pointer events are flaky
+      stack.addEventListener('touchstart', function (ev) {
+        if (!dialExpanded()) return;
+        try { ev.preventDefault(); } catch (e) {}
+        try { ev.stopPropagation(); } catch (e2) {}
+      }, peOpts);
+      stack.addEventListener('touchmove', function (ev) {
+        if (!drag && !stack.classList.contains('is-dragging')) return;
+        try { ev.preventDefault(); } catch (e) {}
+        try { ev.stopPropagation(); } catch (e2) {}
+      }, peOpts);
 
       function wireDialToggle(el, mode) {
         if (!el || el._wiredDial) return;
@@ -35201,10 +35304,41 @@ function togglePinIconPicker() {
     /**
      * Keep the map visually fixed on phone while weather/list DOM updates reflow the page.
      * Content above (or around) the map changing height was shoving the viewport "to the top".
+     * IMPORTANT: never fight the user's intentional scroll — cancel the lock on first touchmove/wheel.
      */
     var _mapInViewLock = null;
+    var _bootQuietUntil = Date.now() + 10000; // first 10s: never force-scroll the page
+    var _userScrollWired = false;
+    function cancelMapInViewLock() {
+      _mapInViewLock = null;
+    }
+    function markUserScrollIntent() {
+      // User is scrolling/panning the page — stop any auto scroll restore immediately
+      cancelMapInViewLock();
+      _bootQuietUntil = 0; // end quiet early once they take control
+    }
+    function wireUserScrollIntentCancel() {
+      if (_userScrollWired) return;
+      _userScrollWired = true;
+      var cancel = function () { markUserScrollIntent(); };
+      // touchmove = intentional finger scroll; wheel = trackpad/mouse
+      window.addEventListener('touchmove', cancel, { passive: true, capture: true });
+      window.addEventListener('wheel', cancel, { passive: true, capture: true });
+      // Also cancel on manual scrollbar drag / keyboard scroll
+      window.addEventListener('scroll', function () {
+        // Only cancel if a lock is active (avoid noise)
+        if (_mapInViewLock) markUserScrollIntent();
+      }, { passive: true });
+    }
+    try { wireUserScrollIntentCancel(); } catch (eUsc) {}
+
     function lockMapInView() {
       if (typeof isPhoneLayout === 'function' && !isPhoneLayout()) {
+        _mapInViewLock = null;
+        return;
+      }
+      // During boot quiet window, never grab scroll — let the user scroll freely
+      if (Date.now() < _bootQuietUntil) {
         _mapInViewLock = null;
         return;
       }
@@ -35215,13 +35349,20 @@ function togglePinIconPicker() {
       }
       _mapInViewLock = {
         top: el.getBoundingClientRect().top,
-        until: Date.now() + 3200
+        until: Date.now() + 900 // short window only (was 3.2s — fought phone scroll)
       };
     }
     function restoreMapInView() {
       var lock = _mapInViewLock;
-      if (!lock || Date.now() > lock.until) return;
+      if (!lock || Date.now() > lock.until) {
+        if (lock && Date.now() > lock.until) _mapInViewLock = null;
+        return;
+      }
       if (typeof isPhoneLayout === 'function' && !isPhoneLayout()) return;
+      if (Date.now() < _bootQuietUntil) {
+        _mapInViewLock = null;
+        return;
+      }
       var el = document.getElementById('map-wrapper');
       if (!el) return;
       var top = el.getBoundingClientRect().top;
@@ -35235,9 +35376,10 @@ function togglePinIconPicker() {
         }
       }
       // Re-sample so chained restores stay relative to the map
-      lock.top = el.getBoundingClientRect().top;
+      if (_mapInViewLock) lock.top = el.getBoundingClientRect().top;
     }
     function scheduleMapInViewRestore() {
+      if (!_mapInViewLock) return;
       restoreMapInView();
       if (typeof requestAnimationFrame === 'function') {
         requestAnimationFrame(function() {
@@ -35245,7 +35387,8 @@ function togglePinIconPicker() {
           requestAnimationFrame(restoreMapInView);
         });
       }
-      [30, 80, 160, 320, 600, 1000, 1600, 2400].forEach(function(ms) {
+      // Fewer / shorter pulses — was fighting mobile scroll for ~2.4s
+      [30, 80, 160, 320, 600].forEach(function(ms) {
         setTimeout(restoreMapInView, ms);
       });
     }
@@ -35333,11 +35476,18 @@ function togglePinIconPicker() {
       if (typeof updateCurrentDataBanner === 'function') updateCurrentDataBanner();
       if (!mapOnly) {
         if (blank) blank.style.display = 'none';
-        // Map taps: do not collapse an already-open dashboard (hide→loading→show jumps the page).
+        // Map taps / boot: never inject tall #db-loading or hide→show (that snaps phone scroll).
         var contentOpen = !!(content && content.style.display === 'block');
-        if (!(skipScroll && contentOpen)) {
+        if (skipScroll) {
+          // Keep whatever is on screen; only refresh data underneath
+          if (loading) loading.style.display = 'none';
+          // leave content as-is (open stays open; closed stays closed until data arrives)
+        } else if (!contentOpen) {
           if (content) content.style.display = 'none';
           if (loading) loading.style.display = 'block';
+        } else {
+          // Content already open — refresh in place (no loading flash)
+          if (loading) loading.style.display = 'none';
         }
       }
       if (skipScroll) restoreMapInView();
@@ -38081,6 +38231,135 @@ function togglePinIconPicker() {
           submit.disabled = false;
         });
       });
+    })();
+
+    // Share to home screen — Android install prompt + iOS / desktop instructions
+    (function wireHomescreenUi() {
+      var btn = document.getElementById('brand-homescreen-btn');
+      var overlay = document.getElementById('homescreen-overlay');
+      var closeBtn = document.getElementById('homescreen-close');
+      var installBtn = document.getElementById('homescreen-install');
+      var bodyEl = document.getElementById('homescreen-body');
+      var titleEl = document.getElementById('homescreen-title');
+      if (!btn || !overlay || btn._rsHomescreenWired) return;
+      btn._rsHomescreenWired = true;
+
+      var deferredPrompt = null;
+      var site = (typeof SITE_ID !== 'undefined' && SITE_ID === 'reg') ? 'reg'
+        : (typeof SITE_ID !== 'undefined' && SITE_ID === 'plan') ? 'plan' : 'hunt';
+      var appName = site === 'reg' ? 'Reg Slayer' : (site === 'plan' ? 'Plan Slayer' : 'Hunt Slayer');
+
+      function isStandalone() {
+        try {
+          if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true;
+          if (window.navigator && window.navigator.standalone === true) return true;
+        } catch (e) {}
+        return false;
+      }
+      function isIos() {
+        var ua = (navigator.userAgent || '');
+        return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      }
+      function isAndroid() {
+        return /Android/i.test(navigator.userAgent || '');
+      }
+      function close() {
+        overlay.classList.remove('is-open');
+        overlay.setAttribute('aria-hidden', 'true');
+      }
+      function open() {
+        if (titleEl) titleEl.textContent = 'Share to home screen';
+        if (installBtn) installBtn.style.display = 'none';
+        if (isStandalone()) {
+          if (bodyEl) {
+            bodyEl.innerHTML = '<strong>' + appName + '</strong> is already running as an installed app on this device. ' +
+              'If you do not see the icon, check your home screen folders or app library.';
+          }
+        } else if (deferredPrompt && installBtn) {
+          if (bodyEl) {
+            bodyEl.innerHTML = 'Install <strong>' + appName + '</strong> on this device. ' +
+              'The home-screen icon uses the official ' + appName + ' artwork.';
+          }
+          installBtn.style.display = '';
+          installBtn.textContent = 'Install ' + appName;
+        } else if (isIos()) {
+          if (bodyEl) {
+            bodyEl.innerHTML =
+              'On <strong>iPhone / iPad</strong>, Safari cannot add apps automatically. Do this:<br><br>' +
+              '1. Tap the <strong>Share</strong> button (square with ↑) at the bottom of Safari<br>' +
+              '2. Scroll and tap <strong>Add to Home Screen</strong><br>' +
+              '3. Confirm — the icon will show the ' + appName + ' logo<br><br>' +
+              '<span style="opacity:0.85">Use Safari (not Chrome/in-app browsers) for the best result.</span>';
+          }
+        } else if (isAndroid()) {
+          if (bodyEl) {
+            bodyEl.innerHTML =
+              'On <strong>Android Chrome</strong>:<br><br>' +
+              '1. Tap the browser menu (⋮)<br>' +
+              '2. Tap <strong>Install app</strong> or <strong>Add to Home screen</strong><br>' +
+              '3. Confirm — the icon uses the ' + appName + ' logo<br><br>' +
+              '<span style="opacity:0.85">If Install is missing, the site may need a moment online, or you already installed it.</span>';
+          }
+        } else {
+          if (bodyEl) {
+            bodyEl.innerHTML =
+              'On desktop Chrome/Edge: open the address-bar install icon (⊕ / computer+arrow), or use the browser menu → ' +
+              '<strong>Install ' + appName + '</strong> / <strong>Cast, save, and share → Install page as app</strong>.';
+          }
+        }
+        overlay.classList.add('is-open');
+        overlay.setAttribute('aria-hidden', 'false');
+      }
+
+      window.addEventListener('beforeinstallprompt', function (e) {
+        try { e.preventDefault(); } catch (err) {}
+        deferredPrompt = e;
+        // Keep the button visible so user can still open the modal
+        try { btn.style.display = ''; } catch (eB) {}
+      });
+      window.addEventListener('appinstalled', function () {
+        deferredPrompt = null;
+        if (typeof showAppCopyToast === 'function') {
+          showAppCopyToast('<span class="act">Added to home screen</span><br>' + appName + ' icon is ready');
+        }
+        close();
+      });
+
+      btn.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        // If we already have a deferred prompt and user prefers one-tap, still show modal first on iOS
+        open();
+      });
+      if (installBtn) {
+        installBtn.addEventListener('click', function (ev) {
+          ev.preventDefault();
+          if (!deferredPrompt) { open(); return; }
+          var p = deferredPrompt;
+          deferredPrompt = null;
+          try {
+            p.prompt();
+            p.userChoice.then(function (choice) {
+              if (choice && choice.outcome === 'accepted' && typeof showAppCopyToast === 'function') {
+                showAppCopyToast('<span class="act">Installing…</span><br>Check your home screen for ' + appName);
+              }
+              close();
+            }).catch(function () { close(); });
+          } catch (eP) {
+            open();
+          }
+        });
+      }
+      if (closeBtn) closeBtn.addEventListener('click', function (ev) { ev.preventDefault(); close(); });
+      overlay.addEventListener('click', function (ev) { if (ev.target === overlay) close(); });
+      document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape' && overlay.classList.contains('is-open')) close();
+      });
+
+      // Already installed → softer label so it is not confusing
+      if (isStandalone()) {
+        btn.title = appName + ' is already on your home screen';
+        btn.textContent = 'On home screen';
+      }
     })();
 
     // Other ways to slay — chooser for sister sites (SSO handoff when available)

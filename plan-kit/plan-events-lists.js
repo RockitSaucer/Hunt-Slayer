@@ -1587,8 +1587,10 @@
   }, 30000);
 
   // Auto-import Plan events/chores into Hunt calendar on load (same browser profile)
+  // Delayed passes: host may assign window.renderCalendar after first paint (#78)
   try {
     setTimeout(function () { syncPlanIntoHuntCalendar(); }, 800);
+    setTimeout(function () { syncPlanIntoHuntCalendar(); }, 2200);
   } catch (eBoot) {}
 
   global.PlanEventsListsKit = {
