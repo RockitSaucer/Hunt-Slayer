@@ -10574,6 +10574,31 @@
       box-shadow: 0 0 0 1px rgba(229, 154, 24, 0.55), inset 0 0 0 1px rgba(141, 156, 132, 0.35);
       background: rgba(229, 154, 24, 0.16);
     }
+    /* Map name: never “Personal”; tiny “shared” when others are on the map */
+    .map-shared-tag,
+    #map-switcher-dropdown .map-shared-tag,
+    .settings-map-row .map-shared-tag,
+    #map-title-mobile .map-shared-tag,
+    #map-bottom-map-name .map-shared-tag,
+    #brand-map-name .map-shared-tag,
+    #map-fs-title .map-shared-tag {
+      display: inline-block;
+      margin-left: 6px;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: lowercase;
+      color: var(--muted, #8a9488);
+      vertical-align: middle;
+      opacity: 0.9;
+      line-height: 1;
+    }
+    #map-switcher-dropdown .msd-viewing {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted, #8a9488);
+      opacity: 0.85;
+    }
     .settings-map-row .smc-state-badge {
       flex: 0 0 auto;
       font-size: 9px;
@@ -11118,7 +11143,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.27">V8.0.27</span>
+      <span class="brand-version" aria-label="Version 8.0.28">V8.0.28</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -12695,7 +12720,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.27';
+    const APP_VERSION = '8.0.28';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site

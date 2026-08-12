@@ -2672,31 +2672,68 @@
     return changed;
   }
 
+  /** True when the open map has other people (shared party with 2+ members). */
+  function mapHasOtherPeople(vs) {
+    vs = vs || (C.getViewState && C.getViewState());
+    if (!vs || vs.mode !== 'shared') return false;
+    try {
+      // Prefer live party roster when available
+      var roster = window.__rsPartyMembers;
+      if (Array.isArray(roster) && roster.length) {
+        return roster.length > 1;
+      }
+    } catch (eP) {}
+    try {
+      // Shared maps list often includes member_count
+      var lists = _mapSwitcherCache || {};
+      var arr = lists.smaps || [];
+      var id = vs.sharedMapId;
+      for (var i = 0; i < arr.length; i++) {
+        if (arr[i] && String(arr[i].id) === String(id)) {
+          var mc = arr[i].member_count != null ? Number(arr[i].member_count) : null;
+          if (mc != null && !isNaN(mc)) return mc > 1;
+          break;
+        }
+      }
+    } catch (eC) {}
+    // Shared mode with unknown roster → still a shared map (others can join)
+    return true;
+  }
+
+  function mapNameHtml(label, showShared) {
+    var html = esc(label || 'My Map');
+    if (showShared) {
+      html += '<span class="map-shared-tag" title="Other people on this map">shared</span>';
+    }
+    return html;
+  }
+
   /** All chrome that shows the active map name (mobile title, max chip, brand, FS). */
   function updateBrandName() {
     var vs = C.getViewState && C.getViewState();
-    var label = currentMapDisplayName(vs);
+    var label = cleanMapLabel(currentMapDisplayName(vs));
     if (!label || !String(label).trim()) label = 'My Map';
-    var title = (vs && vs.mode === 'shared')
-      ? ('Shared map · ' + ((vs && vs.sharedMapCode) || '') + ' — click to switch maps')
-      : 'Private map — click to switch maps';
+    var showShared = mapHasOtherPeople(vs);
+    var title = showShared
+      ? (label + ' · shared — click to switch maps')
+      : (label + ' — click to switch maps');
     ['brand-map-name', 'map-title-mobile', 'map-fs-title', 'map-bottom-map-name'].forEach(function (id) {
       var el = $(id);
       if (!el) return;
-      // Always overwrite — never leave the static HTML "My Map" placeholder
-      el.textContent = label;
-      el.title = title + ' · ' + label;
-      try { el.setAttribute('aria-label', 'Map: ' + label + '. Click to switch.'); } catch (eA) {}
+      // Name only; tiny “shared” tag when others are on the map (never “Personal” in the name)
+      el.innerHTML = mapNameHtml(label, showShared);
+      el.title = title;
+      try {
+        el.setAttribute('aria-label', 'Map: ' + label + (showShared ? ' (shared)' : '') + '. Click to switch.');
+      } catch (eA) {}
     });
     // Settings status line
     try {
       var modeLabel = $('set-map-mode-label');
       if (modeLabel && vs) {
-        if (vs.mode === 'shared') {
-          modeLabel.textContent = 'Viewing: ' + label + ' (shared)';
-        } else {
-          modeLabel.textContent = 'Viewing: ' + label + ' (not shared)';
-        }
+        modeLabel.innerHTML = showShared
+          ? ('Viewing: ' + esc(label) + ' <span class="map-shared-tag">shared</span>')
+          : ('Viewing: ' + esc(label));
       }
     } catch (eMl) {}
   }
@@ -2787,11 +2824,14 @@
 
   function buildMapSwitcherHtml(pmaps, smaps, vs) {
     var html = '';
-    function row(kind, m, name, cur, showShare) {
+    function row(kind, m, name, cur, showShare, multiPeople) {
+      var labelHtml = esc(name) +
+        (multiPeople ? '<span class="map-shared-tag">shared</span>' : '') +
+        (cur ? ' <span class="msd-viewing">· viewing</span>' : '');
       var line = '<div class="msd-row">' +
         '<button type="button" class="msd-item' + (cur ? ' is-current' : '') +
         '" data-kind="' + esc(kind) + '" data-id="' + esc(m.id) + '" role="option" aria-selected="' +
-        (cur ? 'true' : 'false') + '">' + esc(name) + (cur ? ' · viewing' : '') + '</button>';
+        (cur ? 'true' : 'false') + '">' + labelHtml + '</button>';
       if (showShare) {
         line += '<button type="button" class="msd-share" data-kind="' + esc(kind) +
           '" data-id="' + esc(m.id) + '" data-name="' + esc(name) +
@@ -2801,27 +2841,31 @@
       line += '</div>';
       return line;
     }
-    html += '<div class="msd-group">Not shared</div>';
+    html += '<div class="msd-group">My maps</div>';
     if (!pmaps || !pmaps.length) {
-      html += '<div class="msd-empty">No private maps</div>';
+      html += '<div class="msd-empty">No maps yet</div>';
     } else {
       pmaps.forEach(function (m) {
-        var name = displayMapName('private', m.id, m.name || 'Private map');
+        var name = displayMapName('private', m.id, m.name || 'My Map');
         var cur = isMapSwitcherCurrent(vs, 'private', m.id);
-        // User-created private maps: Share (same as Settings → creates shared invite)
-        html += row('private', m, name, cur, true);
+        // Private = solo; no “personal” in the name, no shared tag
+        html += row('private', m, name, cur, true, false);
       });
     }
-    html += '<div class="msd-group">Shared</div>';
+    html += '<div class="msd-group">With others</div>';
     if (!smaps || !smaps.length) {
       html += '<div class="msd-empty">No shared maps</div>';
     } else {
       smaps.forEach(function (m) {
-        var name = displayMapName('shared', m.id, m.name || 'Shared map');
+        var name = displayMapName('shared', m.id, m.name || 'Map');
         var cur = isMapSwitcherCurrent(vs, 'shared', m.id);
-        // Share only for maps this user created/hosts (invite code)
         var canShare = m.is_host !== false && (m.is_host === true || m.code != null);
-        html += row('shared', m, name, cur, !!canShare);
+        var multi = true;
+        try {
+          var mc = m.member_count != null ? Number(m.member_count) : null;
+          if (mc != null && !isNaN(mc)) multi = mc > 1;
+        } catch (eMc) {}
+        html += row('shared', m, name, cur, !!canShare, multi);
       });
     }
     return html;
@@ -3170,8 +3214,20 @@
     var o = loadMapAliases();
     return o[kind + ':' + id] || null;
   }
+  /** Strip Personal/Private/Shared prefixes from stored map names. */
+  function cleanMapLabel(name) {
+    var s = String(name == null ? '' : name).trim();
+    if (!s) return '';
+    s = s.replace(/^(personal|private|shared)\s*([:·\-|–—]\s*|\s+)/i, '').trim();
+    return s || String(name).trim();
+  }
+
   function displayMapName(kind, id, serverName) {
-    return getMapAlias(kind, id) || serverName || (kind === 'shared' ? 'Shared map' : 'Private map');
+    var raw = getMapAlias(kind, id) || serverName || '';
+    var cleaned = cleanMapLabel(raw);
+    if (cleaned) return cleaned;
+    // Defaults: never lead with the word “Personal” / “Private”
+    return kind === 'shared' ? 'Map' : 'My Map';
   }
 
   async function listMySharedForRename(mapId) {
@@ -3708,6 +3764,17 @@
     var selected = mapsUiSelected.kind === card.kind && String(mapsUiSelected.id) === String(card.id);
     var shown = displayMapName(card.kind, card.id, card.name);
     var badges = '';
+    // Shared maps with others: tiny “shared” next to the name (not “Personal” in the name)
+    if (card.kind === 'shared') {
+      var multi = true;
+      try {
+        var mc = card.member_count != null ? Number(card.member_count) : null;
+        if (mc != null && !isNaN(mc)) multi = mc > 1;
+      } catch (eMc2) {}
+      if (multi) {
+        badges += '<span class="map-shared-tag" title="Other people on this map">shared</span>';
+      }
+    }
     if (card.active) {
       badges += '<span class="smc-state-badge smc-viewing" title="Currently open on the map">Viewing</span>';
     }
