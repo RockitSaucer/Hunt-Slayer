@@ -11094,7 +11094,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.8">V8.0.8</span>
+      <span class="brand-version" aria-label="Version 8.0.9">V8.0.9</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -12669,7 +12669,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.8';
+    const APP_VERSION = '8.0.9';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -32637,7 +32637,8 @@ function togglePinIconPicker() {
             if (!m || !m.id) return;
             var opt = document.createElement('option');
             opt.value = 'private:' + m.id;
-            opt.textContent = (m.name || 'Private map') + (m.is_default ? ' (default)' : '');
+            // #119: name only (match Viewing map switcher — no codes / no clutter labels)
+            opt.textContent = (m.name || 'Private map');
             sel.appendChild(opt);
           });
           doneOne();
@@ -32657,7 +32658,8 @@ function togglePinIconPicker() {
             if (!m || !m.id) return;
             var opt = document.createElement('option');
             opt.value = 'shared:' + m.id;
-            opt.textContent = (m.name || 'Shared map') + (m.code ? (' · ' + m.code) : '');
+            // #119: name only — invite codes stay hidden unless actively sharing
+            opt.textContent = (m.name || 'Shared map');
             sel.appendChild(opt);
           });
           doneOne();
