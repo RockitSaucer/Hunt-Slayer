@@ -169,9 +169,33 @@
 
   function eventsForDay(ymd, mapContextId) {
     mapContextId = mapContextId != null ? mapContextId : activeSharedMapId();
-    return events.filter(function (ev) {
+    var list = events.filter(function (ev) {
       return eventVisibleOnDay(ev, ymd, mapContextId);
     });
+    // #97: dedupe Plan dual-write (plan_* id + cloud UUID for same planEventId)
+    var byPlan = {};
+    var out = [];
+    list.forEach(function (ev) {
+      if (!ev) return;
+      var pid = ev.planEventId ? String(ev.planEventId) : '';
+      if (pid) {
+        var prev = byPlan[pid];
+        if (prev) {
+          // Prefer UUID cloud id over plan_ local id
+          var isUuid = /^[0-9a-f]{8}-/i.test(String(ev.id));
+          var prevUuid = /^[0-9a-f]{8}-/i.test(String(prev.id));
+          if (isUuid && !prevUuid) {
+            var idx = out.indexOf(prev);
+            if (idx >= 0) out[idx] = ev;
+            byPlan[pid] = ev;
+          }
+          return;
+        }
+        byPlan[pid] = ev;
+      }
+      out.push(ev);
+    });
+    return out;
   }
 
   function getById(id) {

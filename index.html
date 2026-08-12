@@ -9593,6 +9593,17 @@
       bottom: auto;
       right: max(12px, env(safe-area-inset-right, 0px));
     }
+    /* #98: mobile Max/Min hard top-right of map (no bottom chrome drift) */
+    html.layout-phone .map-wrapper .map-fs-btn,
+    html.layout-phone .map-wrapper.fullscreen .map-fs-btn,
+    html.layout-phone #map-maximize-btn,
+    html.layout-phone #map-minimize-btn {
+      top: max(8px, env(safe-area-inset-top, 0px)) !important;
+      right: max(8px, env(safe-area-inset-right, 0px)) !important;
+      bottom: auto !important;
+      left: auto !important;
+      z-index: 120 !important;
+    }
     .stand-place-banner {
       position: absolute;
       top: 10px;
@@ -11087,7 +11098,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.4">V8.0.4</span>
+      <span class="brand-version" aria-label="Version 8.0.5">V8.0.5</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -12662,7 +12673,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.4';
+    const APP_VERSION = '8.0.5';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -19412,28 +19423,20 @@
      * @returns {{lat:number,lng:number,name?:string}|null} corrected centroid or null
      */
     function correctMisplacedPublicLandCoords(name, lat, lng) {
-      if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) return null;
       var n = String(name || '');
-      // True Upper / Little / Bear Creek TVA lakes ~34.28, -87.68 (NW AL)
+      // True Upper / Little / Bear Creek TVA lakes ~34.28, -87.68 (NW AL) — never Mud Creek
       var isBearCreekTva = /bear\s*creek/i.test(n) && !/raccoon|mud\s*creek|crow\s*creek|north\s*sauty|sauty/i.test(n);
       if (!isBearCreekTva) return null;
-      // Jackson Co Mud Creek / Wannville corridor (wrong place for Bear Creek)
-      var inMudCreekCorridor = lat > 34.55 && lat < 34.95 && lng > -86.25 && lng < -85.45;
-      // Also fix if way off from NW Bear Creek lakes (> ~40 mi from true centroid)
+      // #95: always pin Bear Creek family to NW AL lakes (GIS often puts them in Jackson Co)
       var trueLat = 34.2784;
       var trueLng = -87.6847;
-      var dLat = lat - trueLat;
-      var dLng = lng - trueLng;
-      var approxMi = Math.sqrt(dLat * dLat + dLng * dLng) * 69;
-      if (inMudCreekCorridor || approxMi > 45) {
-        return {
-          lat: trueLat,
-          lng: trueLng,
-          name: /upper\s*bear/i.test(n) ? 'Upper Bear Creek (TVA)' :
-            (/little\s*bear/i.test(n) ? 'Little Bear Creek (TVA)' : 'Bear Creek (TVA)')
-        };
-      }
-      return null;
+      if (/little\s*bear/i.test(n)) trueLat = 34.265; // Little Bear slightly south of Upper
+      return {
+        lat: trueLat,
+        lng: trueLng,
+        name: /upper\s*bear/i.test(n) ? 'Upper Bear Creek (TVA)' :
+          (/little\s*bear/i.test(n) ? 'Little Bear Creek (TVA)' : 'Bear Creek (TVA)')
+      };
     }
 
     /**
@@ -19705,6 +19708,15 @@
       var fallback = (loc.lat != null && loc.lng != null && !isNaN(loc.lat) && !isNaN(loc.lng))
         ? { lat: Number(loc.lat), lng: Number(loc.lng) }
         : null;
+      // #95 early: Bear Creek / Little Bear TVA never use Mud Creek GIS coords
+      try {
+        var earlyFix = correctMisplacedPublicLandCoords(
+          String(loc.name || '') + ' ' + String((loc.attrs && loc.attrs.RESERVOIR) || ''),
+          fallback ? fallback.lat : null,
+          fallback ? fallback.lng : null
+        );
+        if (earlyFix) return { lat: earlyFix.lat, lng: earlyFix.lng };
+      } catch (eE) {}
 
       // —— Internal WMA zones (Black Warrior Zone B, Skyline Zone A, …) ——
       // Checkmark must sit in the open zone only, never the whole WMA outline.
@@ -19803,7 +19815,16 @@
           }
         });
       });
-      return best || fallback;
+      var out = best || fallback;
+      // #95: force Bear Creek / Little Bear TVA checks off Mud Creek
+      if (out) {
+        try {
+          var fixNm = String(loc.name || '') + ' ' + String((loc.attrs && loc.attrs.RESERVOIR) || '');
+          var fix = correctMisplacedPublicLandCoords(fixNm, out.lat, out.lng);
+          if (fix) out = { lat: fix.lat, lng: fix.lng };
+        } catch (eFix) {}
+      }
+      return out;
     }
     window.resolveListedHuntPinLatLng = resolveListedHuntPinLatLng;
 
@@ -20514,19 +20535,57 @@
         stateMaskSvgRenderer = L.svg({ padding: 0.5 });
       }
       var outer = [[-90, -180], [-90, 180], [90, 180], [90, -180], [-90, -180]];
-      // Shade ONLY outside the accurate AL ring (hole = state interior)
-      var mask = L.polygon([outer, ring], {
-        stroke: false,
-        color: 'transparent',
-        weight: 0,
-        fillColor: '#0e110d',
-        fillOpacity: 0.82,
-        interactive: false,
-        bubblingMouseEvents: false,
-        className: 'state-outside-mask',
-        smoothFactor: 0,
-        renderer: stateMaskSvgRenderer
+      // #99: soft fade outside AL — concentric buffers ~5 / 10 / 15 mi (opacity ramps to ~0.82)
+      // ~1° lat ≈ 69 mi → 15 mi ≈ 0.217°
+      function inflateRing(src, deg) {
+        if (!src || src.length < 3 || !deg) return src;
+        var cx = 0, cy = 0, n = 0;
+        for (var i = 0; i < src.length; i++) {
+          if (!src[i]) continue;
+          cy += src[i][0];
+          cx += src[i][1];
+          n++;
+        }
+        if (!n) return src;
+        cx /= n; cy /= n;
+        return src.map(function (p) {
+          if (!p) return p;
+          var dy = p[0] - cy;
+          var dx = p[1] - cx;
+          var len = Math.sqrt(dx * dx + dy * dy) || 1e-9;
+          return [p[0] + (dy / len) * deg, p[1] + (dx / len) * deg];
+        });
+      }
+      var miToDeg = 1 / 69;
+      var ring5 = inflateRing(ring, 5 * miToDeg);
+      var ring10 = inflateRing(ring, 10 * miToDeg);
+      var ring15 = inflateRing(ring, 15 * miToDeg);
+      // Outer dark to 15mi, then stepped holes for fade (far → near lighter bands)
+      var bandFar = L.polygon([outer, ring15], {
+        stroke: false, fillColor: '#0e110d', fillOpacity: 0.82,
+        interactive: false, bubblingMouseEvents: false,
+        className: 'state-outside-mask state-outside-mask-far',
+        smoothFactor: 0, renderer: stateMaskSvgRenderer
       });
+      var bandMid = L.polygon([ring15, ring10], {
+        stroke: false, fillColor: '#0e110d', fillOpacity: 0.55,
+        interactive: false, bubblingMouseEvents: false,
+        className: 'state-outside-mask state-outside-mask-mid',
+        smoothFactor: 0, renderer: stateMaskSvgRenderer
+      });
+      var bandNear = L.polygon([ring10, ring5], {
+        stroke: false, fillColor: '#0e110d', fillOpacity: 0.32,
+        interactive: false, bubblingMouseEvents: false,
+        className: 'state-outside-mask state-outside-mask-near',
+        smoothFactor: 0, renderer: stateMaskSvgRenderer
+      });
+      var bandEdge = L.polygon([ring5, ring], {
+        stroke: false, fillColor: '#0e110d', fillOpacity: 0.12,
+        interactive: false, bubblingMouseEvents: false,
+        className: 'state-outside-mask state-outside-mask-edge',
+        smoothFactor: 0, renderer: stateMaskSvgRenderer
+      });
+      var mask = bandFar; // keep name for any later refs
       // Black border traces the state line; dark shade begins beyond this stroke
       var border = L.polyline(ring, {
         color: '#000000',
@@ -20553,7 +20612,11 @@
         lineCap: 'round',
         renderer: stateMaskSvgRenderer
       });
-      stateMaskGroup.addLayer(mask);
+      // #99: add fade bands from far (full dark) → edge (light)
+      stateMaskGroup.addLayer(bandFar);
+      stateMaskGroup.addLayer(bandMid);
+      stateMaskGroup.addLayer(bandNear);
+      stateMaskGroup.addLayer(bandEdge);
       stateMaskGroup.addLayer(border);
       stateMaskGroup.addLayer(borderAccent);
       try { stateMaskGroup.bringToBack(); } catch (eBk) {}
@@ -30602,7 +30665,7 @@
       var layer =
         'position:relative;z-index:2;display:block;width:100%;height:100%;' +
         'box-sizing:border-box;pointer-events:none;flex-shrink:0;';
-      // #89: boat = solid black hull + detail lines in custom color (not hollow/see-through)
+      // #96: top-down boat — solid black hull; detail lines use glyph color. boat_ramp stays PNG.
       if (iconId === 'boat' || iconId === 'speed_boat') {
         var detail = pinGlyphIsNatural(g, iconId)
           ? '#e59a18'
@@ -30610,23 +30673,16 @@
         return (
           '<svg class="pin-glyph-svg" width="' + s + '" height="' + s + '" viewBox="0 0 64 64" ' +
             'xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="' + layer + 'overflow:visible;">' +
-            '<path d="M8 36 L18 28 L46 28 L56 36 L52 44 L12 44 Z" fill="#0a0a0a" stroke="' + detail + '" stroke-width="2.2" stroke-linejoin="round"/>' +
-            '<path d="M22 28 L26 18 L38 18 L42 28" fill="#0a0a0a" stroke="' + detail + '" stroke-width="2" stroke-linejoin="round"/>' +
-            '<path d="M32 18 L32 12" fill="none" stroke="' + detail + '" stroke-width="2.2" stroke-linecap="round"/>' +
-            '<path d="M14 40 H50" fill="none" stroke="' + detail + '" stroke-width="1.6" stroke-linecap="round" opacity="0.95"/>' +
-          '</svg>'
-        );
-      }
-      if (iconId === 'boat_ramp') {
-        var detailR = pinGlyphIsNatural(g, iconId)
-          ? '#e59a18'
-          : ((typeof normalizeHexColor === 'function' ? (normalizeHexColor(g) || '#e59a18') : String(g)));
-        return (
-          '<svg class="pin-glyph-svg" width="' + s + '" height="' + s + '" viewBox="0 0 64 64" ' +
-            'xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="' + layer + 'overflow:visible;">' +
-            '<path d="M10 48 L28 20 L54 20 L54 48 Z" fill="#0a0a0a" stroke="' + detailR + '" stroke-width="2" stroke-linejoin="round"/>' +
-            '<path d="M16 48 L30 28 L48 28" fill="none" stroke="' + detailR + '" stroke-width="2" stroke-linecap="round"/>' +
-            '<path d="M12 48 H52" fill="none" stroke="' + detailR + '" stroke-width="2.2" stroke-linecap="round"/>' +
+            // Top-down hull: pointed bow (top), wider stern (bottom)
+            '<path d="M32 6 C36 10, 46 22, 48 34 L46 52 L18 52 L16 34 C18 22, 28 10, 32 6 Z" ' +
+              'fill="#0a0a0a" stroke="' + detail + '" stroke-width="2.4" stroke-linejoin="round"/>' +
+            // Cockpit / cabin detail
+            '<path d="M26 22 L38 22 L40 36 L24 36 Z" fill="#0a0a0a" stroke="' + detail +
+              '" stroke-width="1.8" stroke-linejoin="round"/>' +
+            // Seat / deck lines (color details)
+            '<path d="M22 42 H42" fill="none" stroke="' + detail + '" stroke-width="1.8" stroke-linecap="round"/>' +
+            '<path d="M24 47 H40" fill="none" stroke="' + detail + '" stroke-width="1.5" stroke-linecap="round"/>' +
+            '<path d="M32 12 L32 20" fill="none" stroke="' + detail + '" stroke-width="1.6" stroke-linecap="round"/>' +
           '</svg>'
         );
       }
@@ -33224,21 +33280,25 @@ function togglePinIconPicker() {
         if (calAddBtn) calAddBtn.style.display = '';
         return;
       }
-      if (box) box.style.display = 'block';
+      if (box) {
+        box.style.display = 'block';
+        try { box.classList.remove('events-box--empty'); } catch (eEmp) {}
+      }
       if (calAddBtn) calAddBtn.style.display = 'none';
-      document.getElementById('events-title-date').innerText = 'Trips and Events: ' + selectedDate.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
-      // Plan list kit (v8): PlanSlayer cards + floating lists with Settings/Sync/member colors
+      var titleEl = document.getElementById('events-title-date');
+      if (titleEl) {
+        titleEl.innerText = 'Trips and Events: ' + selectedDate.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+      }
+      // #97: always paint day event cards under calendar when day has events
       if (window.PlanEventsListsKit && typeof window.PlanEventsListsKit.paintDayEventsList === 'function') {
         try {
           if (window.PlanEventsListsKit.paintDayEventsList(dayEvents, hiddenDay)) {
+            if (box) box.style.display = 'block';
             return;
           }
         } catch (ePs) { console.warn('PlanEventsListsKit', ePs); }
       }
       var htmlOut = '';
-      try {
-        box.classList.remove('events-box--empty');
-      } catch (eEmpty) {}
       if (!dayEvents.length) htmlOut = '';
       else {
         htmlOut = dayEvents.map(function (ev) {

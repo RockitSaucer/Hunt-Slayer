@@ -1569,6 +1569,16 @@
   function paintDayEventsList(dayEvents, hiddenDay) {
     var list = $('calendar-events-list');
     if (!list) return false;
+    var box = $('calendar-events-section');
+    // #97: ensure host section is visible when we paint cards
+    if (box && ((dayEvents && dayEvents.length) || (hiddenDay && hiddenDay.length))) {
+      try {
+        box.style.display = 'block';
+        box.classList.remove('events-box--empty');
+      } catch (eB) {}
+    }
+    // Allow re-wire after full list HTML replace
+    list._psWired = false;
     list.innerHTML = renderDayEventsHtml(dayEvents || [], hiddenDay || []) ||
       '<p class="empty" style="color:var(--muted);font-size:12px">No trips on this day.</p>';
     wireDayListClicks(list);
