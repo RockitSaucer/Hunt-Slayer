@@ -1,6 +1,6 @@
-/* PlanSlayer event cards + floating lists — TestOfflineHunt merge kit
-   Source of truth: Desktop/PlanSlayer (pin APP_VERSION there).
-   #136: match Plan 3D controls + list chrome for merge readiness. */
+/* PlanSlayer event cards + floating lists — Hunt/Reg merge kit
+   Source of truth: Desktop/PlanSlayer (pin APP_VERSION there; last: 1.3.69 list #104).
+   List rows/Got it! match Plan compact chrome so sites can merge later. */
 
 /* Plan-style raised 3D controls inside float + day list */
 #ps-list-float .btn,
@@ -252,8 +252,8 @@
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: min(1100px, 94vw);
-  height: min(780px, 88vh);
+  width: min(1280px, 96vw);
+  height: min(900px, 94vh);
   background: #0e120c;
   border: 1px solid var(--border, #2a3224);
   border-radius: 14px;
@@ -682,82 +682,6 @@
 #ps-list-float .list-ocr-cam:hover {
   border-color: var(--accent, #e59a18);
 }
-#ps-list-float .list-item {
-  border: 1px solid var(--border, #2a3224);
-  border-radius: 10px;
-  margin-bottom: 8px;
-  overflow: hidden;
-  min-height: 44px;
-}
-#ps-list-float .list-item.is-claimed {
-  box-shadow:
-    0 0 14px rgba(255, 210, 100, 0.28),
-    0 0 0 1px rgba(255, 220, 140, 0.35),
-    inset 0 0 22px rgba(255, 255, 255, 0.07);
-  border-color: rgba(255, 214, 120, 0.5);
-  filter: brightness(1.08) saturate(1.1);
-}
-#ps-list-float .list-item.is-full,
-#ps-list-float .list-item.is-full.is-claimed {
-  box-shadow:
-    0 0 18px rgba(74, 222, 128, 0.42),
-    0 0 0 1px rgba(110, 231, 150, 0.55),
-    inset 0 0 28px rgba(74, 222, 128, 0.14);
-  border-color: rgba(74, 222, 128, 0.65);
-  filter: brightness(1.12) saturate(1.15);
-}
-#ps-list-float .list-item.is-complete .li-title { color: #4ade80 !important; font-weight: 800; }
-#ps-list-float .btn-got {
-  appearance: none;
-  border: 1px solid rgba(229, 154, 24, 0.55);
-  background: linear-gradient(180deg, #3a3420 0%, #2a2418 100%);
-  color: var(--accent, #e59a18);
-  font-weight: 900;
-  font-size: 12px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-family: inherit;
-}
-#ps-list-float .btn-got.is-on,
-#ps-list-float .btn-got.btn-drop.is-on {
-  background: linear-gradient(180deg, #f0c060 0%, #e59a18 55%, #b87a12 100%);
-  color: #111;
-  border-color: #b87a12;
-}
-#ps-list-float .li-row {
-  display: flex;
-  align-items: stretch;
-  gap: 6px;
-  min-height: 44px;
-}
-#ps-list-float .li-face {
-  flex: 1 1 auto;
-  text-align: left;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  padding: 10px 12px;
-  cursor: pointer;
-  font-family: inherit;
-  font-weight: 700;
-  font-size: 13px;
-}
-#ps-list-float .li-actions {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  padding: 6px 8px 6px 0;
-  gap: 4px;
-}
-#ps-list-float .li-detail {
-  display: none;
-  padding: 10px 12px 12px;
-  border-top: 1px solid var(--border, #2a3224);
-  background: rgba(0,0,0,0.25);
-}
-#ps-list-float .list-item.is-expanded .li-detail { display: block; }
-
 @media (max-width: 900px) {
   /* #122 / #126: full-screen Plan-style mobile list sheet */
   #ps-list-float {
@@ -784,10 +708,39 @@
   #ps-list-float .ps-float-main {
     padding: 8px 10px calc(12px + env(safe-area-inset-bottom, 0px));
   }
-  #ps-list-float .list-item .li-actions .btn-got {
-    min-height: 40px;
-    padding: 8px 12px !important;
+  /* Plan #104 compact rows — same as PlanSlayer mobile */
+  #ps-list-float .list-item {
+    margin-bottom: 4px !important;
+    min-height: 0 !important;
+    border-radius: 8px !important;
+  }
+  #ps-list-float .list-item .li-row {
+    min-height: 0 !important;
+    align-items: center !important;
+    gap: 4px !important;
+  }
+  #ps-list-float .list-item .li-face {
+    padding: 4px 8px 4px 10px !important;
+    min-height: 0 !important;
+  }
+  #ps-list-float .list-item .li-title {
     font-size: 13px !important;
+    line-height: 1.15 !important;
+  }
+  #ps-list-float .list-item .li-actions {
+    padding: 2px 4px 2px 0 !important;
+    gap: 3px !important;
+    flex-direction: row !important;
+    border-left: 0 !important;
+  }
+  #ps-list-float .list-item .li-actions .btn,
+  #ps-list-float .list-item .li-actions .btn-got {
+    min-height: 26px !important;
+    height: 26px !important;
+    padding: 0 8px !important;
+    font-size: 11px !important;
+    line-height: 1 !important;
+    min-width: 0 !important;
   }
   #ps-list-float .ps-float-body {
     flex-direction: column;
@@ -917,78 +870,148 @@
   cursor: pointer;
   font-family: inherit;
 }
+/* —— List rows: PlanSlayer #104 compact (same size/shape as Plan) —— */
+#ps-list-float .list-col-body .list-item,
 #ps-list-float .list-item {
-  border: 1px solid #1a2014;
-  border-radius: 10px;
-  margin-bottom: 10px;
+  border: 1px solid #1a2014 !important;
+  border-radius: 8px !important;
+  margin-bottom: 4px;
   overflow: hidden;
   position: relative;
-  box-shadow: 0 1px 0 rgba(255,255,255,0.05) inset, 0 2px 0 #0a0c09, 0 4px 10px rgba(0,0,0,0.35);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.05) inset,
+    0 2px 0 #0a0c09,
+    0 3px 8px rgba(0,0,0,0.3);
   cursor: pointer;
-  color: #f0f4ee;
-  min-height: 52px;
+  user-select: none;
+  color: #f0f4ee !important;
+  font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
+  min-height: 0 !important;
 }
 #ps-list-float .list-item.is-claimed {
-  box-shadow: 0 0 14px rgba(255,210,100,0.28), 0 0 0 1px rgba(255,220,140,0.35);
-  border-color: rgba(255,214,120,0.5);
+  box-shadow:
+    0 0 14px rgba(255, 210, 100, 0.28),
+    0 0 0 1px rgba(255, 220, 140, 0.35),
+    inset 0 0 22px rgba(255, 255, 255, 0.07) !important;
+  border-color: rgba(255, 214, 120, 0.5) !important;
   filter: brightness(1.1) saturate(1.12);
 }
-#ps-list-float .list-item.is-full {
-  box-shadow: 0 0 18px rgba(74,222,128,0.42), 0 0 0 1px rgba(110,231,150,0.55);
-  border-color: rgba(74,222,128,0.65);
+#ps-list-float .list-item.is-full,
+#ps-list-float .list-item.is-full.is-claimed {
+  box-shadow:
+    0 0 18px rgba(74, 222, 128, 0.42),
+    0 0 0 1px rgba(110, 231, 150, 0.55),
+    inset 0 0 28px rgba(74, 222, 128, 0.14) !important;
+  border-color: rgba(74, 222, 128, 0.65) !important;
   filter: brightness(1.16) saturate(1.18);
 }
+#ps-list-float .list-item.is-complete .li-title { color: #4ade80 !important; font-weight: 800; }
 #ps-list-float .list-item.is-expanded {
   outline: 1px solid rgba(229,154,24,0.45);
 }
-#ps-list-float .li-row {
-  display: flex;
-  align-items: stretch;
-  min-height: 52px;
+#ps-list-float .list-item:hover { filter: brightness(1.04); border-color: rgba(229,154,24,0.4) !important; }
+#ps-list-float .list-item.is-claimed:hover {
+  filter: brightness(1.14) saturate(1.15);
+  border-color: rgba(255, 214, 120, 0.55) !important;
 }
-#ps-list-float .li-face {
+#ps-list-float .list-item.is-full:hover,
+#ps-list-float .list-item.is-full.is-claimed:hover {
+  filter: brightness(1.2) saturate(1.2);
+  border-color: rgba(74, 222, 128, 0.7) !important;
+}
+#ps-list-float .list-item .li-row {
+  display: flex;
+  align-items: center !important;
+  gap: 4px !important;
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 0 !important;
+}
+#ps-list-float .list-item .li-face,
+#ps-list-float .list-item button.li-face,
+#ps-list-float .list-item button.li-main {
   flex: 1 1 auto;
   min-width: 0;
   border: 0;
   background: transparent;
   color: inherit;
   text-align: left;
-  padding: 10px 12px;
+  padding: 4px 8px 4px 10px !important;
+  min-height: 0 !important;
+  height: auto !important;
   cursor: pointer;
   font: inherit;
+  font-family: inherit;
+  font-weight: 700;
 }
-#ps-list-float .li-title {
-  font-size: 14px;
+#ps-list-float .list-item .li-title {
+  font-size: 13px !important;
+  line-height: 1.15 !important;
   font-weight: 800;
 }
-#ps-list-float .li-actions {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-  padding: 6px 8px;
-  border-left: 1px solid rgba(0,0,0,0.25);
-}
-#ps-list-float .btn-got {
-  border-radius: 8px;
-  padding: 6px 10px;
+#ps-list-float .list-item .li-qty {
   font-size: 11px;
+  font-weight: 700;
+  opacity: 0.85;
+  margin-left: 4px;
+}
+#ps-list-float .list-item .li-actions {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: flex-end;
+  gap: 3px !important;
+  padding: 2px 4px 2px 0 !important;
+  margin-left: auto;
+  border-left: 0 !important;
+  position: relative;
+  z-index: 2;
+}
+/* Got it! / Drop — Plan #104 compact pill (not smashed tall bars) */
+#ps-list-float .list-item .li-actions .btn,
+#ps-list-float .list-item .li-actions .btn-got {
+  appearance: none;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 26px !important;
+  height: 26px !important;
+  min-width: 0 !important;
+  padding: 0 8px !important;
+  font-size: 10px !important;
+  line-height: 1 !important;
   font-weight: 800;
+  border-radius: 7px;
   color: #bbf7d0;
   background: linear-gradient(180deg, #2a4a1c 0%, #1a2a14 50%, #121c0e 100%);
   border: 1px solid #1e3014;
   cursor: pointer;
   font-family: inherit;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.06) inset,
+    0 2px 0 #0a0c09,
+    0 3px 8px rgba(0,0,0,0.3);
+  white-space: nowrap;
 }
-#ps-list-float .btn-got.is-on {
+#ps-list-float .list-item .li-actions .btn-got.is-on {
   color: #fff;
   background: linear-gradient(180deg, #5a8a3a 0%, #3f6b2a 50%, #2f4a1c 100%);
 }
-#ps-list-float .btn-got.btn-drop {
+#ps-list-float .list-item .li-actions .btn-got.btn-drop,
+#ps-list-float .list-item .li-actions .btn-drop {
   color: #fecaca !important;
   background: linear-gradient(180deg, #7a3030 0%, #5a2020 50%, #3a1414 100%) !important;
   border-color: #6b2424 !important;
+}
+#ps-list-float .list-item .li-actions .btn-got.btn-drop.is-on {
+  color: #fff !important;
+  background: linear-gradient(180deg, #b04040 0%, #8a3030 50%, #5c2020 100%) !important;
+}
+#ps-list-float .list-item .li-actions .btn-got:hover {
+  border-color: rgba(229,154,24,0.55);
+  filter: brightness(1.08);
 }
 #ps-list-float .li-detail {
   display: none;

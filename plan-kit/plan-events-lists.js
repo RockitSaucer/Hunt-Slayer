@@ -689,9 +689,29 @@
     delete item.claims[me];
     delete item.claims[String(me)];
   }
+  /* PlanSlayer COLORS + soften (shared party colors across sites) */
+  var PLAN_MEMBER_COLORS = ['#a34a4a', '#4a6d9a', '#4d7a55', '#8a7340', '#6b5a8a', '#8a6048', '#3d6e6e', '#8a4a68'];
+  var DEFAULT_ME_COLOR = '#a34a4a';
+  function softenColor(c) {
+    c = String(c || DEFAULT_ME_COLOR);
+    var low = c.toLowerCase();
+    if (low === '#e11d1d' || low === '#ff0000' || low === '#dc2626') return DEFAULT_ME_COLOR;
+    if (low === '#2563eb') return '#4a6d9a';
+    if (low === '#16a34a') return '#4d7a55';
+    return c;
+  }
+  function colorForUid(list, uid) {
+    var map = memberColorMap(list);
+    var id = String(uid || '');
+    if (map[id]) return softenColor(map[id]);
+    var h = 0;
+    for (var i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+    return PLAN_MEMBER_COLORS[Math.abs(h) % PLAN_MEMBER_COLORS.length];
+  }
+
   function memberColorMap(list) {
     var map = {};
-    var palette = ['#e59a18', '#3b82f6', '#16a34a', '#9333ea', '#ef4444', '#0ea5e9', '#a34a4a', '#4a6d9a'];
+    var palette = PLAN_MEMBER_COLORS;
     if (list && list.memberColors && typeof list.memberColors === 'object') {
       Object.keys(list.memberColors).forEach(function (k) {
         if (list.memberColors[k]) map[String(k)] = list.memberColors[k];
@@ -710,18 +730,9 @@
         var saved = localStorage.getItem('plan_slayer_my_color_v1');
         if (saved && /^#/.test(saved)) map[me] = saved;
       } catch (e) {}
-      if (!map[me]) map[me] = '#a34a4a';
+      if (!map[me]) map[me] = DEFAULT_ME_COLOR;
     }
     return map;
-  }
-  function colorForUid(list, uid) {
-    var map = memberColorMap(list);
-    var id = String(uid || '');
-    if (map[id]) return map[id];
-    var palette = ['#e59a18', '#3b82f6', '#16a34a', '#9333ea', '#ef4444', '#0ea5e9'];
-    var h = 0;
-    for (var i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
-    return palette[Math.abs(h) % palette.length];
   }
   function setMemberColorOnList(list, uid, hex) {
     if (!list || !uid || !hex) return false;
@@ -804,9 +815,9 @@
           '</button>' +
           '<div class="li-actions">' +
             (showDrop
-              ? '<button type="button" class="btn-got btn-drop is-on" data-act="drop">Drop</button>'
-              : '<button type="button" class="btn-got' + (mine > 0 ? ' is-on' : '') +
-                '" data-act="got">Got it!</button>') +
+              ? '<button type="button" class="btn btn-got btn-drop is-on" data-act="drop" title="Drop what you claimed — put it back on the list">Drop</button>'
+              : '<button type="button" class="btn btn-got' + (mine > 0 ? ' is-on' : '') +
+                '" data-act="got" title="Claim this item">Got it!</button>') +
           '</div>' +
         '</div>' +
         '<div class="li-detail">' +
