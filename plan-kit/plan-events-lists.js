@@ -208,6 +208,9 @@
     if (!list || !list.id) return;
     var snap = packSnapshotFromList(list);
     if (!snap) return;
+    // Never overwrite Plan/cloud with an empty pack (empty local create wiped items)
+    var snapItems = countPackItems(snap.columns);
+    if (snapItems === 0) return;
     try {
       var CE = global.RegSlayerCalendarEvents;
       var ev = null;
@@ -458,7 +461,10 @@
     var localTs = existing && existing.updated_at ? new Date(existing.updated_at).getTime() : 0;
     var packItems = countPackItems(pack.columns);
     var localItems = existing ? countPackItems(existing.columns) : 0;
-    var preferPack = !existing || packItems > localItems || (packTs && packTs >= localTs && packItems >= localItems);
+    // Always take cloud/bag pack when local is empty or pack is richer (cross-site Plan items)
+    var preferPack = !existing || packItems > localItems ||
+      (packItems > 0 && localItems === 0) ||
+      (packTs && packTs >= localTs && packItems >= localItems);
     if (!preferPack && existing) return ensureColumns(existing);
 
     var list = {
@@ -500,17 +506,33 @@
   function findExistingListForEvent(ev) {
     if (!ev) return null;
     var named = allNamedLists();
+    var ids = [String(ev.id)];
+    if (ev.planEventId) {
+      ids.push(String(ev.planEventId));
+      ids.push('plan_' + String(ev.planEventId));
+    }
+    if (String(ev.id).indexOf('plan_') === 0) ids.push(String(ev.id).slice(5));
     var hit = named.find(function (n) {
-      return n && n.eventId && String(n.eventId) === String(ev.id);
+      if (!n || !n.eventId) return false;
+      return ids.indexOf(String(n.eventId)) >= 0;
     });
     if (hit) return hit;
     if (ev.planListId) {
       hit = named.find(function (n) { return String(n.id) === String(ev.planListId); });
       if (hit) return hit;
     }
-    if (ev.planEventId) {
+    // Match by pack listId stamped on event
+    if (ev.listPack && ev.listPack.listId) {
+      hit = named.find(function (n) { return String(n.id) === String(ev.listPack.listId); });
+      if (hit) return hit;
+    }
+    // Name + event link fuzzy
+    var en = String(ev.text || ev.name || '').trim().toLowerCase();
+    if (en) {
       hit = named.find(function (n) {
-        return n && n.eventId && String(n.eventId) === String(ev.planEventId);
+        if (!n || !n.eventId) return false;
+        var nn = String(n.name || '').trim().toLowerCase();
+        return nn.indexOf(en) === 0 || nn.indexOf(en + ' ·') === 0;
       });
       if (hit) return hit;
     }
@@ -527,15 +549,42 @@
         var n = 0;
         (res.data || []).forEach(function (pev) {
           if (!pev || !pev.id) return;
-          var pack = (pev.state && pev.state.namedListPack) || null;
+          var st = (pev.state && typeof pev.state === 'object') ? pev.state : {};
+          var pack = st.namedListPack || null;
+          // Fallback: rebuild pack columns from classic todo/buy/bring buckets
+          if ((!pack || !pack.columns || !pack.columns.length) && st.lists) {
+            var cols = [];
+            ['todo', 'buy', 'bring'].forEach(function (k) {
+              var g = st.lists[k] && st.lists[k].group;
+              if (Array.isArray(g) && g.length) {
+                cols.push({
+                  id: k,
+                  name: k === 'todo' ? 'To do' : (k === 'buy' ? 'To buy' : 'To bring'),
+                  items: g.map(function (it) { return Object.assign({}, it); })
+                });
+              }
+            });
+            if (cols.length) {
+              pack = {
+                listId: null,
+                name: (pev.name || 'Event') + ' · lists',
+                eventId: String(pev.id),
+                columns: cols,
+                updated_at: pev.updated_at || new Date().toISOString()
+              };
+            }
+          }
           if (!pack || !pack.columns) return;
+          var huntId = pev.hunt_event_id || st.hunt_event_id || ('plan_' + pev.id);
           var fakeEv = {
-            id: pev.hunt_event_id || ('plan_' + pev.id),
+            id: huntId,
             planEventId: String(pev.id),
             planListId: pack.listId || null,
             text: pev.name || 'Event',
             listPack: pack
           };
+          // Ensure pack.eventId is plan id for stable linking
+          if (!pack.eventId) pack.eventId = String(pev.id);
           writePackToBag(fakeEv, pack);
           mergePackIntoNamedList(findExistingListForEvent(fakeEv), pack, fakeEv);
           n++;
@@ -635,30 +684,68 @@
       return mergePackIntoNamedList(existing, pack, ev);
     }
     if (existing) return ensureColumns(existing);
-    // Create empty packing list linked to this Hunt event
+    // Create empty packing list linked to this Hunt event — local only
+    // (do not cloud-push empty or Plan items get wiped)
     var created = {
       id: uid(),
       name: huntEventName(ev) + ' · lists',
-      eventId: String(ev.id),
+      eventId: String(ev.planEventId || ev.id),
       columns: [
         { id: 'todo', name: 'To do', items: [] },
         { id: 'buy', name: 'To buy', items: [] },
         { id: 'bring', name: 'To bring', items: [] }
       ],
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
-    saveNamedList(created);
+    try {
+      var store = loadFreeListsStore();
+      if (!Array.isArray(store.named)) store.named = [];
+      store.named.push(created);
+      saveFreeListsStore(store);
+    } catch (eLoc) {
+      try { saveNamedList(created); } catch (e2) {}
+    }
     return created;
   }
-  function personalListsOnly() {
-    return allNamedLists().filter(function (n) {
-      return !n.eventId && !n.isPersonalEventList && !n.personalForEventId;
+  /** Active / focused list first in left nav (current list on top). */
+  function sortListsCurrentFirst(lists) {
+    var active = state.activeListId != null ? String(state.activeListId) : '';
+    var focus = state.focusEventId != null ? String(state.focusEventId) : '';
+    return (lists || []).slice().sort(function (a, b) {
+      if (!a || !b) return 0;
+      var aId = String(a.id || '');
+      var bId = String(b.id || '');
+      if (active) {
+        if (aId === active && bId !== active) return -1;
+        if (bId === active && aId !== active) return 1;
+      }
+      if (focus) {
+        var aF = a.eventId && (String(a.eventId) === focus ||
+          String(a.eventId) === 'plan_' + focus ||
+          String(a.eventId) === focus.replace(/^plan_/, ''));
+        var bF = b.eventId && (String(b.eventId) === focus ||
+          String(b.eventId) === 'plan_' + focus ||
+          String(b.eventId) === focus.replace(/^plan_/, ''));
+        if (aF && !bF) return -1;
+        if (bF && !aF) return 1;
+      }
+      var an = String(a.name || '').toLowerCase();
+      var bn = String(b.name || '').toLowerCase();
+      if (an < bn) return -1;
+      if (an > bn) return 1;
+      return 0;
     });
   }
+  function personalListsOnly() {
+    return sortListsCurrentFirst(allNamedLists().filter(function (n) {
+      return !n.eventId && !n.isPersonalEventList && !n.personalForEventId;
+    }));
+  }
   function eventLinkedLists() {
-    return allNamedLists().filter(function (n) {
+    return sortListsCurrentFirst(allNamedLists().filter(function (n) {
       return !!(n.eventId || n.isPersonalEventList || n.personalForEventId);
-    });
+    }));
   }
 
   /* ——— Claims / Got it / Drop ——— */
@@ -1477,41 +1564,84 @@
     ensureFloatDom();
     state.floatOpen = true;
     if (opts.event) {
-      state.focusEventId = opts.event.id;
-      var list = findListForHuntEvent(opts.event);
-      if (list) state.activeListId = list.id;
+      state.focusEventId = opts.event.id || (opts.event.planEventId ? ('plan_' + opts.event.planEventId) : null);
     }
     if (opts.listId) state.activeListId = opts.listId;
-    if (!state.activeListId) {
-      var all = allNamedLists();
-      if (all[0]) state.activeListId = all[0].id;
-    }
-    // #136: pull latest pack before paint (cross-site parity with Plan)
-    try {
-      if (typeof runFullSync === 'function') {
-        Promise.resolve(runFullSync()).catch(function () {});
+
+    function pickActiveFromOpts() {
+      if (opts.event) {
+        // Prefer freshest calendar row (may have listPack after cloud pull)
+        var ev = opts.event;
+        try {
+          if (global.RegSlayerCalendarEvents && typeof global.RegSlayerCalendarEvents.getById === 'function') {
+            var live = global.RegSlayerCalendarEvents.getById(opts.event.id) ||
+              (opts.event.planEventId && global.RegSlayerCalendarEvents.getById('plan_' + opts.event.planEventId));
+            if (live) ev = live;
+            // Also scan all for planEventId match
+            if ((!ev.listPack || !ev.listPack.columns) && typeof global.RegSlayerCalendarEvents.all === 'function') {
+              var allE = global.RegSlayerCalendarEvents.all() || [];
+              var hitE = allE.find(function (e) {
+                if (!e) return false;
+                if (opts.event.planEventId && e.planEventId &&
+                    String(e.planEventId) === String(opts.event.planEventId)) return true;
+                if (String(e.id) === String(opts.event.id)) return true;
+                return false;
+              });
+              if (hitE) ev = hitE;
+            }
+          }
+        } catch (eLive) {}
+        var list = findListForHuntEvent(ev);
+        if (list) state.activeListId = list.id;
       }
-    } catch (eSync) {}
-    renderFloatNav();
-    renderFloatMain();
-    var box = $('ps-list-float');
-    var bd = $('ps-list-float-backdrop');
-    if (box) {
-      box.classList.add('is-open');
-      box.setAttribute('aria-hidden', 'false');
-      // Mobile: force full-screen Plan sheet class
-      try {
-        if (window.matchMedia && window.matchMedia('(max-width: 900px)').matches) {
-          box.classList.add('is-mobile-sheet');
-        } else {
-          box.classList.remove('is-mobile-sheet');
+      if (opts.listId) state.activeListId = opts.listId;
+      if (!state.activeListId) {
+        var all = allNamedLists();
+        if (all[0]) state.activeListId = all[0].id;
+      }
+    }
+
+    pickActiveFromOpts();
+
+    function showShell() {
+      var box = $('ps-list-float');
+      var bd = $('ps-list-float-backdrop');
+      if (box) {
+        box.classList.add('is-open');
+        box.setAttribute('aria-hidden', 'false');
+        try {
+          if (window.matchMedia && window.matchMedia('(max-width: 900px)').matches) {
+            box.classList.add('is-mobile-sheet');
+          } else {
+            box.classList.remove('is-mobile-sheet');
+          }
+        } catch (eM) {}
+      }
+      if (bd) {
+        bd.classList.add('is-open');
+        bd.setAttribute('aria-hidden', 'false');
+      }
+      renderFloatNav();
+      renderFloatMain();
+    }
+
+    showShell();
+    // #136: pull latest pack then re-paint so Plan items show (cross-origin)
+    try {
+      Promise.resolve(runFullSync()).then(function () {
+        pickActiveFromOpts();
+        if (state.floatOpen) {
+          renderFloatNav();
+          renderFloatMain();
         }
-      } catch (eM) {}
-    }
-    if (bd) {
-      bd.classList.add('is-open');
-      bd.setAttribute('aria-hidden', 'false');
-    }
+      }).catch(function () {
+        pickActiveFromOpts();
+        if (state.floatOpen) {
+          renderFloatNav();
+          renderFloatMain();
+        }
+      });
+    } catch (eSync) {}
   }
 
   function closeListFloat() {

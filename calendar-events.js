@@ -613,7 +613,41 @@
     if (idx >= 0) {
       var local = events[idx];
       if (new Date(n.updatedAt || 0) >= new Date(local.updatedAt || 0)) {
-        events[idx] = Object.assign({}, local, n, { id: n.id || local.id });
+        var merged = Object.assign({}, local, n, { id: n.id || local.id });
+        // Keep richer listPack (Plan items) if incoming row omitted / emptied it
+        try {
+          var incPack = n.listPack && n.listPack.columns ? n.listPack : null;
+          var locPack = local.listPack && local.listPack.columns ? local.listPack : null;
+          function packItemCount(p) {
+            var c = 0;
+            if (!p || !p.columns) return 0;
+            p.columns.forEach(function (col) { c += (col && col.items ? col.items.length : 0); });
+            return c;
+          }
+          if ((!incPack || packItemCount(incPack) === 0) && locPack && packItemCount(locPack) > 0) {
+            merged.listPack = locPack;
+          } else if (incPack && packItemCount(incPack) > 0) {
+            merged.listPack = incPack;
+          }
+          if (!merged.planListId && local.planListId) merged.planListId = local.planListId;
+        } catch (ePk) {}
+        events[idx] = merged;
+      } else if (n.listPack && n.listPack.columns && n.listPack.columns.length) {
+        // Even if older stamp, adopt richer packing pack from Plan
+        try {
+          var locN = 0;
+          (local.listPack && local.listPack.columns || []).forEach(function (c) {
+            locN += (c && c.items ? c.items.length : 0);
+          });
+          var incN = 0;
+          n.listPack.columns.forEach(function (c) {
+            incN += (c && c.items ? c.items.length : 0);
+          });
+          if (incN > locN) {
+            local.listPack = n.listPack;
+            if (n.planListId) local.planListId = n.planListId;
+          }
+        } catch (eR) {}
       }
     } else {
       events.push(n);
@@ -653,24 +687,43 @@
             }
             var start = ymd(pev.start_at) || ymd(pev.created_at);
             if (!start) return;
-            var huntId = pev.hunt_event_id || ('plan_' + pev.id);
+            var st = (pev.state && typeof pev.state === 'object') ? pev.state : {};
+            var huntId = pev.hunt_event_id || st.hunt_event_id || ('plan_' + pev.id);
+            var pack = st.namedListPack || null;
             livePlanIds[String(pev.id)] = true;
             liveMapIds[String(huntId)] = true;
-            mergeEvent(normalize({
+            var nPlan = normalize({
               id: huntId,
               text: pev.name || 'Event',
-              color: (pev.state && pev.state.color) || '#e59a18',
+              color: st.color || '#e59a18',
               startDate: start,
               endDate: ymd(pev.end_at) || start,
               lat: pev.lat != null ? pev.lat : null,
               lng: pev.lng != null ? pev.lng : null,
               locationLabel: pev.location_label || null,
               planEventId: String(pev.id),
-              mapScope: 'personal',
+              planListId: (pack && pack.listId) || null,
+              listPack: pack,
+              mapScope: st.mapScope || 'personal',
+              sharedMapId: st.sharedMapId || null,
+              privateMapId: st.privateMapId || null,
               creatorUserId: pev.owner_user_id || pev.creator_user_id || null,
               _fromPlanSlayer: true,
               updatedAt: pev.updated_at || new Date().toISOString()
-            }));
+            });
+            mergeEvent(nPlan);
+            // Mirror packing pack into bridge bag so List popup has items cross-origin
+            if (nPlan && nPlan.listPack && nPlan.listPack.columns) {
+              try {
+                var bagP = JSON.parse(localStorage.getItem('slayer_event_lists_v1') || '{}') || {};
+                var pk = nPlan.listPack;
+                bagP[String(pev.id)] = pk;
+                bagP['hunt:' + String(huntId)] = pk;
+                if (pk.listId) bagP['list:' + String(pk.listId)] = pk;
+                bagP[String(huntId)] = pk;
+                localStorage.setItem('slayer_event_lists_v1', JSON.stringify(bagP));
+              } catch (eBagP) {}
+            }
           });
           saveLocal();
         }).catch(function () {});
