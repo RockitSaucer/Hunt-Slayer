@@ -1,0 +1,11 @@
+V8.0.30
+
+GPS Track auto-stop
+- Was: any single reading over 30 mph immediately stopped and saved the track
+- Now: auto-stop only if speed stays above 40 mph for more than 3 minutes
+- A GPS spike or a short truck hop no longer kills the track
+- Dropping back under 40 mph resets the 3-minute clock
+- Live HUD shows a Highway countdown while the clock is running
+- Manual Stop still works anytime
+
+Shell: reg-slayer-shell-v160

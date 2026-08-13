@@ -631,7 +631,7 @@
     if (!('serviceWorker' in navigator)) return Promise.resolve(null);
 
     // Shell bump: keep in sync with sw.js SHELL_CACHE so phones re-fetch the worker script
-    var SW_SCRIPT = './sw.js?v=shell159';
+    var SW_SCRIPT = './sw.js?v=shell160';
 
     // One safe reload when a new SW takes over (once per tab session).
     // Skips if user is typing so login fields aren't wiped mid-keystroke.

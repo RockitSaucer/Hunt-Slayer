@@ -5718,6 +5718,13 @@
     }
     .map-track-live-hud .mtl-row .mtl-k { color: #fecaca; font-weight: 600; }
     .map-track-live-hud .mtl-row .mtl-v { color: #fff; font-weight: 800; }
+    .map-track-live-hud .mtl-row.mtl-highway {
+      margin-top: 5px;
+      padding-top: 4px;
+      border-top: 1px solid rgba(251, 191, 36, 0.45);
+    }
+    .map-track-live-hud .mtl-row.mtl-highway .mtl-k { color: #fde68a; }
+    .map-track-live-hud .mtl-row.mtl-highway .mtl-v { color: #fbbf24; }
     .map-track-live-hud .mtl-stop {
       display: block;
       width: 100%;
@@ -11143,7 +11150,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.29">V8.0.29</span>
+      <span class="brand-version" aria-label="Version 8.0.30">V8.0.30</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -11654,6 +11661,10 @@
                   <div class="mtl-row"><span class="mtl-k">Distance</span><span class="mtl-v" id="mtl-dist">0 mi</span></div>
                   <div class="mtl-row"><span class="mtl-k">Time</span><span class="mtl-v" id="mtl-time">0:00</span></div>
                   <div class="mtl-row"><span class="mtl-k">Elev Δ</span><span class="mtl-v" id="mtl-elev">—</span></div>
+                  <div class="mtl-row mtl-highway" id="mtl-highway" hidden>
+                    <span class="mtl-k">Highway</span>
+                    <span class="mtl-v" id="mtl-highway-left">—</span>
+                  </div>
                   <button type="button" class="mtl-stop" id="mtl-stop-btn" onclick="event.preventDefault();event.stopPropagation();stopGpsTrack();return false;">Stop</button>
                 </div>
                 <div class="mdt-tools-panel" id="mdt-tools-panel" role="group" aria-label="Active tool controls">
@@ -12720,7 +12731,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.29';
+    const APP_VERSION = '8.0.30';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -12986,9 +12997,11 @@
     /** After stop: draft track awaiting Save/Delete modal */
     let gpsTrackPending = null; // { points, distanceMi, durationMs, avgSpeedMph, notes, color }
     let pathEditId = null; // measured path / track being edited
-    const GPS_TRACK_MAX_SPEED_MPH = 30;
+    const GPS_TRACK_MAX_SPEED_MPH = 40;
+    const GPS_TRACK_HIGH_SPEED_MS = 3 * 60 * 1000; // must stay above max for > 3 min
     const GPS_TRACK_MIN_MOVE_MI = 0.008; // ~42 ft — ignore GPS jitter
     const GPS_TRACK_MIN_INTERVAL_MS = 4000; // throttle updates for battery
+    let gpsTrackHighSpeedSince = null; // wall clock when speed first went above 40 and stayed
 
     // Weather + water caches (15 min) and in-flight request dedupe
     let weatherCache = { key: null, data: null, timestamp: 0 };
@@ -28354,6 +28367,17 @@
       if (elDist) elDist.textContent = formatMiles(dist);
       if (elTime) elTime.textContent = formatDurationMs(elapsed);
       if (elElev) elElev.textContent = formatElevDeltaFt(elevFt);
+      var hw = document.getElementById('mtl-highway');
+      var hwLeft = document.getElementById('mtl-highway-left');
+      if (hw) {
+        if (gpsTrackHighSpeedSince) {
+          var leftMs = GPS_TRACK_HIGH_SPEED_MS - (Date.now() - gpsTrackHighSpeedSince);
+          hw.hidden = false;
+          if (hwLeft) hwLeft.textContent = leftMs > 0 ? ('stops in ' + formatDurationMs(leftMs)) : 'stopping…';
+        } else {
+          hw.hidden = true;
+        }
+      }
     }
 
     function refreshGpsTrackPreview() {
@@ -28391,6 +28415,35 @@
       updateTrackButtonUi();
     }
 
+    function gpsTrackSampleSpeedMph(pos, last, now) {
+      var speeds = [];
+      if (last && pos && pos.coords) {
+        var dMi = haversineMiles(last.lat, last.lng, pos.coords.latitude, pos.coords.longitude);
+        var dtMs = now - (last.t || now);
+        if (dtMs > 800 && dMi > 0.001) {
+          speeds.push(dMi / Math.max(dtMs / 3600000, 1e-9));
+        }
+      }
+      // Ignore reported 0 — many browsers leave speed at 0 until they lock heading
+      if (pos && pos.coords && pos.coords.speed != null && isFinite(pos.coords.speed) && pos.coords.speed > 0) {
+        speeds.push(pos.coords.speed * 2.23693629);
+      }
+      if (!speeds.length) return null;
+      var s = speeds[0];
+      for (var i = 1; i < speeds.length; i++) if (speeds[i] < s) s = speeds[i];
+      return s;
+    }
+
+    function gpsTrackHighwayShouldStop(speedMph, now) {
+      if (speedMph == null || !isFinite(speedMph)) return false;
+      if (speedMph > GPS_TRACK_MAX_SPEED_MPH) {
+        if (!gpsTrackHighSpeedSince) gpsTrackHighSpeedSince = now;
+        return (now - gpsTrackHighSpeedSince) > GPS_TRACK_HIGH_SPEED_MS;
+      }
+      gpsTrackHighSpeedSince = null;
+      return false;
+    }
+
     function onGpsTrackPosition(pos) {
       if (!gpsTrackActive || !pos || !pos.coords) return;
       var lat = pos.coords.latitude;
@@ -28417,21 +28470,19 @@
 
       var last = gpsTrackPoints[gpsTrackPoints.length - 1];
       var dMi = haversineMiles(last.lat, last.lng, lat, lng);
-      var dtMs = now - (last.t || gpsTrackLastAcceptedAt || now);
-      var dtHr = dtMs / 3600000;
 
-      // Instant speed check (mph) — auto-stop if faster than 30 mph
-      if (dtMs > 800 && dMi > 0.001) {
-        var speed = dMi / Math.max(dtHr, 1e-9);
-        if (speed > GPS_TRACK_MAX_SPEED_MPH) {
-          showAppCopyToast(
-            '<span class="act">Track stopped</span><br>Speed over ' + GPS_TRACK_MAX_SPEED_MPH +
-            ' mph detected (~' + speed.toFixed(0) + ' mph).'
-          );
-          stopGpsTrack({ auto: true, reason: 'speed' });
-          return;
-        }
+      // Auto-stop only after sustained highway speed (not a single GPS spike / short truck hop)
+      var wasHighway = !!gpsTrackHighSpeedSince;
+      var speed = gpsTrackSampleSpeedMph(pos, last, now);
+      if (gpsTrackHighwayShouldStop(speed, now)) {
+        showAppCopyToast(
+          '<span class="act">Track stopped</span><br>Speed over ' + GPS_TRACK_MAX_SPEED_MPH +
+          ' mph for more than 3 minutes (~' + speed.toFixed(0) + ' mph).'
+        );
+        stopGpsTrack({ auto: true, reason: 'speed' });
+        return;
       }
+      if (wasHighway !== !!gpsTrackHighSpeedSince) updateTrackButtonUi();
 
       // Battery-friendly: require min move OR enough time between points
       var timeOk = (now - gpsTrackLastAcceptedAt) >= GPS_TRACK_MIN_INTERVAL_MS;
@@ -28502,6 +28553,7 @@
         gpsTrackPoints = [];
         gpsTrackStartedAt = Date.now();
         gpsTrackLastAcceptedAt = 0;
+        gpsTrackHighSpeedSince = null;
         gpsTrackPreviewColor = '#d94136';
         // Do not clear the map (dots / lands / chrome). Only dismiss open menus.
         if (map) {
@@ -28624,6 +28676,7 @@
         return;
       }
       gpsTrackActive = false;
+      gpsTrackHighSpeedSince = null;
       stopGpsTrackLiveTimer();
       if (gpsTrackWatchId != null && navigator.geolocation) {
         try { navigator.geolocation.clearWatch(gpsTrackWatchId); } catch (e) {}
@@ -28665,7 +28718,7 @@
         elevDeltaFt: elevDeltaFt,
         color: gpsTrackPreviewColor || '#d94136',
         defaultName: defaultName,
-        notes: opts.reason === 'speed' ? 'Auto-stopped: speed exceeded 30 mph.' : ''
+        notes: opts.reason === 'speed' ? 'Auto-stopped: speed stayed above 40 mph for more than 3 minutes.' : ''
       };
       gpsTrackStartedAt = null;
       refreshGpsTrackPreview();
