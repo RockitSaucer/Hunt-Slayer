@@ -6903,9 +6903,9 @@
       pointer-events: none;
     }
 
-    /* LiDAR basemaps: imagery under + hillshade (never blank at deep zoom) */
+    /* Terrain: hillshade is the map. Grayscale underlay only fills ocean / missed tiles. */
     .leaflet-layer.basemap-lidar-under {
-      filter: saturate(0.85) contrast(1.02) brightness(0.98);
+      filter: grayscale(1) contrast(1.05) brightness(0.92);
     }
     .leaflet-layer.basemap-lidar-under2 {
       filter: none;
@@ -6913,7 +6913,7 @@
     }
     .leaflet-layer.basemap-lidar-tiles {
       /* No multiply blend — it punched black holes when hillshade/under failed */
-      filter: contrast(1.12) brightness(1.08) saturate(0.95);
+      filter: contrast(1.12) brightness(1.06) saturate(0.55);
       opacity: 1;
       pointer-events: none;
     }
@@ -11150,7 +11150,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.32">V8.0.32</span>
+      <span class="brand-version" aria-label="Version 8.0.36">V8.0.36</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -12731,7 +12731,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.32';
+    const APP_VERSION = '8.0.36';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -13019,13 +13019,14 @@
     // Public lands overlay + list (ADCNR, TVA, federal) - cached ~30 days
     const ADCNR_BASE = 'https://conservationgis.alabama.gov/adcnrweb/rest/services';
     const PADUS_URL = 'https://services.arcgis.com/v01gqwM5QqNysAAi/arcgis/rest/services/Manager_Name_PADUS/FeatureServer/0/query';
+    const USFS_OWN_URL = 'https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_BasicOwnership_01/MapServer/0/query';
     function padusOpenFeeWhere(stateCode, mangName) {
       return "Mang_Name = '" + mangName + "' AND State_Nm = '" + String(stateCode || 'AL').toUpperCase() +
         "' AND Pub_Access = 'OA' AND FeatClass = 'Fee' AND Mang_Type <> 'PVT'";
     }
     // v5: NWR fill uses FWS Public Hunt Units 2025-2026 (not full admin refuge outline)
     // Bump key when GIS payload shape / draw rules change so clients drop stale empty/partial cache
-    const ADCNR_CACHE_KEY = 'alabama_hunt_public_lands_v7';
+    const ADCNR_CACHE_KEY = 'alabama_hunt_public_lands_v8';
     const ADCNR_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
     const HIDDEN_LOCS_KEY = 'alabama_hunt_hidden_locations_v1';
     const USER_STANDS_KEY = 'alabama_hunt_user_stands_v1';
@@ -13254,17 +13255,17 @@
       // Draw large forest outlines first (under other layers); non-interactive so WMAs stay clickable
       {
         key: 'usfs', label: 'National Forest', typeLabel: 'National Forest',
-        url: PADUS_URL,
-        where: padusOpenFeeWhere('AL', 'USFS'),
+        url: USFS_OWN_URL,
+        where: "ownerclassification = 'USDA FOREST SERVICE'",
         useBbox: true, paginate: true,
-        outFields: 'Mang_Name,Unit_Nm,Loc_Nm,State_Nm,Des_Tp,Pub_Access,FeatClass,GIS_Acres,OBJECTID',
+        outFields: 'ownerclassification,forestname,region,objectid',
         color: PUBLIC_LAND_COLORS.usfs.color,
         fillOpacity: PUBLIC_LAND_COLORS.usfs.fillOpacity,
         weight: PUBLIC_LAND_COLORS.usfs.weight,
-        listMode: 'none', nameFields: ['Unit_Nm', 'Loc_Nm'],
+        listMode: 'none', nameFields: ['forestname'],
         nameSuffix: ' (USFS)',
-        drawOnMap: true, interactive: false, maxOffset: 0.00035,
-        notes: 'USFS fee-owned open-access land only (not the forest proclamation boundary). Private inholdings omitted.'
+        drawOnMap: true, interactive: true, maxOffset: 0.00025,
+        notes: 'USFS surface ownership only. Private inholdings are not drawn.'
       },
       {
         key: 'wma', label: 'Wildlife Management Area', typeLabel: 'WMA',
@@ -14151,38 +14152,67 @@
       if (closedMsg) {
         bullets.push('Status on selected day: CLOSED for deer hunting.');
       } else if (!seasons.length) {
-        // Generic unit without coded calendar - do not claim a hard red closed unless weapon is known illegal
-        if (layerKey === 'wma' || /wildlife\s*management\s*area|\bwma\b/i.test(name || '')) {
-          bullets.push('Status on selected day: check the current Outdoor Alabama AREA permit for this WMA (weapon seasons are unit-specific).');
-          bullets.push('Bag limit / antler rules: printed on the AREA permit - often 1 deer/day with unit antler restrictions.');
-          bullets.push('Some WMAs are archery-only for deer; never assume gun is open.');
-        } else if (layerKey === 'tva') {
-          var zoneArchery = { weapon: 'Archery', start: '2026-10-15', end: '2027-02-10', target: "Hunter's Choice", limit: 'Statewide daily limits' };
-          var zoneGun = { weapon: 'Gun', start: '2026-11-21', end: '2027-02-10', target: "Hunter's Choice", limit: 'Statewide daily limits', notes: 'Private-land statewide gun dates often differ from public - confirm zone.' };
-          var openTva = [zoneArchery, zoneGun].filter(function(s) {
-            return seasonCoversDate(s, ds) && weaponMatchesSeason(weapon, s.weapon);
-          });
-          if (openTva.length) {
-            statusKnown = true;
-            canHuntToday = true;
-            openTva.forEach(function(s) {
-              bullets.push(likelyOpenSeasonLead(dateObj, displayWeaponName(s.weapon)) + ' under statewide zone seasons · Bag: ' + s.limit + ' · ' + (s.target || ''));
-            });
-          } else {
-            statusKnown = true;
-            canHuntToday = false;
-            closedReason = 'No statewide deer season open for ' + (weapon === 'Either' ? 'deer weapons' : displayWeaponName(weapon)) + ' on ' + prettyDate(dateObj) + '.';
-            bullets.push('Status on selected day: no statewide deer weapon season matched - CLOSED for deer (confirm Outdoor Alabama zone calendar).');
-          }
-          bullets.push('Antler restrictions: follow statewide zone rules for your zone on Outdoor Alabama.');
-        } else if (layerKey === 'soa') {
-          bullets.push('Status on selected day: SOA deer hunts are limited-quota / special dates only - open only if you are drawn for this day.');
-          bullets.push('Bag limit & antler rules: SOA permit specific (not full statewide by default).');
+        if (layerKey === 'soa') {
+          statusKnown = true;
+          canHuntToday = false;
+          closedReason = 'SOA deer hunts are draw/quota only. You can hunt here only if you were drawn for this date.';
+          bullets.push('Status on selected day: CLOSED unless you hold a current SOA draw for this day.');
+          bullets.push('Bag limit & antler rules: SOA permit specific (not full statewide).');
         } else if (layerKey === 'foreverWild') {
-          bullets.push('Status on selected day: if this tract is inside a WMA, use that WMA AREA permit for open/closed and bag rules.');
-          bullets.push('If not in a WMA, confirm Forever Wild posted rules / CanHunt before hunting.');
+          statusKnown = true;
+          canHuntToday = false;
+          closedReason = 'Forever Wild tracts follow the host WMA AREA permit, or posted CanHunt rules — not the general statewide calendar.';
+          bullets.push('Status on selected day: treat as CLOSED unless this tract is inside a WMA with an open AREA permit.');
         } else {
-          bullets.push('Status on selected day: verify on the current official permit/brochure for this unit.');
+          var zLetter = (attrs.zone && /^[A-E]$/.test(String(attrs.zone)))
+            ? String(attrs.zone)
+            : ((attrs.lat != null && typeof detectDeerZoneLetter === 'function')
+              ? detectDeerZoneLetter(attrs.lat, attrs.lng)
+              : 'A');
+          var ridSw = typeof statewideLocIdForZone === 'function' ? statewideLocIdForZone(zLetter) : 10;
+          var swMatched = typeof matchRulesForLocId === 'function'
+            ? matchRulesForLocId(ridSw, dateObj, weapon, land, ds)
+            : [];
+          statusKnown = true;
+          canHuntToday = swMatched.length > 0;
+          var placeKind = (layerKey === 'usfs') ? 'National Forest public land'
+            : (layerKey === 'usace') ? 'USACE public land'
+            : (layerKey === 'tva') ? 'TVA public land'
+            : (layerKey === 'blm') ? 'BLM public land'
+            : (layerKey === 'nwr') ? 'NWR hunt land'
+            : (layerKey === 'wma' || /wildlife\s*management\s*area|\bwma\b/i.test(name || '')) ? 'WMA / public hunt land'
+            : 'public land';
+          if (canHuntToday) {
+            bullets.push('Status on selected day: OPEN for deer on this ' + placeKind + ' under Zone ' + zLetter +
+              ' statewide dates with ' + (weapon === 'Either' ? 'legal deer weapons' : displayWeaponName(weapon)) + '.');
+            swMatched.slice(0, 4).forEach(function (r) {
+              bullets.push('• ' + displayWeaponName(r.weapon) + ' · ' + (r.target || '') + ' · ' + (r.limit || '') +
+                (r.notes ? ' — ' + r.notes : ''));
+            });
+            if (layerKey === 'wma' || /wildlife\s*management\s*area|\bwma\b/i.test(name || '')) {
+              bullets.push('WMA AREA permit can add extra closures or archery-only rules — confirm the signed map.');
+            }
+            if (layerKey === 'nwr') {
+              bullets.push('Federal NWR: also follow the current refuge hunt brochure (50 CFR § 32.20).');
+            }
+          } else {
+            var wSw = weapon === 'Either' ? 'deer weapons' : displayWeaponName(weapon);
+            var altSw = [];
+            ['Archery', 'Primitive', 'Gun'].forEach(function (w) {
+              if (w === weapon) return;
+              if (typeof matchRulesForLocId === 'function' &&
+                  matchRulesForLocId(ridSw, dateObj, w, land, ds).length) altSw.push(w);
+            });
+            if (weapon && weapon !== 'Either' && altSw.length) {
+              closedReason = "Can't hunt that day with " + wSw +
+                '. Can hunt with: ' + altSw.map(displayWeaponName).join(' · ') + '.';
+              bullets.push('Status on selected day: CLOSED for ' + wSw + ' on Zone ' + zLetter +
+                ' — Can hunt with: ' + altSw.map(displayWeaponName).join(' · ') + '.');
+            } else {
+              closedReason = 'No statewide deer season open for ' + wSw + ' on Zone ' + zLetter + ' on ' + prettyDate(dateObj) + '.';
+              bullets.push('Status on selected day: CLOSED for deer with the selected weapon under Zone ' + zLetter + ' seasons.');
+            }
+          }
         }
       } else if (!openToday.length) {
         statusKnown = true;
@@ -17591,6 +17621,70 @@
       return lastClickPublicLand;
     }
 
+    function drawnPolyContains(layer, lat, lng) {
+      if (!layer || typeof layer.getLatLngs !== 'function') return false;
+      function ringHas(ring) {
+        if (!ring || ring.length < 3) return false;
+        var pts = [];
+        for (var i = 0; i < ring.length; i++) {
+          var ll = ring[i];
+          if (!ll) continue;
+          pts.push([ll.lat, ll.lng]);
+        }
+        return typeof pointInLatLngRing === 'function' && pointInLatLngRing(lat, lng, pts);
+      }
+      function walk(node) {
+        if (!node || !node.length) return false;
+        if (node[0] && typeof node[0].lat === 'number') return ringHas(node);
+        if (node[0] && node[0].length && node[0][0] && typeof node[0][0].lat === 'number') {
+          if (!ringHas(node[0])) return false;
+          for (var h = 1; h < node.length; h++) {
+            if (ringHas(node[h])) return false;
+          }
+          return true;
+        }
+        for (var j = 0; j < node.length; j++) {
+          if (walk(node[j])) return true;
+        }
+        return false;
+      }
+      try {
+        if (typeof layer.getBounds === 'function') {
+          var b = layer.getBounds();
+          if (b && typeof b.contains === 'function' && !b.contains([lat, lng])) return false;
+        }
+      } catch (eB) {}
+      try { return walk(layer.getLatLngs()); } catch (eW) { return false; }
+    }
+
+    function findDrawnPublicLandAt(lat, lng) {
+      if (lat == null || lng == null || !adcnrOverlayGroup) return null;
+      var best = null;
+      var bestRank = -1;
+      function rankKey(k) {
+        if (k === 'wma' || k === 'soa' || k === 'pdha') return 5;
+        if (k === 'nwr') return 4;
+        if (k === 'tva' || k === 'usace') return 3;
+        if (k === 'blm' || k === 'walkin' || k === 'stl') return 2;
+        if (k === 'usfs') return 1;
+        return 0;
+      }
+      try {
+        adcnrOverlayGroup.eachLayer(function (ly) {
+          if (!ly || !ly._plLayer) return;
+          if (!drawnPolyContains(ly, lat, lng)) return;
+          var r = rankKey(ly._plLayer.key);
+          if (r >= bestRank) {
+            bestRank = r;
+            best = ly;
+          }
+        });
+      } catch (eF) {}
+      if (!best) return null;
+      return { layer: best._plLayer, attrs: best._plAttrs || {}, lat: lat, lng: lng };
+    }
+    window.findDrawnPublicLandAt = findDrawnPublicLandAt;
+
     /**
      * Load weather + dashboard for a public-land unit at lat/lng (map select).
      * In small (non-fullscreen) map mode this is the primary way to update weather from the map.
@@ -19607,8 +19701,12 @@
       // Known non-huntable federal refuges
       if (isNonHuntableRefugeName(name)) return false;
 
-      // National forests: only PAD-US fee + open-access polygons (private inholdings already filtered)
-      if (layer.key === 'usfs') return true;
+      // National forests: USDA Forest Service surface ownership only (never NON-FS / private inholdings)
+      if (layer.key === 'usfs') {
+        var oc = String(attrs.ownerclassification || attrs.OWNERCLASSIFICATION || '').trim().toUpperCase();
+        if (oc && oc !== 'USDA FOREST SERVICE') return false;
+        return true;
+      }
 
       // Federal refuges: FWS hunt-unit polygons only when Huntable≠No (already filtered in where)
       // and refuge is on the deer-hunt whitelist (Wheeler, Cahaba, Eufaula, …).
@@ -20168,6 +20266,9 @@
             interactive: interactive,
             bubblingMouseEvents: false
           });
+          poly._plLayer = layer;
+          poly._plAttrs = attrs;
+          poly._plCent = c;
           // Peak-rut pulse only on these in-criteria units
           var zoneForRut = 'A';
           try {
@@ -20188,9 +20289,6 @@
               maxWidth: (typeof isPhoneLayout === 'function' && isPhoneLayout()) ? 248 : 300,
               closeOnClick: false
             });
-            poly._plLayer = layer;
-            poly._plAttrs = attrs;
-            poly._plCent = c;
             // Per-polygon long-press state (phone: hold to drop pin/dot)
             poly._lpTimer = null;
             poly._lpFired = false;
@@ -21948,9 +22046,14 @@
           if (addLayer.bringToBack) addLayer.bringToBack();
           // LayerGroup: bring each child
           if (addLayer.eachLayer) {
-            addLayer.eachLayer(function(ch) {
-              try { if (ch.bringToBack) ch.bringToBack(); } catch (eB) {}
-            });
+            // Reverse so the first child (imagery underlay) ends at the very back
+            // and hillshade stays above it. Forward bringToBack inverted the stack
+            // and made Terrain look identical to Aerial.
+            var bmKids = [];
+            addLayer.eachLayer(function(ch) { bmKids.push(ch); });
+            for (var bmi = bmKids.length - 1; bmi >= 0; bmi--) {
+              try { if (bmKids[bmi].bringToBack) bmKids[bmi].bringToBack(); } catch (eB) {}
+            }
           }
         } catch (eAdd) {
           console.warn('basemap add failed', key, eAdd);
@@ -22010,7 +22113,7 @@
         }
       } catch (eMz) {}
       if (key === 'lidar') {
-        // Keep map max zoom open; ensure hillshade overscales, imagery under stays deep
+        // Hillshade is the Terrain look (opacity 1). Imagery underlay is fallback only.
         try {
           var mzLid = (typeof mz === 'number') ? mz : ((typeof window.__REG_SLAYER_MAP_MAX_ZOOM__ === 'number') ? window.__REG_SLAYER_MAP_MAX_ZOOM__ : 22);
           if (map.setMaxZoom) map.setMaxZoom(mzLid);
@@ -22021,7 +22124,8 @@
               var cn = String(ch.options.className || '');
               if (cn.indexOf('basemap-lidar-tiles') >= 0) {
                 ch.options.maxNativeZoom = 16;
-                ch.options.opacity = ch.options.opacity != null ? ch.options.opacity : 0.58;
+                ch.options.opacity = 1;
+                try { if (ch.setOpacity) ch.setOpacity(1); } catch (eOp) {}
               } else if (cn.indexOf('basemap-lidar-under') >= 0) {
                 ch.options.maxNativeZoom = 19;
               }
@@ -22045,7 +22149,7 @@
             if (typeof showAppCopyToast === 'function') {
               showAppCopyToast(
                 '<span class="act">LiDAR terrain on</span><br>' +
-                'Hillshade over satellite — zoom in freely; tiles overscale instead of blanking.'
+                'Hillshade terrain — zoom in freely; tiles overscale instead of blanking.'
               );
             }
           } catch (eTh) {}
@@ -25291,11 +25395,9 @@
       } catch (eWb) {}
 
       /*
-       * LiDAR terrain: never-blank deep zoom
-       * - Under: Esri World Imagery (native ~19) so zoom-in never empties
-       * - Over: World Hillshade relief (native ~16, overscales to MAP_MAX_ZOOM)
-       * - CDN host services.arcgisonline.com; soft tile retry on both layers
-       * - Do not use multiply blend (black voids when a tile misses)
+       * LiDAR terrain: hillshade is the map (opaque). Imagery underlay is
+       * grayscale fallback for ocean / missed tiles only — not a photo basemap.
+       * World Hillshade native ~16; overscale past that. Do not use multiply blend.
        */
       var LIDAR_MAX_ZOOM = MAP_MAX_ZOOM;
       var LIDAR_HILL_NATIVE = 16;
@@ -25310,22 +25412,20 @@
         crossOrigin: false,
         errorTileUrl: ''
       });
-      // Solid underlay — same family as satellite so deep zoom always has pixels
       var lidarUnder = L.tileLayer(
         'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         Object.assign({}, lidarCommon, {
           maxNativeZoom: LIDAR_IMG_NATIVE,
           opacity: 1,
           className: 'basemap-lidar-under',
-          attribution: 'Esri World Imagery + Hillshade · USGS 3DEP'
+          attribution: 'Esri World Hillshade · USGS 3DEP'
         })
       );
-      // Hillshade relief on top (overscales past 16 instead of requesting empty z17+ tiles)
       var lidarHill = L.tileLayer(
         'https://services.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',
         Object.assign({}, lidarCommon, {
           maxNativeZoom: LIDAR_HILL_NATIVE,
-          opacity: 0.58,
+          opacity: 1,
           className: 'basemap-lidar-tiles',
           attribution: 'Esri World Hillshade · USGS 3DEP LiDAR DEMs'
         })
@@ -25493,8 +25593,14 @@
             return;
           }
         } catch (ePick) {}
-        // Free map click: place/move orange dot + weather (no options menu until dot is tapped)
+        // Free map click: if it lands in a public overlay, treat as that public land
         lastClickPublicLand = null;
+        if (e && e.latlng && typeof findDrawnPublicLandAt === 'function') {
+          var hitPl = findDrawnPublicLandAt(e.latlng.lat, e.latlng.lng);
+          if (hitPl && hitPl.layer) {
+            setLastClickPublicLand(hitPl.layer, hitPl.attrs || {}, e.latlng.lat, e.latlng.lng);
+          }
+        }
         placeOrMoveMapDot(e.latlng, { skipWeather: false, openMenu: false });
       });
 
@@ -36286,8 +36392,8 @@ function togglePinIconPicker() {
             if (weather.isCurrent && weather.current) {
               updateMapWindHud(weather.current.wind_speed_10m, weather.current.wind_direction_10m, true);
             } else if (weather.hourly) {
-              var idx = weather.hourly.wind_speed_10m && weather.hourly.wind_speed_10m[7] != null ? 7 : 12;
-              updateMapWindHud(weather.hourly.wind_speed_10m[idx], weather.hourly.wind_direction_10m[idx], false);
+              var idx = pickWeatherNowIndex(weather);
+              updateMapWindHud(weather.hourly.wind_speed_10m[idx], weather.hourly.wind_direction_10m[idx], weather.isCurrent);
             }
           }
           if (!mapOnly) {
@@ -36300,8 +36406,8 @@ function togglePinIconPicker() {
             if (weather.isCurrent && weather.current) {
               updateMapWindHud(weather.current.wind_speed_10m, weather.current.wind_direction_10m, true);
             } else if (weather.hourly) {
-              var idx2 = weather.hourly.wind_speed_10m && weather.hourly.wind_speed_10m[7] != null ? 7 : 12;
-              updateMapWindHud(weather.hourly.wind_speed_10m[idx2], weather.hourly.wind_direction_10m[idx2], false);
+              var idx2 = pickWeatherNowIndex(weather);
+              updateMapWindHud(weather.hourly.wind_speed_10m[idx2], weather.hourly.wind_direction_10m[idx2], weather.isCurrent);
             }
           }
           displayDashboard(location, rule, weather, subsection, waterData, dateToUse, lat, lng);
@@ -36319,9 +36425,96 @@ function togglePinIconPicker() {
       if (skipScroll) scheduleMapInViewRestore();
     }
 
+    function fallbackWeatherTimeZone() {
+      return (window.RS_STATE && window.RS_STATE.tz) ? window.RS_STATE.tz : 'America/Chicago';
+    }
+    function weatherSpotTimeZone(weather) {
+      if (weather && typeof weather.timeZone === 'string' && weather.timeZone) return weather.timeZone;
+      if (weather && typeof weather.timezone === 'string' && weather.timezone) return weather.timezone;
+      return fallbackWeatherTimeZone();
+    }
+    function formatYmdInZone(d, tz) {
+      tz = tz || fallbackWeatherTimeZone();
+      var x = d instanceof Date ? d : new Date();
+      try {
+        var parts = new Intl.DateTimeFormat('en-CA', {
+          timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit'
+        }).formatToParts(x);
+        var y = '', mo = '', da = '';
+        parts.forEach(function(p) {
+          if (p.type === 'year') y = p.value;
+          if (p.type === 'month') mo = p.value;
+          if (p.type === 'day') da = p.value;
+        });
+        if (y && mo && da) return y + '-' + mo + '-' + da;
+      } catch (e) {}
+      return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+    }
+    function hourInZone(d, tz) {
+      tz = tz || fallbackWeatherTimeZone();
+      try {
+        var h = parseInt(new Intl.DateTimeFormat('en-US', {
+          timeZone: tz, hour: 'numeric', hour12: false
+        }).format(d instanceof Date ? d : new Date()), 10);
+        if (h === 24) h = 0;
+        if (!isNaN(h)) return h;
+      } catch (eH) {}
+      return (d instanceof Date ? d : new Date()).getHours();
+    }
+    function offsetHoursInZone(date, tz) {
+      tz = tz || fallbackWeatherTimeZone();
+      try {
+        var f = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'longOffset' });
+        var p = f.formatToParts(date instanceof Date ? date : new Date()).find(function(x) { return x.type === 'timeZoneName'; });
+        if (p && p.value) {
+          var m = String(p.value).match(/GMT([+-])(\d{1,2})(?::?(\d{2}))?/);
+          if (m) {
+            var sign = m[1] === '-' ? -1 : 1;
+            var hours = parseInt(m[2], 10) || 0;
+            var mins = m[3] ? parseInt(m[3], 10) : 0;
+            return sign * (hours + mins / 60);
+          }
+        }
+      } catch (eOff) {}
+      return (typeof getAlabamaTimezoneOffset === 'function') ? getAlabamaTimezoneOffset(date) : -6;
+    }
+    function tzShortName(date, tz) {
+      tz = tz || fallbackWeatherTimeZone();
+      try {
+        var p = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'short' })
+          .formatToParts(date instanceof Date ? date : new Date())
+          .find(function(x) { return x.type === 'timeZoneName'; });
+        return (p && p.value) ? p.value : '';
+      } catch (eN) { return ''; }
+    }
+    function formatClockHour(hour24, withMinutes) {
+      var hr = ((Number(hour24) || 0) % 24 + 24) % 24;
+      var ap = hr >= 12 ? 'PM' : 'AM';
+      var h12 = hr % 12; if (h12 === 0) h12 = 12;
+      return withMinutes ? (h12 + ':00 ' + ap) : (h12 + ' ' + ap);
+    }
+    function hourFromWeatherStamp(ts) {
+      if (typeof ts === 'string' && ts.length >= 13 && ts.charAt(10) === 'T') {
+        var h = parseInt(ts.substr(11, 2), 10);
+        if (!isNaN(h)) return h;
+      }
+      var t = new Date(ts);
+      return isNaN(t.getTime()) ? 0 : t.getHours();
+    }
+    function pickWeatherNowIndex(weather) {
+      var tz = weatherSpotTimeZone(weather);
+      var h = hourInZone(new Date(), tz);
+      if (weather && weather.hourly) {
+        if (weather.hourly.temperature_2m && weather.hourly.temperature_2m[h] != null) return h;
+        if (weather.hourly.wind_speed_10m && weather.hourly.wind_speed_10m[h] != null) return h;
+        if (weather.hourly.wind_speed_10m && weather.hourly.wind_speed_10m[7] != null) return 7;
+      }
+      return 12;
+    }
+
     async function fetchWeather(lat, lon, date) {
       var daysAhead = getDaysFromToday(date);
-      var dateStr = date.toISOString().split('T')[0];
+      var dateStr = formatYmdInZone(date, fallbackWeatherTimeZone());
       var cacheKey = lat.toFixed(4) + ',' + lon.toFixed(4) + ',' + dateStr;
 
       if (weatherCache.key === cacheKey && weatherCache.data && (Date.now() - weatherCache.timestamp) < CACHE_TTL) {
@@ -36358,6 +36551,7 @@ function togglePinIconPicker() {
       }).then(function(data) {
         data.isHistorical = daysAhead < 0;
         data.isCurrent = daysAhead === 0;
+        data.timeZone = data.timezone || data.timeZone || fallbackWeatherTimeZone();
         weatherCache = { key: cacheKey, data: data, timestamp: Date.now() };
         try {
           if (window.RegSlayerOffline) RegSlayerOffline.saveWeatherDisk(lat, lon, dateStr, data);
@@ -36721,9 +36915,10 @@ function togglePinIconPicker() {
       else if (weather.isCurrent) sourceText = 'Source: Live Open-Meteo (Current Conditions)';
       document.getElementById('weather-source-badge').innerText = sourceText;
 
-      // Accurate sunrise/sunset
+      // Accurate sunrise/sunset in the clicked spot's timezone (not the user's clock)
       const selDate = new Date((dateUsed || selectedDate).getFullYear(), (dateUsed || selectedDate).getMonth(), (dateUsed || selectedDate).getDate());
-      const tz = getAlabamaTimezoneOffset(selDate);
+      var wxTz = weatherSpotTimeZone(weather);
+      const tz = offsetHoursInZone(selDate, wxTz);
       const sun = calculateAstronomicalSunriseSunset(lat, lng, selDate, tz);
       document.getElementById('sol-sunrise').innerText = sun.sunrise;
       document.getElementById('sol-sunset').innerText = sun.sunset;
@@ -36748,17 +36943,21 @@ function togglePinIconPicker() {
       // ===== WIND - map compass HUD (top center) =====
       let wspd, wdir;
       var windIsCurrent = !!(weather.isCurrent && weather.current);
+      var tzAbbr = tzShortName(new Date(), wxTz);
       if (windIsCurrent) {
         wspd = weather.current.wind_speed_10m;
         wdir = weather.current.wind_direction_10m;
         var curTemp = weather.current.temperature_2m;
-        document.getElementById('wind-speed-text').innerText = 'Current Wind: ' + Math.round(wspd) + ' MPH from ' + getCardinal(wdir) + ' (Now: ' + formatTemp(curTemp) + ')';
+        var nowClock = formatClockHour(hourInZone(new Date(), wxTz), false);
+        document.getElementById('wind-speed-text').innerText = 'Current Wind: ' + Math.round(wspd) + ' MPH from ' + getCardinal(wdir) +
+          ' (Now ' + nowClock + (tzAbbr ? ' ' + tzAbbr : '') + ': ' + formatTemp(curTemp) + ')';
       } else {
         const hourly = weather.hourly;
-        const idx = (hourly.wind_speed_10m && hourly.wind_speed_10m[7] !== undefined) ? 7 : 12;
+        const idx = pickWeatherNowIndex(weather);
         wspd = (hourly.wind_speed_10m && hourly.wind_speed_10m[idx]) || 5;
         wdir = (hourly.wind_direction_10m && hourly.wind_direction_10m[idx]) || 320;
-        document.getElementById('wind-speed-text').innerText = 'Morning Wind (7 AM): ' + Math.round(wspd) + ' MPH from ' + getCardinal(wdir);
+        document.getElementById('wind-speed-text').innerText = (weather.isCurrent ? 'Current Wind: ' : ('Wind (' + formatClockHour(idx, false) + '): ')) +
+          Math.round(wspd) + ' MPH from ' + getCardinal(wdir);
       }
       document.getElementById('scent-drift-text').innerText = 'Scent Drift: towards ' + getCardinal((wdir + 180) % 360);
       updateMapWindHud(wspd, wdir, windIsCurrent);
@@ -36826,9 +37025,7 @@ function togglePinIconPicker() {
         for (var r = 0; r < hourIdxs.length; r++) {
           var h = hourIdxs[r];
           if (hourly.time[h] == null) continue;
-          var t = new Date(hourly.time[h]);
-          if (isNaN(t.getTime())) continue;
-          var hourNum = t.getHours();
+          var hourNum = hourFromWeatherStamp(hourly.time[h]);
           var isDay = hourNum >= dayStartH && hourNum <= dayEndH;
           if (isDay && firstDaylightIdx < 0) firstDaylightIdx = r;
           var cls = isDay ? 'hourly-day' : 'hourly-night';
@@ -36839,7 +37036,7 @@ function togglePinIconPicker() {
           var wdr = (hourly.wind_direction_10m && hourly.wind_direction_10m[h] != null) ? hourly.wind_direction_10m[h] : 0;
           var tempV = (hourly.temperature_2m && hourly.temperature_2m[h] != null) ? hourly.temperature_2m[h] : null;
           rowsHtml += '<tr class="' + cls + '" data-hour="' + hourNum + '">' +
-            '<td><strong>' + t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + '</strong></td>' +
+            '<td><strong>' + formatClockHour(hourNum, true) + '</strong></td>' +
             '<td>' + formatTemp(tempV) + '</td>' +
             '<td>' + precipP + '%</td>' +
             '<td>' + (Number(rainVal) > 0 ? Number(rainVal).toFixed(2) + '"' : '0.00"') + '</td>' +
@@ -38366,6 +38563,8 @@ function togglePinIconPicker() {
       if (!overlay || !body) return;
 
       var wspd, wdir, tempNow;
+      var wxTz = weatherSpotTimeZone(weather);
+      var tzAbbr = tzShortName(new Date(), wxTz);
       var windIsCurrent = !!(weather.isCurrent && weather.current);
       if (windIsCurrent) {
         wspd = weather.current.wind_speed_10m;
@@ -38373,14 +38572,15 @@ function togglePinIconPicker() {
         tempNow = weather.current.temperature_2m;
       } else {
         var hourly = weather.hourly || {};
-        var idx = (hourly.wind_speed_10m && hourly.wind_speed_10m[7] !== undefined) ? 7 : 12;
+        var idx = pickWeatherNowIndex(weather);
         wspd = (hourly.wind_speed_10m && hourly.wind_speed_10m[idx]) || 5;
         wdir = (hourly.wind_direction_10m && hourly.wind_direction_10m[idx]) || 320;
         tempNow = hourly.temperature_2m && hourly.temperature_2m[idx];
       }
       var dayTemps = typeof getDayHighLow === 'function' ? getDayHighLow(weather) : { high: null, low: null };
+      var sunOff = offsetHoursInZone(selectedDate || new Date(), wxTz);
       var sun = (lat != null && lng != null && typeof calculateAstronomicalSunriseSunset === 'function')
-        ? calculateAstronomicalSunriseSunset(lat, lng, selectedDate || new Date(), typeof getAlabamaTimezoneOffset === 'function' ? getAlabamaTimezoneOffset(selectedDate || new Date()) : -6)
+        ? calculateAstronomicalSunriseSunset(lat, lng, selectedDate || new Date(), sunOff)
         : { sunrise: '--', sunset: '--' };
       var moon = typeof calculateMoonPhase === 'function' ? calculateMoonPhase(selectedDate || new Date()) : { phase: '—', illumination: '—' };
 
@@ -38389,11 +38589,15 @@ function togglePinIconPicker() {
       var windCell = (typeof hourlyWindCellHtml === 'function')
         ? hourlyWindCellHtml(wspd, wdir)
         : (Math.round(wspd || 0) + ' mph ' + getCardinal(wdir || 0));
+      var nowClock = formatClockHour(hourInZone(new Date(), wxTz), false);
       var compact =
         '<div style="font-weight:bold;color:var(--accent);margin-bottom:6px;">' +
         formatTemp(tempNow) + ' · Wind ' + Math.round(wspd || 0) + ' mph ' + getCardinal(wdir || 0) +
         '</div>' +
         '<div>High ' + formatTemp(dayTemps.high) + ' · Low ' + formatTemp(dayTemps.low) + '</div>' +
+        '<div style="margin-top:4px;color:var(--muted);font-size:11px;">' +
+        (windIsCurrent ? ('Now ' + nowClock + (tzAbbr ? ' ' + tzAbbr : '') + ' at this spot') : ('Local time ' + (tzAbbr || wxTz))) +
+        '</div>' +
         '<div style="margin-top:4px;color:var(--muted);font-size:11px;">Sunrise ' + (sun.sunrise || '--') +
         ' · Sunset ' + (sun.sunset || '--') + '</div>';
 
@@ -38401,7 +38605,6 @@ function togglePinIconPicker() {
       if (weather.hourly && weather.hourly.time) {
         for (var h = 5; h <= 18; h++) {
           if (!weather.hourly.time[h]) continue;
-          var t = new Date(weather.hourly.time[h]);
           var rainPct = (weather.hourly.precipitation_probability && weather.hourly.precipitation_probability[h] != null)
             ? Math.round(weather.hourly.precipitation_probability[h])
             : ((weather.hourly.precipitation_probability_mean && weather.hourly.precipitation_probability_mean[h] != null)
@@ -38411,7 +38614,7 @@ function togglePinIconPicker() {
             ? hourlyWindCellHtml(weather.hourly.wind_speed_10m[h], weather.hourly.wind_direction_10m && weather.hourly.wind_direction_10m[h])
             : (Math.round(weather.hourly.wind_speed_10m[h] || 0) + '');
           hourlyRows += '<tr>' +
-            '<td style="border-right:1px solid rgba(255,255,255,0.12);padding:2px 3px;text-align:center;">' + t.toLocaleTimeString('en-US', { hour: 'numeric' }) + '</td>' +
+            '<td style="border-right:1px solid rgba(255,255,255,0.12);padding:2px 3px;text-align:center;">' + formatClockHour(hourFromWeatherStamp(weather.hourly.time[h]), false) + '</td>' +
             '<td style="border-right:1px solid rgba(255,255,255,0.12);padding:2px 3px;text-align:center;">' + formatTemp(weather.hourly.temperature_2m[h]) + '</td>' +
             '<td style="border-right:1px solid rgba(255,255,255,0.12);padding:2px 3px;text-align:center;">' + (rainPct === '—' ? '—' : rainPct + '%') + '</td>' +
             '<td class="hourly-wind-td" style="padding:2px 3px;text-align:center;">' + hWind + '</td></tr>';

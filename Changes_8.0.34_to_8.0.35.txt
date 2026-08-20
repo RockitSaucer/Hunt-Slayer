@@ -1,0 +1,6 @@
+HUNT SLAYER 8.0.34 → 8.0.35
+
+- LiDAR Terrain no longer looks like Satellite.
+- Cause: switching basemaps called bringToBack on each Terrain layer in add order, which put the imagery underlay on top of the hillshade. Hillshade was also only 58% opaque.
+- Fix: keep hillshade on top at full opacity. Imagery underlay is grayscale fallback for ocean / missed tiles only.
+- Shell `reg-slayer-shell-v165`.

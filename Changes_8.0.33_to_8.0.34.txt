@@ -1,0 +1,5 @@
+HUNT SLAYER 8.0.33 → 8.0.34
+
+- Alabama generic public land (Forest, USACE, TVA, BLM, WMA without a coded AREA calendar) now uses Zone A–E dates for OPEN / CLOSED.
+- SOA = CLOSED unless drawn. Forever Wild = CLOSED unless a host WMA permit is open.
+- Shell `reg-slayer-shell-v164`.

@@ -1,0 +1,5 @@
+HUNT SLAYER 8.0.32 → 8.0.33
+
+- Same as Reg 8.2.8: USFS surface ownership only; clicks on forest fill are public land, not private.
+- Cache `alabama_hunt_public_lands_v8`.
+- Shell `reg-slayer-shell-v163`.

@@ -1,0 +1,5 @@
+HUNT SLAYER 8.0.35 → 8.0.36
+
+- Map-click weather uses the clicked spot’s local time and current conditions, not the user’s clock or a 7 AM fallback.
+- Open-Meteo `timezone` for that lat/lng is stored and used for “Now”, hourly labels, and sunrise/sunset.
+- Shell `reg-slayer-shell-v166`.
