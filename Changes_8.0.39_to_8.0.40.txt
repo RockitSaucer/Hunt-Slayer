@@ -1,0 +1,6 @@
+HUNT SLAYER 8.0.39 → 8.0.40
+
+- Terrain (USGS 3DEP): replaced Esri World Hillshade with USGS 3DEP ImageServer Hillshade Gray-Stretch (~1 m LiDAR, public domain). Sharp through zoom 18.
+- Terrain underlay is USGS aerial (fallback only). Layers label matches Reg: Terrain (USGS 3DEP).
+- Offline terrain packs now download the same 3DEP hillshade tiles.
+- Shell `reg-slayer-shell-v170`. Not pushed.

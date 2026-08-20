@@ -1,0 +1,4 @@
+HUNT SLAYER 8.0.44 → 8.0.45
+
+- Step 3 Pin: no more flash of Save/Remove (or overlay) popup on the tap that drops the chooser pin.
+- Shell `reg-slayer-shell-v175`. Not pushed.

@@ -1,0 +1,5 @@
+HUNT SLAYER 8.0.41 → 8.0.42
+
+- Step 3 Pin: first map tap drops the purple chooser pin; later taps are normal map clicks.
+- Click that pin to Save (then name/icon) or Remove. Tap Pin again to place a new spot.
+- Shell `reg-slayer-shell-v172`. Not pushed.

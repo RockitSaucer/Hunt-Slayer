@@ -1,0 +1,5 @@
+HUNT SLAYER 8.0.38 → 8.0.39
+
+- Step 3 From: added Pin next to My Location / ZIP / Address (same as Reg).
+- Pin picker: select a saved pin or create a new one on the map for distance origin.
+- Shell `reg-slayer-shell-v169`. Not pushed.

@@ -1,0 +1,5 @@
+HUNT SLAYER 8.0.40 → 8.0.41
+
+- Step 3 Pin: no pin dropdown. Tap a pin on the map to measure from it, or tap empty map to drop a temporary distance pin.
+- Temp pin stays until you pick another spot, tap it to Save (pin editor), or Remove.
+- Shell `reg-slayer-shell-v171`. Not pushed.

@@ -1,0 +1,5 @@
+HUNT SLAYER 8.0.46 → 8.0.47
+
+- Date / animal / weapon chip: larger type and brighter colors on the dark green button.
+- Compass remains the default dial.
+- Shell `reg-slayer-shell-v177`. Not pushed.

@@ -1,0 +1,4 @@
+HUNT SLAYER 8.0.37 → 8.0.38
+
+- Deer / Elk switch is in the weapon step for later multi-state packs. Alabama has no elk season, so the Elk button stays hidden and the app stays on deer.
+- Shell `reg-slayer-shell-v168`.

@@ -1,0 +1,5 @@
+HUNT SLAYER 8.0.45 → 8.0.46
+
+- Header buttons (Report, Other ways, Account) share one look.
+- Bottom-bar date/weapon chip is wider and shows the selected animal. GPS Track stays.
+- Shell `reg-slayer-shell-v176`. Not pushed.

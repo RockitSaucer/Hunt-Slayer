@@ -2,7 +2,7 @@
  * Caches app shell for return visits with no signal.
  * Map tiles: cache-first when already stored; network otherwise (then cache).
  */
-const SHELL_CACHE = 'reg-slayer-shell-v167';
+const SHELL_CACHE = 'reg-slayer-shell-v178';
 const TILE_CACHE = 'reg-slayer-tiles-v2';
 const DATA_CACHE = 'reg-slayer-data-v1';
 /** Soft cap on cached map tiles (~18KB avg → ~45MB). Oldest entries dropped first. */
@@ -33,6 +33,60 @@ const SHELL_ASSETS = [
   './plan-kit/plan-events-lists.js',
   // WMA permit Zone A/B rings (required offline / hard-refresh)
   './wma-zones-data.js',
+  './states/catalog.js',
+  './states/us-rings.js',
+  './states/pack-host.js',
+  './states/elk-2026.js',
+  './states/pack-lib.js',
+  './states/wy-pack.js',
+  './states/co-pack.js',
+  './states/az-pack.js',
+  './states/ar-pack.js',
+  './states/la-pack.js',
+  './states/ms-pack.js',
+  './states/nj-pack.js',
+  './states/nm-pack.js',
+  './states/nv-pack.js',
+  './states/or-pack.js',
+  './states/de-pack.js',
+  './states/fl-pack.js',
+  './states/id-pack.js',
+  './states/tx-pack.js',
+  './states/ct-pack.js',
+  './states/ca-pack.js',
+  './states/ga-pack.js',
+  './states/ia-pack.js',
+  './states/il-pack.js',
+  './states/in-pack.js',
+  './states/ks-pack.js',
+  './states/ky-pack.js',
+  './states/ma-pack.js',
+  './states/md-pack.js',
+  './states/me-pack.js',
+  './states/mi-pack.js',
+  './states/mn-pack.js',
+  './states/mo-pack.js',
+  './states/mt-pack.js',
+  './states/ne-pack.js',
+  './states/nc-pack.js',
+  './states/nd-pack.js',
+  './states/nh-pack.js',
+  './states/ny-pack.js',
+  './states/oh-pack.js',
+  './states/ok-pack.js',
+  './states/pa-pack.js',
+  './states/ri-pack.js',
+  './states/sc-pack.js',
+  './states/sd-pack.js',
+  './states/tn-pack.js',
+  './states/ut-pack.js',
+  './states/va-pack.js',
+  './states/vt-pack.js',
+  './states/wa-pack.js',
+  './states/wi-pack.js',
+  './states/wv-pack.js',
+  './states/engine.js',
+  './states/us-rings.json',
   './icons/tools/measure.png',
   './icons/tools/draw.png',
   './icons/tools/track.png',
@@ -107,6 +161,7 @@ function isTileUrl(url) {
     // Radar frames: network-only (do not fill disk with ephemeral frames)
     if (h.includes('tilecache.rainviewer.com')) return false;
     if (h.includes('basemap.nationalmap.gov')) return true;
+    if (h.includes('elevation.nationalmap.gov')) return true;
     if (h.includes('basemaps.cartocdn.com')) return true;
     if (h.includes('arcgisonline.com') && u.pathname.includes('/tile/')) return true;
     if (h.includes('wayback.maptiles.arcgis.com') && u.pathname.includes('/tile/')) return true;

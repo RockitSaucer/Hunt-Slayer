@@ -88,23 +88,21 @@
       ]
     },
     street: {
-      label: 'Roads & Waterways',
+      label: 'Roads & water (USGS)',
       urls: [
-        'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-        'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'
+        'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}',
+        'https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer/tile/{z}/{y}/{x}'
       ]
     },
     satellite: {
-      label: 'Satellite',
+      label: 'Aerial (USGS/NAIP)',
       urls: [
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}'
       ]
     },
     lidar: {
-      label: 'LiDAR Terrain',
-      urls: [
-        'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}'
-      ]
+      label: 'Terrain (USGS 3DEP)',
+      urls: []
     }
   };
 
@@ -177,6 +175,25 @@
     return listTileUrlsForBbox(south, north, west, east, basemapKey, zMin, zMax, listOpts, patterns);
   }
 
+  function lidarTileUrl(x, y, z) {
+    if (typeof global.usgs3depHillshadeTileUrl === 'function') {
+      return global.usgs3depHillshadeTileUrl(x, y, z, 256);
+    }
+    var origin = 20037508.342789244;
+    var n = Math.pow(2, z);
+    var tileM = (origin * 2) / n;
+    var xmin = x * tileM - origin;
+    var ymax = origin - y * tileM;
+    var bbox = xmin + ',' + (ymax - tileM) + ',' + (xmin + tileM) + ',' + ymax;
+    return 'https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage'
+      + '?bbox=' + bbox
+      + '&bboxSR=3857&imageSR=3857'
+      + '&size=256,256'
+      + '&format=jpgpng&interpolation=RSP_BilinearInterpolation'
+      + '&renderingRule=' + encodeURIComponent('{"rasterFunction":"Hillshade Gray-Stretch"}')
+      + '&f=image';
+  }
+
   function listTileUrlsForBbox(south, north, west, east, basemapKey, zMin, zMax, listOpts, patternsOpt) {
     basemapKey = basemapKey || 'topo';
     zMin = zMin != null ? zMin : ZOOM_MIN;
@@ -212,16 +229,24 @@
       }
       for (var x = x0; x <= x1; x++) {
         for (var y = y0; y <= y1; y++) {
-          patterns.forEach(function (pattern) {
-            var u = pattern
-              .replace('{z}', String(z))
-              .replace('{x}', String(x))
-              .replace('{y}', String(y));
-            if (!seen[u]) {
-              seen[u] = 1;
-              urls.push(u);
+          if (basemapKey === 'lidar') {
+            var lu = lidarTileUrl(x, y, z);
+            if (!seen[lu]) {
+              seen[lu] = 1;
+              urls.push(lu);
             }
-          });
+          } else {
+            patterns.forEach(function (pattern) {
+              var u = pattern
+                .replace('{z}', String(z))
+                .replace('{x}', String(x))
+                .replace('{y}', String(y));
+              if (!seen[u]) {
+                seen[u] = 1;
+                urls.push(u);
+              }
+            });
+          }
         }
       }
     }
@@ -631,7 +656,7 @@
     if (!('serviceWorker' in navigator)) return Promise.resolve(null);
 
     // Shell bump: keep in sync with sw.js SHELL_CACHE so phones re-fetch the worker script
-    var SW_SCRIPT = './sw.js?v=shell160';
+    var SW_SCRIPT = './sw.js?v=shell173';
 
     // One safe reload when a new SW takes over (once per tab session).
     // Skips if user is typing so login fields aren't wiped mid-keystroke.
@@ -640,11 +665,11 @@
         navigator.serviceWorker._rsCtrlHooked = true;
         navigator.serviceWorker.addEventListener('controllerchange', function () {
           try {
-            if (sessionStorage.getItem('rs_sw_reloaded_shell159')) return;
+            if (sessionStorage.getItem('rs_sw_reloaded_shell173')) return;
             var ae = document.activeElement;
             if (ae && ae.tagName && /^(INPUT|TEXTAREA|SELECT)$/i.test(ae.tagName)) return;
             if (ae && ae.isContentEditable) return;
-            sessionStorage.setItem('rs_sw_reloaded_shell159', '1');
+            sessionStorage.setItem('rs_sw_reloaded_shell173', '1');
             location.reload();
           } catch (eR) {}
         });

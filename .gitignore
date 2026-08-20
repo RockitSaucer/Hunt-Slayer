@@ -1,4 +1,4 @@
-﻿.vercel
+.vercel
 .env*
 .DS_Store
 Thumbs.db
@@ -6,4 +6,10 @@ Thumbs.db
 .idea/
 .vscode/
 .vercel
-.env*
+_tmp/
+_tmp*
+*.bak*
+index.html.bak*
+index.html.broken*
+states/_tmp/
+states/_smoke*

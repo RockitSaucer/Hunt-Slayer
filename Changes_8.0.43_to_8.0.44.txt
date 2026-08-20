@@ -1,0 +1,5 @@
+HUNT SLAYER 8.0.43 → 8.0.44
+
+- Step 3 Pin: first map tap now drops the chooser on WMA / zone / public-land overlays too (those clicks were swallowing the pin).
+- Pin button always arms the next tap so the first click is consistent.
+- Shell `reg-slayer-shell-v174`. Not pushed.

@@ -1,0 +1,5 @@
+HUNT SLAYER 8.0.47 → 8.0.48
+
+- Same app as Reg: lower-48 state packs, elk, pin-origin, 3DEP terrain, header/planner/map chrome.
+- Hunt keeps field tools: GPS track, share-location / other members, pin photos.
+- Shell `reg-slayer-shell-v178`.
