@@ -1,0 +1,6 @@
+HUNT SLAYER 8.0.31 → 8.0.32
+
+- Same public-land-only overlay rule as Reg 8.2.7: USFS is PAD-US fee + open access, not the forest proclamation boundary.
+- Private / proclamation polygons are not highlighted.
+- Cache `alabama_hunt_public_lands_v7`.
+- Shell `reg-slayer-shell-v162`.

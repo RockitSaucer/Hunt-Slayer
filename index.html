@@ -11150,7 +11150,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.31">V8.0.31</span>
+      <span class="brand-version" aria-label="Version 8.0.32">V8.0.32</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -12731,7 +12731,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.31';
+    const APP_VERSION = '8.0.32';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -13018,9 +13018,14 @@
 
     // Public lands overlay + list (ADCNR, TVA, federal) - cached ~30 days
     const ADCNR_BASE = 'https://conservationgis.alabama.gov/adcnrweb/rest/services';
+    const PADUS_URL = 'https://services.arcgis.com/v01gqwM5QqNysAAi/arcgis/rest/services/Manager_Name_PADUS/FeatureServer/0/query';
+    function padusOpenFeeWhere(stateCode, mangName) {
+      return "Mang_Name = '" + mangName + "' AND State_Nm = '" + String(stateCode || 'AL').toUpperCase() +
+        "' AND Pub_Access = 'OA' AND FeatClass = 'Fee' AND Mang_Type <> 'PVT'";
+    }
     // v5: NWR fill uses FWS Public Hunt Units 2025-2026 (not full admin refuge outline)
     // Bump key when GIS payload shape / draw rules change so clients drop stale empty/partial cache
-    const ADCNR_CACHE_KEY = 'alabama_hunt_public_lands_v6';
+    const ADCNR_CACHE_KEY = 'alabama_hunt_public_lands_v7';
     const ADCNR_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
     const HIDDEN_LOCS_KEY = 'alabama_hunt_hidden_locations_v1';
     const USER_STANDS_KEY = 'alabama_hunt_user_stands_v1';
@@ -13249,14 +13254,17 @@
       // Draw large forest outlines first (under other layers); non-interactive so WMAs stay clickable
       {
         key: 'usfs', label: 'National Forest', typeLabel: 'National Forest',
-        url: 'https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_ForestSystemBoundaries_01/MapServer/0/query',
-        where: "forestname = 'National Forests in Alabama'",
-        outFields: 'forestname,gis_acres,region,objectid',
+        url: PADUS_URL,
+        where: padusOpenFeeWhere('AL', 'USFS'),
+        useBbox: true, paginate: true,
+        outFields: 'Mang_Name,Unit_Nm,Loc_Nm,State_Nm,Des_Tp,Pub_Access,FeatClass,GIS_Acres,OBJECTID',
         color: PUBLIC_LAND_COLORS.usfs.color,
         fillOpacity: PUBLIC_LAND_COLORS.usfs.fillOpacity,
         weight: PUBLIC_LAND_COLORS.usfs.weight,
-        listMode: 'none', nameFields: ['forestname'],
-        drawOnMap: true, interactive: false, maxOffset: 0.001
+        listMode: 'none', nameFields: ['Unit_Nm', 'Loc_Nm'],
+        nameSuffix: ' (USFS)',
+        drawOnMap: true, interactive: false, maxOffset: 0.00035,
+        notes: 'USFS fee-owned open-access land only (not the forest proclamation boundary). Private inholdings omitted.'
       },
       {
         key: 'wma', label: 'Wildlife Management Area', typeLabel: 'WMA',
@@ -13354,7 +13362,7 @@
         key: 'usace', label: 'USACE Corps Land', typeLabel: 'USACE',
         url: 'https://services.arcgis.com/v01gqwM5QqNysAAi/arcgis/rest/services/Manager_Name_PADUS/FeatureServer/0/query',
         // OA = open access; REC/PUB = recreation/public designations (exclude mitigation banks NCA/LCA)
-        where: "Mang_Name = 'USACE' AND State_Nm = 'AL' AND Pub_Access = 'OA' AND (Des_Tp = 'REC' OR Des_Tp = 'PUB')",
+        where: "Mang_Name = 'USACE' AND State_Nm = 'AL' AND Pub_Access = 'OA' AND FeatClass = 'Fee' AND Mang_Type <> 'PVT' AND (Des_Tp = 'REC' OR Des_Tp = 'PUB')",
         useBbox: true,
         outFields: 'Mang_Name,Unit_Nm,Loc_Nm,State_Nm,Des_Tp,Pub_Access,FeatClass,GIS_Acres,OBJECTID',
         color: PUBLIC_LAND_COLORS.usace.color,
@@ -19567,6 +19575,21 @@
      * Gate map highlighting: only show land we can affirm is huntable.
      * Policy: if there is no legislation / GIS form saying you CAN hunt, do not highlight.
      */
+    function isPrivateLandRecord(attrs) {
+      if (!attrs) return false;
+      var mang = String(attrs.Mang_Name || '').trim().toUpperCase();
+      var typ = String(attrs.Mang_Type || '').trim().toUpperCase();
+      var feat = String(attrs.FeatClass || '').trim().toLowerCase();
+      var des = String(attrs.Des_Tp || '').trim().toUpperCase();
+      var acc = String(attrs.Pub_Access || '').trim().toUpperCase();
+      if (typ === 'PVT' || mang === 'PVT' || mang === 'PRIVATE' || mang === 'NGO') return true;
+      if (feat === 'proclamation') return true;
+      if (des === 'PROC') return true;
+      if (acc === 'XA') return true;
+      if (/^(PCON|PPRK|PREC|PHCA|PAGR|PRAN|PFOR|POTH|CONE|RECE|HCAE|AGRE|RANE|FORE|OTHE|UNKE)$/.test(des)) return true;
+      return false;
+    }
+
     function mayDrawHuntableFeature(layer, attrs) {
       if (!layer) return false;
       if (layer.drawOnMap === false) return false;
@@ -19574,6 +19597,7 @@
       if (layer.key === 'nps') return false;
 
       attrs = attrs || {};
+      if (isPrivateLandRecord(attrs)) return false;
       var name = featureDisplayName(layer, attrs);
       var canHunt = explicitCanHuntFlag(attrs);
 
@@ -19583,7 +19607,7 @@
       // Known non-huntable federal refuges
       if (isNonHuntableRefugeName(name)) return false;
 
-      // National forests: open under statewide/public rules (stalk / general forest) — keep outline
+      // National forests: only PAD-US fee + open-access polygons (private inholdings already filtered)
       if (layer.key === 'usfs') return true;
 
       // Federal refuges: FWS hunt-unit polygons only when Huntable≠No (already filtered in where)
@@ -20100,9 +20124,8 @@
 
       layersToDraw.forEach(function(layer) {
         if (layer.drawOnMap === false) return;
-        // National forest outlines are statewide context only — skip mass USFS fill
-        // (Forest/NWR toggle still shows NWR; WMA etc. use their own colors)
-        if (layer.key === 'usfs' || layer.key === 'nps') return;
+        // NPS never huntable. USFS is PAD-US fee + open-access only (not proclamation boundaries).
+        if (layer.key === 'nps') return;
         // Per-type toggle (Layers menu color buttons) — default all ON at launch
         if (!isPublicLandLayerKeyVisible(layer.key)) return;
         (layer.features || []).forEach(function(feat) {
