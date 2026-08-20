@@ -11150,7 +11150,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.36">V8.0.36</span>
+      <span class="brand-version" aria-label="Version 8.0.37">V8.0.37</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -12731,7 +12731,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.36';
+    const APP_VERSION = '8.0.37';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -18460,6 +18460,24 @@
       return false;
     }
     window.isDefaultLocationWeatherSelection = isDefaultLocationWeatherSelection;
+
+    var lastPickedWeatherLoc = null;
+    var lastPickedWeatherRule = null;
+    function rememberPickedWeatherLocation(location, rule) {
+      if (!location || location.isDistOrigin) return;
+      if (location.id === 9999 || String(location.id) === '9999' || location.type === 'Current Location') return;
+      lastPickedWeatherLoc = location;
+      lastPickedWeatherRule = rule || null;
+    }
+    function locationForSelectedWeather() {
+      if (selectedLocationId == null || selectedLocationId === '') return null;
+      var loc = locations.find(function(l) { return String(l.id) === String(selectedLocationId); });
+      if (loc) return loc;
+      if (lastPickedWeatherLoc && String(lastPickedWeatherLoc.id) === String(selectedLocationId)) {
+        return lastPickedWeatherLoc;
+      }
+      return null;
+    }
 
     function setDistOriginMode(mode) {
       if (mode !== 'zip' && mode !== 'address' && mode !== 'gps') mode = 'gps';
@@ -33398,9 +33416,17 @@ function togglePinIconPicker() {
       if (daysAhead > 14) {
         isShowingCurrentData = true;
         isHistorical = false;
-        usingCurrentLocation = true;
         updateAvailableList();
         refreshPublicLandsOverlayIfOn();
+        if (selectedLocationId && !isDefaultLocationWeatherSelection()) {
+          var keepFar = locationForSelectedWeather();
+          if (keepFar) {
+            usingCurrentLocation = false;
+            selectLocation(keepFar, lastPickedWeatherRule || { weapon: 'General', target: 'Statewide Rules', limit: 'Statewide Limit', notes: 'Check regulations.' });
+            return;
+          }
+        }
+        usingCurrentLocation = true;
         if (typeof refreshDefaultLocationWeather === 'function') {
           refreshDefaultLocationWeather({ skipScroll: true });
         }
@@ -33411,6 +33437,15 @@ function togglePinIconPicker() {
         // Keep Open Tracts interactive; list uses Either until a weapon is picked
         updateAvailableList();
         refreshPublicLandsOverlayIfOn();
+        if (selectedLocationId && !isDefaultLocationWeatherSelection()) {
+          var keepLoc0 = locationForSelectedWeather();
+          if (keepLoc0) {
+            isShowingCurrentData = false;
+            usingCurrentLocation = false;
+            selectLocation(keepLoc0, lastPickedWeatherRule || { weapon: 'General', target: 'Statewide Rules', limit: 'Statewide Limit', notes: 'Check regulations.' });
+            return;
+          }
+        }
         if (typeof refreshDefaultLocationWeather === 'function') {
           refreshDefaultLocationWeather({ skipScroll: true });
         }
@@ -33422,11 +33457,11 @@ function togglePinIconPicker() {
 
       // Keep weather on a previously picked hunt/map spot if still selected
       if (selectedLocationId && !isDefaultLocationWeatherSelection()) {
-        const loc = locations.find(l => l.id == selectedLocationId);
+        const loc = locationForSelectedWeather();
         if (loc) {
           const matches = queryOpenSeasons(selectedDate, selectedWeapon, selectedLand);
           const match = matches.find(m => m.location.id == selectedLocationId);
-          const rule = match ? match.rule : rules.find(r => r.locId == (loc.isPin ? loc.parentId : loc.id)) || { weapon: 'General', target: 'Statewide Rules', limit: 'Statewide Limit', notes: 'Check regulations.' };
+          const rule = match ? match.rule : (lastPickedWeatherRule || rules.find(r => r.locId == (loc.isPin ? loc.parentId : loc.id)) || { weapon: 'General', target: 'Statewide Rules', limit: 'Statewide Limit', notes: 'Check regulations.' });
           isShowingCurrentData = false;
           usingCurrentLocation = false;
           selectLocation(loc, rule);
@@ -36264,6 +36299,7 @@ function togglePinIconPicker() {
       var panMap = !!opts.panMap;
       if (skipScroll) lockMapInView();
       selectedLocationId = location.id;
+      rememberPickedWeatherLocation(location, rule);
       selectedHuntLocRef = location;
       selectedSubsectionIndex = null;
       document.querySelectorAll('.location-item').forEach(function(el) { el.classList.remove('selected'); });
@@ -37665,7 +37701,7 @@ function togglePinIconPicker() {
           var ov = document.getElementById('map-weather-overlay');
           if (ov) ov.style.display = 'none';
         } catch (eO) {}
-        if (!opts.skipSelect) {
+        if (!opts.skipSelect && (typeof isDefaultLocationWeatherSelection !== 'function' || isDefaultLocationWeatherSelection())) {
           var dateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
           var tid = detected.zone==='A' ? 10 : 11;
           var rule = rules.find(function(r) { return r.locId==tid && dateStr>=r.start && dateStr<=r.end; }) || { weapon:'General', target:'Statewide Rules', limit:'Statewide Limit', notes:'Check regulations.' };
@@ -37692,6 +37728,9 @@ function togglePinIconPicker() {
     function initializeFallback(lat, lng) {
       const detected = detectBoundaryAndZone(lat, lng);
       currentLocationObj = { id:9999, name:'My Location (' + detected.name + ')', type:'Current Location', zone:detected.zone, lat, lng, subSections:[] };
+      if (typeof isDefaultLocationWeatherSelection === 'function' && !isDefaultLocationWeatherSelection()) {
+        return;
+      }
       usingCurrentLocation = true;
       isShowingCurrentData = true;
       isHistorical = false;
@@ -38842,6 +38881,14 @@ function togglePinIconPicker() {
           var detected = detectBoundaryAndZone(userLat, userLng);
           currentLocationObj = { id:9999, name:'My Location (' + detected.name + ')', type:'Current Location', zone:detected.zone, lat:userLat, lng:userLng, subSections:[] };
           if (!locations.some(function(l) { return l.id==9999; })) locations.push(currentLocationObj);
+          if (typeof isDefaultLocationWeatherSelection === 'function' && !isDefaultLocationWeatherSelection()) {
+            finishGpsBoot();
+            ensureMap().then(function() {
+              if (typeof ensureUserGpsMarker === 'function') ensureUserGpsMarker();
+              if (typeof startUserGpsPresence === 'function') startUserGpsPresence();
+            }).catch(function() {});
+            return;
+          }
           usingCurrentLocation = true;
           isShowingCurrentData = true;
           isHistorical = false;

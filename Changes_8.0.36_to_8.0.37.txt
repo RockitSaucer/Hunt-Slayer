@@ -1,0 +1,5 @@
+HUNT SLAYER 8.0.36 → 8.0.37
+
+- GPS / My Location no longer overwrites weather after you click a map spot.
+- Date changes keep weather on the clicked coordinates.
+- Shell `reg-slayer-shell-v167`.
