@@ -1,0 +1,5 @@
+HUNT SLAYER 8.0.30 → 8.0.31
+
+- Same huntable overlay paint as Reg 8.2.6: brighter fills, thicker outlines, colors that hold on satellite/topo.
+- WMA zone slices use WMA orange (not olive/tan).
+- Shell `reg-slayer-shell-v161`.

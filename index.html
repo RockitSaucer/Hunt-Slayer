@@ -11150,7 +11150,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.30">V8.0.30</span>
+      <span class="brand-version" aria-label="Version 8.0.31">V8.0.31</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -11780,13 +11780,13 @@
                                 oninput="setPublicLandOpacity(this.value)" title="Fill opacity for all public land types">
                             </label>
                             <div class="pl-toggles" id="pl-toggles" role="group" aria-label="Toggle public land types">
-                              <button type="button" class="pl-toggle-btn on" id="pl-btn-wma" data-pl="wma" style="background:#e59a18;" onclick="togglePublicLandType('wma')" title="Wildlife Management Areas" aria-pressed="true">WMA<span class="pl-sub">on</span></button>
-                              <button type="button" class="pl-toggle-btn on" id="pl-btn-forestNwr" data-pl="forestNwr" style="background:#2f9e4f;color:#fff;" onclick="togglePublicLandType('forestNwr')" title="National Forests &amp; NWR" aria-pressed="true">Forest/NWR<span class="pl-sub">on</span></button>
-                              <button type="button" class="pl-toggle-btn on" id="pl-btn-tva" data-pl="tva" style="background:#2d8fd9;color:#fff;" onclick="togglePublicLandType('tva')" title="TVA Undeveloped" aria-pressed="true">TVA<span class="pl-sub">on</span></button>
-                              <button type="button" class="pl-toggle-btn on" id="pl-btn-foreverWild" data-pl="foreverWild" style="background:#9b59b6;color:#fff;" onclick="togglePublicLandType('foreverWild')" title="Forever Wild" aria-pressed="true">FW<span class="pl-sub">on</span></button>
-                              <button type="button" class="pl-toggle-btn" id="pl-btn-soa" data-pl="soa" style="background:#c026d3;color:#fff;" onclick="togglePublicLandType('soa')" title="Special Opportunity Areas" aria-pressed="false">SOA<span class="pl-sub">off</span></button>
-                              <button type="button" class="pl-toggle-btn" id="pl-btn-pdha" data-pl="pdha" style="background:#14b8a6;color:#fff;" onclick="togglePublicLandType('pdha')" title="Disabled Hunt Areas (PDHA)" aria-pressed="false">PDHA<span class="pl-sub">off</span></button>
-                              <button type="button" class="pl-toggle-btn on" id="pl-btn-usace" data-pl="usace" style="background:#6b7c3a;color:#fff;" onclick="togglePublicLandType('usace')" title="U.S. Army Corps of Engineers open recreation / hunting project lands" aria-pressed="true">USACE<span class="pl-sub">on</span></button>
+                              <button type="button" class="pl-toggle-btn on" id="pl-btn-wma" data-pl="wma" style="background:#ff8f1f;color:#111;" onclick="togglePublicLandType('wma')" title="Wildlife Management Areas" aria-pressed="true">WMA<span class="pl-sub">on</span></button>
+                              <button type="button" class="pl-toggle-btn on" id="pl-btn-forestNwr" data-pl="forestNwr" style="background:#00d26a;color:#111;" onclick="togglePublicLandType('forestNwr')" title="National Forests &amp; NWR" aria-pressed="true">Forest/NWR<span class="pl-sub">on</span></button>
+                              <button type="button" class="pl-toggle-btn on" id="pl-btn-tva" data-pl="tva" style="background:#3ba3ff;color:#fff;" onclick="togglePublicLandType('tva')" title="TVA Undeveloped" aria-pressed="true">TVA<span class="pl-sub">on</span></button>
+                              <button type="button" class="pl-toggle-btn on" id="pl-btn-foreverWild" data-pl="foreverWild" style="background:#e040fb;color:#fff;" onclick="togglePublicLandType('foreverWild')" title="Forever Wild" aria-pressed="true">FW<span class="pl-sub">on</span></button>
+                              <button type="button" class="pl-toggle-btn" id="pl-btn-soa" data-pl="soa" style="background:#ff2d9b;color:#fff;" onclick="togglePublicLandType('soa')" title="Special Opportunity Areas" aria-pressed="false">SOA<span class="pl-sub">off</span></button>
+                              <button type="button" class="pl-toggle-btn" id="pl-btn-pdha" data-pl="pdha" style="background:#2de0c8;color:#111;" onclick="togglePublicLandType('pdha')" title="Disabled Hunt Areas (PDHA)" aria-pressed="false">PDHA<span class="pl-sub">off</span></button>
+                              <button type="button" class="pl-toggle-btn on" id="pl-btn-usace" data-pl="usace" style="background:#ffe14a;color:#111;" onclick="togglePublicLandType('usace')" title="U.S. Army Corps of Engineers open recreation / hunting project lands" aria-pressed="true">USACE<span class="pl-sub">on</span></button>
                               <button type="button" class="pl-toggle-btn on" id="pl-btn-listPins" data-pl="listPins" style="background:#486a2f;color:#fff;" onclick="togglePublicLandType('listPins')" title="Green ✓ pins for Available Hunts list" aria-pressed="true">✓ List<span class="pl-sub">on</span></button>
                               <button type="button" class="pl-toggle-btn on" id="pl-btn-custom" data-pl="custom" style="background:#c47a0f;color:#fff;" onclick="togglePublicLandType('custom')" title="Custom areas drawn with the Draw tool" aria-pressed="true">Custom<span class="pl-sub">on</span></button>
                             </div>
@@ -12731,7 +12731,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.30';
+    const APP_VERSION = '8.0.31';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -12983,7 +12983,7 @@
     let mapDrawDblZoomWasEnabled = true;
     const CUSTOM_AREAS_KEY = 'alabama_hunt_custom_areas_v1';
     const MEASURED_PATHS_KEY = 'alabama_hunt_measured_paths_v1';
-    const CUSTOM_AREA_FILL_OPACITY = 0.30; // match public-land overlay fill feel
+    const CUSTOM_AREA_FILL_OPACITY = 0.42; // match public-land overlay fill feel
     let measuredPathGroup = null; // saved measure / GPS track lines on map
     // Live GPS track (battery-friendly)
     let gpsTrackActive = false;
@@ -13044,18 +13044,23 @@
      *   NPS ........ brown (if ever drawn)
      */
     const PUBLIC_LAND_COLORS = {
-      wma:         { color: '#e59a18', fillOpacity: 0.34, weight: 1.25 },
-      nwr:         { color: '#2f9e4f', fillOpacity: 0.32, weight: 1.25 },
-      usfs:        { color: '#2f9e4f', fillOpacity: 0.16, weight: 1.0 },
-      tva:         { color: '#2d8fd9', fillOpacity: 0.32, weight: 1.25 },
-      foreverWild: { color: '#9b59b6', fillOpacity: 0.28, weight: 1.15 },
-      soa:         { color: '#c026d3', fillOpacity: 0.30, weight: 1.25 },
-      pdha:        { color: '#14b8a6', fillOpacity: 0.32, weight: 1.25 },
-      usace:       { color: '#6b7c3a', fillOpacity: 0.32, weight: 1.25 },
-      nps:         { color: '#a16207', fillOpacity: 0.18, weight: 1.0 }
+      wma:         { color: '#ff8f1f', fillOpacity: 0.46, weight: 2.4 },
+      nwr:         { color: '#00d26a', fillOpacity: 0.44, weight: 2.3 },
+      usfs:        { color: '#00d26a', fillOpacity: 0.34, weight: 2.1 },
+      tva:         { color: '#3ba3ff', fillOpacity: 0.44, weight: 2.3 },
+      foreverWild: { color: '#e040fb', fillOpacity: 0.42, weight: 2.2 },
+      soa:         { color: '#ff2d9b', fillOpacity: 0.44, weight: 2.3 },
+      pdha:        { color: '#2de0c8', fillOpacity: 0.44, weight: 2.3 },
+      usace:       { color: '#ffe14a', fillOpacity: 0.42, weight: 2.3 },
+      nps:         { color: '#ffb020', fillOpacity: 0.30, weight: 1.8 },
+      blm:         { color: '#ffc14d', fillOpacity: 0.40, weight: 2.2 },
+      walkin:      { color: '#9dff4a', fillOpacity: 0.42, weight: 2.2 },
+      hma:         { color: '#ff7a3d', fillOpacity: 0.42, weight: 2.2 },
+      stl:         { color: '#c4a0ff', fillOpacity: 0.40, weight: 2.2 }
     };
+    window.PUBLIC_LAND_COLORS = PUBLIC_LAND_COLORS;
     function publicLandDrawStyle(layerKey) {
-      return PUBLIC_LAND_COLORS[layerKey] || { color: '#94a3b8', fillOpacity: 0.25, weight: 1.15 };
+      return PUBLIC_LAND_COLORS[layerKey] || { color: '#7dd3fc', fillOpacity: 0.40, weight: 2.2 };
     }
 
     /** Global public-lands fill opacity multiplier (0.15–1.0). Affects all types at once. */
@@ -13070,15 +13075,15 @@
     } catch (ePlOp) {}
 
     function applyPublicLandOpacityMul(baseFill, isOpen) {
-      var base = baseFill != null ? baseFill : 0.28;
-      var openBoost = isOpen ? Math.min(0.16, base * 0.45) : 0;
-      var raw = Math.min(0.72, base + openBoost);
+      var base = baseFill != null ? baseFill : 0.42;
+      var openBoost = isOpen ? Math.min(0.14, base * 0.35) : 0;
+      var raw = Math.min(0.82, base + openBoost);
       var mul = publicLandOpacityMul;
       if (mul == null || isNaN(mul)) mul = 0.7;
       mul = Math.max(0.15, Math.min(1, mul));
-      // Scale relative to default 0.7 so 70% ≈ previous look
+      // Scale relative to default 0.7 so 70% ≈ current look
       var scaled = raw * (mul / 0.7);
-      return Math.max(0.04, Math.min(0.85, scaled));
+      return Math.max(0.10, Math.min(0.92, scaled));
     }
 
     function setPublicLandOpacity(pctOrMul) {
@@ -16872,7 +16877,7 @@
         unitName: unitName,
         unitMatch: re,
         wmaZone: z,
-        color: p.color || (z === 'A' ? '#6fa85c' : '#d4a05a'),
+        color: (PUBLIC_LAND_COLORS.wma && PUBLIC_LAND_COLORS.wma.color) || '#ff8f1f',
         label: zoneLabel,
         rings: rings,
         lat: p.lat != null ? Number(p.lat) : (rec.lat != null ? Number(rec.lat) : null),
@@ -17070,17 +17075,21 @@
           }
         } catch (eO) { isOpen = false; }
 
-        var fillOp = isOpen ? 0.42 : 0.22;
+        var wmaSt = (typeof publicLandDrawStyle === 'function')
+          ? publicLandDrawStyle('wma')
+          : { color: '#ff8f1f', fillOpacity: 0.46, weight: 2.4 };
+        var fillOp = wmaSt.fillOpacity;
         if (typeof applyPublicLandOpacityMul === 'function') {
-          fillOp = applyPublicLandOpacityMul(fillOp, isOpen);
+          fillOp = applyPublicLandOpacityMul(wmaSt.fillOpacity, isOpen);
         }
+        var zoneColor = wmaSt.color || '#ff8f1f';
         // MultiPolygon: one Leaflet poly per outer ring (avoid treating extra exteriors as holes)
         var polyGroup = latlngs.length === 1 ? latlngs[0] : latlngs;
         var poly = L.polygon(polyGroup, {
-          color: f.color || '#ccc',
-          weight: isOpen ? 2.4 : 1.6,
+          color: zoneColor,
+          weight: isOpen ? (wmaSt.weight || 2.4) + 0.8 : (wmaSt.weight || 2.4),
           opacity: 0.95,
-          fillColor: f.color || '#ccc',
+          fillColor: zoneColor,
           fillOpacity: fillOp,
           interactive: true,
           bubblingMouseEvents: false,
@@ -20130,7 +20139,7 @@
           var poly = L.polygon(latlngs, {
             color: stroke,
             weight: wt,
-            opacity: Math.max(0.35, Math.min(1, fillOp + 0.35)),
+            opacity: 0.95,
             fillColor: fill,
             fillOpacity: fillOp,
             interactive: interactive,
