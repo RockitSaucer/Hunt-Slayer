@@ -2058,6 +2058,9 @@
 
   async function onAuthed(fromLogin) {
     showAuthGate(false);
+    try {
+      window.dispatchEvent(new CustomEvent('rs-app-ready', { detail: { fromLogin: !!fromLogin } }));
+    } catch (eReady) {}
     restoreDirtyFlag();
     loadViewState();
     try { migrateEmbeddedPinPhotos(); } catch (eMig) {}

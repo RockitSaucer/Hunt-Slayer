@@ -1,0 +1,6 @@
+HUNT SLAYER 8.0.48 → 9.0 Beta
+
+- Version badge is now V9.0 Beta (same as Reg Slayer).
+- After first login, a one-time popup says the site is in beta and asks for help via Report an issue, especially rules and regs.
+- Hunt still keeps track, share-location / other members, and pin photos.
+- Shell `reg-slayer-shell-v179`.

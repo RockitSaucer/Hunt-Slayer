@@ -656,7 +656,7 @@
     if (!('serviceWorker' in navigator)) return Promise.resolve(null);
 
     // Shell bump: keep in sync with sw.js SHELL_CACHE so phones re-fetch the worker script
-    var SW_SCRIPT = './sw.js?v=shell173';
+    var SW_SCRIPT = './sw.js?v=shell179';
 
     // One safe reload when a new SW takes over (once per tab session).
     // Skips if user is typing so login fields aren't wiped mid-keystroke.
@@ -665,11 +665,11 @@
         navigator.serviceWorker._rsCtrlHooked = true;
         navigator.serviceWorker.addEventListener('controllerchange', function () {
           try {
-            if (sessionStorage.getItem('rs_sw_reloaded_shell173')) return;
+            if (sessionStorage.getItem('rs_sw_reloaded_shell179')) return;
             var ae = document.activeElement;
             if (ae && ae.tagName && /^(INPUT|TEXTAREA|SELECT)$/i.test(ae.tagName)) return;
             if (ae && ae.isContentEditable) return;
-            sessionStorage.setItem('rs_sw_reloaded_shell173', '1');
+            sessionStorage.setItem('rs_sw_reloaded_shell179', '1');
             location.reload();
           } catch (eR) {}
         });

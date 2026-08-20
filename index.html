@@ -11534,7 +11534,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 8.0.48">V8.0.48</span>
+      <span class="brand-version" aria-label="Version 9.0 Beta">V9.0 Beta</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -11592,6 +11592,19 @@
       <div class="howto-actions">
         <button type="button" id="howto-close">Close</button>
         <button type="button" class="ri-submit" id="howto-start">Got it — let’s go</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- One-shot after first login: this build is beta — ask for Report an issue help -->
+  <div id="beta-notice-overlay" class="report-issue-overlay" aria-hidden="true">
+    <div class="report-issue-modal howto-modal" role="dialog" aria-modal="true" aria-labelledby="beta-notice-title" style="max-width:480px">
+      <h3 id="beta-notice-title">This site is in beta</h3>
+      <p class="howto-lead" id="beta-notice-lead">This website is in beta. We are asking for your help to perfect it.</p>
+      <p class="howto-note">If you find anything wrong — especially hunting rules and regulations that do not match the official digest — please tap <strong>Report an issue</strong> at the top of the page. That sends us a ticket so we can fix it.</p>
+      <div class="howto-actions">
+        <button type="button" id="beta-notice-gotit">Got it</button>
+        <button type="button" class="ri-submit" id="beta-notice-report">Report an issue</button>
       </div>
     </div>
   </div>
@@ -13232,7 +13245,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '8.0.48';
+    const APP_VERSION = '9.0-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -41249,6 +41262,7 @@ function togglePinIconPicker() {
     // ===== First-run welcome + live “what to do next” (labels only; hunt logic unchanged) =====
     var HOWTO_STORAGE_KEY = 'reg_slayer_howto_seen_v1';
     var MAP_HINT_STORAGE_KEY = 'reg_slayer_map_hint_seen_v1';
+    var BETA_NOTICE_KEY = 'reg_slayer_beta_notice_v90';
 
     function prettyHuntGuideDate(d) {
       if (!d) return '';
@@ -41322,6 +41336,58 @@ function togglePinIconPicker() {
     }
     window.openHowToGuide = openHowToGuide;
 
+    function isAuthGateOpen() {
+      try {
+        var auth = document.getElementById('auth-gate');
+        return !!(auth && auth.classList.contains('active'));
+      } catch (eA) { return false; }
+    }
+    function betaNoticeSeen() {
+      try { return localStorage.getItem(BETA_NOTICE_KEY) === '1'; } catch (eB) { return false; }
+    }
+    function markBetaNoticeSeen() {
+      try { localStorage.setItem(BETA_NOTICE_KEY, '1'); } catch (eM) {}
+    }
+    function openBetaNotice() {
+      var overlay = document.getElementById('beta-notice-overlay');
+      if (!overlay) return;
+      var lead = document.getElementById('beta-notice-lead');
+      var name = (typeof SITE_ID !== 'undefined' && SITE_ID === 'reg') ? 'Reg Slayer' : 'Hunt Slayer';
+      if (lead) {
+        lead.textContent = name + ' is in beta. We are asking for your help to perfect it.';
+      }
+      overlay.classList.add('is-open');
+      overlay.setAttribute('aria-hidden', 'false');
+    }
+    function closeBetaNotice() {
+      var overlay = document.getElementById('beta-notice-overlay');
+      if (overlay) {
+        overlay.classList.remove('is-open');
+        overlay.setAttribute('aria-hidden', 'true');
+      }
+      markBetaNoticeSeen();
+    }
+    function maybeOpenHowToGuide() {
+      var seen = false;
+      try { seen = localStorage.getItem(HOWTO_STORAGE_KEY) === '1'; } catch (eK) {}
+      var needState = false;
+      try {
+        needState = !(window.RSState && window.RSState.savedCode && window.RSState.savedCode());
+      } catch (eSt) {}
+      if (seen || needState || isAuthGateOpen()) return;
+      if (!betaNoticeSeen()) return;
+      var beta = document.getElementById('beta-notice-overlay');
+      if (beta && beta.classList.contains('is-open')) return;
+      openHowToGuide();
+    }
+    function maybeOpenBetaNotice() {
+      if (betaNoticeSeen() || isAuthGateOpen()) return false;
+      var howto = document.getElementById('howto-overlay');
+      if (howto && howto.classList.contains('is-open')) return false;
+      openBetaNotice();
+      return true;
+    }
+
     function dismissMapFirstHint() {
       var el = document.getElementById('map-first-hint');
       if (el) el.classList.remove('is-on');
@@ -41362,25 +41428,6 @@ function togglePinIconPicker() {
       document.addEventListener('keydown', function (ev) {
         if (ev.key === 'Escape' && overlay && overlay.classList.contains('is-open')) closeHowToGuide(true);
       });
-      var seen = false;
-      try { seen = localStorage.getItem(HOWTO_STORAGE_KEY) === '1'; } catch (eK) {}
-      var needState = false;
-      try {
-        needState = !(window.RSState && window.RSState.savedCode && window.RSState.savedCode());
-      } catch (eSt) {}
-      if (!seen && !needState) {
-        function tryOpenHowTo() {
-          try {
-            var auth = document.getElementById('auth-gate');
-            if (auth && auth.classList.contains('active')) return false;
-          } catch (eA) {}
-          openHowToGuide();
-          return true;
-        }
-        if (!tryOpenHowTo()) {
-          setTimeout(tryOpenHowTo, 800);
-        }
-      }
       showMapFirstHintIfNeeded();
       updateHuntGuide();
     })();
@@ -41441,12 +41488,18 @@ function togglePinIconPicker() {
         if (kind === 'err') statusEl.classList.add('is-err');
         if (kind === 'ok') statusEl.classList.add('is-ok');
       }
-      function openReport() {
+      function openReport(opts) {
         overlay.classList.add('is-open');
         overlay.setAttribute('aria-hidden', 'false');
         setStatus('');
+        if (opts && opts.kind && kindSeg) {
+          kindSeg.querySelectorAll('.filter-btn').forEach(function (x) {
+            x.classList.toggle('active', x.getAttribute('data-kind') === opts.kind);
+          });
+        }
         try { if (msgEl) msgEl.focus(); } catch (eF) {}
       }
+      window.openReportIssue = openReport;
       function closeReport() {
         overlay.classList.remove('is-open');
         overlay.setAttribute('aria-hidden', 'true');
@@ -41511,6 +41564,36 @@ function togglePinIconPicker() {
           setStatus('Network error — check connection and try again.', 'err');
           submit.disabled = false;
         });
+      });
+    })();
+
+    (function wireBetaNotice() {
+      var overlay = document.getElementById('beta-notice-overlay');
+      var gotit = document.getElementById('beta-notice-gotit');
+      var report = document.getElementById('beta-notice-report');
+      if (!overlay || overlay._rsBetaWired) return;
+      overlay._rsBetaWired = true;
+      function finish(openReport) {
+        closeBetaNotice();
+        if (openReport && typeof window.openReportIssue === 'function') {
+          try { window.openReportIssue({ kind: 'regs' }); } catch (eR) {}
+        } else {
+          maybeOpenHowToGuide();
+        }
+      }
+      if (gotit) gotit.addEventListener('click', function () { finish(false); });
+      if (report) report.addEventListener('click', function () { finish(true); });
+      overlay.addEventListener('click', function (ev) {
+        if (ev.target === overlay) finish(false);
+      });
+      document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape' && overlay.classList.contains('is-open')) finish(false);
+      });
+      function tryFirstLoginOverlays() {
+        if (!maybeOpenBetaNotice()) maybeOpenHowToGuide();
+      }
+      window.addEventListener('rs-app-ready', function () {
+        setTimeout(tryFirstLoginOverlays, 250);
       });
     })();
 
