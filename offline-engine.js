@@ -655,26 +655,12 @@
   function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return Promise.resolve(null);
 
-    // Shell bump: keep in sync with sw.js SHELL_CACHE so phones re-fetch the worker script
-    var SW_SCRIPT = './sw.js?v=shell179';
+    // Keep in sync with sw.js SHELL_CACHE so phones re-fetch the worker script
+    var SW_SCRIPT = './sw.js?v=shell181';
 
-    // One safe reload when a new SW takes over (once per tab session).
-    // Skips if user is typing so login fields aren't wiped mid-keystroke.
-    try {
-      if (!navigator.serviceWorker._rsCtrlHooked) {
-        navigator.serviceWorker._rsCtrlHooked = true;
-        navigator.serviceWorker.addEventListener('controllerchange', function () {
-          try {
-            if (sessionStorage.getItem('rs_sw_reloaded_shell179')) return;
-            var ae = document.activeElement;
-            if (ae && ae.tagName && /^(INPUT|TEXTAREA|SELECT)$/i.test(ae.tagName)) return;
-            if (ae && ae.isContentEditable) return;
-            sessionStorage.setItem('rs_sw_reloaded_shell179', '1');
-            location.reload();
-          } catch (eR) {}
-        });
-      }
-    } catch (eH) {}
+    // Do NOT auto-reload on controllerchange. skipWaiting + clients.claim was
+    // hard-reloading the tab ~1s after first launch (flash, scroll snap, login wipe).
+    // Shell HTML/JS is already network-first; the new worker applies in the background.
 
     return navigator.serviceWorker
       .register(SW_SCRIPT, { scope: './' })
@@ -752,7 +738,7 @@
 
   global.RegSlayerOffline = api;
 
-  // Boot connection listeners when DOM ready
+  // Boot connection listeners when DOM ready; register SW after first paint
   function bootUi() {
     updateOfflineBanner();
     window.addEventListener('online', function () {
@@ -761,7 +747,14 @@
     window.addEventListener('offline', function () {
       updateOfflineBanner();
     });
-    registerServiceWorker();
+    function startSw() {
+      registerServiceWorker();
+    }
+    if (document.readyState === 'complete') {
+      setTimeout(startSw, 0);
+    } else {
+      window.addEventListener('load', function () { setTimeout(startSw, 0); });
+    }
   }
 
   if (document.readyState === 'loading') {

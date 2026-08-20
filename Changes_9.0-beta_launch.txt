@@ -1,0 +1,6 @@
+HUNT SLAYER 9.0 Beta — launch cleanup
+
+- Stopped the service worker from hard-reloading the tab on first launch (that was the flash / second load).
+- Register the worker after first paint; new shell still applies in the background (network-first).
+- Hold the main chrome on a dark boot screen until sign-in or a saved session is ready.
+- Shell `reg-slayer-shell-v180`.

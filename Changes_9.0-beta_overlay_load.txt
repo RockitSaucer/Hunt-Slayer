@@ -1,0 +1,6 @@
+HUNT SLAYER 9.0 Beta — faster, reliable state overlays
+
+- Stopped re-downloading public-land GIS on every state apply (use the per-state cache).
+- Ignore stale Alabama fetches after switching states so they cannot wipe or blank overlays.
+- Wait for the active state pack before first overlay load; paint as soon as the map exists (no refresh required).
+- Prefetch the saved state’s pack from the page head so overlays are not waiting on window.onload.

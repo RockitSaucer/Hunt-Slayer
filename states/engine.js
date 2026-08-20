@@ -222,4 +222,13 @@
   } else {
     wirePicker();
   }
+
+  // Start pack + rings as soon as this file runs (head) so overlays are not waiting on window.onload
+  try {
+    var bootCode = savedCode();
+    if (bootCode && bootCode !== 'AL' && typeof window.loadStatePack === 'function') {
+      window.loadStatePack(bootCode);
+    }
+    loadRings();
+  } catch (ePref) {}
 })();

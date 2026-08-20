@@ -1,0 +1,5 @@
+HUNT SLAYER 9.0 Beta — map chrome stays put
+
+- Which map / state / settings sit above the map and keep their own clicks (pins no longer cover them).
+- Map column no longer sizes to 100% of the card (that was sliding tiles over the title row).
+- Toolbar no longer jumps when the visual viewport scrolls.

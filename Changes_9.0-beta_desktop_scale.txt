@@ -1,0 +1,5 @@
+HUNT SLAYER 9.0 Beta — desktop small-window labels
+
+- Desktop chips and toolbar icons now scale with the planner/map column so labels stay readable.
+- Header buttons wrap instead of overlapping the title on laptop widths.
+- Weapon / From / How-to step text shrinks with the buttons instead of overflowing.

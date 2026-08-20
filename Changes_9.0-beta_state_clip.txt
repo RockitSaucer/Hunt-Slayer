@@ -1,0 +1,5 @@
+HUNT SLAYER 9.0 Beta — overlays stay inside the selected state
+
+- Hunt-unit overlays only keep zones that belong to that state’s pack (California no longer draws Nevada units from a shared bbox).
+- Zone and public-land polygons are clipped to the selected state’s border.
+- Hunt-unit cache bumped to v2 so old CA downloads that included extra polygons are dropped.

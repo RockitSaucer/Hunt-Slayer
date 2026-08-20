@@ -61,7 +61,15 @@
       root.classList.remove('layout-phone', 'layout-desktop');
       root.classList.add(phone ? 'layout-phone' : 'layout-desktop');
       root.setAttribute('data-layout', phone ? 'phone' : 'desktop');
+      root.classList.add('rs-booting');
       window.__REG_SLAYER_IS_PHONE__ = phone;
+      setTimeout(function () {
+        try {
+          var gate = document.getElementById('auth-gate');
+          if (gate && gate.classList.contains('active')) return;
+          root.classList.remove('rs-booting');
+        } catch (eBoot) {}
+      }, 4500);
       // Pre-apply Max-on-launch only when the user (or saved settings) explicitly wants Max
       try {
         var wantMax = false;
@@ -95,6 +103,18 @@
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     html, body { height: 100%; }
     body { background: var(--bg); color: var(--ink); margin: 0; padding: 0; line-height: 1.5; min-height: 100vh; display: flex; flex-direction: column; }
+    /* First launch: hold main chrome until session/auth gate is ready (no half-painted flash) */
+    html.rs-booting,
+    html.rs-booting body { background: #0d0f0c; }
+    html.rs-booting body > *:not(#auth-gate):not(#state-pick-overlay):not(#beta-notice-overlay):not(#howto-overlay) {
+      visibility: hidden !important;
+    }
+    html.rs-booting #auth-gate,
+    html.rs-booting #state-pick-overlay.is-open,
+    html.rs-booting #beta-notice-overlay.is-open,
+    html.rs-booting #howto-overlay.is-open {
+      visibility: visible !important;
+    }
     /*
      * App-wide scrollbars (Hunt App standard):
      * dark track/thumb, thin bar, NO up/down (or left/right) arrow buttons.
@@ -455,12 +475,16 @@
       box-sizing: border-box;
       padding: 2px 4px 3px;
       margin: 0;
-      background: transparent;
+      background: var(--panel);
       flex: 0 0 auto;
       align-items: center;
       justify-content: space-between;
       gap: 8px;
       min-height: 0;
+      position: relative;
+      z-index: 50;
+      isolation: isolate;
+      pointer-events: auto;
     }
     .map-title-switcher {
       position: relative;
@@ -955,7 +979,7 @@
       display: flex;
       flex-direction: column;
       min-height: 0;
-      height: 100%;
+      height: auto;
       overflow: hidden !important;
       position: relative;
       z-index: 0;
@@ -1015,6 +1039,8 @@
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
+      container-type: inline-size;
+      container-name: plannercol;
     }
     html.layout-desktop .card-map {
       position: relative !important;
@@ -1023,6 +1049,8 @@
       height: 100% !important;
       max-height: 100% !important;
       min-height: 0 !important;
+      container-type: inline-size;
+      container-name: mapcol;
       box-sizing: border-box;
       /* Title strip + map — flush bottom so toolbar has no dead gap (#81) */
       padding: 2px 6px 0;
@@ -1032,12 +1060,12 @@
     html.layout-desktop .card-map .map-section-block {
       flex: 1 1 auto;
       min-height: 0 !important;
-      height: 100% !important;
+      height: auto !important;
     }
     html.layout-desktop .card-map .map-wrapper {
       flex: 1 1 auto;
       min-height: 0 !important;
-      height: 100% !important;
+      height: auto !important;
       margin-top: 0;
     }
     html.layout-desktop #leaflet-map {
@@ -1061,8 +1089,25 @@
       /* Still ~15% planner-narrow vs equal split */
       html.layout-desktop .container { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 10px; }
       html.layout-desktop .app-shell { padding: 12px; }
-      html.layout-desktop .brand-header { height: 104px; min-height: 104px; max-height: 104px; }
-      html.layout-desktop .brand-header:has(.hunt-guide) { height: auto; min-height: 104px; max-height: none; overflow: visible; }
+      html.layout-desktop .brand-header {
+        height: auto;
+        min-height: 88px;
+        max-height: none;
+        overflow: visible;
+      }
+      html.layout-desktop .brand-header-actions {
+        flex-wrap: wrap;
+        max-width: min(62%, 440px);
+        gap: 4px;
+      }
+      html.layout-desktop .brand-header-actions > button,
+      html.layout-desktop .brand-sister-link,
+      html.layout-desktop .brand-report-btn {
+        font-size: 10px;
+        padding: 5px 8px;
+        line-height: 1.2;
+      }
+      html.layout-desktop .brand-title { font-size: clamp(16px, 2.4vw, 26px); }
       html.layout-desktop .brand-logo-wrap { width: min(1100px, 96vw); }
       html.layout-desktop .brand-logo { height: 168px; width: auto; object-fit: contain; }
       html.layout-desktop #dashboard-container { position: static; max-height: none; }
@@ -1071,6 +1116,185 @@
         max-height: 100% !important;
       }
       html.layout-desktop #leaflet-map { height: 100% !important; min-height: 0 !important; }
+    }
+
+    /*
+     * Desktop on a smaller window / laptop: scale label size with the chips
+     * so words stay readable and toolbar/planner controls do not overlap.
+     * Uses the map column and planner column width (not the full viewport).
+     */
+    @media (max-width: 1280px) {
+      html.layout-desktop .brand-header {
+        height: auto;
+        min-height: 88px;
+        max-height: none;
+        overflow: visible;
+        align-items: flex-end;
+      }
+      html.layout-desktop .brand-header-actions {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        max-width: min(58%, 520px);
+      }
+      html.layout-desktop .brand-header-actions > button,
+      html.layout-desktop .brand-sister-link,
+      html.layout-desktop .brand-report-btn {
+        font-size: 10px;
+        padding: 5px 8px;
+        line-height: 1.2;
+      }
+      html.layout-desktop .brand-title { font-size: clamp(18px, 2.2vw, 28px); }
+      html.layout-desktop .brand-tagline { font-size: 10px; }
+    }
+    @container plannercol (max-width: 640px) {
+      .hunt-guide-inner,
+      .hg-steps {
+        flex-wrap: wrap;
+        row-gap: 6px;
+      }
+      .hg-step {
+        font-size: 11px;
+        padding: 3px 7px 3px 3px;
+      }
+      .hg-step-text {
+        max-width: 9.5rem;
+        font-size: 11px;
+      }
+      .hg-help-btn {
+        font-size: 10px;
+        padding: 4px 8px;
+      }
+      .weapon-stack .filter-btn {
+        font-size: 10px;
+        padding: 5px 4px;
+        min-height: 30px;
+      }
+      .species-stack .filter-btn {
+        font-size: 11px;
+        min-height: 30px;
+        padding: 5px 6px;
+      }
+      .location-filters-box .lf-seg .filter-btn,
+      .location-filters-box #land-private,
+      .list-toolbar .filter-btn {
+        font-size: 10px;
+        padding: 5px 5px;
+      }
+    }
+    @container plannercol (max-width: 480px) {
+      .hg-step { font-size: 10px; }
+      .hg-step-text { max-width: 7.5rem; font-size: 10px; }
+      .weapon-stack .filter-btn {
+        font-size: 9px;
+        padding: 4px 3px;
+        min-height: 28px;
+      }
+      .species-stack .filter-btn,
+      .location-filters-box .lf-seg .filter-btn,
+      .location-filters-box #land-private {
+        font-size: 9px;
+        padding: 4px 4px;
+        min-height: 26px;
+      }
+      .step-title, .section-qual, .available-tracts-title { font-size: 11px; }
+    }
+    @container mapcol (max-width: 780px) {
+      .map-wrapper {
+        --mbb-h: 38px;
+        --mbb-icon: 38px;
+        --mbb-gap: 5px;
+        --mbb-bar-h: calc(var(--mbb-h) * 1.05);
+      }
+      .mbb-context {
+        min-width: 7.8rem;
+        max-width: min(44%, 220px);
+        padding: 2px 6px;
+        gap: 4px;
+      }
+      .mbb-date { font-size: 11px; }
+      .mbb-species,
+      .mbb-weapon {
+        font-size: 10px;
+        height: 16px;
+        padding: 0 4px;
+      }
+      .map-draw-tools .mdt-icon-img,
+      .map-layers-toggle-btn .mdt-icon-img {
+        width: 24px;
+        height: 24px;
+      }
+      .map-bottom-bar .mbb-icon-btn svg,
+      .map-bottom-bar .mbb-compass-btn svg,
+      .map-bottom-bar .map-radar-toggle svg {
+        width: 20px;
+        height: 20px;
+      }
+      .map-title-bar #brand-state-btn,
+      .map-title-bar .map-title-text { font-size: 11px; }
+    }
+    @container mapcol (max-width: 620px) {
+      .map-wrapper {
+        --mbb-h: 34px;
+        --mbb-icon: 34px;
+        --mbb-gap: 4px;
+        --mbb-bar-h: calc(var(--mbb-h) * 1.05);
+      }
+      .mbb-context {
+        min-width: 6.8rem;
+        max-width: min(40%, 190px);
+        padding: 1px 5px;
+        gap: 3px;
+      }
+      .mbb-date { font-size: 10px; }
+      .mbb-species,
+      .mbb-weapon {
+        font-size: 9px;
+        height: 14px;
+        padding: 0 3px;
+      }
+      .map-draw-tools .mdt-icon-img,
+      .map-layers-toggle-btn .mdt-icon-img {
+        width: 20px;
+        height: 20px;
+      }
+      .map-bottom-bar .mbb-icon-btn svg,
+      .map-bottom-bar .mbb-compass-btn svg,
+      .map-bottom-bar .map-radar-toggle svg {
+        width: 17px;
+        height: 17px;
+      }
+      .map-settings-btn { font-size: 16px; }
+      .map-title-bar #brand-state-btn { font-size: 10px; padding: 4px 7px; }
+    }
+    @container mapcol (max-width: 500px) {
+      .map-wrapper {
+        --mbb-h: 30px;
+        --mbb-icon: 30px;
+        --mbb-gap: 3px;
+        --mbb-bar-h: calc(var(--mbb-h) * 1.05);
+      }
+      .mbb-context {
+        min-width: 6.2rem;
+        max-width: min(38%, 160px);
+      }
+      .mbb-date { font-size: 9px; }
+      .mbb-species,
+      .mbb-weapon {
+        font-size: 8px;
+        height: 13px;
+      }
+      .map-draw-tools .mdt-icon-img,
+      .map-layers-toggle-btn .mdt-icon-img {
+        width: 16px;
+        height: 16px;
+      }
+      .map-bottom-bar .mbb-icon-btn svg,
+      .map-bottom-bar .mbb-compass-btn svg,
+      .map-bottom-bar .map-radar-toggle svg {
+        width: 15px;
+        height: 15px;
+      }
+      .map-settings-btn { font-size: 14px; }
     }
 
     /* Phone shell via JS class (works even on wider phone landscape) */
@@ -4010,6 +4234,10 @@
       isolation: isolate !important;
       contain: none !important;
       position: relative;
+    }
+    html.map-popup-covers-brand .card-map > .map-title-bar {
+      z-index: 60 !important;
+      background: var(--panel);
     }
     html.map-popup-covers-brand .card-map .map-section-block {
       overflow: visible !important;
@@ -8368,7 +8596,7 @@
       flex: 0 0 auto;
       width: auto;
       min-width: 9.5rem;
-      max-width: min(58vw, 280px);
+      max-width: min(42%, 280px);
       height: var(--mbb-h) !important;
       max-height: var(--mbb-h) !important;
       overflow: hidden;
@@ -9827,7 +10055,7 @@
     #dist-origin-address .addr-full { display: inline; }
     #dist-origin-gps .gps-short { display: none; }
     #dist-origin-gps .gps-full { display: inline; }
-    @container distfrom (max-width: 340px) {
+    @container distfrom (max-width: 400px) {
       #dist-origin-address .addr-full { display: none; }
       #dist-origin-address .addr-short { display: inline; }
       #dist-origin-gps .gps-full { display: none; }
@@ -11430,7 +11658,11 @@
       margin-top: 2px;
     }
     html.layout-desktop .weapon-stack .filter-btn .wpn-sub { display: none; }
-    html.layout-desktop .weapon-stack .filter-btn .wpn-main { font-size: 11px; }
+    html.layout-desktop .weapon-stack .filter-btn .wpn-main {
+      font-size: inherit;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .species-stack {
       display: flex;
       gap: 6px;
@@ -11534,7 +11766,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 9.0 Beta">V9.0 Beta</span>
+      <span class="brand-version" aria-label="Version 9.0.1 Beta">V9.0.1 Beta</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -13245,7 +13477,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '9.0-beta';
+    const APP_VERSION = '9.0.1-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -13460,6 +13692,8 @@
     let selectedHuntLocRef = null; // full location object used for outline (zone-aware)
     let adcnrLandsData = null;    // cached payload in memory
     let adcnrLoading = null;
+    var publicLandsFetchGen = 0;
+    var huntUnitFetchGen = 0;
     let stateZonesGroup = null;   // Alabama deer season zones A–E (light fill overlay)
     let tempClickMarker = null, gpsMarker = null, clickLat = null, clickLng = null;
     // Distance filter (list only)
@@ -14083,11 +14317,14 @@
         ACTIVE_PUBLIC_LAYERS = buildGenericStateLayers(pack.code);
       }
       try {
+        publicLandsFetchGen++;
+        huntUnitFetchGen++;
         adcnrLandsData = null;
         adcnrLoading = null;
         lastListedHuntLocations = [];
         huntUnitData = null;
         huntUnitLoading = null;
+        huntUnitCacheCode = '';
         wyHuntAreaData = null;
         wyHuntAreaLoading = null;
       } catch (eC) {}
@@ -14121,19 +14358,29 @@
       try {
         if (livePack && typeof loadPackHuntUnits === 'function') {
           loadPackHuntUnits(false).then(function () {
-            if (typeof drawStateZonesOverlay === 'function') drawStateZonesOverlay();
-            if (typeof updateAvailableList === 'function' && selectedDate) updateAvailableList();
-            try {
-              if (typeof setMapDotMenuContent === 'function' && clickLat != null) {
-                setMapDotMenuContent({ fromGps: mapDotMenuSource === 'gps' });
-              }
-            } catch (eDot) {}
+            function paintUnits() {
+              if (typeof paintOverlaysWhenReady === 'function') paintOverlaysWhenReady();
+              else if (typeof drawStateZonesOverlay === 'function') drawStateZonesOverlay();
+              if (typeof updateAvailableList === 'function' && selectedDate) updateAvailableList();
+              try {
+                if (typeof setMapDotMenuContent === 'function' && clickLat != null) {
+                  setMapDotMenuContent({ fromGps: mapDotMenuSource === 'gps' });
+                }
+              } catch (eDot) {}
+            }
+            if (map) paintUnits();
+            else if (typeof ensureMap === 'function') {
+              ensureMap().then(paintUnits).catch(paintUnits);
+            } else {
+              paintUnits();
+            }
           }).catch(function () {});
         }
       } catch (eW) {}
       try {
         if (typeof syncPublicLandsOverlay === 'function') {
-          syncPublicLandsOverlay({ showLoading: true, forceRefresh: pack.code !== 'AL' });
+          // Use per-state localStorage cache — never force-refresh on every apply (that made overlays always slow)
+          syncPublicLandsOverlay({ showLoading: !readAdcnrCache() });
         }
       } catch (eS) {}
       try {
@@ -18398,8 +18645,23 @@
       try { drawAdcnrLandsOverlay(); } catch (drawErr) { console.warn(drawErr); }
     }
 
+    function currentOverlayStateCode() {
+      return (window.RS_STATE && window.RS_STATE.code) || 'AL';
+    }
+
+    /** Draw state mask + hunt units + public lands once map AND data exist (first-load race). */
+    function paintOverlaysWhenReady() {
+      if (!map) return false;
+      try { if (typeof drawActiveStateMask === 'function') drawActiveStateMask(); } catch (eM) {}
+      try { if (typeof drawStateZonesOverlay === 'function') drawStateZonesOverlay(); } catch (eZ) {}
+      try { paintPublicLandsIfMapReady(); } catch (eP) {}
+      return true;
+    }
+    window.paintOverlaysWhenReady = paintOverlaysWhenReady;
+
     function loadAdcnrLands(forceRefresh) {
-      if (!forceRefresh && adcnrLandsData) {
+      var wantCode = currentOverlayStateCode();
+      if (!forceRefresh && adcnrLandsData && adcnrLandsData.cacheKey === getPublicLandsCacheKey()) {
         // Data already in memory — still paint if map is open (first-open race)
         paintPublicLandsIfMapReady();
         return Promise.resolve(adcnrLandsData);
@@ -18426,7 +18688,11 @@
 
       if (adcnrLoading && !forceRefresh) return adcnrLoading;
 
+      var gen = ++publicLandsFetchGen;
       adcnrLoading = Promise.all((typeof ACTIVE_PUBLIC_LAYERS !== 'undefined' && ACTIVE_PUBLIC_LAYERS ? ACTIVE_PUBLIC_LAYERS : ADCNR_LAYERS).map(fetchAdcnrLayer)).then(function(layers) {
+        if (gen !== publicLandsFetchGen || currentOverlayStateCode() !== wantCode) {
+          return adcnrLandsData;
+        }
         var payload = {
           timestamp: Date.now(),
           source: 'ADCNR + TVA + FWS Public Hunt Units 2025-26 + USFS + USACE (PAD-US) + NPS',
@@ -18448,6 +18714,7 @@
         paintPublicLandsIfMapReady();
         return payload;
       }).catch(function(err) {
+        if (gen !== publicLandsFetchGen) return adcnrLandsData;
         adcnrLoading = null;
         console.warn('Public lands fetch failed:', err);
         var stale = readAdcnrCache();
@@ -21597,6 +21864,12 @@
 
           var latlngs = esriRingsToLatLngs(feat.geometry);
           if (!latlngs) return;
+          if (typeof clampRingToActiveState === 'function') {
+            latlngs = latlngs.map(function (ring) {
+              return clampRingToActiveState(ring);
+            }).filter(function (ring) { return ring && ring.length >= 4; });
+            if (!latlngs.length) return;
+          }
 
           // Base color-coded style for every unit of this type; open today = a bit stronger
           var base = publicLandDrawStyle(layer.key);
@@ -22717,32 +22990,47 @@
     }
 
     /** Keep vertices inside AL (snap strays to outline). */
-    function clampRingToAlabama(ring) {
-      if (!ring || ring.length < 3) return ring;
+    function clampRingToActiveState(ring) {
+      var stateRing = null;
+      try { stateRing = getActiveStateRing(); } catch (eR) { stateRing = null; }
+      if (!stateRing || stateRing.length < 3) {
+        try {
+          if (typeof isAlabamaPack === 'function' && isAlabamaPack() && AL_STATE_RING) stateRing = AL_STATE_RING;
+        } catch (eAl) {}
+      }
+      if (!ring || ring.length < 3 || !stateRing || stateRing.length < 3) return ring;
       var out = [];
       var last = null;
+      var insideCount = 0;
       for (var i = 0; i < ring.length; i++) {
         var lat = ring[i][0], lng = ring[i][1];
-        if (!isInsideAlabama(lat, lng)) {
-          var best = AL_STATE_RING[0], bestD = Infinity;
-          for (var s = 0; s < AL_STATE_RING.length; s++) {
-            var dlat = AL_STATE_RING[s][0] - lat;
-            var dlng = AL_STATE_RING[s][1] - lng;
+        if (!pointInLatLngRing(lat, lng, stateRing)) {
+          var best = stateRing[0], bestD = Infinity;
+          for (var s = 0; s < stateRing.length; s++) {
+            var dlat = stateRing[s][0] - lat;
+            var dlng = stateRing[s][1] - lng;
             var d = dlat * dlat + dlng * dlng;
-            if (d < bestD) { bestD = d; best = AL_STATE_RING[s]; }
+            if (d < bestD) { bestD = d; best = stateRing[s]; }
           }
           lat = best[0];
           lng = best[1];
+        } else {
+          insideCount++;
         }
         if (last && Math.abs(last[0] - lat) < 1e-7 && Math.abs(last[1] - lng) < 1e-7) continue;
         last = [lat, lng];
         out.push(last);
       }
+      if (insideCount < 3) return null;
       if (out.length >= 3) {
         var f = out[0], e = out[out.length - 1];
         if (Math.abs(f[0] - e[0]) > 1e-7 || Math.abs(f[1] - e[1]) > 1e-7) out.push([f[0], f[1]]);
       }
-      return out.length >= 4 ? out : ring;
+      return out.length >= 4 ? out : null;
+    }
+    function clampRingToAlabama(ring) {
+      var clipped = clampRingToActiveState(ring);
+      return clipped || ring;
     }
 
     /** Zone letter from polygons (D → E → C → B → A). Wyoming returns hunt-area number. */
@@ -22968,10 +23256,49 @@
       }
       return pack.overlayFoldLabel || 'Deer hunt areas';
     }
+    function huntUnitIdInPack(pack, id) {
+      if (!pack || !pack.areas) return true;
+      var keys = pack.areas;
+      var empty = true;
+      for (var k in keys) {
+        if (Object.prototype.hasOwnProperty.call(keys, k)) { empty = false; break; }
+      }
+      if (empty) return true;
+      function has(x) {
+        if (x == null || x === '') return false;
+        if (Object.prototype.hasOwnProperty.call(keys, x)) return true;
+        if (Object.prototype.hasOwnProperty.call(keys, String(x))) return true;
+        var n = Number(x);
+        if (!isNaN(n) && Object.prototype.hasOwnProperty.call(keys, n)) return true;
+        return false;
+      }
+      if (has(id)) return true;
+      if (typeof pack.normalizeUnitId === 'function') {
+        try { if (has(pack.normalizeUnitId(id))) return true; } catch (eN) {}
+      }
+      if (typeof pack.areaMeta === 'function') {
+        try { if (pack.areaMeta(id)) return true; } catch (eM) {}
+      }
+      return false;
+    }
+    function huntUnitInActiveState(f) {
+      if (!f) return false;
+      var lat = (f.minLat != null && f.maxLat != null) ? ((f.minLat + f.maxLat) / 2) : null;
+      var lng = (f.minLng != null && f.maxLng != null) ? ((f.minLng + f.maxLng) / 2) : null;
+      if (lat == null || lng == null) return true;
+      if (typeof isInAlabama === 'function') return isInAlabama(lat, lng);
+      return true;
+    }
     function huntUnitsToDraw(pack) {
       pack = pack || (typeof activePack === 'function' ? activePack() : null);
       var feats = (huntUnitData && huntUnitData.features) || [];
       if (!pack) return feats;
+      feats = feats.filter(function (f) {
+        if (!f || !f.rings || !f.rings.length) return false;
+        if (!huntUnitIdInPack(pack, f.area)) return false;
+        if (!huntUnitInActiveState(f)) return false;
+        return true;
+      });
       var sp = (typeof currentHuntSpecies === 'function') ? currentHuntSpecies() : 'deer';
       if (sp !== 'elk') return feats;
       var closed = pack.elkClosedAreas || [];
@@ -23043,6 +23370,9 @@
       var rawId = attrs[uf];
       var n = rawId;
       if (rawId != null && rawId !== '' && !isNaN(Number(rawId))) n = Number(rawId);
+      if (typeof pack.normalizeUnitId === 'function') {
+        try { n = pack.normalizeUnitId(n); } catch (eNrm) {}
+      }
       var meta = (pack.areaMeta) ? pack.areaMeta(n) : null;
       var region = attrs[rf] || (meta && meta.region) || '';
       if (!region && pack.regionForUnit) region = pack.regionForUnit(n) || '';
@@ -23058,7 +23388,7 @@
 
     function packHuntUnitCacheKey(pack) {
       var gis = huntGisOpts(pack);
-      return String((pack && pack.code) || 'xx').toLowerCase() + '_' + gis.tag + '_hunt_units_v1';
+      return String((pack && pack.code) || 'xx').toLowerCase() + '_' + gis.tag + '_hunt_units_v2';
     }
 
     function loadPackHuntUnits(forceRefresh) {
@@ -23106,6 +23436,7 @@
         params.push('spatialRel=esriSpatialRelIntersects');
       }
       huntUnitCacheCode = cacheId;
+      var unitGen = ++huntUnitFetchGen;
       function fetchPage(offset, acc) {
         var p = params.slice();
         p.push('resultOffset=' + (offset || 0));
@@ -23116,7 +23447,8 @@
           var chunk = (data.features || []).map(function (raw) {
             return normalizePackHuntFeature(raw, pack, gis);
           }).filter(function (f) {
-            return f.area != null && f.area !== '' && f.rings && f.rings.length;
+            return f.area != null && f.area !== '' && f.rings && f.rings.length &&
+              huntUnitIdInPack(pack, f.area) && huntUnitInActiveState(f);
           });
           var all = (acc || []).concat(chunk);
           if (data.exceededTransferLimit && all.length < 8000) {
@@ -23126,6 +23458,7 @@
         });
       }
       huntUnitLoading = fetchPage(0, []).then(function (feats) {
+        if (unitGen !== huntUnitFetchGen) return huntUnitData;
         huntUnitData = { timestamp: Date.now(), features: feats };
         try { localStorage.setItem(packHuntUnitCacheKey(pack), JSON.stringify(huntUnitData)); } catch (eS) {}
         huntUnitLoading = null;
@@ -23134,8 +23467,10 @@
             setMapDotMenuContent({ fromGps: mapDotMenuSource === 'gps' });
           }
         } catch (eDot) {}
+        try { if (typeof paintOverlaysWhenReady === 'function') paintOverlaysWhenReady(); } catch (eP) {}
         return huntUnitData;
       }).catch(function (err) {
+        if (unitGen !== huntUnitFetchGen) return huntUnitData;
         console.warn(code + ' hunt units failed', err);
         huntUnitLoading = null;
         return huntUnitData;
@@ -23148,7 +23483,13 @@
 
     function drawPackHuntUnits() {
       var pack = typeof activePack === 'function' ? activePack() : null;
-      if (!map || !pack) return;
+      if (!pack) return;
+      if (!map) {
+        loadPackHuntUnits(false).then(function () {
+          if (map) drawPackHuntUnits();
+        }).catch(function () {});
+        return;
+      }
       if (!stateZonesGroup) stateZonesGroup = L.layerGroup().addTo(map);
       else if (!map.hasLayer(stateZonesGroup)) stateZonesGroup.addTo(map);
       stateZonesGroup.clearLayers();
@@ -23169,11 +23510,13 @@
         var multi = pack.regionOrder && pack.regionOrder.length > 1;
         var color = (multi && typeColor) ? typeColor : hashed;
         var closed = f.rings.map(function (ring) {
-          var c = ring.slice();
+          var c = (typeof clampRingToActiveState === 'function') ? clampRingToActiveState(ring) : ring.slice();
+          if (!c || c.length < 3) return null;
           var a0 = c[0], aN = c[c.length - 1];
           if (a0[0] !== aN[0] || a0[1] !== aN[1]) c.push([a0[0], a0[1]]);
           return c;
-        });
+        }).filter(function (c) { return c && c.length >= 4; });
+        if (!closed.length) return;
         var poly = L.polygon(closed, {
           color: color,
           weight: 1.55,
@@ -27306,12 +27649,12 @@
       fetchRealTimeGauges(false);
       loadTvaLands(); // silent preload - never drawn on map
 
-      // Public Lands Overlay defaults ON — one load + one recovery pass (was 3 full redraws)
+      // Public Lands Overlay defaults ON — paint now if cache is ready, else load (no extra force-refresh)
+      try { paintOverlaysWhenReady(); } catch (ePaint0) {}
       if (isPublicLandsOverlayWanted()) {
         setTimeout(function() {
           syncPublicLandsOverlay({ showLoading: !adcnrLandsData });
         }, 0);
-        // Recovery only if first pass left the group empty (GIS race)
         setTimeout(function() {
           if (!isPublicLandsOverlayWanted()) return;
           if (adcnrLandsData && adcnrOverlayGroup && !adcnrOverlayGroup.getLayers().length) {
@@ -27319,15 +27662,13 @@
           } else if (!adcnrLandsData) {
             syncPublicLandsOverlay({ showLoading: false });
           }
+          try { paintOverlaysWhenReady(); } catch (ePaint1) {}
         }, 900);
       }
-      // Deer zones: single draw after layout settles
       updateDeerZoneToggleUI();
-      if (anyDeerZoneVisible()) {
-        setTimeout(function() {
-          if (anyDeerZoneVisible()) drawStateZonesOverlay();
-        }, 80);
-      }
+      setTimeout(function() {
+        try { paintOverlaysWhenReady(); } catch (ePaint2) {}
+      }, 80);
 
       // Red current-location arrow by default whenever GPS tool is on and we have a fix
       try {
@@ -34634,13 +34975,14 @@ function togglePinIconPicker() {
       if (section) {
         section.style.flex = '1 1 auto';
         section.style.minHeight = '0';
-        section.style.height = '100%';
+        section.style.height = '';
+        section.style.maxHeight = '';
       }
       if (wrap) {
         wrap.style.flex = '1 1 auto';
         wrap.style.minHeight = '0';
-        wrap.style.height = '100%';
-        wrap.style.maxHeight = '100%';
+        wrap.style.height = '';
+        wrap.style.maxHeight = '';
       }
       mapEl.style.height = '100%';
       mapEl.style.minHeight = '0';
@@ -34677,7 +35019,7 @@ function togglePinIconPicker() {
       try {
         if (window.visualViewport) {
           window.visualViewport.addEventListener('resize', scheduleDesktopMapFit);
-          window.visualViewport.addEventListener('scroll', scheduleDesktopMapFit);
+          /* Do not refit on visualViewport scroll — it nudged the map and toolbar. */
         }
       } catch (eVv) {}
       // After fonts/layout settle
@@ -40781,9 +41123,10 @@ function togglePinIconPicker() {
 
     // ========== INIT (calendar first; map/Leaflet/USGS deferred until Step 3) ==========
     window.onload = function() {
+      var stateReady = Promise.resolve();
       try {
         if (window.RSState && typeof window.RSState.ensurePicked === 'function') {
-          window.RSState.ensurePicked();
+          stateReady = Promise.resolve(window.RSState.ensurePicked());
         }
       } catch (eStBoot) {}
       // Own the first browser location prompt so early settings/map init cannot stack a second one
@@ -40895,19 +41238,23 @@ function togglePinIconPicker() {
       document.addEventListener('keydown', function(ev) {
         if (ev.key === 'Escape' && standPlaceMode) cancelStandPlacement();
       });
-      // Prefetch public lands into cache/list; paint overlay once map exists if still checked
-      loadAdcnrLands(false).then(function() {
-        if (map && isPublicLandsOverlayWanted()) {
-          syncPublicLandsOverlay({ showLoading: false });
-        }
-        // WMA permit-zone polygons (Black Warrior A/B, …) — after GIS unit list
-        try {
-          if (typeof loadWmaZoneGeometries === 'function') loadWmaZoneGeometries();
-        } catch (eWz0) {}
-      }).catch(function() {
-        try {
-          if (typeof loadWmaZoneGeometries === 'function') loadWmaZoneGeometries();
-        } catch (eWz1) {}
+      // Wait for the active state pack so we do not fetch Alabama GIS under a Wyoming (etc.) session
+      stateReady.then(function () {
+        loadAdcnrLands(false).then(function() {
+          if (map && isPublicLandsOverlayWanted()) {
+            syncPublicLandsOverlay({ showLoading: false });
+          }
+          try { if (typeof paintOverlaysWhenReady === 'function') paintOverlaysWhenReady(); } catch (ePo) {}
+          try {
+            if (typeof loadWmaZoneGeometries === 'function') loadWmaZoneGeometries();
+          } catch (eWz0) {}
+        }).catch(function() {
+          try {
+            if (typeof loadWmaZoneGeometries === 'function') loadWmaZoneGeometries();
+          } catch (eWz1) {}
+        });
+      }).catch(function () {
+        loadAdcnrLands(false).catch(function () {});
       });
       // Default overlays + map fullscreen launch (smooth Max — no re-max after user Min)
       function launchMapMaxIfNeeded() {
@@ -41589,11 +41936,20 @@ function togglePinIconPicker() {
       document.addEventListener('keydown', function (ev) {
         if (ev.key === 'Escape' && overlay.classList.contains('is-open')) finish(false);
       });
+      function clearAppBooting() {
+        try { document.documentElement.classList.remove('rs-booting'); } catch (eB) {}
+        try {
+          if (typeof fitPhoneMapSize === 'function') fitPhoneMapSize();
+          if (typeof fitDesktopMapHeight === 'function') fitDesktopMapHeight();
+          if (typeof map !== 'undefined' && map && map.invalidateSize) map.invalidateSize(true);
+        } catch (eFit) {}
+      }
       function tryFirstLoginOverlays() {
         if (!maybeOpenBetaNotice()) maybeOpenHowToGuide();
       }
       window.addEventListener('rs-app-ready', function () {
-        setTimeout(tryFirstLoginOverlays, 250);
+        tryFirstLoginOverlays();
+        requestAnimationFrame(clearAppBooting);
       });
     })();
 

@@ -1,0 +1,8 @@
+HUNT SLAYER 9.0 Beta → 9.0.1 Beta
+
+- Launch: no service-worker hard reload; stable boot until sign-in.
+- Desktop small windows: labels scale with buttons; toolbar does not overlap.
+- Map chrome: Which map / state / settings stay above the map and keep their clicks.
+- Overlays: use per-state cache, ignore stale fetches, paint when the map is ready.
+- California: only that state’s huntable zones (no Nevada polygons from the shared bbox).
+- Shell `reg-slayer-shell-v181`.
