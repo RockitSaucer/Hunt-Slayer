@@ -1,0 +1,8 @@
+HUNT SLAYER 9.0.2 → 9.0.3 Beta (#151)
+
+- Phone min: date/animal/weapon chip sits next to the state button above the map.
+- Phone max: that chip sits next to the map-name button at the bottom of the map.
+- Toolbar height is only a few pixels taller than the buttons (home indicator is below the bar).
+- Max button is top-right of the min-mode map (not pushed down by the status-bar inset).
+- Launch bounce: page scroll restore is fully off.
+- Shell `reg-slayer-shell-v183`.

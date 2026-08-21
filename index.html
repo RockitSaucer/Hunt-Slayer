@@ -1314,7 +1314,7 @@
     }
     html.layout-phone body {
       height: auto !important;
-      min-height: 100dvh;
+      min-height: 100svh;
       max-width: 100%;
       width: 100%;
       overflow-x: hidden;
@@ -1513,7 +1513,7 @@
     html.layout-phone .card-map .map-wrapper {
       min-height: min(58vh, 560px);
       height: min(58vh, 560px);
-      margin-top: 8px;
+      margin-top: 0;
       margin-left: 0;
       margin-right: 0;
       border-radius: 0;
@@ -4874,6 +4874,26 @@
       min-height: 38px;
     }
 
+    .map-bottom-name-row {
+      display: none;
+      position: absolute;
+      left: 50%;
+      bottom: calc(var(--mbb-bar-h, 45px) + env(safe-area-inset-bottom, 0px) + 6px);
+      transform: translateX(-50%);
+      z-index: 75;
+      flex-direction: row;
+      align-items: center;
+      gap: 6px;
+      max-width: calc(100% - 16px);
+      pointer-events: none;
+    }
+    .map-wrapper.fullscreen .map-bottom-name-row {
+      display: flex;
+    }
+    .map-bottom-name-row .mbb-context,
+    .map-bottom-name-row .map-bottom-map-name {
+      pointer-events: auto;
+    }
     /* Map-name chip only in max / fullscreen (min mode uses title bar) */
     .map-bottom-map-name,
     button.map-bottom-map-name {
@@ -4913,6 +4933,32 @@
     .map-wrapper.fullscreen .map-bottom-map-name,
     .map-wrapper.fullscreen button.map-bottom-map-name {
       display: block;
+    }
+    .map-wrapper.fullscreen .map-bottom-name-row .map-bottom-map-name,
+    .map-wrapper.fullscreen .map-bottom-name-row button.map-bottom-map-name {
+      position: static;
+      left: auto;
+      bottom: auto;
+      transform: none;
+    }
+    html.layout-phone .map-wrapper.fullscreen .map-bottom-name-row {
+      left: 8px;
+      transform: none;
+      bottom: calc(var(--mbb-bar-h, 40px) + env(safe-area-inset-bottom, 0px) + 6px);
+    }
+    html.layout-phone .map-title-bar .mbb-context {
+      min-width: 0;
+      max-width: min(46vw, 11rem);
+      height: 28px !important;
+      padding: 1px 5px;
+      flex: 0 1 auto;
+    }
+    html.layout-phone .map-bottom-name-row .mbb-context {
+      min-width: 0;
+      max-width: min(42vw, 10rem);
+      height: 28px !important;
+      padding: 1px 5px;
+      flex: 0 0 auto;
     }
     button.map-bottom-map-name::after {
       content: ' ▾';
@@ -8888,26 +8934,26 @@
      * Icon size scales down only so everything still fits.
      */
     html.layout-phone .map-wrapper {
-      --mbb-h: 32px;
-      --mbb-icon: 32px;
+      --mbb-h: 34px;
+      --mbb-icon: 34px;
       --mbb-gap: 4px;
-      --mbb-bar-h: calc(var(--mbb-h) * 1.05);
+      --mbb-bar-h: calc(var(--mbb-h) + 6px);
     }
     html.layout-phone .map-bottom-bar {
-      --mbb-h: 32px;
-      --mbb-icon: 32px;
+      --mbb-h: 34px;
+      --mbb-icon: 34px;
       --mbb-gap: 4px;
-      --mbb-bar-h: calc(var(--mbb-h) * 1.05);
+      --mbb-bar-h: calc(var(--mbb-h) + 6px);
       left: 0;
       right: 0;
-      bottom: 0 !important;
+      bottom: env(safe-area-inset-bottom, 0px) !important;
       width: 100%;
       max-width: 100%;
-      height: calc(var(--mbb-bar-h) + env(safe-area-inset-bottom, 0px)) !important;
-      min-height: calc(var(--mbb-bar-h) + env(safe-area-inset-bottom, 0px)) !important;
-      max-height: calc(var(--mbb-bar-h) + env(safe-area-inset-bottom, 0px)) !important;
-      padding: 0 6px;
-      padding-bottom: env(safe-area-inset-bottom, 0px);
+      height: var(--mbb-bar-h) !important;
+      min-height: var(--mbb-bar-h) !important;
+      max-height: var(--mbb-bar-h) !important;
+      padding: 3px 6px !important;
+      padding-bottom: 3px !important;
       border-radius: 0;
       display: flex !important;
       flex-direction: row !important;
@@ -8921,9 +8967,9 @@
     }
     html.layout-phone .map-wrapper.fullscreen .map-bottom-bar {
       transform: none;
-      bottom: 0 !important;
-      height: calc(var(--mbb-bar-h) + env(safe-area-inset-bottom, 0px)) !important;
-      max-height: calc(var(--mbb-bar-h) + env(safe-area-inset-bottom, 0px)) !important;
+      bottom: env(safe-area-inset-bottom, 0px) !important;
+      height: var(--mbb-bar-h) !important;
+      max-height: var(--mbb-bar-h) !important;
     }
     html.layout-phone .map-bottom-bar > .mbb-left,
     html.layout-phone .map-bottom-bar > .mbb-center,
@@ -9047,15 +9093,15 @@
         --mbb-h: 30px;
         --mbb-icon: 30px;
         --mbb-gap: 3px;
-        --mbb-bar-h: calc(var(--mbb-h) * 1.05);
+        --mbb-bar-h: calc(var(--mbb-h) + 6px);
       }
       html.layout-phone .map-bottom-bar,
       html.layout-phone .map-wrapper.fullscreen .map-bottom-bar {
         --mbb-h: 30px;
         --mbb-icon: 30px;
         --mbb-gap: 3px;
-        --mbb-bar-h: calc(var(--mbb-h) * 1.05);
-        padding: 0 4px;
+        --mbb-bar-h: calc(var(--mbb-h) + 6px);
+        padding: 3px 4px !important;
         gap: var(--mbb-gap) !important;
         column-gap: var(--mbb-gap) !important;
       }
@@ -9086,15 +9132,15 @@
         --mbb-h: 28px;
         --mbb-icon: 28px;
         --mbb-gap: 2px;
-        --mbb-bar-h: calc(var(--mbb-h) * 1.05);
+        --mbb-bar-h: calc(var(--mbb-h) + 6px);
       }
       html.layout-phone .map-bottom-bar,
       html.layout-phone .map-wrapper.fullscreen .map-bottom-bar {
         --mbb-h: 28px;
         --mbb-icon: 28px;
         --mbb-gap: 2px;
-        --mbb-bar-h: calc(var(--mbb-h) * 1.05);
-        padding: 0 3px;
+        --mbb-bar-h: calc(var(--mbb-h) + 6px);
+        padding: 3px 3px !important;
         gap: var(--mbb-gap) !important;
         column-gap: var(--mbb-gap) !important;
       }
@@ -9966,9 +10012,18 @@
       letter-spacing: 0.02em;
     }
     .map-fs-btn:hover { border-color: var(--accent); }
-    html.layout-phone .map-wrapper .map-fs-btn,
-    html.layout-phone #map-maximize-btn,
-    html.layout-phone #map-minimize-btn {
+    html.layout-phone .map-wrapper:not(.fullscreen) .map-fs-btn,
+    html.layout-phone .map-wrapper:not(.fullscreen) #map-maximize-btn,
+    html.layout-phone .map-wrapper:not(.fullscreen) #map-minimize-btn {
+      top: 6px !important;
+      right: 6px !important;
+      bottom: auto !important;
+      left: auto !important;
+      z-index: 500 !important;
+    }
+    html.layout-phone .map-wrapper.fullscreen .map-fs-btn,
+    html.layout-phone .map-wrapper.fullscreen #map-maximize-btn,
+    html.layout-phone .map-wrapper.fullscreen #map-minimize-btn {
       top: max(8px, env(safe-area-inset-top, 0px)) !important;
       right: max(8px, env(safe-area-inset-right, 0px)) !important;
       bottom: auto !important;
@@ -11769,7 +11824,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 9.0.2 Beta">V9.0.2 Beta</span>
+      <span class="brand-version" aria-label="Version 9.0.3 Beta">V9.0.3 Beta</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -12364,7 +12419,9 @@
           <button id="map-minimize-btn" class="map-fs-btn" onclick="toggleMapFullscreen()" type="button" style="display:none;" title="Minimize map">Min</button>
 
           <!-- Map name chip (max-mode 3D look) — centered over Current Location; list opens upward -->
-          <button type="button" class="map-bottom-map-name" id="map-bottom-map-name" title="Switch map" aria-label="Map: My Map. Click to switch." aria-haspopup="listbox" aria-expanded="false" onclick="if(window.RegSlayerParty&&window.RegSlayerParty.openMapSwitcher){window.RegSlayerParty.openMapSwitcher(this);}">My Map</button>
+          <div class="map-bottom-name-row" id="map-bottom-name-row">
+            <button type="button" class="map-bottom-map-name" id="map-bottom-map-name" title="Switch map" aria-label="Map: My Map. Click to switch." aria-haspopup="listbox" aria-expanded="false" onclick="if(window.RegSlayerParty&&window.RegSlayerParty.openMapSwitcher){window.RegSlayerParty.openMapSwitcher(this);}">My Map</button>
+          </div>
 
           <!-- Map search: magnifier just above toolbar; panel opens above bar (not covering tools) -->
           <div class="map-search-chrome" id="map-search-chrome">
@@ -12386,7 +12443,7 @@
 
           <!-- Slim bottom bar: [date+tools] | CL (center) | [radar layers settings] -->
           <div class="map-bottom-bar" id="map-bottom-bar">
-            <div class="mbb-left">
+            <div class="mbb-left" id="mbb-left">
               <button type="button" class="mbb-context" id="mbb-context" title="Change hunt date and weapon" aria-label="Change hunt date and weapon" onclick="openMapDateWeaponPicker()">
                 <span class="mbb-date is-empty" id="mbb-date">No date</span>
                 <span class="mbb-species" id="mbb-species">Deer</span>
@@ -13480,7 +13537,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '9.0.2-beta';
+    const APP_VERSION = '9.0.3-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -34879,7 +34936,7 @@ function togglePinIconPicker() {
       var prev = root.getAttribute('data-layout');
       var next = phone ? 'phone' : 'desktop';
       if (!force && prev === next) {
-        // Still re-sync planner metrics on resize within same mode
+        try { if (typeof placeMobileHuntContextChip === 'function') placeMobileHuntContextChip(); } catch (eChipSame) {}
         return next;
       }
       root.classList.remove('layout-phone', 'layout-desktop');
@@ -34911,6 +34968,7 @@ function togglePinIconPicker() {
       if (typeof applyPlannerStepsMinState === 'function') {
         try { applyPlannerStepsMinState(); } catch (eMin) {}
       }
+      try { if (typeof placeMobileHuntContextChip === 'function') placeMobileHuntContextChip(); } catch (eChipL) {}
       return next;
     }
     window.applyDeviceLayout = applyDeviceLayout;
@@ -38532,30 +38590,7 @@ function togglePinIconPicker() {
       _mapInViewLock = null;
     }
     function restoreMapInView() {
-      var lock = _mapInViewLock;
-      if (!lock || Date.now() > lock.until) {
-        if (lock && Date.now() > lock.until) _mapInViewLock = null;
-        return;
-      }
-      if (typeof isPhoneLayout === 'function' && !isPhoneLayout()) return;
-      if (Date.now() < _bootQuietUntil) {
-        _mapInViewLock = null;
-        return;
-      }
-      var el = document.getElementById('map-wrapper');
-      if (!el) return;
-      var top = el.getBoundingClientRect().top;
-      var delta = top - lock.top;
-      if (Math.abs(delta) > 0.5) {
-        try {
-          window.scrollBy(0, delta);
-        } catch (eScroll) {
-          var y = (window.pageYOffset || document.documentElement.scrollTop || 0) + delta;
-          window.scrollTo(0, y);
-        }
-      }
-      // Re-sample so chained restores stay relative to the map
-      if (_mapInViewLock) lock.top = el.getBoundingClientRect().top;
+      _mapInViewLock = null;
     }
     function scheduleMapInViewRestore() {
       if (!_mapInViewLock) return;
@@ -39902,16 +39937,45 @@ function togglePinIconPicker() {
       var gps = document.getElementById('gps-snap-btn');
       var wrap = document.getElementById('map-wrapper') || document.querySelector('.map-wrapper');
       if (!name || !gps || !wrap) return;
+      if (typeof isPhoneLayout === 'function' && isPhoneLayout()) return;
+      var row = document.getElementById('map-bottom-name-row');
+      var target = (row && row.contains(name)) ? row : name;
       try {
         var wr = wrap.getBoundingClientRect();
         var gr = gps.getBoundingClientRect();
         if (!wr.width || !gr.width) return;
         var cx = gr.left + (gr.width / 2) - wr.left;
-        name.style.left = Math.round(cx) + 'px';
-        name.style.transform = 'translateX(-50%)';
+        target.style.left = Math.round(cx) + 'px';
+        target.style.transform = 'translateX(-50%)';
       } catch (ePos) {}
     }
     window.positionMapBottomName = positionMapBottomName;
+
+    function placeMobileHuntContextChip() {
+      var chip = document.getElementById('mbb-context');
+      if (!chip) return;
+      var phone = typeof isPhoneLayout === 'function' && isPhoneLayout();
+      var fs = false;
+      try {
+        fs = !!(document.documentElement.classList.contains('map-is-fullscreen') ||
+          (typeof isMapFullscreen === 'function' && isMapFullscreen()));
+      } catch (eFs) {}
+      var switcher = document.querySelector('#map-title-bar .map-title-switcher');
+      var nameRow = document.getElementById('map-bottom-name-row');
+      var home = document.getElementById('mbb-left') || document.querySelector('#map-bottom-bar .mbb-left');
+      try {
+        if (phone && fs && nameRow) {
+          nameRow.insertBefore(chip, nameRow.firstChild);
+        } else if (phone && !fs && switcher) {
+          switcher.appendChild(chip);
+        } else if (home) {
+          var tools = document.getElementById('map-draw-tools');
+          if (tools && tools.parentNode === home) home.insertBefore(chip, tools);
+          else if (chip.parentNode !== home) home.insertBefore(chip, home.firstChild);
+        }
+      } catch (ePlace) {}
+    }
+    window.placeMobileHuntContextChip = placeMobileHuntContextChip;
     (function wireMapBottomNamePosition() {
       var t = null;
       function schedule() {
@@ -39979,6 +40043,7 @@ function togglePinIconPicker() {
         }
         document.getElementById('map-maximize-btn').style.display = full ? 'none' : 'block';
         document.getElementById('map-minimize-btn').style.display = full ? 'block' : 'none';
+        try { if (typeof placeMobileHuntContextChip === 'function') placeMobileHuntContextChip(); } catch (eChip) {}
         // #106: pin Max/Min to map top-right (inline styles beat any stale bottom rules)
         try {
           ['map-maximize-btn', 'map-minimize-btn'].forEach(function (id) {
@@ -41115,6 +41180,7 @@ function togglePinIconPicker() {
     // ========== INIT (calendar first; map/Leaflet/USGS deferred until Step 3) ==========
     window.onload = function() {
       try { _bootQuietUntil = Date.now() + 15000; } catch (eQ) {}
+      try { if (typeof placeMobileHuntContextChip === 'function') placeMobileHuntContextChip(); } catch (eChip0) {}
       var stateReady = Promise.resolve();
       try {
         if (window.RSState && typeof window.RSState.ensurePicked === 'function') {
