@@ -1,0 +1,5 @@
+HUNT SLAYER 9.0.5 → 9.0.6 Beta
+
+- USGS water gauges open their info popup when tapped (map click no longer steals the tap).
+- Gauge hit target is larger; min-mode no longer closes the popup.
+- Shell `reg-slayer-shell-v186`.

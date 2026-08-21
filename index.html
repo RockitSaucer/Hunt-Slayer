@@ -8222,6 +8222,33 @@
       color: #fff !important; font-size: 22px !important; font-weight: 700 !important;
       top: 6px !important; right: 8px !important;
     }
+    .usgs-gauge-icon {
+      background: none !important;
+      border: none !important;
+    }
+    .usgs-gauge-hit {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+    }
+    .usgs-gauge-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      color: #000;
+      font-weight: 800;
+      line-height: 1;
+      pointer-events: none;
+    }
     .toast-form-control { background: var(--panel); border: 1px solid var(--border); color: var(--ink); border-radius: 4px; padding: 6px; font-size: 11px; width: 100%; margin-top: 4px; }
     .dashboard-grid { display: flex; flex-direction: column; gap: 18px; }
     .solunar-panel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; background: var(--panel-light); padding: 16px; border-radius: 10px; border: 1px solid var(--border); }
@@ -11846,7 +11873,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 9.0.5 Beta">V9.0.5 Beta</span>
+      <span class="brand-version" aria-label="Version 9.0.6 Beta">V9.0.6 Beta</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -13559,7 +13586,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '9.0.5-beta';
+    const APP_VERSION = '9.0.6-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -27775,6 +27802,11 @@
             }
           }
         } catch (eRec) {}
+        // USGS gauge markers handle their own popup — do not steal the tap
+        try {
+          var gT = e && e.originalEvent && e.originalEvent.target;
+          if (gT && gT.closest && gT.closest('.usgs-gauge-icon, .usgs-gauge-hit, .usgs-gauge-dot')) return;
+        } catch (eGaugeTap) {}
         // Stand placement mode: click sets stand coordinates (no free-form menu)
         if (standPlaceMode) {
           placeStandAt(e.latlng.lat, e.latlng.lng);
@@ -34794,31 +34826,61 @@ function togglePinIconPicker() {
       gaugeMarkerGroup.clearLayers();
       waterGauges.forEach(function(st) {
         var isFlood = st.baseHeight >= st.floodStage;
-        var m = L.marker([st.lat, st.lng], { icon: L.divIcon({ className: '', html: '<div style="background:' + (isFlood?'var(--danger)':'var(--water-cyan)') + ';width:16px;height:16px;border-radius:50%;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:9px;color:#000;font-weight:bold;">~</div>', iconSize:[16,16], iconAnchor:[8,8] }) });
-        var popupHtml = buildWaterGaugePopupHtml(st);
-        // Fullscreen: Leaflet popup on the gauge. Min mode: still open popup (above weather when both show).
-        m.bindPopup(popupHtml, {
+        var color = isFlood ? 'var(--danger)' : 'var(--water-cyan)';
+        var m = L.marker([st.lat, st.lng], {
+          icon: L.divIcon({
+            className: 'usgs-gauge-icon',
+            html: '<div class="usgs-gauge-hit"><div class="usgs-gauge-dot" style="background:' + color + '">~</div></div>',
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            popupAnchor: [0, -14]
+          }),
+          interactive: true,
+          keyboard: true,
+          zIndexOffset: 800,
+          bubblingMouseEvents: false,
+          title: st.name || 'USGS gauge'
+        });
+        m.bindPopup(buildWaterGaugePopupHtml(st), {
           className: 'saved-item-popup map-dot-popup gauge-popup',
           closeButton: true,
-          autoPan: true,
+          autoPan: false,
           maxWidth: 300,
           minWidth: 200,
-          closeOnClick: false
+          closeOnClick: false,
+          autoClose: false
         });
-        m.on('click', function(ev) {
-          if (ev && ev.originalEvent) L.DomEvent.stopPropagation(ev.originalEvent);
+        function openGaugePopup(ev) {
+          if (ev) {
+            try { L.DomEvent.stopPropagation(ev); } catch (eStop) {}
+            if (ev.originalEvent) {
+              try { L.DomEvent.stop(ev.originalEvent); } catch (eStop2) {}
+            }
+          }
           try { m.openPopup(); } catch (ePop) {}
-          var detected = detectBoundaryAndZone(st.lat, st.lng);
-          var fakeLoc = { id: st.id, name: st.name, type: 'Water Station', zone: detected.zone, lat: st.lat, lng: st.lng, subSections: [], isWaterGauge: true, gaugeData: st };
+          if (typeof isMapFullscreen === 'function' && isMapFullscreen()) return;
+          var detected = typeof detectBoundaryAndZone === 'function' ? detectBoundaryAndZone(st.lat, st.lng) : { zone: 'A' };
+          var fakeLoc = {
+            id: st.id, name: st.name, type: 'Water Station',
+            zone: (detected && detected.zone) || 'A',
+            lat: st.lat, lng: st.lng, subSections: [], isWaterGauge: true, gaugeData: st
+          };
           var dateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-          var rule = rules.find(function(r) { return r.locId == 10 && dateStr >= r.start && dateStr <= r.end; }) || rules[rules.length-1];
+          var rule = (rules || []).find(function(r) { return r.locId == 10 && dateStr >= r.start && dateStr <= r.end; }) || (rules && rules[rules.length - 1]);
           usingCurrentLocation = false;
           isShowingCurrentData = false;
           isHistorical = getDaysFromToday(selectedDate) < 0;
-          // Keep popup open; still load weather/water panel when not fullscreen
-          if (!isMapFullscreen()) {
-            selectLocation(fakeLoc, rule);
+          // skipScroll so selectLocation does not close this popup
+          if (typeof selectLocation === 'function') {
+            selectLocation(fakeLoc, rule, { skipScroll: true });
           }
+        }
+        m.on('click', openGaugePopup);
+        m.on('popupopen', function() {
+          var el = m.getPopup() && m.getPopup().getElement();
+          if (!el) return;
+          L.DomEvent.disableClickPropagation(el);
+          L.DomEvent.disableScrollPropagation(el);
         });
         gaugeMarkerGroup.addLayer(m);
       });
