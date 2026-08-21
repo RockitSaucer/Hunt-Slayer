@@ -4865,6 +4865,8 @@
     }
     html.layout-phone .map-search-chrome {
       left: 8px;
+      /* Phone bar is flush to the map (no extra safe-area lift) */
+      bottom: calc(var(--mbb-bar-h, 40px) + 6px);
       max-width: calc(100vw - 16px);
     }
     html.layout-phone .map-search-toggle {
@@ -4872,6 +4874,13 @@
       height: 38px;
       min-width: 38px;
       min-height: 38px;
+    }
+    /* Max: search on the right so it cannot cover the date + map-name chips */
+    html.layout-phone .map-wrapper.fullscreen .map-search-chrome {
+      left: auto;
+      right: 8px;
+      align-items: flex-end;
+      bottom: calc(var(--mbb-bar-h, 40px) + 6px);
     }
 
     .map-bottom-name-row {
@@ -4944,7 +4953,9 @@
     html.layout-phone .map-wrapper.fullscreen .map-bottom-name-row {
       left: 8px;
       transform: none;
-      bottom: calc(var(--mbb-bar-h, 40px) + env(safe-area-inset-bottom, 0px) + 6px);
+      bottom: calc(var(--mbb-bar-h, 40px) + 6px);
+      /* Leave a gap for the search toggle on the right (38px + 8px inset + 6px) */
+      max-width: calc(100% - 60px);
     }
     html.layout-phone .map-title-bar .mbb-context {
       min-width: 0;
@@ -8946,7 +8957,7 @@
       --mbb-bar-h: calc(var(--mbb-h) + 6px);
       left: 0;
       right: 0;
-      bottom: env(safe-area-inset-bottom, 0px) !important;
+      bottom: 0 !important;
       width: 100%;
       max-width: 100%;
       height: var(--mbb-bar-h) !important;
@@ -8967,7 +8978,7 @@
     }
     html.layout-phone .map-wrapper.fullscreen .map-bottom-bar {
       transform: none;
-      bottom: env(safe-area-inset-bottom, 0px) !important;
+      bottom: 0 !important;
       height: var(--mbb-bar-h) !important;
       max-height: var(--mbb-bar-h) !important;
     }
@@ -11824,7 +11835,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 9.0.3 Beta">V9.0.3 Beta</span>
+      <span class="brand-version" aria-label="Version 9.0.4 Beta">V9.0.4 Beta</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -13537,7 +13548,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '9.0.3-beta';
+    const APP_VERSION = '9.0.4-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site

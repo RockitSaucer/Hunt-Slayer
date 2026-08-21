@@ -1,0 +1,5 @@
+HUNT SLAYER 9.0.3 → 9.0.4 Beta
+
+- Phone toolbar is locked to the bottom edge of the map (no home-indicator gap).
+- Phone max: search magnifier sits on the right so it does not cover the date chip.
+- Shell `reg-slayer-shell-v184`.

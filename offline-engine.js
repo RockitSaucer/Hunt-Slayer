@@ -656,7 +656,7 @@
     if (!('serviceWorker' in navigator)) return Promise.resolve(null);
 
     // Keep in sync with sw.js SHELL_CACHE so phones re-fetch the worker script
-    var SW_SCRIPT = './sw.js?v=shell183';
+    var SW_SCRIPT = './sw.js?v=shell184';
 
     // Do NOT auto-reload on controllerchange. skipWaiting + clients.claim was
     // hard-reloading the tab ~1s after first launch (flash, scroll snap, login wipe).
