@@ -1,0 +1,5 @@
+HUNT SLAYER 9.0.4 → 9.0.5 Beta
+
+- Get weather on a dot/pin always opens the compact weather card on the map (no jump to the dashboard).
+- Compact card parks clear of search, Max/Min, the date chip, map name, and the toolbar.
+- Shell `reg-slayer-shell-v185`.

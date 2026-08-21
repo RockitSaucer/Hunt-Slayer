@@ -9674,7 +9674,7 @@
       right: 12px;
       left: auto;
       top: auto;
-      z-index: 95;
+      z-index: 110;
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -9698,7 +9698,7 @@
       left: auto;
       top: auto;
       transform: none;
-      z-index: 96; /* above compact weather + toolbar */
+      z-index: 111; /* above compact weather + toolbar */
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 12px;
@@ -9719,14 +9719,25 @@
       width: min(240px, calc(100% - 20px));
       padding: 10px 11px;
       max-height: min(42vh, 280px);
-      bottom: calc(var(--mbb-h, 36px) + 8px);
+      bottom: calc(var(--mbb-bar-h, 40px) + 8px);
+      z-index: 110;
     }
     html.layout-phone .map-weather-details {
       width: min(300px, calc(100% - 20px));
       padding: 11px;
       max-height: min(70vh, 480px);
-      bottom: calc(var(--mbb-h, 36px) + 8px);
+      bottom: calc(var(--mbb-bar-h, 40px) + 8px);
       right: 10px;
+      z-index: 111;
+    }
+    /* Max: keep the card off the search magnifier (bottom-right) and the toolbar */
+    html.layout-phone .map-wrapper.fullscreen .map-weather-overlay,
+    html.layout-phone .map-wrapper.fullscreen .map-weather-details {
+      top: calc(env(safe-area-inset-top, 0px) + 52px);
+      right: 10px;
+      left: auto;
+      bottom: auto;
+      max-height: min(42vh, 280px);
     }
     /* Wind line in map weather details — reuse hourly orange FROM arrows */
     .mwd-wind-row {
@@ -11835,7 +11846,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 9.0.4 Beta">V9.0.4 Beta</span>
+      <span class="brand-version" aria-label="Version 9.0.5 Beta">V9.0.5 Beta</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -13548,7 +13559,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '9.0.4-beta';
+    const APP_VERSION = '9.0.5-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -22253,11 +22264,11 @@
       L.DomEvent.disableClickPropagation(btn);
       L.DomEvent.on(btn, 'click', function(ev) {
         L.DomEvent.stop(ev);
-        // Intentional weather button: allow scroll to dashboard on phone
+        window._forceMapWeatherOverlay = true;
         selectPublicLandWeather(layer, attrs, lat, lng, {
           closePopup: true,
-          showOverlay: isMapFullscreen(),
-          skipScroll: false
+          showOverlay: true,
+          skipScroll: true
         });
       });
     }
@@ -27997,13 +28008,9 @@
           selectPublicLandWeather(pl.layer, pl.attrs || {}, lat, lng, {
             closePopup: true,
             showOverlay: true,
-            skipScroll: false
+            skipScroll: true
           });
           window._forceMapWeatherOverlay = true;
-          if (isPhoneLayout()) {
-            var dashPl = document.getElementById('dashboard-container');
-            if (dashPl) setTimeout(function() { dashPl.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150);
-          }
           return false;
         }
         if (act === 'regs') {
@@ -28479,18 +28486,14 @@
 
         if (act === 'weather') {
           ensureHuntContext();
-          // Explicit "Get weather" from the orange-dot menu — always show compact card + hourly
+          // Stay on the map — show the compact card, do not jump to the dashboard
           selectWeatherAtMapPoint(clickLat, clickLng, detected, lastClickTva, {
-            skipScroll: false,
+            skipScroll: true,
             showOverlay: true,
             forcePopup: true
           });
           window._forceMapWeatherOverlay = true;
           if (map) map.closePopup();
-          if (isPhoneLayout()) {
-            var dashW = document.getElementById('dashboard-container');
-            if (dashW) setTimeout(function() { dashW.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 150);
-          }
           return false;
         }
 
@@ -34087,14 +34090,13 @@ function togglePinIconPicker() {
       try {
         if (act === 'weather') {
           ensureHuntContext();
-          // Explicit Get weather — always show compact card + hourly for this pin
-          if (typeof selectSavedPin === 'function' && (loc.isHunt || loc.savedWeather)) {
-            window._forceMapWeatherOverlay = true;
-            selectSavedPin(pinId);
+          window._forceMapWeatherOverlay = true;
+          if (typeof selectLocationById === 'function' && (loc.isHunt || loc.savedWeather || loc.isPin)) {
+            selectLocationById(pinId, { closePopup: true, showOverlay: true, skipScroll: true });
           } else {
             var detected = detectBoundaryAndZone(clickLat, clickLng);
             selectWeatherAtMapPoint(clickLat, clickLng, detected, loc.tva || null, {
-              skipScroll: false,
+              skipScroll: true,
               showOverlay: true,
               forcePopup: true
             });
@@ -34848,7 +34850,7 @@ function togglePinIconPicker() {
           '<div class="map-dot-menu" onclick="event.stopPropagation();">' +
             '<div class="mdm-title">' + escHtml(loc.name) + '</div>' +
             '<div class="mdm-sub">Zone ' + escHtml(loc.zone) + ' - ' + escHtml(match.rule.weapon) + '</div>' +
-            '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.selectLocationById(\'' + safeId + '\',{closePopup:true,showOverlay:true});return false;">Get weather</button>' +
+            '<button type="button" class="mdm-btn weather" onclick="event.preventDefault();event.stopPropagation();window.selectLocationById(\'' + safeId + '\',{closePopup:true,showOverlay:true,skipScroll:true});return false;">Get weather</button>' +
           '</div>';
         m.bindPopup(popupHtml, { className: 'saved-item-popup map-dot-popup', closeButton: true, autoPan: false, maxWidth: 280, closeOnClick: false });
         m.on('popupopen', function() {
@@ -39568,18 +39570,16 @@ function togglePinIconPicker() {
       }
       // Prefer settings-aware map weather popup when fullscreen / forced / Get weather
       var isCurrentLoc = !location || location.id == 9999 || location.type === 'Current Location' || usingCurrentLocation;
-      var forceBox = !!window._forceMapWeatherOverlay && !isCurrentLoc;
+      var forceBox = !!window._forceMapWeatherOverlay;
       var fullscreen = document.querySelector('.map-wrapper') && document.querySelector('.map-wrapper').classList.contains('fullscreen');
-      var allowMapWx = weatherFeaturesEnabled() && appSettings.defaults.weather.mapFullscreen;
+      var allowMapWx = weatherFeaturesEnabled();
       var autoSpot = (typeof weatherAutoSpotPopupEnabled === 'function')
         ? weatherAutoSpotPopupEnabled()
         : true;
-      // Auto Max card only when setting is on; Get weather sets forceBox regardless
-      var showOverlay = allowMapWx && (
-        forceBox ||
-        isMapOnlyMode() ||
-        (autoSpot && fullscreen && selectedLocationId && !isCurrentLoc)
-      );
+      var autoMax = !!(allowMapWx && appSettings.defaults.weather && appSettings.defaults.weather.mapFullscreen &&
+        autoSpot && fullscreen && selectedLocationId && !isCurrentLoc);
+      // Get weather (forceBox) always shows the compact card when weather is on
+      var showOverlay = allowMapWx && (forceBox || isMapOnlyMode() || autoMax);
       if (showOverlay) {
         showMapWeatherPopup(location, weather, lat, lng, rule);
       } else {
@@ -39588,8 +39588,7 @@ function togglePinIconPicker() {
         var mwoTitle = document.getElementById('mwo-title');
         if (mwoTitle) mwoTitle.innerText = title;
         var ov = document.getElementById('map-weather-overlay');
-        // Not showing compact card this render — hide any leftover (e.g. setting off after Get weather)
-        if (ov) ov.style.display = 'none';
+        if (ov && !forceBox) ov.style.display = 'none';
       }
       window._forceMapWeatherOverlay = false;
       // Map-dot weather can reflow layout; keep map fixed on phone
@@ -40055,6 +40054,16 @@ function togglePinIconPicker() {
         document.getElementById('map-maximize-btn').style.display = full ? 'none' : 'block';
         document.getElementById('map-minimize-btn').style.display = full ? 'block' : 'none';
         try { if (typeof placeMobileHuntContextChip === 'function') placeMobileHuntContextChip(); } catch (eChip) {}
+        try {
+          var ovPlace = document.getElementById('map-weather-overlay');
+          if (ovPlace && ovPlace.style.display === 'block' && typeof placeMapWeatherChrome === 'function') {
+            placeMapWeatherChrome(ovPlace);
+          }
+          var detPlace = document.getElementById('map-weather-details');
+          if (detPlace && detPlace.style.display === 'block' && typeof placeMapWeatherChrome === 'function') {
+            placeMapWeatherChrome(detPlace);
+          }
+        } catch (eWxP) {}
         // #106: pin Max/Min to map top-right (inline styles beat any stale bottom rules)
         try {
           ['map-maximize-btn', 'map-minimize-btn'].forEach(function (id) {
@@ -41064,15 +41073,8 @@ function togglePinIconPicker() {
       var p = lastMapWeatherPayload;
       if (title) title.textContent = p.title || 'Weather details';
       body.innerHTML = p.detailsHtml || p.compactHtml || '';
-      // Stay bottom-right (same corner as compact weather) unless user already dragged
-      if (!box.classList.contains('is-dragged')) {
-        box.style.left = '';
-        box.style.top = '';
-        box.style.right = '12px';
-        box.style.bottom = '';
-        box.style.transform = 'none';
-      }
       box.style.display = 'block';
+      if (typeof placeMapWeatherChrome === 'function') placeMapWeatherChrome(box);
       // Compact panel sits under details; hide it while details is open
       try {
         var compact = document.getElementById('map-weather-overlay');
@@ -41081,6 +41083,112 @@ function togglePinIconPicker() {
       wireMapWeatherDetailsDrag();
     }
     window.expandMapWeatherDetails = expandMapWeatherDetails;
+
+    /**
+     * Park the compact / details weather card on the map without covering
+     * search, Max/Min, the date chip, map-name, or the toolbar.
+     */
+    function placeMapWeatherChrome(el) {
+      if (!el || el.classList.contains('is-dragged')) return;
+      var wrap = document.getElementById('map-wrapper') || el.offsetParent;
+      if (!wrap) return;
+      el.style.left = '';
+      el.style.top = '';
+      el.style.right = '';
+      el.style.bottom = '';
+      el.style.transform = 'none';
+      var wr = wrap.getBoundingClientRect();
+      if (!wr.width || !wr.height) return;
+      var ew = el.offsetWidth || 240;
+      var eh = el.offsetHeight || 160;
+      var pad = 8;
+      var bar = document.getElementById('map-bottom-bar');
+      var barH = 40;
+      try {
+        if (bar) {
+          var br = bar.getBoundingClientRect();
+          if (br.height > 8) barH = br.height;
+        }
+      } catch (eBar) {}
+      var phone = typeof isPhoneLayout === 'function' && isPhoneLayout();
+      var fs = wrap.classList.contains('fullscreen');
+      var fsBtn = document.getElementById('map-minimize-btn');
+      if (!fsBtn || fsBtn.style.display === 'none') fsBtn = document.getElementById('map-maximize-btn');
+      var belowFs = pad;
+      try {
+        if (fsBtn && fsBtn.style.display !== 'none') {
+          var fr = fsBtn.getBoundingClientRect();
+          if (fr.height > 4) belowFs = Math.round(fr.bottom - wr.top + pad);
+        }
+      } catch (eFsBtn) {}
+      var slots = [];
+      if (phone && fs) {
+        slots.push({ top: Math.max(belowFs, pad), left: wr.width - pad - ew });
+        slots.push({ top: Math.max(belowFs, pad), left: pad });
+        slots.push({ top: wr.height - barH - pad - eh, left: pad });
+      } else {
+        slots.push({ top: wr.height - barH - pad - eh, left: wr.width - pad - ew });
+        slots.push({ top: wr.height - barH - pad - eh, left: pad });
+        slots.push({ top: Math.max(belowFs, pad), left: wr.width - pad - ew });
+        slots.push({ top: Math.max(belowFs, pad), left: pad });
+      }
+      var chrome = [];
+      ['map-search-toggle', 'map-search-chrome', 'map-maximize-btn', 'map-minimize-btn',
+        'mbb-context', 'map-bottom-map-name', 'map-bottom-bar', 'map-bottom-name-row'].forEach(function (id) {
+        var n = document.getElementById(id);
+        if (!n) return;
+        try {
+          var cs = window.getComputedStyle(n);
+          if (!cs || cs.display === 'none' || cs.visibility === 'hidden') return;
+          var r = n.getBoundingClientRect();
+          if (r.width < 4 || r.height < 4) return;
+          chrome.push(r);
+        } catch (eCh) {}
+      });
+      function slotScreen(s) {
+        return {
+          left: wr.left + s.left,
+          top: wr.top + s.top,
+          right: wr.left + s.left + ew,
+          bottom: wr.top + s.top + eh
+        };
+      }
+      function hits(a, b) {
+        var g = 6;
+        return !(a.right + g <= b.left || a.left - g >= b.right || a.bottom + g <= b.top || a.top - g >= b.bottom);
+      }
+      var chosen = slots[0];
+      var i, j;
+      for (i = 0; i < slots.length; i++) {
+        var sr = slotScreen(slots[i]);
+        var hit = false;
+        for (j = 0; j < chrome.length; j++) {
+          if (hits(sr, chrome[j])) { hit = true; break; }
+        }
+        if (!hit) { chosen = slots[i]; break; }
+      }
+      chosen.left = Math.max(pad, Math.min(chosen.left, wr.width - ew - pad));
+      chosen.top = Math.max(pad, Math.min(chosen.top, wr.height - eh - pad));
+      el.style.left = Math.round(chosen.left) + 'px';
+      el.style.top = Math.round(chosen.top) + 'px';
+      el.style.right = 'auto';
+      el.style.bottom = 'auto';
+    }
+    window.placeMapWeatherChrome = placeMapWeatherChrome;
+    (function wireMapWeatherPlace() {
+      if (window._mapWxPlaceWired) return;
+      window._mapWxPlaceWired = true;
+      function relayout() {
+        try {
+          var ov = document.getElementById('map-weather-overlay');
+          if (ov && ov.style.display === 'block') placeMapWeatherChrome(ov);
+          var det = document.getElementById('map-weather-details');
+          if (det && det.style.display === 'block') placeMapWeatherChrome(det);
+        } catch (eRel) {}
+      }
+      window.addEventListener('resize', relayout);
+      window.addEventListener('orientationchange', relayout);
+    })();
 
     function showMapWeatherPopup(location, weather, lat, lng, rule) {
       if (!weatherFeaturesEnabled()) return;
@@ -41176,14 +41284,8 @@ function togglePinIconPicker() {
       lastMapWeatherPayload = { title: name, compactHtml: compact, detailsHtml: details };
       body.innerHTML = compact;
       if (more) more.style.display = 'block';
-      // Default lower-right above toolbar unless user already dragged this session
-      if (!overlay.classList.contains('is-dragged')) {
-        overlay.style.left = '';
-        overlay.style.top = '';
-        overlay.style.right = '12px';
-        overlay.style.bottom = '';
-      }
       overlay.style.display = 'block';
+      if (typeof placeMapWeatherChrome === 'function') placeMapWeatherChrome(overlay);
       wireMapWeatherDetailsDrag();
       closeMapWeatherDetails();
     }
