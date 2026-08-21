@@ -1310,6 +1310,7 @@
       overflow-y: auto;
       max-width: 100%;
       width: 100%;
+      overscroll-behavior-y: auto;
     }
     html.layout-phone body {
       height: auto !important;
@@ -4258,18 +4259,20 @@
     html.map-popup-covers-brand .map-wrapper:not(.fullscreen) .leaflet-popup-pane {
       z-index: 710 !important;
     }
-    /* Phone: same restack while a cover-brand popup is open */
-    html.map-popup-covers-brand.layout-phone .card-map {
-      overflow: visible !important;
-      z-index: 20 !important;
-      contain: none !important;
+    /* Phone min-mode: never unclip the map — popups stay inside the map box */
+    html.map-popup-covers-brand.layout-phone .card-map,
+    html.map-popup-covers-brand.layout-phone .card-map .map-section-block,
+    html.map-popup-covers-brand.layout-phone .map-wrapper:not(.fullscreen) {
+      overflow: hidden !important;
+      contain: layout style paint !important;
+      clip-path: none !important;
     }
-    html.map-popup-covers-brand.layout-phone .card-planner > .planner-row {
-      z-index: 30 !important;
+    html.map-popup-covers-brand.layout-phone .map-wrapper:not(.fullscreen) #leaflet-map,
+    html.map-popup-covers-brand.layout-phone .map-wrapper:not(.fullscreen) .leaflet-container {
+      overflow: hidden !important;
     }
-    html.map-popup-covers-brand.layout-phone #dashboard-container,
-    html.map-popup-covers-brand.layout-phone .dashboard-under-steps {
-      z-index: 25 !important;
+    html.map-popup-covers-brand.layout-phone .card-map > .map-title-bar {
+      z-index: 60 !important;
     }
     /* Phone: map stays between planner and dashboard — never paint outside its card */
     html.layout-phone .card-map {
@@ -11766,7 +11769,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 9.0.1 Beta">V9.0.1 Beta</span>
+      <span class="brand-version" aria-label="Version 9.0.2 Beta">V9.0.2 Beta</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -13477,7 +13480,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '9.0.1-beta';
+    const APP_VERSION = '9.0.2-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -27970,6 +27973,8 @@
      */
     function setMapPopupCoversBrand(on) {
       try {
+        // Phone min-mode must keep the map clipped under the name/state bar
+        if (on && typeof isPhoneLayout === 'function' && isPhoneLayout()) on = false;
         document.documentElement.classList.toggle('map-popup-covers-brand', !!on);
       } catch (eCb) {}
     }
@@ -28072,8 +28077,9 @@
         var needAbove = popH + tipH;
         var roomBelowToolbar = usableBottom - markerPt.y;
 
-        if (!isFs) {
-          // Non-fullscreen: all map popups may extend over the brand header (#80)
+        var onPhone = typeof isPhoneLayout === 'function' && isPhoneLayout();
+        if (!isFs && !onPhone) {
+          // Desktop min-mode: popups may extend over the brand header
           setMapPopupCoversBrand(true);
           offY = 0;
         } else if (roomAbove >= needAbove) {
@@ -28168,12 +28174,13 @@
         if (typeof lockMapInView === 'function') lockMapInView();
         // Popups above compass dial only — bottom toolbar stays on top (z-index 80)
         setMapPopupOpenStack(true);
-        // Desktop/min: always allow map popups to paint over brand header (#80)
         try {
           var isFsPop = typeof isMapFullscreen === 'function' && isMapFullscreen();
-          if (!isFsPop) setMapPopupCoversBrand(true);
+          var phonePop = typeof isPhoneLayout === 'function' && isPhoneLayout();
+          if (!isFsPop && !phonePop) setMapPopupCoversBrand(true);
+          else setMapPopupCoversBrand(false);
         } catch (eCbOpen) {
-          setMapPopupCoversBrand(true);
+          setMapPopupCoversBrand(false);
         }
         ensureMapBottomBarVisible();
         // After layout, measure size and pin above the marker; then enable drag
@@ -38495,7 +38502,7 @@ function togglePinIconPicker() {
      * IMPORTANT: never fight the user's intentional scroll — cancel the lock on first touchmove/wheel.
      */
     var _mapInViewLock = null;
-    var _bootQuietUntil = Date.now() + 10000; // first 10s: never force-scroll the page
+    var _bootQuietUntil = Date.now() + 20000; // until onload extends this — never force-scroll while booting
     var _userScrollWired = false;
     function cancelMapInViewLock() {
       _mapInViewLock = null;
@@ -38521,24 +38528,8 @@ function togglePinIconPicker() {
     try { wireUserScrollIntentCancel(); } catch (eUsc) {}
 
     function lockMapInView() {
-      if (typeof isPhoneLayout === 'function' && !isPhoneLayout()) {
-        _mapInViewLock = null;
-        return;
-      }
-      // During boot quiet window, never grab scroll — let the user scroll freely
-      if (Date.now() < _bootQuietUntil) {
-        _mapInViewLock = null;
-        return;
-      }
-      var el = document.getElementById('map-wrapper');
-      if (!el) {
-        _mapInViewLock = null;
-        return;
-      }
-      _mapInViewLock = {
-        top: el.getBoundingClientRect().top,
-        until: Date.now() + 900 // short window only (was 3.2s — fought phone scroll)
-      };
+      // Do not force-scroll the page. This was bouncing the first mobile swipe back.
+      _mapInViewLock = null;
     }
     function restoreMapInView() {
       var lock = _mapInViewLock;
@@ -41123,6 +41114,7 @@ function togglePinIconPicker() {
 
     // ========== INIT (calendar first; map/Leaflet/USGS deferred until Step 3) ==========
     window.onload = function() {
+      try { _bootQuietUntil = Date.now() + 15000; } catch (eQ) {}
       var stateReady = Promise.resolve();
       try {
         if (window.RSState && typeof window.RSState.ensurePicked === 'function') {

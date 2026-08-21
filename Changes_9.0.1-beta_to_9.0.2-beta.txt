@@ -1,0 +1,5 @@
+HUNT SLAYER 9.0.1 → 9.0.2 Beta (#150)
+
+- Phone first open: stop forcing page scroll, so the first swipe is not bounced back.
+- Phone min-mode: pin/dot popups stay inside the map; the map no longer climbs over the name/state bar.
+- Shell `reg-slayer-shell-v182`.
