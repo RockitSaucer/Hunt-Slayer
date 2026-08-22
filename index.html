@@ -8304,26 +8304,17 @@
     }
     .tide-today-list {
       display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: 4px 8px;
-      font-size: 12px;
-      margin: 0 0 8px;
-      align-items: center;
+      grid-template-columns: 6.2rem 1fr auto;
+      gap: 8px 10px;
+      font-size: 15px;
+      margin: 0 0 10px;
+      align-items: baseline;
     }
-    .tide-today-list .tk { font-weight: 800; color: #7dd3fc; }
+    .tide-today-list .tk { font-weight: 800; color: #7dd3fc; font-size: 14px; }
     .tide-today-list .tk.is-low { color: #fca5a5; }
-    .tide-today-list .tt { color: #fff; font-weight: 700; }
-    .tide-chart-wrap {
-      background: #eef2f6;
-      border-radius: 8px;
-      overflow: hidden;
-      margin: 0 0 8px;
-    }
-    .tide-chart-wrap img {
-      display: block;
-      width: 100%;
-      height: auto;
-    }
+    .tide-today-list .tt { color: #fff; font-weight: 800; font-size: 16px; }
+    .tide-today-list .th { color: #fff; font-weight: 800; font-size: 16px; white-space: nowrap; }
+    .tide-today-list .tide-empty { grid-column: 1 / -1; color: #c5d0be; font-size: 13px; }
     .tide-source-link {
       font-size: 11px;
       font-weight: 700;
@@ -11954,7 +11945,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 9.0.7 Beta">V9.0.7 Beta</span>
+      <span class="brand-version" aria-label="Version 9.0.8 Beta">V9.0.8 Beta</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -13667,7 +13658,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '9.0.7-beta';
+    const APP_VERSION = '9.0.8-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -35016,38 +35007,57 @@ function togglePinIconPicker() {
       return 'https://www.tideschart.com/tide-charts/en/' + st.chartSlug + '-tide-chart-' + st.chartId + '-ft.svg?date=' + ymd;
     }
     function parseTideTimesFromSvg(svgText) {
-      var fills = [];
-      var labels = [];
-      String(svgText || '').replace(/fill="(#[0-9a-fA-F]+)"><circle/g, function (_, f) {
-        fills.push(String(f).toLowerCase());
+      var svg = String(svgText || '');
+      var ticks = [];
+      svg.replace(/<g class="tick"[^>]*transform="translate\(0,([0-9.]+)\)"[\s\S]{0,220}?<text[^>]*>([-\d.]+)<\/text>/g, function (_, y, ft) {
+        ticks.push({ y: parseFloat(y), ft: parseFloat(ft) });
         return _;
       });
-      String(svgText || '').replace(/<text text-anchor="middle" y="-11">([^<]+)<\/text>/g, function (_, t) {
-        labels.push(String(t).trim());
-        return _;
-      });
-      var n = Math.min(fills.length, labels.length, 4);
-      var out = [];
-      for (var i = 0; i < n; i++) {
-        out.push({
-          kind: fills[i] === '#e74c3c' ? 'Low' : 'High',
-          time: labels[i]
-        });
+      ticks.sort(function (a, b) { return a.y - b.y; });
+      function ftAt(y) {
+        if (ticks.length < 2 || !isFinite(y)) return null;
+        var a = ticks[0], b = ticks[1], i;
+        if (y <= ticks[0].y) { a = ticks[0]; b = ticks[1]; }
+        else if (y >= ticks[ticks.length - 1].y) { a = ticks[ticks.length - 2]; b = ticks[ticks.length - 1]; }
+        else {
+          for (i = 0; i < ticks.length - 1; i++) {
+            if (y >= ticks[i].y && y <= ticks[i + 1].y) { a = ticks[i]; b = ticks[i + 1]; break; }
+          }
+        }
+        var tfrac = (b.y === a.y) ? 0 : (y - a.y) / (b.y - a.y);
+        return a.ft + tfrac * (b.ft - a.ft);
       }
-      return out;
+      var events = [];
+      svg.replace(/transform="translate\(([-\d.]+),([-\d.]+)\)"\s+fill="(#[0-9a-fA-F]+)"[\s\S]{0,400}?<text text-anchor="middle" y="-11">([^<]+)<\/text>/g, function (_, x, y, fill, time) {
+        events.push({
+          x: parseFloat(x),
+          y: parseFloat(y),
+          kind: String(fill).toLowerCase() === '#e74c3c' ? 'Low' : 'High',
+          time: String(time).trim()
+        });
+        return _;
+      });
+      var today = events.filter(function (e) { return isFinite(e.x) && e.x < 452; });
+      if (!today.length) today = events.slice(0, 4);
+      return today.map(function (e) {
+        var ft = ftAt(e.y);
+        return {
+          kind: e.kind,
+          time: e.time,
+          height: (ft != null && isFinite(ft)) ? (Math.round(ft * 100) / 100) : null
+        };
+      });
     }
     function escapeTideText(s) {
       return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
     }
     function buildTidePopupShell(st, ymd) {
-      var chart = tideChartUrl(st, ymd);
       return (
         '<div class="tide-detail-popup">' +
           '<div class="tide-kicker">Today\'s tide times</div>' +
           '<div class="tide-title">' + escapeTideText(st.name) + '</div>' +
           '<div class="tide-sub">' + escapeTideText(st.sub) + '<br>' + escapeTideText(tideDateLabel()) + '</div>' +
-          '<div class="tide-today-list">Loading today\'s tides…</div>' +
-          '<div class="tide-chart-wrap"><img alt="Today\'s tide chart for Saint Catherines Point" src="' + escapeTideText(chart) + '"></div>' +
+          '<div class="tide-today-list"><span class="tide-empty">Loading today\'s tides…</span></div>' +
           '<a class="tide-source-link" href="' + escapeTideText(st.pageUrl) + '" target="_blank" rel="noopener">Tideschart.com ↗</a>' +
         '</div>'
       );
@@ -35065,18 +35075,19 @@ function togglePinIconPicker() {
       }).then(function (svg) {
         var events = parseTideTimesFromSvg(svg);
         if (!events.length) {
-          list.textContent = 'See the chart below for today\'s high and low tides.';
+          list.innerHTML = '<span class="tide-empty">Tide times are not available right now.</span>';
           return;
         }
         list.innerHTML = events.map(function (ev) {
           var k = ev.kind === 'Low' ? 'Low' : 'High';
-          return '<span class="tk' + (k === 'Low' ? ' is-low' : '') + '">' + k + '</span>' +
+          var ht = (ev.height != null) ? ev.height.toFixed(2) + ' ft' : '';
+          return '<span class="tk' + (k === 'Low' ? ' is-low' : '') + '">' + k + ' tide</span>' +
             '<span class="tt">' + escapeTideText(ev.time) + '</span>' +
-            '<span></span>';
+            '<span class="th">' + escapeTideText(ht) + '</span>';
         }).join('');
       }).catch(function () {
         clearTimeout(to);
-        list.textContent = 'See the chart below for today\'s high and low tides.';
+        list.innerHTML = '<span class="tide-empty">Tide times are not available right now.</span>';
       });
     }
     function drawTideStationsOnMap(force) {

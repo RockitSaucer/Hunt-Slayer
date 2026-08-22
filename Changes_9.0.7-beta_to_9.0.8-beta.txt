@@ -1,0 +1,4 @@
+HUNT SLAYER 9.0.7 → 9.0.8 Beta
+
+- Saint Catherines Point popup shows today’s tide times as numbers (High/Low + time + ft), not the small chart.
+- Shell `reg-slayer-shell-v188`.
