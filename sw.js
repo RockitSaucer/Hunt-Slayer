@@ -2,7 +2,7 @@
  * Caches app shell for return visits with no signal.
  * Map tiles: cache-first when already stored; network otherwise (then cache).
  */
-const SHELL_CACHE = 'reg-slayer-shell-v188';
+const SHELL_CACHE = 'reg-slayer-shell-v189';
 const TILE_CACHE = 'reg-slayer-tiles-v2';
 const DATA_CACHE = 'reg-slayer-data-v1';
 /** Soft cap on cached map tiles (~18KB avg → ~45MB). Oldest entries dropped first. */
@@ -285,6 +285,13 @@ self.addEventListener('fetch', (event) => {
 
   // App shell / same-origin
   if (url.startsWith(self.registration.scope)) {
+    try {
+      var pathName = new URL(url).pathname || '';
+      if (pathName.indexOf('/api/') !== -1) {
+        event.respondWith(fetch(req).catch(function () { return Response.error(); }));
+        return;
+      }
+    } catch (eApiPath) {}
     /*
      * HTML + core JS: NETWORK-FIRST when online.
      * Cache-first left phones stuck on old deploys (desktop CDN looked new;

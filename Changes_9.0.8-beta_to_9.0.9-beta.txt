@@ -1,0 +1,4 @@
+HUNT SLAYER 9.0.8 → 9.0.9 Beta
+
+- Saint Catherines tide popup actually loads today’s High/Low times (via /api/tides, not a hanging browser fetch).
+- Shell `reg-slayer-shell-v189`.

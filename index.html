@@ -11945,7 +11945,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 9.0.8 Beta">V9.0.8 Beta</span>
+      <span class="brand-version" aria-label="Version 9.0.9 Beta">V9.0.9 Beta</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -13658,7 +13658,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '9.0.8-beta';
+    const APP_VERSION = '9.0.9-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -35062,32 +35062,46 @@ function togglePinIconPicker() {
         '</div>'
       );
     }
+    function renderTideEventList(list, events) {
+      if (!list) return;
+      if (!events || !events.length) {
+        list.innerHTML = '<span class="tide-empty">Tide times are not available right now.</span>';
+        return;
+      }
+      list.innerHTML = events.map(function (ev) {
+        var k = ev.kind === 'Low' ? 'Low' : 'High';
+        var ht = (ev.height != null && isFinite(ev.height)) ? Number(ev.height).toFixed(2) + ' ft' : '';
+        return '<span class="tk' + (k === 'Low' ? ' is-low' : '') + '">' + k + ' tide</span>' +
+          '<span class="tt">' + escapeTideText(ev.time) + '</span>' +
+          '<span class="th">' + escapeTideText(ht) + '</span>';
+      }).join('');
+    }
     function fillTidePopupTimes(root, st, ymd) {
       if (!root) return;
       var list = root.querySelector('.tide-today-list');
       if (!list) return;
       var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-      var to = setTimeout(function () { try { if (ctrl) ctrl.abort(); } catch (eAb) {} }, 8000);
-      fetch(tideChartUrl(st, ymd), ctrl ? { signal: ctrl.signal } : {}).then(function (r) {
+      var to = setTimeout(function () { try { if (ctrl) ctrl.abort(); } catch (eAb) {} }, 10000);
+      var url = './api/tides?date=' + encodeURIComponent(ymd || tideDateYmd());
+      fetch(url, ctrl ? { signal: ctrl.signal, cache: 'no-store' } : { cache: 'no-store' }).then(function (r) {
+        if (!r || !r.ok) throw new Error('tides api');
+        return r.json();
+      }).then(function (data) {
         clearTimeout(to);
-        if (!r || !r.ok) throw new Error('tide chart');
-        return r.text();
-      }).then(function (svg) {
-        var events = parseTideTimesFromSvg(svg);
-        if (!events.length) {
-          list.innerHTML = '<span class="tide-empty">Tide times are not available right now.</span>';
-          return;
-        }
-        list.innerHTML = events.map(function (ev) {
-          var k = ev.kind === 'Low' ? 'Low' : 'High';
-          var ht = (ev.height != null) ? ev.height.toFixed(2) + ' ft' : '';
-          return '<span class="tk' + (k === 'Low' ? ' is-low' : '') + '">' + k + ' tide</span>' +
-            '<span class="tt">' + escapeTideText(ev.time) + '</span>' +
-            '<span class="th">' + escapeTideText(ht) + '</span>';
-        }).join('');
+        renderTideEventList(list, data && data.events);
       }).catch(function () {
-        clearTimeout(to);
-        list.innerHTML = '<span class="tide-empty">Tide times are not available right now.</span>';
+        // Direct Tideschart fetch often hangs in the browser; still try once, then fail.
+        var chart = tideChartUrl(st, ymd || tideDateYmd());
+        fetch(chart, ctrl ? { signal: ctrl.signal } : {}).then(function (r2) {
+          if (!r2 || !r2.ok) throw new Error('tide chart');
+          return r2.text();
+        }).then(function (svg) {
+          clearTimeout(to);
+          renderTideEventList(list, parseTideTimesFromSvg(svg));
+        }).catch(function () {
+          clearTimeout(to);
+          list.innerHTML = '<span class="tide-empty">Tide times are not available right now.</span>';
+        });
       });
     }
     function drawTideStationsOnMap(force) {
@@ -35132,16 +35146,28 @@ function togglePinIconPicker() {
               try { L.DomEvent.stop(ev.originalEvent); } catch (eStop2) {}
             }
           }
-          try { m.setPopupContent(buildTidePopupShell(st, tideDateYmd())); } catch (eSet) {}
+          var ymd = tideDateYmd();
+          try { m.setPopupContent(buildTidePopupShell(st, ymd)); } catch (eSet) {}
           try { m.openPopup(); } catch (ePop) {}
+          function paint() {
+            var el = m.getPopup() && m.getPopup().getElement();
+            if (!el) return;
+            try {
+              L.DomEvent.disableClickPropagation(el);
+              L.DomEvent.disableScrollPropagation(el);
+            } catch (eD) {}
+            fillTidePopupTimes(el, st, ymd);
+          }
+          setTimeout(paint, 0);
         }
         m.on('click', openTidePopup);
         m.on('popupopen', function () {
           var el = m.getPopup() && m.getPopup().getElement();
           if (!el) return;
-          L.DomEvent.disableClickPropagation(el);
-          L.DomEvent.disableScrollPropagation(el);
-          fillTidePopupTimes(el, st, tideDateYmd());
+          try {
+            L.DomEvent.disableClickPropagation(el);
+            L.DomEvent.disableScrollPropagation(el);
+          } catch (eD2) {}
         });
         tideMarkerGroup.addLayer(m);
       });
