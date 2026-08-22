@@ -1,0 +1,4 @@
+HUNT SLAYER 9.0.6 → 9.0.7 Beta
+
+- Georgia only: clickable Saint Catherines Point (Midway River / St. Catherines Sound) shows today’s tide times + Tideschart.com chart.
+- Shell `reg-slayer-shell-v187`.

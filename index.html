@@ -8249,6 +8249,87 @@
       line-height: 1;
       pointer-events: none;
     }
+    .tide-station-icon {
+      background: none !important;
+      border: none !important;
+    }
+    .tide-station-hit {
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+    }
+    .tide-station-dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #0ea5e9;
+      border: 2px solid #fff;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #042f4a;
+      font-weight: 900;
+      line-height: 1;
+      pointer-events: none;
+    }
+    .tide-detail-popup {
+      min-width: 220px;
+      max-width: min(340px, calc(100vw - 36px));
+      padding: 10px 12px 12px;
+    }
+    .tide-detail-popup .tide-kicker {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #7dd3fc;
+      margin: 0 0 2px;
+    }
+    .tide-detail-popup .tide-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #fff;
+      margin: 0 0 2px;
+    }
+    .tide-detail-popup .tide-sub {
+      font-size: 11px;
+      color: #c5d0be;
+      margin: 0 0 8px;
+      line-height: 1.35;
+    }
+    .tide-today-list {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 4px 8px;
+      font-size: 12px;
+      margin: 0 0 8px;
+      align-items: center;
+    }
+    .tide-today-list .tk { font-weight: 800; color: #7dd3fc; }
+    .tide-today-list .tk.is-low { color: #fca5a5; }
+    .tide-today-list .tt { color: #fff; font-weight: 700; }
+    .tide-chart-wrap {
+      background: #eef2f6;
+      border-radius: 8px;
+      overflow: hidden;
+      margin: 0 0 8px;
+    }
+    .tide-chart-wrap img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    .tide-source-link {
+      font-size: 11px;
+      font-weight: 700;
+      color: #38bdf8;
+      text-decoration: none;
+    }
     .toast-form-control { background: var(--panel); border: 1px solid var(--border); color: var(--ink); border-radius: 4px; padding: 6px; font-size: 11px; width: 100%; margin-top: 4px; }
     .dashboard-grid { display: flex; flex-direction: column; gap: 18px; }
     .solunar-panel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; background: var(--panel-light); padding: 16px; border-radius: 10px; border: 1px solid var(--border); }
@@ -11873,7 +11954,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 9.0.6 Beta">V9.0.6 Beta</span>
+      <span class="brand-version" aria-label="Version 9.0.7 Beta">V9.0.7 Beta</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -13586,7 +13667,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '9.0.6-beta';
+    const APP_VERSION = '9.0.7-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -13794,7 +13875,7 @@
     let selectedPinColor = '#e59a18', selectedHuntColor = '#e59a18';
     let calendarTargetDate = new Date(), usingCurrentLocation = true, currentLocationObj = null;
     let map = null, mapReady = false, leafletLoading = null;
-    let mapMarkerGroup = null, standMarkerGroup = null, gaugeMarkerGroup = null, huntMarkerGroup = null, pinMarkerGroup = null;
+    let mapMarkerGroup = null, standMarkerGroup = null, gaugeMarkerGroup = null, tideMarkerGroup = null, huntMarkerGroup = null, pinMarkerGroup = null;
     let adcnrOverlayGroup = null; // WMA / public lands polygons (ADCNR)
     let adcnrOpenPinGroup = null; // green pins on units open for selected weapon/date
     let selectedHuntOutlineGroup = null; // thick black boundary for list-selected hunt
@@ -13828,6 +13909,7 @@
     let windInitialized = false;
     let lastVisibleMarkerKey = '';
     let gaugesDrawn = false;
+    let tidesDrawn = false;
     let lastClickTva = null; // TVA hit from last map click (for pin/hunt save)
     // Public-land unit under last free map-dot (from double-click on overlay polygon)
     // { layer, attrs, name, cacheId, lat, lng }
@@ -13919,6 +14001,11 @@
     }
     function isAlabamaPack() {
       return !window.RS_STATE || window.RS_STATE.code === 'AL';
+    }
+    function isGeorgiaPack() {
+      var p = typeof activePack === 'function' ? activePack() : null;
+      if (p && p.code === 'GA') return true;
+      return !!(window.RS_STATE && window.RS_STATE.code === 'GA');
     }
     function isWyomingPack() {
       var p = typeof activePack === 'function' ? activePack() : null;
@@ -14446,6 +14533,8 @@
         if (typeof clearPeakRutOverlays === 'function') clearPeakRutOverlays();
         if (gaugeMarkerGroup) gaugeMarkerGroup.clearLayers();
         gaugesDrawn = false;
+        if (tideMarkerGroup) tideMarkerGroup.clearLayers();
+        tidesDrawn = false;
         if (pack.code !== 'AL') {
           locations = locations.filter(function (l) {
             if (!l) return false;
@@ -14497,6 +14586,7 @@
       } catch (eU) {}
       try {
         if (typeof drawWaterGaugesOnMap === 'function') drawWaterGaugesOnMap(true);
+        if (typeof drawTideStationsOnMap === 'function') drawTideStationsOnMap(true);
       } catch (eG) {}
     };
 
@@ -27740,6 +27830,7 @@
       mapMarkerGroup = L.layerGroup().addTo(map);
       standMarkerGroup = L.layerGroup().addTo(map);
       gaugeMarkerGroup = L.layerGroup().addTo(map);
+      tideMarkerGroup = L.layerGroup().addTo(map);
       huntMarkerGroup = L.layerGroup().addTo(map);
       pinMarkerGroup = L.layerGroup().addTo(map);
       customAreaGroup = L.layerGroup().addTo(map);
@@ -27750,6 +27841,7 @@
       drawActiveStateMask();
 
       drawWaterGaugesOnMap(true);
+      if (typeof drawTideStationsOnMap === 'function') drawTideStationsOnMap(true);
       drawHuntsOnMap(); // respects Past Hunts checkbox (off by default)
       drawPinsOnMap();
       loadCustomAreasIntoLocations();
@@ -27805,7 +27897,7 @@
         // USGS gauge markers handle their own popup — do not steal the tap
         try {
           var gT = e && e.originalEvent && e.originalEvent.target;
-          if (gT && gT.closest && gT.closest('.usgs-gauge-icon, .usgs-gauge-hit, .usgs-gauge-dot')) return;
+          if (gT && gT.closest && gT.closest('.usgs-gauge-icon, .usgs-gauge-hit, .usgs-gauge-dot, .tide-station-icon, .tide-station-hit, .tide-station-dot')) return;
         } catch (eGaugeTap) {}
         // Stand placement mode: click sets stand coordinates (no free-form menu)
         if (standPlaceMode) {
@@ -28977,7 +29069,8 @@
         huntMarkerGroup,
         mapMarkerGroup,
         standMarkerGroup,
-        gaugeMarkerGroup
+        gaugeMarkerGroup,
+        tideMarkerGroup
       ];
       // Leave mapDrawPreviewLayer / vertex dots fully interactive — they close the shape
       groups.forEach(function(g) {
@@ -34886,6 +34979,164 @@ function togglePinIconPicker() {
       });
       gaugesDrawn = true;
     }
+
+    var TIDE_STATIONS = [
+      {
+        id: 'st-catherines-point',
+        name: 'Saint Catherines Point',
+        sub: 'St. Catherines Sound Entrance · Midway River, GA',
+        lat: 31.7155,
+        lng: -81.1568,
+        state: 'GA',
+        pageUrl: 'https://www.tideschart.com/United-States/Georgia/Chatham-County/St_-Catherines-Sound-Entrance/',
+        chartSlug: 'St_-Catherines-Sound-Entrance-Chatham-County-Georgia-United-States',
+        chartId: '30022218'
+      }
+    ];
+
+    function tideDateYmd() {
+      try {
+        var fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' });
+        return fmt.format(new Date()).replace(/-/g, '');
+      } catch (eY) {
+        var n = new Date();
+        return String(n.getFullYear()) + String(n.getMonth() + 1).padStart(2, '0') + String(n.getDate()).padStart(2, '0');
+      }
+    }
+    function tideDateLabel() {
+      try {
+        return new Intl.DateTimeFormat('en-US', {
+          timeZone: 'America/New_York', weekday: 'long', month: 'short', day: 'numeric', year: 'numeric'
+        }).format(new Date());
+      } catch (eL) {
+        return 'Today';
+      }
+    }
+    function tideChartUrl(st, ymd) {
+      return 'https://www.tideschart.com/tide-charts/en/' + st.chartSlug + '-tide-chart-' + st.chartId + '-ft.svg?date=' + ymd;
+    }
+    function parseTideTimesFromSvg(svgText) {
+      var fills = [];
+      var labels = [];
+      String(svgText || '').replace(/fill="(#[0-9a-fA-F]+)"><circle/g, function (_, f) {
+        fills.push(String(f).toLowerCase());
+        return _;
+      });
+      String(svgText || '').replace(/<text text-anchor="middle" y="-11">([^<]+)<\/text>/g, function (_, t) {
+        labels.push(String(t).trim());
+        return _;
+      });
+      var n = Math.min(fills.length, labels.length, 4);
+      var out = [];
+      for (var i = 0; i < n; i++) {
+        out.push({
+          kind: fills[i] === '#e74c3c' ? 'Low' : 'High',
+          time: labels[i]
+        });
+      }
+      return out;
+    }
+    function escapeTideText(s) {
+      return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    }
+    function buildTidePopupShell(st, ymd) {
+      var chart = tideChartUrl(st, ymd);
+      return (
+        '<div class="tide-detail-popup">' +
+          '<div class="tide-kicker">Today\'s tide times</div>' +
+          '<div class="tide-title">' + escapeTideText(st.name) + '</div>' +
+          '<div class="tide-sub">' + escapeTideText(st.sub) + '<br>' + escapeTideText(tideDateLabel()) + '</div>' +
+          '<div class="tide-today-list">Loading today\'s tides…</div>' +
+          '<div class="tide-chart-wrap"><img alt="Today\'s tide chart for Saint Catherines Point" src="' + escapeTideText(chart) + '"></div>' +
+          '<a class="tide-source-link" href="' + escapeTideText(st.pageUrl) + '" target="_blank" rel="noopener">Tideschart.com ↗</a>' +
+        '</div>'
+      );
+    }
+    function fillTidePopupTimes(root, st, ymd) {
+      if (!root) return;
+      var list = root.querySelector('.tide-today-list');
+      if (!list) return;
+      var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      var to = setTimeout(function () { try { if (ctrl) ctrl.abort(); } catch (eAb) {} }, 8000);
+      fetch(tideChartUrl(st, ymd), ctrl ? { signal: ctrl.signal } : {}).then(function (r) {
+        clearTimeout(to);
+        if (!r || !r.ok) throw new Error('tide chart');
+        return r.text();
+      }).then(function (svg) {
+        var events = parseTideTimesFromSvg(svg);
+        if (!events.length) {
+          list.textContent = 'See the chart below for today\'s high and low tides.';
+          return;
+        }
+        list.innerHTML = events.map(function (ev) {
+          var k = ev.kind === 'Low' ? 'Low' : 'High';
+          return '<span class="tk' + (k === 'Low' ? ' is-low' : '') + '">' + k + '</span>' +
+            '<span class="tt">' + escapeTideText(ev.time) + '</span>' +
+            '<span></span>';
+        }).join('');
+      }).catch(function () {
+        clearTimeout(to);
+        list.textContent = 'See the chart below for today\'s high and low tides.';
+      });
+    }
+    function drawTideStationsOnMap(force) {
+      if (!map || !tideMarkerGroup) return;
+      if (typeof isGeorgiaPack === 'function' && !isGeorgiaPack()) {
+        tideMarkerGroup.clearLayers();
+        tidesDrawn = false;
+        return;
+      }
+      if (!force && tidesDrawn) return;
+      tideMarkerGroup.clearLayers();
+      var ymd = tideDateYmd();
+      TIDE_STATIONS.forEach(function (st) {
+        if (st.state && typeof isGeorgiaPack === 'function' && isGeorgiaPack() && st.state !== 'GA') return;
+        var m = L.marker([st.lat, st.lng], {
+          icon: L.divIcon({
+            className: 'tide-station-icon',
+            html: '<div class="tide-station-hit"><div class="tide-station-dot" title="Tides">≈</div></div>',
+            iconSize: [34, 34],
+            iconAnchor: [17, 17],
+            popupAnchor: [0, -16]
+          }),
+          interactive: true,
+          keyboard: true,
+          zIndexOffset: 850,
+          bubblingMouseEvents: false,
+          title: st.name + ' tides'
+        });
+        m.bindPopup(buildTidePopupShell(st, ymd), {
+          className: 'saved-item-popup map-dot-popup tide-popup',
+          closeButton: true,
+          autoPan: false,
+          maxWidth: 340,
+          minWidth: 220,
+          closeOnClick: false,
+          autoClose: false
+        });
+        function openTidePopup(ev) {
+          if (ev) {
+            try { L.DomEvent.stopPropagation(ev); } catch (eStop) {}
+            if (ev.originalEvent) {
+              try { L.DomEvent.stop(ev.originalEvent); } catch (eStop2) {}
+            }
+          }
+          try { m.setPopupContent(buildTidePopupShell(st, tideDateYmd())); } catch (eSet) {}
+          try { m.openPopup(); } catch (ePop) {}
+        }
+        m.on('click', openTidePopup);
+        m.on('popupopen', function () {
+          var el = m.getPopup() && m.getPopup().getElement();
+          if (!el) return;
+          L.DomEvent.disableClickPropagation(el);
+          L.DomEvent.disableScrollPropagation(el);
+          fillTidePopupTimes(el, st, tideDateYmd());
+        });
+        tideMarkerGroup.addLayer(m);
+      });
+      tidesDrawn = true;
+    }
+    window.drawTideStationsOnMap = drawTideStationsOnMap;
     function updateMapMarkers(visibleMatches) {
       if (!map || !mapMarkerGroup) return;
       var key = visibleMatches.map(function(m) { return m.location.id + ':' + m.rule.weapon; }).join('|') + '|' + (selectedLocationId || '');

@@ -2,7 +2,7 @@
  * Caches app shell for return visits with no signal.
  * Map tiles: cache-first when already stored; network otherwise (then cache).
  */
-const SHELL_CACHE = 'reg-slayer-shell-v186';
+const SHELL_CACHE = 'reg-slayer-shell-v187';
 const TILE_CACHE = 'reg-slayer-tiles-v2';
 const DATA_CACHE = 'reg-slayer-data-v1';
 /** Soft cap on cached map tiles (~18KB avg → ~45MB). Oldest entries dropped first. */
@@ -201,6 +201,7 @@ function isApiUrl(url) {
     if (h.includes('conservationgis.alabama.gov')) return true;
     if (h.includes('services.arcgis.com') || h.includes('apps.fs.usda.gov')) return true;
     if (h.includes('api.rainviewer.com')) return true;
+    if (h.includes('tideschart.com')) return true;
     return false;
   } catch (e) {
     return false;
