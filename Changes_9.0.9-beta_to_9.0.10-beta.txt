@@ -1,0 +1,5 @@
+HUNT SLAYER 9.0.9 → 9.0.10 Beta
+
+- Tide popup text wraps so times and heights stay on-screen.
+- Prefetch + retries so today’s tides don’t stay stuck on “Loading…”.
+- Shell `reg-slayer-shell-v190`.

@@ -8277,10 +8277,22 @@
       line-height: 1;
       pointer-events: none;
     }
+    .map-dot-popup.tide-popup .leaflet-popup-content,
+    html.layout-phone .map-dot-popup.tide-popup .leaflet-popup-content {
+      min-width: 0 !important;
+      max-width: min(260px, calc(100vw - 32px)) !important;
+      width: min(260px, calc(100vw - 32px));
+      overflow: hidden;
+      box-sizing: border-box;
+    }
     .tide-detail-popup {
-      min-width: 220px;
-      max-width: min(340px, calc(100vw - 36px));
+      min-width: 0;
+      max-width: 100%;
+      width: 100%;
+      box-sizing: border-box;
       padding: 10px 12px 12px;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
     .tide-detail-popup .tide-kicker {
       font-size: 10px;
@@ -8303,18 +8315,25 @@
       line-height: 1.35;
     }
     .tide-today-list {
-      display: grid;
-      grid-template-columns: 6.2rem 1fr auto;
-      gap: 8px 10px;
-      font-size: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
       margin: 0 0 10px;
-      align-items: baseline;
+      min-width: 0;
     }
-    .tide-today-list .tk { font-weight: 800; color: #7dd3fc; font-size: 14px; }
+    .tide-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 2px 10px;
+      min-width: 0;
+    }
+    .tide-today-list .tk { font-weight: 800; color: #7dd3fc; font-size: 13px; flex: 1 1 100%; }
     .tide-today-list .tk.is-low { color: #fca5a5; }
     .tide-today-list .tt { color: #fff; font-weight: 800; font-size: 16px; }
-    .tide-today-list .th { color: #fff; font-weight: 800; font-size: 16px; white-space: nowrap; }
-    .tide-today-list .tide-empty { grid-column: 1 / -1; color: #c5d0be; font-size: 13px; }
+    .tide-today-list .th { color: #fff; font-weight: 800; font-size: 16px; }
+    .tide-today-list .tide-empty { color: #c5d0be; font-size: 13px; }
     .tide-source-link {
       font-size: 11px;
       font-weight: 700;
@@ -11945,7 +11964,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 9.0.9 Beta">V9.0.9 Beta</span>
+      <span class="brand-version" aria-label="Version 9.0.10 Beta">V9.0.10 Beta</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -13658,7 +13677,7 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '9.0.9-beta';
+    const APP_VERSION = '9.0.10-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
     // #91 Plan-style text brand by site
@@ -35051,58 +35070,99 @@ function togglePinIconPicker() {
     function escapeTideText(s) {
       return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
     }
+    var _tideTimesCache = {};
+    var _tideTimesInflight = {};
+    function tideEventsHtml(events) {
+      if (!events || !events.length) {
+        return '<span class="tide-empty">Tide times are not available right now.</span>';
+      }
+      return events.map(function (ev) {
+        var k = ev.kind === 'Low' ? 'Low' : 'High';
+        var ht = (ev.height != null && isFinite(ev.height)) ? Number(ev.height).toFixed(2) + ' ft' : '';
+        return '<div class="tide-row">' +
+          '<span class="tk' + (k === 'Low' ? ' is-low' : '') + '">' + k + ' tide</span>' +
+          '<span class="tt">' + escapeTideText(ev.time) + '</span>' +
+          '<span class="th">' + escapeTideText(ht) + '</span>' +
+          '</div>';
+      }).join('');
+    }
     function buildTidePopupShell(st, ymd) {
+      var cached = _tideTimesCache[ymd || tideDateYmd()];
+      var listInner = (cached && cached.events && cached.events.length)
+        ? tideEventsHtml(cached.events)
+        : '<span class="tide-empty">Loading today\'s tides…</span>';
       return (
         '<div class="tide-detail-popup">' +
           '<div class="tide-kicker">Today\'s tide times</div>' +
           '<div class="tide-title">' + escapeTideText(st.name) + '</div>' +
           '<div class="tide-sub">' + escapeTideText(st.sub) + '<br>' + escapeTideText(tideDateLabel()) + '</div>' +
-          '<div class="tide-today-list"><span class="tide-empty">Loading today\'s tides…</span></div>' +
+          '<div class="tide-today-list">' + listInner + '</div>' +
           '<a class="tide-source-link" href="' + escapeTideText(st.pageUrl) + '" target="_blank" rel="noopener">Tideschart.com ↗</a>' +
         '</div>'
       );
     }
-    function renderTideEventList(list, events) {
-      if (!list) return;
-      if (!events || !events.length) {
-        list.innerHTML = '<span class="tide-empty">Tide times are not available right now.</span>';
-        return;
+    function findTideListEl(root) {
+      if (root && root.querySelector) {
+        var a = root.querySelector('.tide-today-list');
+        if (a) return a;
       }
-      list.innerHTML = events.map(function (ev) {
-        var k = ev.kind === 'Low' ? 'Low' : 'High';
-        var ht = (ev.height != null && isFinite(ev.height)) ? Number(ev.height).toFixed(2) + ' ft' : '';
-        return '<span class="tk' + (k === 'Low' ? ' is-low' : '') + '">' + k + ' tide</span>' +
-          '<span class="tt">' + escapeTideText(ev.time) + '</span>' +
-          '<span class="th">' + escapeTideText(ht) + '</span>';
-      }).join('');
+      return document.querySelector('.leaflet-popup.tide-popup .tide-today-list') ||
+        document.querySelector('.tide-popup .tide-today-list') ||
+        document.querySelector('.tide-today-list');
     }
-    function fillTidePopupTimes(root, st, ymd) {
-      if (!root) return;
-      var list = root.querySelector('.tide-today-list');
-      if (!list) return;
-      var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-      var to = setTimeout(function () { try { if (ctrl) ctrl.abort(); } catch (eAb) {} }, 10000);
-      var url = './api/tides?date=' + encodeURIComponent(ymd || tideDateYmd());
-      fetch(url, ctrl ? { signal: ctrl.signal, cache: 'no-store' } : { cache: 'no-store' }).then(function (r) {
+    function renderTideEventList(list, events) {
+      list = list || findTideListEl();
+      if (!list) return false;
+      list.innerHTML = tideEventsHtml(events);
+      return true;
+    }
+    function prefetchTideTimes(ymd) {
+      ymd = ymd || tideDateYmd();
+      if (_tideTimesCache[ymd] && _tideTimesCache[ymd].events && _tideTimesCache[ymd].events.length) {
+        return Promise.resolve(_tideTimesCache[ymd]);
+      }
+      if (_tideTimesInflight[ymd]) return _tideTimesInflight[ymd];
+      var url = './api/tides?date=' + encodeURIComponent(ymd);
+      var p = fetch(url, { cache: 'no-store' }).then(function (r) {
         if (!r || !r.ok) throw new Error('tides api');
         return r.json();
       }).then(function (data) {
-        clearTimeout(to);
-        renderTideEventList(list, data && data.events);
-      }).catch(function () {
-        // Direct Tideschart fetch often hangs in the browser; still try once, then fail.
-        var chart = tideChartUrl(st, ymd || tideDateYmd());
-        fetch(chart, ctrl ? { signal: ctrl.signal } : {}).then(function (r2) {
-          if (!r2 || !r2.ok) throw new Error('tide chart');
-          return r2.text();
-        }).then(function (svg) {
-          clearTimeout(to);
-          renderTideEventList(list, parseTideTimesFromSvg(svg));
-        }).catch(function () {
-          clearTimeout(to);
-          list.innerHTML = '<span class="tide-empty">Tide times are not available right now.</span>';
-        });
+        if (!data || !data.events || !data.events.length) throw new Error('empty');
+        _tideTimesCache[ymd] = data;
+        delete _tideTimesInflight[ymd];
+        return data;
       });
+      _tideTimesInflight[ymd] = p;
+      p.catch(function () { delete _tideTimesInflight[ymd]; });
+      return p;
+    }
+    function fillTidePopupTimes(root, st, ymd) {
+      ymd = ymd || tideDateYmd();
+      function paint(data) {
+        return renderTideEventList(findTideListEl(root), data && data.events);
+      }
+      if (_tideTimesCache[ymd] && _tideTimesCache[ymd].events && _tideTimesCache[ymd].events.length) {
+        paint(_tideTimesCache[ymd]);
+        return;
+      }
+      var tries = 0;
+      function attempt() {
+        tries += 1;
+        prefetchTideTimes(ymd).then(function (data) {
+          if (paint(data)) return;
+          setTimeout(function () { paint(data); }, 80);
+          setTimeout(function () { paint(data); }, 250);
+        }).catch(function () {
+          if (tries < 4) setTimeout(attempt, 350 * tries);
+          else {
+            var list = findTideListEl(root);
+            if (list && list.querySelector('.tide-empty')) {
+              list.innerHTML = '<span class="tide-empty">Tide times are not available right now.</span>';
+            }
+          }
+        });
+      }
+      attempt();
     }
     function drawTideStationsOnMap(force) {
       if (!map || !tideMarkerGroup) return;
@@ -35114,6 +35174,7 @@ function togglePinIconPicker() {
       if (!force && tidesDrawn) return;
       tideMarkerGroup.clearLayers();
       var ymd = tideDateYmd();
+      try { prefetchTideTimes(ymd); } catch (ePf) {}
       TIDE_STATIONS.forEach(function (st) {
         if (st.state && typeof isGeorgiaPack === 'function' && isGeorgiaPack() && st.state !== 'GA') return;
         var m = L.marker([st.lat, st.lng], {
@@ -35147,18 +35208,22 @@ function togglePinIconPicker() {
             }
           }
           var ymd = tideDateYmd();
+          try { prefetchTideTimes(ymd); } catch (ePf2) {}
           try { m.setPopupContent(buildTidePopupShell(st, ymd)); } catch (eSet) {}
           try { m.openPopup(); } catch (ePop) {}
           function paint() {
             var el = m.getPopup() && m.getPopup().getElement();
-            if (!el) return;
-            try {
-              L.DomEvent.disableClickPropagation(el);
-              L.DomEvent.disableScrollPropagation(el);
-            } catch (eD) {}
+            if (el) {
+              try {
+                L.DomEvent.disableClickPropagation(el);
+                L.DomEvent.disableScrollPropagation(el);
+              } catch (eD) {}
+            }
             fillTidePopupTimes(el, st, ymd);
           }
           setTimeout(paint, 0);
+          setTimeout(paint, 120);
+          setTimeout(paint, 400);
         }
         m.on('click', openTidePopup);
         m.on('popupopen', function () {
