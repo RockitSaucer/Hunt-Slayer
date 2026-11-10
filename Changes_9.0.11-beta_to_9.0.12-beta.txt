@@ -1,0 +1,7 @@
+HUNT SLAYER 9.0.11 → 9.0.12 Beta
+
+- Roads & waterways overlay is back (Esri transportation). Works on
+  Topo, LiDAR, satellite, and streets — not waterways-only USGS tiles.
+- Property lines & names overlay is back on Hunt only (Regrid parcels
+  + owner name on tap). Hidden on Reg.
+- Shell `reg-slayer-shell-v192`.

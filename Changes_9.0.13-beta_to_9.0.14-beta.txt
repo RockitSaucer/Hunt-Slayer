@@ -1,0 +1,10 @@
+HUNT SLAYER 9.0.13 → 9.0.14 Beta
+
+- Satellite is a photo basemap (Esri World Imagery) so the ground looks
+  like what is actually there (Hunt-Slayer #155).
+- Roads & waterways draws roads and USGS waterways over satellite, topo,
+  LiDAR, and streets.
+- Black Warrior zone lines follow the Outdoor Alabama area map and the
+  ADCNR boundary, including inholdings cut out of that boundary
+  (Hunt-Slayer #154). Confirm the official area map before you hunt.
+- Shell `reg-slayer-shell-v194`.

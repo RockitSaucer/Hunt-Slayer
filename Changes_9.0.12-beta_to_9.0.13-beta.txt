@@ -1,0 +1,9 @@
+HUNT SLAYER 9.0.12 → 9.0.13 Beta
+
+- Map search understands SOA / WMA / PDHA / NWR. "Uchee Creek SOA"
+  finds Uchee Creek Special Opportunity Area (Hunt-Slayer #153).
+- Picking that result turns the SOA layer on, zooms to the polygon,
+  and opens the map menu so Rules & regs is available.
+- Uchee Creek deer dates and the other 2026–27 windows are the Outdoor
+  Alabama Special Opportunity Areas page. Draw only — not a general
+  open season. Shell `reg-slayer-shell-v193`.

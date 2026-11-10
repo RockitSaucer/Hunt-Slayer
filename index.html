@@ -6214,6 +6214,8 @@
       min-width: 0;
       accent-color: var(--accent);
     }
+    html[data-site="reg"] .hunt-only-layer,
+    html.site-reg .hunt-only-layer { display: none !important; }
     /* Compass mode: pulse red + hide Wind/Compass swap chips */
     .map-compass-radar.compass-mode-active .compass-dial,
     .map-compass-radar.compass-mode-active #heading-compass-dial,
@@ -11951,7 +11953,7 @@
     .basemap-street-tiles .leaflet-tile {
       filter: saturate(0.38) brightness(1.22) contrast(0.92);
     }
-    /* Seasonal Esri Wayback removed — one public USGS aerial layer */
+    /* Seasonal Esri Wayback removed — one Esri World Imagery satellite layer */
     #satellite-mode-panel { display: none !important; }
   </style>
   <link rel="stylesheet" href="plan-kit/plan-ui.css" />
@@ -11964,7 +11966,7 @@
     <div class="brand-logo-wrap">
       <div class="brand-title" id="brand-title-text">Hunt <span>Slayer</span></div>
       <div class="brand-tagline" id="brand-tagline-text">Know before you go</div>
-      <span class="brand-version" aria-label="Version 9.0.11 Beta">V9.0.11 Beta</span>
+      <span class="brand-version" aria-label="Version 9.0.14 Beta">V9.0.14 Beta</span>
     </div>
     <div class="brand-header-actions">
       <button type="button" class="brand-report-btn" id="brand-report-issue-btn" title="Report a problem with the app">Report an issue</button>
@@ -12569,7 +12571,7 @@
               <div class="map-search-results" id="map-search-results" role="listbox" aria-label="Search results"></div>
               <div class="map-search-status" id="map-search-status" hidden></div>
               <div class="map-search-row">
-                <input type="search" class="map-search-input" id="map-search-input" placeholder="Search pins, places, addresses, or lat,lng…" autocomplete="off" enterkeyhint="search" aria-autocomplete="list" aria-controls="map-search-results" />
+                <input type="search" class="map-search-input" id="map-search-input" placeholder="Search pins, WMAs, SOAs, places, or lat,lng…" autocomplete="off" enterkeyhint="search" aria-autocomplete="list" aria-controls="map-search-results" />
                 <button type="button" class="map-search-clear" id="map-search-clear" title="Clear" aria-label="Clear search">×</button>
               </div>
             </div>
@@ -12699,7 +12701,7 @@
                           </label>
                           <label class="ml-option">
                             <input type="radio" name="map-basemap" id="basemap-satellite" value="satellite" onchange="setMapBasemap('satellite')">
-                            <span class="ml-opt-text">Aerial (USGS)</span>
+                            <span class="ml-opt-text">Satellite</span>
                           </label>
                           <div class="sat-mode-panel" id="satellite-mode-panel" role="group" aria-label="Satellite imagery season">
                             <div class="sat-mode-row">
@@ -12767,10 +12769,10 @@
                             </label>
                           </div>
 
-                          <!-- 3) Roads & waterways -->
+                          <!-- 3) Roads & waterways (Esri roads + USGS hydro — works on topo / lidar / sat) -->
                           <label class="ml-option">
                             <input type="checkbox" id="toggle-roads-overlay-chk" onchange="toggleRoadsOverlay(this.checked)">
-                            <span class="ml-opt-text">Waterways (USGS)</span>
+                            <span class="ml-opt-text">Roads &amp; waterways</span>
                           </label>
                           <div class="ml-opacity-row" id="roads-opacity-row">
                             <span>Opacity</span>
@@ -12785,12 +12787,12 @@
                             <span>Opacity</span>
                             <input type="range" id="topo-opacity-slider" min="10" max="100" value="48" oninput="setOverlayOpacity('topo', this.value)">
                           </div>
-                          <!-- 5) Property lines -->
-                          <label class="ml-option">
+                          <!-- 5) Property lines + owner names (Hunt only) -->
+                          <label class="ml-option hunt-only-layer">
                             <input type="checkbox" id="toggle-parcels-chk" onchange="togglePropertyLines(this.checked)">
-                            <span class="ml-opt-text">Property lines (Hunt upgrade)</span>
+                            <span class="ml-opt-text">Property lines &amp; names</span>
                           </label>
-                          <div class="ml-opacity-row" id="parcels-opacity-row">
+                          <div class="ml-opacity-row hunt-only-layer" id="parcels-opacity-row">
                             <span>Opacity</span>
                             <input type="range" id="parcels-opacity-slider" min="10" max="100" value="85" oninput="setOverlayOpacity('parcels', this.value)">
                           </div>
@@ -13444,13 +13446,13 @@
             </div>
             <button type="button" class="settings-subbtn" onclick="toggleSettingsSubpanel('set-def-overlays')">Show overlay defaults ▾</button>
             <div class="settings-subpanel" id="set-def-overlays">
-              <div class="settings-row">
-                <label class="settings-row-main" for="set-def-ov-parcels"><input type="checkbox" id="set-def-ov-parcels" onchange="saveAppSettingsFromUi()"><span class="sr-text">Property lines</span></label>
-                <button type="button" class="settings-info-btn" data-title="Property lines" data-info="Auto-show parcel / property line overlay at launch when available." aria-label="About Property lines" onclick="return showSettingsInfo(this,event)">i</button>
+              <div class="settings-row hunt-only-layer">
+                <label class="settings-row-main" for="set-def-ov-parcels"><input type="checkbox" id="set-def-ov-parcels" onchange="saveAppSettingsFromUi()"><span class="sr-text">Property lines &amp; names</span></label>
+                <button type="button" class="settings-info-btn" data-title="Property lines &amp; names" data-info="Auto-show parcel boundaries and owner names at launch (Hunt Slayer). Zoom in to ~12–18×, then tap a spot for the owner when available." aria-label="About Property lines" onclick="return showSettingsInfo(this,event)">i</button>
               </div>
               <div class="settings-row">
                 <label class="settings-row-main" for="set-def-ov-roads"><input type="checkbox" id="set-def-ov-roads" onchange="saveAppSettingsFromUi()"><span class="sr-text">Roads &amp; waterways</span></label>
-                <button type="button" class="settings-info-btn" data-title="Roads &amp; waterways" data-info="Auto-show roads and waterways overlay on satellite / LiDAR at launch." aria-label="About Roads &amp; waterways" onclick="return showSettingsInfo(this,event)">i</button>
+                <button type="button" class="settings-info-btn" data-title="Roads &amp; waterways" data-info="Auto-show roads and waterways over Topo, LiDAR, satellite, or streets at launch." aria-label="About Roads &amp; waterways" onclick="return showSettingsInfo(this,event)">i</button>
               </div>
               <div class="settings-row">
                 <label class="settings-row-main" for="set-def-ov-topo"><input type="checkbox" id="set-def-ov-topo" onchange="saveAppSettingsFromUi()"><span class="sr-text">Topo lines</span></label>
@@ -13677,9 +13679,10 @@
 
   <script>
     // ========== STATE ==========
-    const APP_VERSION = '9.0.11-beta';
+    const APP_VERSION = '9.0.14-beta';
     /** Site brand: 'hunt' (huntslayer.com) or 'reg' (regslayer.com) — drives first-launch defaults only. */
     const SITE_ID = 'hunt';
+    try { document.documentElement.classList.add('site-' + SITE_ID); } catch (eSiteCls) {}
     // #91 Plan-style text brand by site
     try {
       var _bt = document.getElementById('brand-title-text');
@@ -14603,6 +14606,28 @@
     // Explicit deer-weapon profiles (Outdoor Alabama + 50 CFR §32.20 Alabama NWR hunt regs).
     // Fields: allow, archeryOnly, noHuntDays (weekday names), huntDaysOnly, antlerRestriction, seasons[]
     const UNIT_DEER_PROFILES = [
+      {
+        // Outdoor Alabama Special Opportunity Areas, 2026–27 season page
+        // (https://www.outdooralabama.com/hunting/special-opportunity-areas).
+        // Dates on that page have no year; the page is the 2026–2027 registration.
+        match: /uchee\s*creek/i,
+        allow: ['Archery', 'Gun', 'Primitive'],
+        archeryOnly: false,
+        drawOnly: true,
+        antlerRestriction: 'Antler restriction: main beam spread 16" (outside the ears) or 18" main beam (3x length of ear). Outdoor Alabama 2026–27 Uchee Creek SOA.',
+        seasons: [
+          { weapon: 'Archery', land: 'Either', start: '2026-10-15', end: '2026-10-18', target: "Stalk Hunting Hunter's Choice", limit: 'See SOA permit', notes: 'Limited-quota draw. Only if you were selected for this date and unit.' },
+          { weapon: 'Archery', land: 'Either', start: '2026-10-22', end: '2026-10-25', target: "Stalk Hunting Hunter's Choice", limit: 'See SOA permit', notes: 'Limited-quota draw. Only if you were selected for this date and unit.' },
+          { weapon: 'Archery', land: 'Either', start: '2026-10-29', end: '2026-11-01', target: "Stalk Hunting Hunter's Choice", limit: 'See SOA permit', notes: 'Limited-quota draw. Only if you were selected for this date and unit.' },
+          { weapon: 'Gun', land: 'Either', start: '2026-11-05', end: '2026-11-08', target: 'Stalk Hunting Antlerless Only', limit: 'See SOA permit', notes: 'Limited-quota draw. Only if you were selected for this date and unit.' },
+          { weapon: 'Primitive', land: 'Either', start: '2026-11-17', end: '2026-11-20', target: "Stalk Hunting Hunter's Choice", limit: 'See SOA permit', notes: 'Limited-quota draw. Only if you were selected for this date and unit.' },
+          { weapon: 'Gun', land: 'Either', start: '2026-12-03', end: '2026-12-06', target: "Stalk Hunting Hunter's Choice", limit: 'See SOA permit', notes: 'Limited-quota draw. Only if you were selected for this date and unit.' },
+          { weapon: 'Gun', land: 'Either', start: '2026-12-17', end: '2026-12-20', target: "Stalk Hunting Hunter's Choice", limit: 'See SOA permit', notes: 'Limited-quota draw. Only if you were selected for this date and unit.' },
+          { weapon: 'Gun', land: 'Either', start: '2026-12-31', end: '2027-01-03', target: "Stalk Hunting Hunter's Choice", limit: 'See SOA permit', notes: 'Limited-quota draw. Only if you were selected for this date and unit.' },
+          { weapon: 'Gun', land: 'Either', start: '2027-01-14', end: '2027-01-17', target: "Stalk Hunting Hunter's Choice", limit: 'See SOA permit', notes: 'Limited-quota draw. Only if you were selected for this date and unit.' },
+          { weapon: 'Gun', land: 'Either', start: '2027-01-28', end: '2027-01-31', target: "Stalk Hunting Hunter's Choice", limit: 'See SOA permit', notes: 'Limited-quota draw. Only if you were selected for this date and unit.' }
+        ]
+      },
       {
         match: /swan\s*creek|mallard|fox\s*creek/i,
         allow: ['Archery'],
@@ -15720,6 +15745,22 @@
         if (closedMsg) {
           canHuntToday = false;
           if (!closedReason) closedReason = closedMsg;
+        } else if (profile && profile.drawOnly) {
+          statusKnown = true;
+          canHuntToday = false;
+          var drawWLabel = weapon === 'Either'
+            ? openToday.map(function(s) { return displayWeaponName(s.weapon); }).filter(function(v, i, a) { return a.indexOf(v) === i; }).join(' · ')
+            : displayWeaponName(weapon);
+          closedReason = 'SOA draw window for ' + drawWLabel + '. You can hunt only if you were selected for this date and unit.';
+          bullets.push('Status on selected day: SOA DRAW WINDOW for ' + drawWLabel + ' — legal only if you were drawn for this date and unit.');
+          openToday.forEach(function(s) {
+            bullets.push(
+              '• ' + displayWeaponName(s.weapon) +
+              ' · Bag: ' + (s.limit || 'see permit') +
+              ' · ' + (s.target || 'see permit') +
+              (s.notes ? ' - ' + s.notes : '')
+            );
+          });
         } else {
           canHuntToday = true;
           closedReason = '';
@@ -15784,6 +15825,12 @@
       }
       if (layerKey === 'nwr') {
         bullets.push('Federal NWR: must also follow 50 CFR § 32.20 and the current refuge hunt brochure.');
+      }
+      if (layerKey === 'soa' || /special\s*opportunity/i.test(name || '')) {
+        bullets.push('SOA hunts are limited-quota draws. Hunt only on a date you were selected for, on your assigned unit.');
+        if (/uchee\s*creek/i.test(name || '')) {
+          bullets.push('Uchee Creek 2026–27 (Outdoor Alabama): Deer — Archery Oct 15–18, Oct 22–25, Oct 29–Nov 1; Gun antlerless Nov 5–8; Primitive Nov 17–20; Gun hunter\'s choice Dec 3–6, Dec 17–20, Dec 31–Jan 3, Jan 14–17, Jan 28–31. Turkey Apr 2–4, Apr 9–11, Apr 16–18, Apr 23–25, Apr 30–May 2. Quail, rabbit & squirrel Feb 8–14 and Feb 15–21. Waterfowl Dec 12–13 and Jan 9–10.');
+        }
       }
 
       if (attrs && attrs.RESTRICTED) bullets.push('GIS note: ' + attrs.RESTRICTED);
@@ -16184,8 +16231,8 @@
     var parcelGridCache = {};
     var PARCEL_TILE_BASE = 'https://tiles.regrid.com/api/v1/parcels/{z}/{x}/{y}.png';
     var PARCEL_GRID_BASE = 'https://tiles.regrid.com/api/v1/parcels/{z}/{x}/{y}.json';
-    /** Free Reg: no Regrid demo tiles. Licensed parcels are a Hunt upgrade. */
-    var REGRID_ENABLED = false;
+    /** Property lines + owner names: Hunt only. Reg / Plan do not load Regrid. */
+    var REGRID_ENABLED = (typeof SITE_ID !== 'undefined' && SITE_ID === 'hunt');
 
     function getRegridToken() {
       try {
@@ -16360,8 +16407,9 @@
         maxZoom: 20,
         maxNativeZoom: 18,
         minZoom: 11,
-        opacity: 0.92,
-        zIndex: 360,
+        opacity: overlayOpacity && overlayOpacity.parcels != null ? overlayOpacity.parcels : 0.85,
+        pane: 'rsParcelsPane',
+        zIndex: 445,
         detectRetina: false,
         updateWhenIdle: true,
         crossOrigin: true,
@@ -16374,12 +16422,6 @@
         parcelsEnabled = false;
         var off = document.getElementById('toggle-parcels-chk');
         if (off) off.checked = false;
-        if (on && typeof showAppCopyToast === 'function') {
-          showAppCopyToast(
-            '<span class="act">Property lines</span><br>' +
-            'Owner parcels are a Hunt Slayer upgrade. Free Reg does not load Regrid tiles.'
-          );
-        }
         return;
       }
       parcelsEnabled = !!on;
@@ -16387,11 +16429,17 @@
       if (chk) chk.checked = parcelsEnabled;
       ensureMap().then(function(m) {
         if (!m || typeof L === 'undefined') return;
+        ensureOverlayPanes(m);
         if (parcelsEnabled) {
           // Rebuild layer if token may have changed since last create
           if (parcelLayer && m.hasLayer(parcelLayer)) m.removeLayer(parcelLayer);
           parcelLayer = createParcelTileLayer();
           parcelLayer.addTo(m);
+          try {
+            if (parcelLayer.setOpacity) {
+              parcelLayer.setOpacity(overlayOpacity.parcels != null ? overlayOpacity.parcels : 0.85);
+            }
+          } catch (eOp) {}
           if (m.getZoom() < 12 && typeof showAppCopyToast === 'function') {
             showAppCopyToast(
               '<span class="act">Property lines on</span><br>' +
@@ -16416,8 +16464,8 @@
           var isOn = chk ? !!chk.checked : !!on;
           var row = document.getElementById('parcels-opacity-row');
           if (row) row.classList.toggle('visible', isOn);
-          if (isOn && typeof propertyLinesLayer !== 'undefined' && propertyLinesLayer && propertyLinesLayer.setOpacity) {
-            propertyLinesLayer.setOpacity(overlayOpacity.parcels != null ? overlayOpacity.parcels : 0.85);
+          if (isOn && parcelLayer && parcelLayer.setOpacity) {
+            parcelLayer.setOpacity(overlayOpacity.parcels != null ? overlayOpacity.parcels : 0.85);
           }
         } catch (e) {}
         return r;
@@ -16460,7 +16508,7 @@
       var pairs = [
         ['roads', 'roads-opacity-slider', 'roads-opacity-row', roadsOverlayOn],
         ['topo', 'topo-opacity-slider', 'topo-opacity-row', topoOverlayOn],
-        ['parcels', 'parcels-opacity-slider', 'parcels-opacity-row', !!(typeof propertyLinesOn !== 'undefined' && propertyLinesOn)]
+        ['parcels', 'parcels-opacity-slider', 'parcels-opacity-row', !!parcelsEnabled]
       ];
       pairs.forEach(function(p) {
         var row = document.getElementById(p[2]);
@@ -16479,8 +16527,8 @@
       if (kind === 'topo' && topoOverlayLayer) {
         try { topoOverlayLayer.setOpacity(v); } catch (e2) {}
       }
-      if (kind === 'parcels' && typeof propertyLinesLayer !== 'undefined' && propertyLinesLayer) {
-        try { propertyLinesLayer.setOpacity(v); } catch (e3) {}
+      if (kind === 'parcels' && parcelLayer) {
+        try { parcelLayer.setOpacity(v); } catch (e3) {}
       }
     }
     window.setOverlayOpacity = setOverlayOpacity;
@@ -16494,39 +16542,56 @@
         ensureOverlayPanes(m);
         if (roadsOverlayOn) {
           if (!roadsOverlayLayer) {
-            // Labels/roads reference + transportation (two layers for reliability)
+            // Esri roads + USGS hydro (transparent) over topo / lidar / satellite / streets
             var o = overlayOpacity.roads != null ? overlayOpacity.roads : 0.9;
-            var roadsA = L.tileLayer(
+            var roadsHydro = L.tileLayer(
               'https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer/tile/{z}/{y}/{x}',
               {
                 maxZoom: 22,
                 maxNativeZoom: 16,
                 opacity: o,
                 pane: 'rsRoadsPane',
-                zIndex: 450,
+                zIndex: 449,
                 detectRetina: false,
                 crossOrigin: false,
                 attribution: 'USGS Hydrography',
+                className: 'roads-overlay-hydro'
+              }
+            );
+            var roadsA = L.tileLayer(
+              'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
+              {
+                maxZoom: 22,
+                maxNativeZoom: 19,
+                opacity: o,
+                pane: 'rsRoadsPane',
+                zIndex: 450,
+                detectRetina: false,
+                crossOrigin: false,
+                attribution: 'Roads Esri',
                 className: 'roads-overlay-tiles'
               }
             );
             var roadsB = L.tileLayer(
-              'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}',
+              'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
               {
                 maxZoom: 22,
-                maxNativeZoom: 16,
-                opacity: o * 0.42,
+                maxNativeZoom: 19,
+                opacity: o * 0.85,
                 pane: 'rsRoadsPane',
                 zIndex: 451,
                 detectRetina: false,
                 crossOrigin: false,
-                attribution: 'USGS Topo',
                 className: 'roads-overlay-tiles-b'
               }
             );
-            roadsOverlayLayer = L.layerGroup([roadsA, roadsB]);
+            roadsOverlayLayer = L.layerGroup([roadsHydro, roadsA, roadsB]);
             roadsOverlayLayer._rsSetOpacity = function(op) {
-              try { roadsA.setOpacity(op); roadsB.setOpacity(op * 0.85); } catch (e) {}
+              try {
+                roadsHydro.setOpacity(op);
+                roadsA.setOpacity(op);
+                roadsB.setOpacity(op * 0.85);
+              } catch (e) {}
             };
             roadsOverlayLayer.setOpacity = roadsOverlayLayer._rsSetOpacity;
           }
@@ -18374,6 +18439,10 @@
 
     function pointInWmaZoneFeature(lat, lng, feat) {
       if (!feat || !feat.rings || !feat.rings.length) return false;
+      var holes = feat.holes || [];
+      for (var h = 0; h < holes.length; h++) {
+        if (pointInRing(lng, lat, holes[h])) return false;
+      }
       for (var i = 0; i < feat.rings.length; i++) {
         if (pointInRing(lng, lat, feat.rings[i])) return true;
       }
@@ -18456,6 +18525,7 @@
         color: (PUBLIC_LAND_COLORS.wma && PUBLIC_LAND_COLORS.wma.color) || '#ff8f1f',
         label: zoneLabel,
         rings: rings,
+        holes: (rec.holes && rec.holes.length) ? rec.holes : [],
         lat: p.lat != null ? Number(p.lat) : (rec.lat != null ? Number(rec.lat) : null),
         lng: p.lng != null ? Number(p.lng) : (rec.lng != null ? Number(rec.lng) : null),
         mapPdf: pdf ? pdf.url : null
@@ -18628,9 +18698,8 @@
 
       wmaZoneFeatures.forEach(function(f) {
         try {
-        var latlngs = [];
-        (f.rings || []).forEach(function(ring) {
-          if (!ring || !ring.length) return;
+        function wmaRingToPath(ring) {
+          if (!ring || !ring.length) return null;
           var path = [];
           for (var pi = 0; pi < ring.length; pi++) {
             var pt = ring[pi];
@@ -18639,7 +18708,17 @@
             if (isNaN(la) || isNaN(lo)) continue;
             path.push([la, lo]);
           }
-          if (path.length >= 3) latlngs.push(path);
+          return path.length >= 3 ? path : null;
+        }
+        var latlngs = [];
+        (f.rings || []).forEach(function(ring) {
+          var path = wmaRingToPath(ring);
+          if (path) latlngs.push(path);
+        });
+        var holePaths = [];
+        (f.holes || []).forEach(function(ring) {
+          var path = wmaRingToPath(ring);
+          if (path) holePaths.push(path);
         });
         if (!latlngs.length) return;
         var isOpen = false;
@@ -18671,9 +18750,17 @@
           fillOp = applyPublicLandOpacityMul(wmaSt.fillOpacity, isOpen);
         }
         var zoneColor = wmaSt.color || '#ff8f1f';
-        // MultiPolygon: one Leaflet poly per outer ring (avoid treating extra exteriors as holes)
-        var polyGroup = latlngs.length === 1 ? latlngs[0] : latlngs;
-        var poly = L.polygon(polyGroup, {
+        // One polygon per outer ring. Extra rings are separate tracts, not holes.
+        latlngs.forEach(function(path) {
+        var polyHoles = [];
+        holePaths.forEach(function(hp) {
+          var sla = 0, slo = 0;
+          for (var hi = 0; hi < hp.length; hi++) { sla += hp[hi][0]; slo += hp[hi][1]; }
+          var ringLL = [];
+          for (var ri = 0; ri < path.length; ri++) ringLL.push([path[ri][1], path[ri][0]]);
+          if (pointInRing(slo / hp.length, sla / hp.length, ringLL)) polyHoles.push(hp);
+        });
+        var poly = L.polygon(polyHoles.length ? [path].concat(polyHoles) : path, {
           color: zoneColor,
           weight: isOpen ? (wmaSt.weight || 2.4) + 0.8 : (wmaSt.weight || 2.4),
           opacity: 0.95,
@@ -18763,6 +18850,7 @@
           placeOrMoveMapDot(clickLatLng, { skipWeather: false, openMenu: true });
         });
         wmaZoneLayerGroup.addLayer(poly);
+        });
         } catch (eWzFeat) {
           console.warn('WMA zone draw skipped', f && f.unitName, eWzFeat);
         }
@@ -20886,9 +20974,35 @@
     }
     window.parseMapSearchCoordinates = parseMapSearchCoordinates;
 
+    /** Expand hunt-land abbreviations so "Uchee Creek SOA" matches the GIS name. */
+    function expandMapSearchQuery(q) {
+      var s = String(q || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+      var expanded = s
+        .replace(/\bsoas\b/g, 'special opportunity area')
+        .replace(/\bsoa\b/g, 'special opportunity area')
+        .replace(/\bwmas\b/g, 'wildlife management area')
+        .replace(/\bwma\b/g, 'wildlife management area')
+        .replace(/\bpdha\b/g, 'physically disabled hunting area')
+        .replace(/\bnwrs\b/g, 'national wildlife refuge')
+        .replace(/\bnwr\b/g, 'national wildlife refuge');
+      return { raw: s, expanded: expanded };
+    }
+
+    function mapSearchBlobMatches(blob, qInfo) {
+      var b = String(blob || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ');
+      if (!qInfo || !qInfo.raw) return false;
+      if (b.indexOf(qInfo.raw) >= 0) return true;
+      if (qInfo.expanded !== qInfo.raw && b.indexOf(qInfo.expanded) >= 0) return true;
+      if (qInfo.expanded === qInfo.raw) return false;
+      var tokens = qInfo.expanded.split(' ').filter(function(t) { return t.length >= 3; });
+      if (tokens.length < 2) return false;
+      return tokens.every(function(t) { return b.indexOf(t) !== -1; });
+    }
+
     function collectLocalMapSearchHits(query) {
       var q = String(query || '').trim().toLowerCase();
       if (!q || q.length < 1) return [];
+      var qInfo = expandMapSearchQuery(q);
       var out = [];
       var seen = {};
 
@@ -20901,13 +21015,7 @@
       }
 
       function nameMatches(name, extra) {
-        var n = String(name || '').toLowerCase();
-        if (n && n.indexOf(q) >= 0) return true;
-        if (extra) {
-          var e = String(extra).toLowerCase();
-          if (e && e.indexOf(q) >= 0) return true;
-        }
-        return false;
+        return mapSearchBlobMatches(String(name || '') + ' ' + String(extra || ''), qInfo);
       }
 
       try {
@@ -20923,7 +21031,9 @@
               lat: Number(loc.lat),
               lng: Number(loc.lng),
               locId: loc.id,
-              isPin: !!loc.isPin
+              isPin: !!loc.isPin,
+              isPublicLand: !!loc.isPublicLand,
+              landSource: loc.landSource || ''
             });
           }
           // User stands nested under locations
@@ -20980,6 +21090,37 @@
           });
         });
       } catch (eH) {}
+
+      // GIS units that never became a list row (or are not loaded into locations yet)
+      try {
+        var gisLayers = (typeof adcnrLandsData !== 'undefined' && adcnrLandsData && adcnrLandsData.layers) || [];
+        gisLayers.forEach(function(layer) {
+          if (!layer || layer.drawOnMap === false || layer.key === 'nps') return;
+          (layer.features || []).forEach(function(feat) {
+            var attrs = feat.attributes || {};
+            var fname = '';
+            try {
+              fname = (typeof featureDisplayName === 'function') ? (featureDisplayName(layer, attrs) || '') : '';
+            } catch (eFn) { fname = ''; }
+            if (!fname) return;
+            if (!nameMatches(fname, (layer.typeLabel || '') + ' ' + (layer.label || '') + ' ' + (layer.key || ''))) return;
+            var fnameKey = fname.toLowerCase();
+            var already = out.some(function(h) { return String(h.label || '').toLowerCase() === fnameKey; });
+            if (already) return;
+            var c = (typeof geometryCentroid === 'function') ? geometryCentroid(feat.geometry) : null;
+            if (!c) return;
+            pushHit({
+              label: fname,
+              sub: layer.typeLabel || layer.label || 'Public land',
+              kind: 'local',
+              lat: Number(c.lat),
+              lng: Number(c.lng),
+              isPublicLand: true,
+              landSource: layer.key
+            });
+          });
+        });
+      } catch (eGisSearch) {}
 
       // Prefer name-starts-with, then shorter labels
       out.sort(function(a, b) {
@@ -21204,6 +21345,48 @@
       });
     }
 
+    function ensurePublicLandTypeOn(key) {
+      key = String(key || '');
+      if (key === 'nwr' || key === 'usfs') key = 'forestNwr';
+      if (!key || typeof publicLandTypeVisible === 'undefined') return;
+      if (!publicLandTypeVisible.hasOwnProperty(key)) return;
+      if (publicLandTypeVisible[key]) return;
+      if (typeof togglePublicLandType === 'function') togglePublicLandType(key);
+    }
+
+    /** Zoom to the official polygon for a public-land search hit. Stashes layer/attrs on the hit. */
+    function fitMapToPublicLandHit(hit) {
+      if (!hit || typeof map === 'undefined' || !map || typeof L === 'undefined') return false;
+      if (typeof adcnrLandsData === 'undefined' || !adcnrLandsData) return false;
+      var want = String(hit.label || '').toLowerCase();
+      var key = hit.landSource || '';
+      var geom = null;
+      (adcnrLandsData.layers || []).some(function(layer) {
+        if (!layer) return false;
+        if (key && layer.key !== key) return false;
+        return (layer.features || []).some(function(feat) {
+          var attrs = feat.attributes || {};
+          var fname = '';
+          try { fname = featureDisplayName(layer, attrs) || ''; } catch (eN) { fname = ''; }
+          if (!fname || fname.toLowerCase() !== want) return false;
+          geom = feat.geometry;
+          hit._plLayer = layer;
+          hit._plAttrs = attrs;
+          return true;
+        });
+      });
+      if (!geom || typeof esriRingsToLatLngs !== 'function') return false;
+      var latlngs = esriRingsToLatLngs(geom);
+      if (!latlngs || !latlngs.length || !latlngs[0] || latlngs[0].length < 3) return false;
+      var bounds = L.latLngBounds(latlngs[0]);
+      for (var i = 1; i < latlngs.length; i++) {
+        if (latlngs[i] && latlngs[i].length) bounds.extend(latlngs[i]);
+      }
+      if (!bounds || !bounds.isValid()) return false;
+      map.fitBounds(bounds, { padding: [28, 28], maxZoom: 14, animate: true });
+      return true;
+    }
+
     function selectMapSearchResult(hit) {
       if (!hit || hit.lat == null || hit.lng == null) return;
       var lat = Number(hit.lat);
@@ -21211,20 +21394,33 @@
       if (isNaN(lat) || isNaN(lng)) return;
       closeMapSearch({ clearInput: true });
       function place() {
+        var fitted = false;
+        if (hit.isPublicLand && hit.landSource) {
+          try { ensurePublicLandTypeOn(hit.landSource); } catch (eOn) {}
+          try { fitted = fitMapToPublicLandHit(hit); } catch (eFit) { fitted = false; }
+        }
+        if (!fitted) {
+          try {
+            if (typeof map !== 'undefined' && map) {
+              var z = map.getZoom ? map.getZoom() : 10;
+              // Coords / places: deep zoom so the orange pin is useful
+              var targetZ = hit.kind === 'coords' ? Math.max(z, 15)
+                : (hit.kind === 'geo' ? Math.max(z, 13) : Math.max(z, 14));
+              if (z < targetZ) map.setView([lat, lng], targetZ, { animate: true });
+              else map.panTo([lat, lng], { animate: true });
+            }
+          } catch (ePan) {}
+        }
         try {
-          if (typeof map !== 'undefined' && map) {
-            var z = map.getZoom ? map.getZoom() : 10;
-            // Coords / places: deep zoom so the orange pin is useful
-            var targetZ = hit.kind === 'coords' ? Math.max(z, 15)
-              : (hit.kind === 'geo' ? Math.max(z, 13) : Math.max(z, 14));
-            if (z < targetZ) map.setView([lat, lng], targetZ, { animate: true });
-            else map.panTo([lat, lng], { animate: true });
+          if (hit.isPublicLand && hit._plLayer && typeof setLastClickPublicLand === 'function') {
+            setLastClickPublicLand(hit._plLayer, hit._plAttrs || {}, lat, lng);
           }
-        } catch (ePan) {}
+        } catch (ePl) {}
         try {
           if (typeof placeOrMoveMapDot === 'function' && typeof L !== 'undefined') {
-            // Temporary orange pin — stays until free map click moves it, or user saves via pin menu
-            placeOrMoveMapDot(L.latLng(lat, lng), { skipWeather: false, openMenu: false });
+            // Temporary orange pin — stays until free map click moves it, or user saves via pin menu.
+            // Public-land hits open the menu so Rules & regs is one tap away.
+            placeOrMoveMapDot(L.latLng(lat, lng), { skipWeather: false, openMenu: !!hit.isPublicLand });
           }
         } catch (eDot) {}
       }
@@ -24295,7 +24491,7 @@
 
     function ensureWaybackSeasonalLayers(tilePerf) {
       // Esri Wayback removed (not licensed for a commercial/ad-supported app).
-      // All satellite modes use the same USGS aerial layer.
+      // All satellite modes use Esri World Imagery.
       waybackSeasonal.loaded = true;
       waybackSeasonal.loading = null;
       return Promise.resolve(waybackSeasonal);
@@ -24556,6 +24752,10 @@
           } catch (eTh) {}
         }
       }
+      // Keep roads overlay on top after a basemap swap (topo / lidar / sat)
+      if (roadsOverlayOn) {
+        try { toggleRoadsOverlay(true); } catch (eRo) {}
+      }
       // GPS marker size depends on max zoom (LiDAR allows deeper zoom)
       if (userLat != null && userLng != null && typeof setGpsMarker === 'function') {
         try { setGpsMarker(userLat, userLng); } catch (eGps) {}
@@ -24564,9 +24764,8 @@
     window.setMapBasemap = setMapBasemap;
 
     /**
-     * Bottom-right label: month + year of satellite imagery under the map center.
-     * Sources: Esri World Imagery identify (Newest), Clarity metadata (Winter),
-     * USA NAIP metadata (Summer). Debounced on pan/zoom.
+     * Bottom-right label: month + year of Esri World Imagery under the map center.
+     * Debounced on pan/zoom.
      */
     var _imageryDateTimer = null;
     var _imageryDateReq = 0;
@@ -24683,29 +24882,19 @@
         setImageryDateLabel('', false);
         return;
       }
-      setImageryDateLabel('Aerial · USGS / NAIP', true);
-      return;
-      if (!map || typeof map.getCenter !== 'function') {
-        setImageryDateLabel('', false);
-        return;
-      }
       if (!map || typeof map.getCenter !== 'function') {
         setImageryDateLabel('', false);
         return;
       }
       var mode = (typeof activeSatelliteMode !== 'undefined' && activeSatelliteMode) ? activeSatelliteMode : 'newest';
 
-      // Winter / Summer: badge = selected Wayback snapshot date (already filtered to season window)
+      // Seasonal Wayback is off. Use a stored snapshot date only when one exists.
       if (mode === 'winter' || mode === 'summer') {
         var relD = getSeasonalReleaseDate(mode);
         if (relD) {
           setImageryDateLabel('Imagery · ' + formatImageryMonthYear(relD), true);
           return;
         }
-        // Catalog still loading — try again shortly
-        setImageryDateLabel('Imagery · …', true);
-        try { ensureWaybackSeasonalLayers().then(function() { scheduleImageryDateRefresh(40); }); } catch (eW) {}
-        return;
       }
 
       // Newest: live World Imagery footprint date under map center
@@ -27793,15 +27982,16 @@
       }, tilePerf));
       var street = L.layerGroup([streetBase, streetHydro]);
       /*
-       * Aerial: USGS Imagery Only (NAIP / public ortho). One layer —
-       * no Esri World Imagery / Wayback seasonal snapshots.
+       * Satellite: Esri World Imagery (what the ground looks like).
+       * LiDAR underlay below stays USGS imagery. No Wayback snapshots.
        */
+      var ESRI_WORLD_IMAGERY = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
       var satNewest = L.tileLayer(
-        USGS_IMAGERY,
+        ESRI_WORLD_IMAGERY,
         satTileLayerOpts({
           maxZoom: MAP_MAX_ZOOM,
-          maxNativeZoom: 16,
-          attribution: 'USGS / NAIP aerial'
+          maxNativeZoom: 19,
+          attribution: 'Esri, Maxar, Earthstar Geographics, and the GIS User Community'
         })
       );
       try { wireSatTileRetry(satNewest); } catch (eRetry0) {}
@@ -41387,7 +41577,7 @@ function togglePinIconPicker() {
 
     function applyDefaultOverlaysOnLaunch() {
       var ov = appSettings.defaults.overlays || {};
-      if (ov.parcels) togglePropertyLines(true);
+      if (ov.parcels && REGRID_ENABLED) togglePropertyLines(true);
       if (ov.roads) toggleRoadsOverlay(true);
       if (ov.topo) toggleTopoOverlay(true);
       if (ov.pastHunts) {
